@@ -57,11 +57,24 @@ data "aws_caller_identity" "current" {}
 data "aws_region" "current" {}
 
 # ============================================================================
+# EventBridge Schedules
+# ============================================================================
+
+# Scheduler Lambda - Runs monthly to analyze usage and queue purchase recommendations
+resource "aws_cloudwatch_event_rule" "scheduler" {
+  name                = "${local.module_name}-scheduler"
+  description         = "Triggers Scheduler Lambda to analyze usage and recommend Savings Plans purchases"
+  schedule_expression = var.scheduler_schedule
+
+  tags = local.common_tags
+}
+
+# ============================================================================
 # Components will be defined in subsequent implementation phases:
 # - SQS Queue for purchase intents
 # - SNS Topic for notifications
 # - Lambda functions (Scheduler and Purchaser)
 # - IAM roles and policies
-# - EventBridge schedules
+# - EventBridge targets and Lambda permissions
 # - CloudWatch alarms
 # ============================================================================
