@@ -491,14 +491,42 @@ def apply_purchase_limits(
     """
     logger.info("Applying purchase limits")
 
-    # TODO: Implement purchase limits
-    # - Calculate current monthly on-demand spend
-    # - Apply max_purchase_percent cap
-    # - Reduce or filter purchase plans if needed
-    # - Respect min_commitment_per_plan
+    if not purchase_plans:
+        logger.info("No purchase plans to limit")
+        return []
 
-    logger.info(f"Purchase limits applied: {len(purchase_plans)} plans remain")
-    return purchase_plans
+    # Calculate total hourly commitment
+    total_commitment = sum(plan.get('hourly_commitment', 0.0) for plan in purchase_plans)
+    logger.info(f"Total hourly commitment before limits: ${total_commitment:.4f}/hour")
+
+    # Apply max_purchase_percent limit
+    max_purchase_percent = config.get('max_purchase_percent', 100.0)
+    scaling_factor = max_purchase_percent / 100.0
+
+    logger.info(f"Applying {max_purchase_percent}% purchase limit (scaling factor: {scaling_factor:.4f})")
+
+    # Scale down all plans by max_purchase_percent
+    limited_plans = []
+    for plan in purchase_plans:
+        limited_plan = plan.copy()
+        limited_plan['hourly_commitment'] = plan['hourly_commitment'] * scaling_factor
+        limited_plans.append(limited_plan)
+
+    # Filter out plans below minimum commitment threshold
+    min_commitment = config.get('min_commitment_per_plan', 0.001)
+    filtered_plans = [
+        plan for plan in limited_plans
+        if plan.get('hourly_commitment', 0.0) >= min_commitment
+    ]
+
+    removed_count = len(limited_plans) - len(filtered_plans)
+    if removed_count > 0:
+        logger.info(f"Removed {removed_count} plans below minimum commitment of ${min_commitment:.4f}/hour")
+
+    final_commitment = sum(plan.get('hourly_commitment', 0.0) for plan in filtered_plans)
+    logger.info(f"Purchase limits applied: {len(filtered_plans)} plans remain, ${final_commitment:.4f}/hour total commitment")
+
+    return filtered_plans
 
 
 def split_by_term(
