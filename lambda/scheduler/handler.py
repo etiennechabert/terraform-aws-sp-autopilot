@@ -545,13 +545,70 @@ def split_by_term(
     """
     logger.info("Splitting purchases by term")
 
-    # TODO: Implement term splitting
-    # - For Compute SP only
-    # - Split commitment according to term_mix
-    # - Database SP always uses 1-year term
+    if not purchase_plans:
+        logger.info("No purchase plans to split")
+        return []
 
-    logger.info(f"Term splitting complete: {len(purchase_plans)} plans")
-    return purchase_plans
+    split_plans = []
+    term_mix = config.get('compute_sp_term_mix', {})
+
+    # Map term_mix keys to API term values
+    term_mapping = {
+        'three_year': 'THREE_YEAR',
+        'one_year': 'ONE_YEAR'
+    }
+
+    for plan in purchase_plans:
+        sp_type = plan.get('sp_type')
+
+        # Database SP already has term set - pass through unchanged
+        if sp_type == 'database':
+            split_plans.append(plan)
+            logger.debug(f"Database SP plan passed through: ${plan.get('hourly_commitment', 0):.4f}/hour")
+            continue
+
+        # Compute SP needs to be split by term mix
+        if sp_type == 'compute':
+            base_commitment = plan.get('hourly_commitment', 0.0)
+            min_commitment = config.get('min_commitment_per_plan', 0.001)
+
+            logger.info(f"Splitting Compute SP: ${base_commitment:.4f}/hour across {len(term_mix)} terms")
+
+            for term_key, percentage in term_mix.items():
+                # Calculate commitment for this term
+                term_commitment = base_commitment * percentage
+
+                # Skip if below minimum threshold
+                if term_commitment < min_commitment:
+                    logger.info(
+                        f"Skipping {term_key} term: commitment ${term_commitment:.4f}/hour "
+                        f"below minimum ${min_commitment:.4f}/hour"
+                    )
+                    continue
+
+                # Map term key to API value
+                term_value = term_mapping.get(term_key)
+                if not term_value:
+                    logger.warning(f"Unknown term key '{term_key}' - skipping")
+                    continue
+
+                # Create new plan for this term
+                term_plan = plan.copy()
+                term_plan['hourly_commitment'] = term_commitment
+                term_plan['term'] = term_value
+
+                split_plans.append(term_plan)
+                logger.info(
+                    f"Created {term_value} plan: ${term_commitment:.4f}/hour "
+                    f"({percentage * 100:.1f}% of base commitment)"
+                )
+        else:
+            # Unknown SP type - pass through
+            logger.warning(f"Unknown SP type '{sp_type}' - passing through unchanged")
+            split_plans.append(plan)
+
+    logger.info(f"Term splitting complete: {len(purchase_plans)} plans -> {len(split_plans)} plans")
+    return split_plans
 
 
 def queue_purchase_intents(
