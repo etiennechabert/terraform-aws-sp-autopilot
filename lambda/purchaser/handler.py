@@ -15,7 +15,7 @@ This Lambda:
 import json
 import logging
 import os
-from datetime import datetime, timezone
+from datetime import datetime, timezone, timedelta, date
 from typing import Dict, List, Any, Optional
 
 import boto3
@@ -148,19 +148,168 @@ def get_current_coverage(config: Dict[str, Any]) -> Dict[str, float]:
     """
     logger.info("Calculating current coverage")
 
-    # TODO: Implement actual coverage calculation
-    # - Get coverage from Cost Explorer
-    # - Get list of existing Savings Plans
-    # - Exclude plans expiring within renewal_window_days
-    # - Return coverage by type (compute, database)
+    try:
+        # Get date range for coverage query (last 7 days average for stability)
+        end_date = datetime.now(timezone.utc).date()
+        start_date = (datetime.now(timezone.utc) - timedelta(days=7)).date()
 
-    coverage = {
-        'compute': 0.0,
-        'database': 0.0
-    }
+        # Get raw coverage from Cost Explorer
+        raw_coverage = get_ce_coverage(start_date, end_date, config)
 
-    logger.info(f"Coverage calculated: {coverage}")
-    return coverage
+        # Get existing Savings Plans
+        expiring_plans = get_expiring_plans(config)
+
+        # Adjust coverage to exclude expiring plans
+        adjusted_coverage = adjust_coverage_for_expiring_plans(
+            raw_coverage,
+            expiring_plans
+        )
+
+        logger.info(f"Coverage calculated: Compute={adjusted_coverage['compute']:.2f}%, Database={adjusted_coverage['database']:.2f}%")
+        logger.info(f"Expiring plans excluded: {len(expiring_plans)} plans")
+
+        return adjusted_coverage
+
+    except ClientError as e:
+        logger.error(f"Failed to calculate coverage: {str(e)}")
+        raise
+
+
+def get_ce_coverage(start_date: date, end_date: date, config: Dict[str, Any]) -> Dict[str, Any]:
+    """
+    Get Savings Plans coverage from Cost Explorer.
+
+    Args:
+        start_date: Start date for coverage period
+        end_date: End date for coverage period
+        config: Configuration dictionary
+
+    Returns:
+        dict: Raw coverage data by SP type
+    """
+    logger.info(f"Getting coverage from Cost Explorer for {start_date} to {end_date}")
+
+    try:
+        # Get coverage for Compute Savings Plans
+        compute_response = ce_client.get_savings_plans_coverage(
+            TimePeriod={
+                'Start': start_date.isoformat(),
+                'End': end_date.isoformat()
+            },
+            Granularity='DAILY',
+            GroupBy=[
+                {
+                    'Type': 'DIMENSION',
+                    'Key': 'SAVINGS_PLANS_TYPE'
+                }
+            ]
+        )
+
+        # Calculate average coverage across the period
+        coverage = {
+            'compute': 0.0,
+            'database': 0.0
+        }
+
+        for result in compute_response.get('SavingsPlansCoverages', []):
+            for group in result.get('Groups', []):
+                sp_type = group.get('Attributes', {}).get('SAVINGS_PLANS_TYPE', '')
+                coverage_pct = float(group.get('Coverage', {}).get('CoveragePercentage', '0'))
+
+                if sp_type == 'ComputeSavingsPlans':
+                    coverage['compute'] = max(coverage['compute'], coverage_pct)
+                elif sp_type == 'DatabaseSavingsPlans':
+                    coverage['database'] = max(coverage['database'], coverage_pct)
+
+        logger.info(f"Raw coverage from CE: Compute={coverage['compute']:.2f}%, Database={coverage['database']:.2f}%")
+        return coverage
+
+    except ClientError as e:
+        logger.error(f"Failed to get Cost Explorer coverage: {str(e)}")
+        raise
+
+
+def get_expiring_plans(config: Dict[str, Any]) -> List[Dict[str, Any]]:
+    """
+    Get list of Savings Plans expiring within renewal_window_days.
+
+    Args:
+        config: Configuration dictionary
+
+    Returns:
+        list: List of expiring Savings Plans
+    """
+    renewal_window_days = config['renewal_window_days']
+    logger.info(f"Getting Savings Plans expiring within {renewal_window_days} days")
+
+    try:
+        # Get all active Savings Plans
+        response = savingsplans_client.describe_savings_plans(
+            states=['active']
+        )
+
+        # Calculate expiration threshold
+        expiration_threshold = datetime.now(timezone.utc) + timedelta(days=renewal_window_days)
+
+        # Filter to plans expiring within the window
+        expiring_plans = []
+        for plan in response.get('savingsPlans', []):
+            end_time = datetime.fromisoformat(plan['end'].replace('Z', '+00:00'))
+
+            if end_time <= expiration_threshold:
+                expiring_plans.append({
+                    'savingsPlanId': plan['savingsPlanId'],
+                    'savingsPlanType': plan['savingsPlanType'],
+                    'commitment': float(plan['commitment']),
+                    'end': plan['end']
+                })
+
+        logger.info(f"Found {len(expiring_plans)} plans expiring within {renewal_window_days} days")
+        return expiring_plans
+
+    except ClientError as e:
+        logger.error(f"Failed to get Savings Plans: {str(e)}")
+        raise
+
+
+def adjust_coverage_for_expiring_plans(
+    raw_coverage: Dict[str, float],
+    expiring_plans: List[Dict[str, Any]]
+) -> Dict[str, float]:
+    """
+    Adjust coverage by excluding expiring plans.
+
+    Since expiring plans are still active but should be treated as if expired,
+    we return 0% coverage if ANY plans are expiring. This forces recalculation
+    of their coverage need.
+
+    Args:
+        raw_coverage: Raw coverage percentages from Cost Explorer
+        expiring_plans: List of plans expiring within renewal window
+
+    Returns:
+        dict: Adjusted coverage percentages by type
+    """
+    adjusted_coverage = raw_coverage.copy()
+
+    # Check if we have expiring plans by type
+    has_expiring_compute = any(
+        p['savingsPlanType'] == 'ComputeSavingsPlans' for p in expiring_plans
+    )
+    has_expiring_database = any(
+        p['savingsPlanType'] == 'DatabaseSavingsPlans' for p in expiring_plans
+    )
+
+    # If expiring plans exist for a type, set coverage to 0 to force renewal
+    if has_expiring_compute:
+        logger.info("Compute Savings Plans expiring - setting coverage to 0% to force renewal")
+        adjusted_coverage['compute'] = 0.0
+
+    if has_expiring_database:
+        logger.info("Database Savings Plans expiring - setting coverage to 0% to force renewal")
+        adjusted_coverage['database'] = 0.0
+
+    return adjusted_coverage
 
 
 def process_purchase_messages(
