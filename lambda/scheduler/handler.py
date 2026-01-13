@@ -344,7 +344,7 @@ def get_aws_recommendations(config: Dict[str, Any]) -> Dict[str, Any]:
                 SavingsPlansType='DATABASE_SP',
                 LookbackPeriodInDays=lookback_period,
                 TermInYears='ONE_YEAR',
-                PaymentOption='ALL_UPFRONT'
+                PaymentOption='NO_UPFRONT'
             )
 
             # Extract recommendation metadata
