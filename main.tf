@@ -293,64 +293,6 @@ resource "aws_cloudwatch_metric_alarm" "scheduler_error_alarm" {
   )
 }
 
-# Scheduler Lambda - Throttle Alarm
-resource "aws_cloudwatch_metric_alarm" "scheduler_throttle_alarm" {
-  count = var.enable_lambda_throttle_alarm ? 1 : 0
-
-  alarm_name          = "${local.module_name}-scheduler-throttles"
-  alarm_description   = "Triggers when Scheduler Lambda function is throttled, indicating concurrency limits are being hit"
-  comparison_operator = "GreaterThanOrEqualToThreshold"
-  evaluation_periods  = 1
-  metric_name         = "Throttles"
-  namespace           = "AWS/Lambda"
-  period              = 60
-  statistic           = "Sum"
-  threshold           = var.lambda_throttle_threshold
-  treat_missing_data  = "notBreaching"
-
-  dimensions = {
-    FunctionName = aws_lambda_function.scheduler.function_name
-  }
-
-  alarm_actions = [aws_sns_topic.notifications.arn]
-
-  tags = merge(
-    local.common_tags,
-    {
-      Name = "${local.module_name}-scheduler-throttles"
-    }
-  )
-}
-
-# Scheduler Lambda - Duration Alarm
-resource "aws_cloudwatch_metric_alarm" "scheduler_duration_alarm" {
-  count = var.enable_lambda_duration_alarm ? 1 : 0
-
-  alarm_name          = "${local.module_name}-scheduler-duration"
-  alarm_description   = "Triggers when Scheduler Lambda function duration exceeds threshold, indicating performance degradation"
-  comparison_operator = "GreaterThanOrEqualToThreshold"
-  evaluation_periods  = 1
-  metric_name         = "Duration"
-  namespace           = "AWS/Lambda"
-  period              = 60
-  statistic           = "Maximum"
-  threshold           = var.lambda_duration_threshold_ms
-  treat_missing_data  = "notBreaching"
-
-  dimensions = {
-    FunctionName = aws_lambda_function.scheduler.function_name
-  }
-
-  alarm_actions = [aws_sns_topic.notifications.arn]
-
-  tags = merge(
-    local.common_tags,
-    {
-      Name = "${local.module_name}-scheduler-duration"
-    }
-  )
-}
-
 # Purchaser Lambda - Error Alarm
 resource "aws_cloudwatch_metric_alarm" "purchaser_error_alarm" {
   count = var.enable_lambda_error_alarm ? 1 : 0
@@ -376,64 +318,6 @@ resource "aws_cloudwatch_metric_alarm" "purchaser_error_alarm" {
     local.common_tags,
     {
       Name = "${local.module_name}-purchaser-errors"
-    }
-  )
-}
-
-# Purchaser Lambda - Throttle Alarm
-resource "aws_cloudwatch_metric_alarm" "purchaser_throttle_alarm" {
-  count = var.enable_lambda_throttle_alarm ? 1 : 0
-
-  alarm_name          = "${local.module_name}-purchaser-throttles"
-  alarm_description   = "Triggers when Purchaser Lambda function is throttled, indicating concurrency limits are being hit"
-  comparison_operator = "GreaterThanOrEqualToThreshold"
-  evaluation_periods  = 1
-  metric_name         = "Throttles"
-  namespace           = "AWS/Lambda"
-  period              = 60
-  statistic           = "Sum"
-  threshold           = var.lambda_throttle_threshold
-  treat_missing_data  = "notBreaching"
-
-  dimensions = {
-    FunctionName = aws_lambda_function.purchaser.function_name
-  }
-
-  alarm_actions = [aws_sns_topic.notifications.arn]
-
-  tags = merge(
-    local.common_tags,
-    {
-      Name = "${local.module_name}-purchaser-throttles"
-    }
-  )
-}
-
-# Purchaser Lambda - Duration Alarm
-resource "aws_cloudwatch_metric_alarm" "purchaser_duration_alarm" {
-  count = var.enable_lambda_duration_alarm ? 1 : 0
-
-  alarm_name          = "${local.module_name}-purchaser-duration"
-  alarm_description   = "Triggers when Purchaser Lambda function duration exceeds threshold, indicating performance degradation"
-  comparison_operator = "GreaterThanOrEqualToThreshold"
-  evaluation_periods  = 1
-  metric_name         = "Duration"
-  namespace           = "AWS/Lambda"
-  period              = 60
-  statistic           = "Maximum"
-  threshold           = var.lambda_duration_threshold_ms
-  treat_missing_data  = "notBreaching"
-
-  dimensions = {
-    FunctionName = aws_lambda_function.purchaser.function_name
-  }
-
-  alarm_actions = [aws_sns_topic.notifications.arn]
-
-  tags = merge(
-    local.common_tags,
-    {
-      Name = "${local.module_name}-purchaser-duration"
     }
   )
 }

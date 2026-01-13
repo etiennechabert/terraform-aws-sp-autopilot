@@ -114,26 +114,6 @@ output "dlq_alarm_arn" {
   value       = var.enable_dlq_alarm ? aws_cloudwatch_metric_alarm.dlq_alarm[0].arn : null
 }
 
-output "scheduler_throttle_alarm_arn" {
-  description = "ARN of the Scheduler Lambda throttle alarm"
-  value       = var.enable_lambda_throttle_alarm ? aws_cloudwatch_metric_alarm.scheduler_throttle_alarm[0].arn : null
-}
-
-output "scheduler_duration_alarm_arn" {
-  description = "ARN of the Scheduler Lambda duration alarm"
-  value       = var.enable_lambda_duration_alarm ? aws_cloudwatch_metric_alarm.scheduler_duration_alarm[0].arn : null
-}
-
-output "purchaser_throttle_alarm_arn" {
-  description = "ARN of the Purchaser Lambda throttle alarm"
-  value       = var.enable_lambda_throttle_alarm ? aws_cloudwatch_metric_alarm.purchaser_throttle_alarm[0].arn : null
-}
-
-output "purchaser_duration_alarm_arn" {
-  description = "ARN of the Purchaser Lambda duration alarm"
-  value       = var.enable_lambda_duration_alarm ? aws_cloudwatch_metric_alarm.purchaser_duration_alarm[0].arn : null
-}
-
 # ============================================================================
 # Configuration Outputs
 # ============================================================================
