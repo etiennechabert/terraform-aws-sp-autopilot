@@ -10,13 +10,6 @@ This Lambda:
 6. Splits commitment by term mix (for Compute SP)
 7. Queues purchase intents (or sends email only if dry_run=true)
 8. Sends notification email with analysis results
-
-LIMITATIONS:
-- Database SP support is not yet implemented. The AWS Cost Explorer API
-  does not have a direct "Database SP" type. RDS workloads may be covered
-  by Compute SPs or EC2 Instance Savings Plans. Database SP is disabled
-  by default (enable_database_sp=false). If enabled, recommendations may
-  be inaccurate as they use COMPUTE_SP as a proxy.
 """
 
 import json
@@ -59,13 +52,6 @@ def handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
         # Load configuration from environment
         config = load_configuration()
         logger.info(f"Configuration loaded: dry_run={config['dry_run']}")
-
-        # Validate configuration
-        if config['enable_database_sp']:
-            logger.warning(
-                "Database SP is enabled but not fully implemented. "
-                "Recommendations may be inaccurate. Consider setting enable_database_sp=false."
-            )
 
         # Step 1: Purge existing queue
         purge_queue(config['queue_url'])
