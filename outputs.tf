@@ -58,6 +58,30 @@ output "purchaser_lambda_name" {
 }
 
 # ============================================================================
+# EventBridge Schedule Outputs
+# ============================================================================
+
+output "scheduler_rule_arn" {
+  description = "ARN of the EventBridge rule for Scheduler Lambda"
+  value       = aws_cloudwatch_event_rule.scheduler.arn
+}
+
+output "scheduler_rule_name" {
+  description = "Name of the EventBridge rule for Scheduler Lambda"
+  value       = aws_cloudwatch_event_rule.scheduler.name
+}
+
+output "purchaser_rule_arn" {
+  description = "ARN of the EventBridge rule for Purchaser Lambda"
+  value       = aws_cloudwatch_event_rule.purchaser.arn
+}
+
+output "purchaser_rule_name" {
+  description = "Name of the EventBridge rule for Purchaser Lambda"
+  value       = aws_cloudwatch_event_rule.purchaser.name
+}
+
+# ============================================================================
 # IAM Role Outputs
 # ============================================================================
 
