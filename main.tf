@@ -169,7 +169,7 @@ resource "aws_lambda_function" "scheduler" {
   description   = "Analyzes usage and queues Savings Plans purchase recommendations (PLACEHOLDER)"
 
   # Placeholder configuration - minimal valid Lambda
-  role          = aws_iam_role.scheduler_placeholder.arn
+  role          = aws_iam_role.scheduler.arn
   handler       = "index.handler"
   runtime       = "python3.11"
 
@@ -196,9 +196,14 @@ resource "aws_lambda_function" "purchaser" {
   tags = local.common_tags
 }
 
-# Minimal IAM roles for placeholder Lambdas
-resource "aws_iam_role" "scheduler_placeholder" {
-  name = "${local.module_name}-scheduler-placeholder"
+# ============================================================================
+# IAM Roles and Policies for Lambda Functions
+# ============================================================================
+
+# Scheduler Lambda IAM Role
+resource "aws_iam_role" "scheduler" {
+  name        = "${local.module_name}-scheduler"
+  description = "IAM role for Scheduler Lambda function - analyzes usage and queues purchase recommendations"
 
   assume_role_policy = jsonencode({
     Version = "2012-10-17"
@@ -211,9 +216,108 @@ resource "aws_iam_role" "scheduler_placeholder" {
     }]
   })
 
-  tags = local.common_tags
+  tags = merge(
+    local.common_tags,
+    {
+      Name = "${local.module_name}-scheduler-role"
+    }
+  )
 }
 
+# Scheduler Lambda Policy - CloudWatch Logs
+resource "aws_iam_role_policy" "scheduler_cloudwatch_logs" {
+  name = "cloudwatch-logs"
+  role = aws_iam_role.scheduler.id
+
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [{
+      Effect = "Allow"
+      Action = [
+        "logs:CreateLogStream",
+        "logs:PutLogEvents"
+      ]
+      Resource = "${aws_cloudwatch_log_group.scheduler.arn}:*"
+    }]
+  })
+}
+
+# Scheduler Lambda Policy - Cost Explorer
+resource "aws_iam_role_policy" "scheduler_cost_explorer" {
+  name = "cost-explorer"
+  role = aws_iam_role.scheduler.id
+
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [{
+      Effect = "Allow"
+      Action = [
+        "ce:GetSavingsPlansPurchaseRecommendation",
+        "ce:GetSavingsPlansUtilization",
+        "ce:GetSavingsPlansCoverage",
+        "ce:GetCostAndUsage"
+      ]
+      Resource = "*"
+    }]
+  })
+}
+
+# Scheduler Lambda Policy - SQS
+resource "aws_iam_role_policy" "scheduler_sqs" {
+  name = "sqs"
+  role = aws_iam_role.scheduler.id
+
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [{
+      Effect = "Allow"
+      Action = [
+        "sqs:SendMessage",
+        "sqs:PurgeQueue",
+        "sqs:GetQueueAttributes"
+      ]
+      Resource = aws_sqs_queue.purchase_intents.arn
+    }]
+  })
+}
+
+# Scheduler Lambda Policy - SNS
+resource "aws_iam_role_policy" "scheduler_sns" {
+  name = "sns"
+  role = aws_iam_role.scheduler.id
+
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [{
+      Effect = "Allow"
+      Action = [
+        "sns:Publish"
+      ]
+      Resource = aws_sns_topic.notifications.arn
+    }]
+  })
+}
+
+# Scheduler Lambda Policy - Savings Plans
+resource "aws_iam_role_policy" "scheduler_savingsplans" {
+  name = "savingsplans"
+  role = aws_iam_role.scheduler.id
+
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [{
+      Effect = "Allow"
+      Action = [
+        "savingsplans:DescribeSavingsPlans",
+        "savingsplans:DescribeSavingsPlansOfferingRates",
+        "savingsplans:DescribeSavingsPlansOfferings"
+      ]
+      Resource = "*"
+    }]
+  })
+}
+
+# Minimal IAM role for purchaser placeholder (to be replaced in subtask-1-3)
 resource "aws_iam_role" "purchaser_placeholder" {
   name = "${local.module_name}-purchaser-placeholder"
 
