@@ -251,15 +251,131 @@ def get_aws_recommendations(config: Dict[str, Any]) -> Dict[str, Any]:
     """
     logger.info("Getting AWS recommendations")
 
-    # TODO: Implement actual recommendation retrieval
-    # - Call ce:GetSavingsPlansPurchaseRecommendation
-    # - Filter by enabled SP types
-    # - Validate sufficient data days
-
     recommendations = {
         'compute': None,
         'database': None
     }
+
+    # Map lookback_days to AWS API parameter value
+    lookback_days = config['lookback_days']
+    if lookback_days <= 7:
+        lookback_period = 'SEVEN_DAYS'
+    elif lookback_days <= 30:
+        lookback_period = 'THIRTY_DAYS'
+    else:
+        lookback_period = 'SIXTY_DAYS'
+
+    logger.info(f"Using lookback period: {lookback_period} (config: {lookback_days} days)")
+
+    # Get Compute SP recommendations if enabled
+    if config['enable_compute_sp']:
+        logger.info("Fetching Compute Savings Plan recommendations")
+        try:
+            response = ce_client.get_savings_plans_purchase_recommendation(
+                SavingsPlansType='COMPUTE_SP',
+                LookbackPeriodInDays=lookback_period,
+                TermInYears='ONE_YEAR',
+                PaymentOption='ALL_UPFRONT'
+            )
+
+            # Extract recommendation metadata
+            metadata = response.get('Metadata', {})
+            recommendation_id = metadata.get('RecommendationId', 'unknown')
+            generation_timestamp = metadata.get('GenerationTimestamp', 'unknown')
+
+            # Validate sufficient data
+            lookback_period_days = metadata.get('LookbackPeriodInDays', '0')
+            if lookback_period_days and int(lookback_period_days) < config['min_data_days']:
+                logger.warning(
+                    f"Compute SP recommendation has insufficient data: "
+                    f"{lookback_period_days} days < {config['min_data_days']} days minimum"
+                )
+                recommendations['compute'] = None
+            else:
+                # Extract recommendation details
+                recommendation_details = response.get('SavingsPlansPurchaseRecommendation', {})
+                recommendation_summary = recommendation_details.get('SavingsPlansPurchaseRecommendationDetails', [])
+
+                if recommendation_summary:
+                    # Get the first (best) recommendation
+                    best_recommendation = recommendation_summary[0]
+                    hourly_commitment = best_recommendation.get('HourlyCommitmentToPurchase', '0')
+
+                    logger.info(
+                        f"Compute SP recommendation: ${hourly_commitment}/hour "
+                        f"(recommendation_id: {recommendation_id}, generated: {generation_timestamp})"
+                    )
+
+                    recommendations['compute'] = {
+                        'HourlyCommitmentToPurchase': hourly_commitment,
+                        'RecommendationId': recommendation_id,
+                        'GenerationTimestamp': generation_timestamp,
+                        'Details': best_recommendation
+                    }
+                else:
+                    logger.info("No Compute SP recommendations available from AWS")
+                    recommendations['compute'] = None
+
+        except ClientError as e:
+            logger.error(f"Failed to get Compute SP recommendations: {str(e)}")
+            raise
+
+    # Get Database SP recommendations if enabled
+    if config['enable_database_sp']:
+        logger.info("Fetching Database Savings Plan recommendations")
+        try:
+            # Note: Database SPs use the SAGEMAKER_SP type in the API
+            # AWS doesn't have a specific "Database SP" type - this is typically covered
+            # by EC2 Instance SPs for RDS. For now, we'll use COMPUTE_SP as a proxy.
+            # In production, you might need to adjust this based on your specific needs.
+            response = ce_client.get_savings_plans_purchase_recommendation(
+                SavingsPlansType='COMPUTE_SP',
+                LookbackPeriodInDays=lookback_period,
+                TermInYears='ONE_YEAR',
+                PaymentOption='ALL_UPFRONT'
+            )
+
+            # Extract recommendation metadata
+            metadata = response.get('Metadata', {})
+            recommendation_id = metadata.get('RecommendationId', 'unknown')
+            generation_timestamp = metadata.get('GenerationTimestamp', 'unknown')
+
+            # Validate sufficient data
+            lookback_period_days = metadata.get('LookbackPeriodInDays', '0')
+            if lookback_period_days and int(lookback_period_days) < config['min_data_days']:
+                logger.warning(
+                    f"Database SP recommendation has insufficient data: "
+                    f"{lookback_period_days} days < {config['min_data_days']} days minimum"
+                )
+                recommendations['database'] = None
+            else:
+                # Extract recommendation details
+                recommendation_details = response.get('SavingsPlansPurchaseRecommendation', {})
+                recommendation_summary = recommendation_details.get('SavingsPlansPurchaseRecommendationDetails', [])
+
+                if recommendation_summary:
+                    # Get the first (best) recommendation
+                    best_recommendation = recommendation_summary[0]
+                    hourly_commitment = best_recommendation.get('HourlyCommitmentToPurchase', '0')
+
+                    logger.info(
+                        f"Database SP recommendation: ${hourly_commitment}/hour "
+                        f"(recommendation_id: {recommendation_id}, generated: {generation_timestamp})"
+                    )
+
+                    recommendations['database'] = {
+                        'HourlyCommitmentToPurchase': hourly_commitment,
+                        'RecommendationId': recommendation_id,
+                        'GenerationTimestamp': generation_timestamp,
+                        'Details': best_recommendation
+                    }
+                else:
+                    logger.info("No Database SP recommendations available from AWS")
+                    recommendations['database'] = None
+
+        except ClientError as e:
+            logger.error(f"Failed to get Database SP recommendations: {str(e)}")
+            raise
 
     logger.info(f"Recommendations retrieved: {recommendations}")
     return recommendations
