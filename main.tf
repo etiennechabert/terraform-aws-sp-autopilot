@@ -69,6 +69,12 @@ resource "aws_cloudwatch_event_rule" "scheduler" {
   tags = local.common_tags
 }
 
+resource "aws_cloudwatch_event_target" "scheduler" {
+  rule      = aws_cloudwatch_event_rule.scheduler.name
+  target_id = "SchedulerLambda"
+  arn       = aws_lambda_function.scheduler.arn # To be implemented in Lambda creation phase
+}
+
 # ============================================================================
 # Components will be defined in subsequent implementation phases:
 # - SQS Queue for purchase intents
