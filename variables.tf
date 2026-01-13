@@ -191,6 +191,41 @@ variable "enable_dlq_alarm" {
   default     = true
 }
 
+variable "enable_lambda_throttle_alarm" {
+  description = "CloudWatch alarm on Lambda throttling events"
+  type        = bool
+  default     = true
+}
+
+variable "enable_lambda_duration_alarm" {
+  description = "CloudWatch alarm on Lambda duration threshold"
+  type        = bool
+  default     = true
+}
+
+variable "lambda_error_threshold" {
+  description = "Number of Lambda errors to trigger alarm"
+  type        = number
+  default     = 1
+}
+
+variable "lambda_throttle_threshold" {
+  description = "Number of Lambda throttle events to trigger alarm"
+  type        = number
+  default     = 1
+}
+
+variable "lambda_duration_threshold_ms" {
+  description = "Lambda duration threshold in milliseconds to trigger alarm"
+  type        = number
+  default     = 120000
+
+  validation {
+    condition     = var.lambda_duration_threshold_ms > 0
+    error_message = "lambda_duration_threshold_ms must be greater than 0."
+  }
+}
+
 # ============================================================================
 # 7.10 AWS Organizations
 # ============================================================================
