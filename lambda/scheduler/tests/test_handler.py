@@ -326,6 +326,63 @@ def test_get_aws_recommendations_database_enabled(monkeypatch):
         )
 
 
+def test_get_aws_recommendations_database_insufficient_data(monkeypatch):
+    """Test rejection of Database SP recommendations with insufficient data."""
+    # Enable Database SP
+    monkeypatch.setenv('QUEUE_URL', 'https://sqs.us-east-1.amazonaws.com/123456789012/test-queue')
+    monkeypatch.setenv('SNS_TOPIC_ARN', 'arn:aws:sns:us-east-1:123456789012:test-topic')
+    monkeypatch.setenv('ENABLE_DATABASE_SP', 'true')
+    monkeypatch.setenv('ENABLE_COMPUTE_SP', 'false')
+    monkeypatch.setenv('MIN_DATA_DAYS', '14')
+
+    config = handler.load_configuration()
+
+    with patch.object(handler.ce_client, 'get_savings_plans_purchase_recommendation') as mock_rec:
+        # Return only 10 days of data (less than min_data_days of 14)
+        mock_rec.return_value = {
+            'Metadata': {
+                'RecommendationId': 'rec-db-789',
+                'LookbackPeriodInDays': '10'
+            },
+            'SavingsPlansPurchaseRecommendation': {
+                'SavingsPlansPurchaseRecommendationDetails': [
+                    {'HourlyCommitmentToPurchase': '1.5'}
+                ]
+            }
+        }
+
+        result = handler.get_aws_recommendations(config)
+
+        # Should reject due to insufficient data
+        assert result['database'] is None
+
+
+def test_get_aws_recommendations_database_no_recommendations(monkeypatch):
+    """Test handling of empty Database SP recommendation list from AWS."""
+    # Enable Database SP
+    monkeypatch.setenv('QUEUE_URL', 'https://sqs.us-east-1.amazonaws.com/123456789012/test-queue')
+    monkeypatch.setenv('SNS_TOPIC_ARN', 'arn:aws:sns:us-east-1:123456789012:test-topic')
+    monkeypatch.setenv('ENABLE_DATABASE_SP', 'true')
+    monkeypatch.setenv('ENABLE_COMPUTE_SP', 'false')
+
+    config = handler.load_configuration()
+
+    with patch.object(handler.ce_client, 'get_savings_plans_purchase_recommendation') as mock_rec:
+        mock_rec.return_value = {
+            'Metadata': {
+                'RecommendationId': 'rec-db-empty',
+                'LookbackPeriodInDays': '30'
+            },
+            'SavingsPlansPurchaseRecommendation': {
+                'SavingsPlansPurchaseRecommendationDetails': []
+            }
+        }
+
+        result = handler.get_aws_recommendations(config)
+
+        assert result['database'] is None
+
+
 def test_get_aws_recommendations_insufficient_data(mock_env_vars):
     """Test rejection of recommendations with insufficient data."""
     config = handler.load_configuration()
@@ -548,6 +605,84 @@ def test_calculate_purchase_need_database_sp():
     assert result[0]['term'] == 'ONE_YEAR'
 
 
+def test_calculate_purchase_need_database_no_gap():
+    """Test that no Database SP purchase is made when coverage meets target."""
+    config = {
+        'enable_compute_sp': False,
+        'enable_database_sp': True,
+        'coverage_target_percent': 90.0
+    }
+
+    # Database coverage already meets target
+    coverage = {
+        'compute': 0.0,
+        'database': 92.0
+    }
+
+    recommendations = {
+        'compute': None,
+        'database': {
+            'HourlyCommitmentToPurchase': '2.5',
+            'RecommendationId': 'test-db-rec-789'
+        }
+    }
+
+    result = handler.calculate_purchase_need(config, coverage, recommendations)
+
+    # Should return empty list (no gap, no purchase needed)
+    assert result == []
+
+
+def test_calculate_purchase_need_database_zero_commitment():
+    """Test that Database SP recommendations with $0/hour commitment are skipped."""
+    config = {
+        'enable_compute_sp': False,
+        'enable_database_sp': True,
+        'coverage_target_percent': 90.0
+    }
+
+    coverage = {
+        'compute': 0.0,
+        'database': 60.0
+    }
+
+    recommendations = {
+        'compute': None,
+        'database': {
+            'HourlyCommitmentToPurchase': '0',
+            'RecommendationId': 'test-db-rec-zero'
+        }
+    }
+
+    result = handler.calculate_purchase_need(config, coverage, recommendations)
+
+    assert result == []
+
+
+def test_calculate_purchase_need_database_no_recommendation():
+    """Test that no Database SP purchase is made when AWS recommendation is None."""
+    config = {
+        'enable_compute_sp': False,
+        'enable_database_sp': True,
+        'coverage_target_percent': 90.0
+    }
+
+    coverage = {
+        'compute': 0.0,
+        'database': 60.0
+    }
+
+    # No recommendation available
+    recommendations = {
+        'compute': None,
+        'database': None
+    }
+
+    result = handler.calculate_purchase_need(config, coverage, recommendations)
+
+    assert result == []
+
+
 # ============================================================================
 # Purchase Limits Tests
 # ============================================================================
@@ -603,6 +738,33 @@ def test_apply_purchase_limits_empty_list():
     result = handler.apply_purchase_limits(config, [])
 
     assert result == []
+
+
+def test_apply_purchase_limits_database_sp():
+    """Test that max_purchase_percent applies correctly to Database SP."""
+    config = {
+        'max_purchase_percent': 20.0,
+        'min_commitment_per_plan': 0.001
+    }
+
+    plans = [
+        {
+            'sp_type': 'database',
+            'hourly_commitment': 5.0,
+            'term': 'ONE_YEAR',
+            'payment_option': 'NO_UPFRONT',
+            'recommendation_id': 'rec-db-limit-test'
+        }
+    ]
+
+    result = handler.apply_purchase_limits(config, plans)
+
+    # Should scale to 20% of 5.0 = 1.0
+    assert len(result) == 1
+    assert result[0]['sp_type'] == 'database'
+    assert result[0]['hourly_commitment'] == pytest.approx(1.0, rel=0.01)
+    assert result[0]['term'] == 'ONE_YEAR'
+    assert result[0]['payment_option'] == 'NO_UPFRONT'
 
 
 # ============================================================================

@@ -11,7 +11,11 @@ variable "enable_compute_sp" {
 }
 
 variable "enable_database_sp" {
-  description = "Enable Database Savings Plans automation"
+  description = <<-EOT
+    Enable Database Savings Plans automation.
+    Covers: RDS, Aurora, DynamoDB, ElastiCache (Valkey), DocumentDB, Neptune, Keyspaces, Timestream, DMS.
+    AWS Constraints: Database SP always uses ONE_YEAR term and NO_UPFRONT payment (not configurable).
+  EOT
   type        = bool
   default     = false
 }
@@ -131,6 +135,32 @@ variable "partial_upfront_percent" {
   description = "Percentage paid upfront for PARTIAL_UPFRONT"
   type        = number
   default     = 50
+}
+
+# ============================================================================
+# 7.5.1 Database SP Options
+# ============================================================================
+
+variable "database_sp_term" {
+  description = "Term length for Database Savings Plans (AWS constraint: must be ONE_YEAR)"
+  type        = string
+  default     = "ONE_YEAR"
+
+  validation {
+    condition     = var.database_sp_term == "ONE_YEAR"
+    error_message = "database_sp_term must be ONE_YEAR. AWS Database Savings Plans only support 1-year terms."
+  }
+}
+
+variable "database_sp_payment_option" {
+  description = "Payment option for Database Savings Plans (AWS constraint: must be NO_UPFRONT)"
+  type        = string
+  default     = "NO_UPFRONT"
+
+  validation {
+    condition     = var.database_sp_payment_option == "NO_UPFRONT"
+    error_message = "database_sp_payment_option must be NO_UPFRONT. AWS Database Savings Plans only support no upfront payment."
+  }
 }
 
 # ============================================================================

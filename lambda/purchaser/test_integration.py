@@ -486,6 +486,353 @@ def test_api_error():
     return scenario.passed
 
 
+def test_database_sp_purchase():
+    """Test 6: Database Savings Plan purchase should execute successfully"""
+    scenario = TestScenario("Test 6: Database SP Purchase")
+    scenario.log("Testing Database Savings Plan purchase...")
+
+    with patch.object(handler, 'sqs_client') as mock_sqs, \
+         patch.object(handler, 'sns_client') as mock_sns, \
+         patch.object(handler, 'ce_client') as mock_ce, \
+         patch.object(handler, 'savingsplans_client') as mock_sp:
+
+        # Mock SQS message with Database SP purchase intent
+        purchase_intent = {
+            'client_token': 'test-db-token-123',
+            'offering_id': 'sp-db-offering-123',
+            'commitment': '2.00',
+            'sp_type': 'DatabaseSavingsPlans',
+            'term_seconds': 94608000,  # 3 years
+            'payment_option': 'NO_UPFRONT',
+            'upfront_amount': None,
+            'projected_coverage_after': 80.0
+        }
+
+        mock_sqs.receive_message.return_value = {
+            'Messages': [
+                {
+                    'Body': json.dumps(purchase_intent),
+                    'ReceiptHandle': 'receipt-handle-db-123'
+                }
+            ]
+        }
+
+        # Mock current coverage (low database coverage, won't exceed cap)
+        mock_ce.get_savings_plans_coverage.return_value = {
+            'SavingsPlansCoverages': [
+                {
+                    'Groups': [
+                        {
+                            'Attributes': {'SAVINGS_PLANS_TYPE': 'ComputeSavingsPlans'},
+                            'Coverage': {'CoveragePercentage': '60.0'}
+                        },
+                        {
+                            'Attributes': {'SAVINGS_PLANS_TYPE': 'DatabaseSavingsPlans'},
+                            'Coverage': {'CoveragePercentage': '45.0'}
+                        }
+                    ]
+                }
+            ]
+        }
+
+        # Mock no expiring plans
+        mock_sp.describe_savings_plans.return_value = {'savingsPlans': []}
+
+        # Mock successful purchase
+        mock_sp.create_savings_plan.return_value = {
+            'savingsPlanId': 'sp-db-12345678'
+        }
+
+        # Set environment variables
+        os.environ['QUEUE_URL'] = 'https://sqs.us-east-1.amazonaws.com/123456789012/test-queue'
+        os.environ['SNS_TOPIC_ARN'] = 'arn:aws:sns:us-east-1:123456789012:test-topic'
+        os.environ['MAX_COVERAGE_CAP'] = '95'
+
+        # Execute handler
+        response = handler.handler({}, {})
+
+        # Verify
+        scenario.assert_true(
+            response['statusCode'] == 200,
+            f"Expected statusCode 200, got {response['statusCode']}"
+        )
+        scenario.assert_true(
+            mock_sp.create_savings_plan.called,
+            "CreateSavingsPlan should be called for Database SP"
+        )
+        scenario.assert_true(
+            mock_sqs.delete_message.called,
+            "Message should be deleted from queue"
+        )
+        scenario.assert_true(
+            mock_sns.publish.called,
+            "Summary email should be sent"
+        )
+
+        # Verify CreateSavingsPlan parameters
+        create_call = mock_sp.create_savings_plan.call_args
+        scenario.assert_true(
+            create_call[1]['clientToken'] == 'test-db-token-123',
+            "client_token should be used for idempotency"
+        )
+        scenario.assert_true(
+            create_call[1]['savingsPlanOfferingId'] == 'sp-db-offering-123',
+            "offering_id should match Database SP intent"
+        )
+
+        # Verify email content
+        email_call = mock_sns.publish.call_args
+        scenario.assert_true(
+            'sp-db-12345678' in email_call[1]['Message'],
+            "Email should contain Database SP Savings Plan ID"
+        )
+        scenario.assert_true(
+            'Successful Purchases: 1' in email_call[1]['Message'],
+            "Email should show 1 successful purchase"
+        )
+
+        scenario.log(f"Response: {response}")
+
+    scenario.complete()
+    return scenario.passed
+
+
+def test_database_sp_cap_enforcement():
+    """Test 7: Database SP purchase exceeding cap should be skipped"""
+    scenario = TestScenario("Test 7: Database SP Cap Enforcement")
+    scenario.log("Testing Database SP coverage cap enforcement...")
+
+    with patch.object(handler, 'sqs_client') as mock_sqs, \
+         patch.object(handler, 'sns_client') as mock_sns, \
+         patch.object(handler, 'ce_client') as mock_ce, \
+         patch.object(handler, 'savingsplans_client') as mock_sp:
+
+        # Mock SQS message with Database SP purchase that would exceed cap
+        purchase_intent = {
+            'client_token': 'test-db-token-456',
+            'offering_id': 'sp-db-offering-456',
+            'commitment': '5.00',
+            'sp_type': 'DatabaseSavingsPlans',
+            'term_seconds': 94608000,
+            'payment_option': 'NO_UPFRONT',
+            'upfront_amount': None,
+            'projected_coverage_after': 97.0  # Exceeds 95% cap
+        }
+
+        mock_sqs.receive_message.return_value = {
+            'Messages': [
+                {
+                    'Body': json.dumps(purchase_intent),
+                    'ReceiptHandle': 'receipt-handle-db-456'
+                }
+            ]
+        }
+
+        # Mock current coverage (high database coverage)
+        mock_ce.get_savings_plans_coverage.return_value = {
+            'SavingsPlansCoverages': [
+                {
+                    'Groups': [
+                        {
+                            'Attributes': {'SAVINGS_PLANS_TYPE': 'ComputeSavingsPlans'},
+                            'Coverage': {'CoveragePercentage': '70.0'}
+                        },
+                        {
+                            'Attributes': {'SAVINGS_PLANS_TYPE': 'DatabaseSavingsPlans'},
+                            'Coverage': {'CoveragePercentage': '88.0'}
+                        }
+                    ]
+                }
+            ]
+        }
+
+        # Mock no expiring plans
+        mock_sp.describe_savings_plans.return_value = {'savingsPlans': []}
+
+        # Set environment variables
+        os.environ['QUEUE_URL'] = 'https://sqs.us-east-1.amazonaws.com/123456789012/test-queue'
+        os.environ['SNS_TOPIC_ARN'] = 'arn:aws:sns:us-east-1:123456789012:test-topic'
+        os.environ['MAX_COVERAGE_CAP'] = '95'
+
+        # Execute handler
+        response = handler.handler({}, {})
+
+        # Verify
+        scenario.assert_true(
+            response['statusCode'] == 200,
+            f"Expected statusCode 200, got {response['statusCode']}"
+        )
+        scenario.assert_true(
+            not mock_sp.create_savings_plan.called,
+            "CreateSavingsPlan should NOT be called when Database SP exceeds cap"
+        )
+        scenario.assert_true(
+            mock_sqs.delete_message.called,
+            "Message should still be deleted even when skipped"
+        )
+        scenario.assert_true(
+            mock_sns.publish.called,
+            "Summary email should be sent"
+        )
+
+        # Verify email content mentions skip
+        email_call = mock_sns.publish.call_args
+        scenario.assert_true(
+            'Skipped Purchases: 1' in email_call[1]['Message'],
+            "Email should show 1 skipped purchase"
+        )
+        scenario.assert_true(
+            'Would exceed max_coverage_cap' in email_call[1]['Message'],
+            "Email should mention cap reason"
+        )
+
+        scenario.log(f"Response: {response}")
+
+    scenario.complete()
+    return scenario.passed
+
+
+def test_mixed_compute_and_database_sp():
+    """Test 8: Mixed Compute and Database SP purchases with separate coverage tracking"""
+    scenario = TestScenario("Test 8: Mixed Compute and Database SP")
+    scenario.log("Testing mixed Compute and Database SP purchases...")
+
+    with patch.object(handler, 'sqs_client') as mock_sqs, \
+         patch.object(handler, 'sns_client') as mock_sns, \
+         patch.object(handler, 'ce_client') as mock_ce, \
+         patch.object(handler, 'savingsplans_client') as mock_sp:
+
+        # Mock SQS with mixed Compute and Database SP messages
+        compute_intent = {
+            'client_token': 'test-compute-token-1',
+            'offering_id': 'sp-compute-offering-1',
+            'commitment': '1.00',
+            'sp_type': 'ComputeSavingsPlans',
+            'term_seconds': 94608000,
+            'payment_option': 'NO_UPFRONT',
+            'upfront_amount': None,
+            'projected_coverage_after': 70.0
+        }
+
+        database_intent = {
+            'client_token': 'test-database-token-1',
+            'offering_id': 'sp-database-offering-1',
+            'commitment': '2.00',
+            'sp_type': 'DatabaseSavingsPlans',
+            'term_seconds': 94608000,
+            'payment_option': 'NO_UPFRONT',
+            'upfront_amount': None,
+            'projected_coverage_after': 85.0
+        }
+
+        # Database SP that would exceed cap
+        database_intent_exceeds = {
+            'client_token': 'test-database-token-2',
+            'offering_id': 'sp-database-offering-2',
+            'commitment': '3.00',
+            'sp_type': 'DatabaseSavingsPlans',
+            'term_seconds': 94608000,
+            'payment_option': 'NO_UPFRONT',
+            'upfront_amount': None,
+            'projected_coverage_after': 96.5  # Exceeds 95% cap
+        }
+
+        mock_sqs.receive_message.return_value = {
+            'Messages': [
+                {'Body': json.dumps(compute_intent), 'ReceiptHandle': 'receipt-compute-1'},
+                {'Body': json.dumps(database_intent), 'ReceiptHandle': 'receipt-database-1'},
+                {'Body': json.dumps(database_intent_exceeds), 'ReceiptHandle': 'receipt-database-2'}
+            ]
+        }
+
+        # Mock current coverage (different levels for Compute and Database)
+        mock_ce.get_savings_plans_coverage.return_value = {
+            'SavingsPlansCoverages': [
+                {
+                    'Groups': [
+                        {
+                            'Attributes': {'SAVINGS_PLANS_TYPE': 'ComputeSavingsPlans'},
+                            'Coverage': {'CoveragePercentage': '50.0'}
+                        },
+                        {
+                            'Attributes': {'SAVINGS_PLANS_TYPE': 'DatabaseSavingsPlans'},
+                            'Coverage': {'CoveragePercentage': '60.0'}
+                        }
+                    ]
+                }
+            ]
+        }
+
+        # Mock no expiring plans
+        mock_sp.describe_savings_plans.return_value = {'savingsPlans': []}
+
+        # Mock successful purchases (2 should succeed, 1 should be skipped)
+        mock_sp.create_savings_plan.side_effect = [
+            {'savingsPlanId': 'sp-compute-111'},
+            {'savingsPlanId': 'sp-database-222'}
+        ]
+
+        # Set environment variables
+        os.environ['QUEUE_URL'] = 'https://sqs.us-east-1.amazonaws.com/123456789012/test-queue'
+        os.environ['SNS_TOPIC_ARN'] = 'arn:aws:sns:us-east-1:123456789012:test-topic'
+        os.environ['MAX_COVERAGE_CAP'] = '95'
+
+        # Execute handler
+        response = handler.handler({}, {})
+
+        # Verify
+        scenario.assert_true(
+            response['statusCode'] == 200,
+            f"Expected statusCode 200, got {response['statusCode']}"
+        )
+        scenario.assert_true(
+            mock_sp.create_savings_plan.call_count == 2,
+            f"Expected 2 CreateSavingsPlan calls (1 Compute + 1 Database), got {mock_sp.create_savings_plan.call_count}"
+        )
+        scenario.assert_true(
+            mock_sqs.delete_message.call_count == 3,
+            f"Expected 3 delete_message calls, got {mock_sqs.delete_message.call_count}"
+        )
+        scenario.assert_true(
+            mock_sns.publish.call_count == 1,
+            f"Expected 1 email (aggregated), got {mock_sns.publish.call_count}"
+        )
+
+        # Verify email content
+        email_call = mock_sns.publish.call_args
+        scenario.assert_true(
+            'Successful Purchases: 2' in email_call[1]['Message'],
+            "Email should show 2 successful purchases (1 Compute + 1 Database)"
+        )
+        scenario.assert_true(
+            'Skipped Purchases: 1' in email_call[1]['Message'],
+            "Email should show 1 skipped purchase (Database exceeding cap)"
+        )
+        scenario.assert_true(
+            'sp-compute-111' in email_call[1]['Message'],
+            "Email should contain Compute SP ID"
+        )
+        scenario.assert_true(
+            'sp-database-222' in email_call[1]['Message'],
+            "Email should contain Database SP ID"
+        )
+
+        # Verify coverage is reported for both types
+        scenario.assert_true(
+            'Compute Savings Plans:' in email_call[1]['Message'],
+            "Email should report Compute coverage"
+        )
+        scenario.assert_true(
+            'Database Savings Plans:' in email_call[1]['Message'],
+            "Email should report Database coverage"
+        )
+
+        scenario.log(f"Response: {response}")
+
+    scenario.complete()
+    return scenario.passed
+
+
 def main():
     """Run all integration tests"""
     print("=" * 70)
@@ -498,7 +845,10 @@ def main():
         'Test 2: Valid Purchase': test_valid_purchase_execution(),
         'Test 3: Cap Enforcement': test_cap_enforcement(),
         'Test 4: Multiple Messages': test_multiple_messages(),
-        'Test 5: API Error': test_api_error()
+        'Test 5: API Error': test_api_error(),
+        'Test 6: Database SP Purchase': test_database_sp_purchase(),
+        'Test 7: Database SP Cap': test_database_sp_cap_enforcement(),
+        'Test 8: Mixed Compute/Database': test_mixed_compute_and_database_sp()
     }
 
     print("=" * 70)
