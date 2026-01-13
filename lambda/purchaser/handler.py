@@ -412,11 +412,31 @@ def would_exceed_cap(
     Returns:
         bool: True if purchase would exceed cap
     """
-    # TODO: Implement actual coverage cap validation
-    # - Calculate projected coverage after this purchase
-    # - Compare against max_coverage_cap
-    # - Return True if would exceed
+    max_cap = config['max_coverage_cap']
+    sp_type = purchase_intent.get('sp_type', '')
+    projected_coverage = purchase_intent.get('projected_coverage_after', 0.0)
 
+    # Determine which coverage type to check
+    if sp_type == 'ComputeSavingsPlans':
+        coverage_type = 'compute'
+    elif sp_type == 'DatabaseSavingsPlans':
+        coverage_type = 'database'
+    else:
+        logger.warning(f"Unknown SP type: {sp_type}, defaulting to compute")
+        coverage_type = 'compute'
+
+    # Check if projected coverage would exceed cap
+    if projected_coverage > max_cap:
+        logger.warning(
+            f"Purchase would exceed cap - Type: {coverage_type}, "
+            f"Projected: {projected_coverage:.2f}%, Cap: {max_cap:.2f}%"
+        )
+        return True
+
+    logger.info(
+        f"Purchase within cap - Type: {coverage_type}, "
+        f"Projected: {projected_coverage:.2f}%, Cap: {max_cap:.2f}%"
+    )
     return False
 
 
