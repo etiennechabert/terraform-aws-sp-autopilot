@@ -354,3 +354,100 @@ Full test suite is comprehensive, well-structured, and manually verified to be c
 **Phase Outcome**:
 Documentation now fully reflects Database Savings Plans support without "EXPERIMENTAL" or "not implemented" warnings. Implementation notes provide complete reference for AWS API integration, constraints, testing, and limitations.
 
+---
+
+## 2026-01-13 - Re-Planning Session (Session 2)
+
+### Context
+Previous implementation (sessions above) completed the core Database SP functionality. This new planning session focuses on validation, extended testing, Terraform validation, and documentation completeness.
+
+### Session 2 (Planner - Validation Focus):
+- **Status**: Planning Complete
+- **Created**: Updated implementation_plan.json (SIMPLE workflow)
+- **Updated**: project_index.json with full service definitions
+- **Updated**: context.json with comprehensive patterns and constraints
+- **Created**: init.sh for development environment setup
+- **Phases**: 4 phases, 7 subtasks
+- **Workflow Type**: SIMPLE (validation and documentation)
+
+### New Phase Structure:
+
+**Phase 1 - Implementation Validation and Testing**: 3 subtasks
+  - Subtask 1-1: Validate Database SP Lambda implementation matches AWS API requirements
+  - Subtask 1-2: Extend Database SP test coverage in scheduler tests
+  - Subtask 1-3: Add Database SP integration tests in purchaser
+
+**Phase 2 - Terraform Validation and Outputs**: 2 subtasks (depends on Phase 1)
+  - Subtask 2-1: Add Terraform validation for Database SP constraints
+  - Subtask 2-2: Add Database SP monitoring outputs
+
+**Phase 3 - Documentation and Examples**: 1 subtask (depends on Phase 2)
+  - Subtask 3-1: Document Database SP configuration in README
+
+**Phase 4 - End-to-End Verification**: 1 subtask (depends on Phase 3)
+  - Subtask 4-1: Run complete test suite for Database SP
+
+### Rationale for Re-Planning:
+The original implementation is PRODUCTION-READY (confirmed by complexity assessment). This session creates a focused validation plan to:
+1. Verify existing implementation correctness
+2. Extend test coverage for edge cases (Database-only mode, mixed mode, empty recommendations)
+3. Add Terraform-level validation to enforce AWS constraints at plan time
+4. Complete README documentation with examples
+
+### Key Differences from Original Plan:
+- **Workflow**: Changed from FEATURE (5 phases, 10 subtasks) to SIMPLE (4 phases, 7 subtasks)
+- **Focus**: Shifted from implementation to validation and documentation
+- **Dependencies**: Removed AWS API research phase (already completed)
+- **Testing**: Focused on extending coverage rather than creating initial tests
+
+### Verification Strategy:
+- **Risk Level**: medium (cost management implications)
+- **Test Types**: unit tests only (sufficient for validation)
+- **Security Scanning**: No (no new security surfaces)
+- **Staging Deployment**: No (dry-run mode provides safe testing)
+
+### QA Acceptance:
+- ✓ Unit tests pass (scheduler + purchaser)
+- ✓ Terraform validation enforces AWS constraints
+- ✓ Documentation explains Database SP configuration
+- ✓ AWS constraints documented (1-year, NO_UPFRONT)
+- ✓ Example configurations provided
+
+### Implementation Status:
+**ALREADY COMPLETED** (Production-Ready):
+- ✅ Database SP API integration (handler.py lines 326-378)
+- ✅ Purchase plan creation (handler.py lines 455-466)
+- ✅ Term handling (handler.py lines 565-567)
+- ✅ Unit tests (test_handler.py lines 287-327, 520-549)
+- ✅ Variable enable_database_sp (variables.tf line 13-17)
+
+**TO BE COMPLETED** (Validation Focus):
+- ☐ Extended test coverage for edge cases
+- ☐ Terraform validation for Database SP constraints
+- ☐ Database SP outputs in outputs.tf
+- ☐ README documentation with examples
+
+### Parallelism Analysis:
+- Max parallel phases: 1
+- Recommended workers: 1
+- Reason: Sequential dependencies (validation → Terraform → docs → verification)
+
+=== UPDATED STARTUP COMMAND ===
+
+To continue with validation and documentation, run:
+
+  source auto-claude/.venv/bin/activate && python auto-claude/run.py --spec 011 --parallel 1
+
+Or run manual validation:
+
+  # Validate existing implementation
+  cd lambda/scheduler && pytest tests/test_handler.py -v -k database
+
+  # Check Terraform configuration
+  terraform validate
+
+  # Review implementation
+  cat lambda/scheduler/handler.py | grep -A 20 "enable_database_sp"
+
+=== END SESSION 2 (PLANNING) ===
+
