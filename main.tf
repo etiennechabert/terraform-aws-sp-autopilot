@@ -83,6 +83,29 @@ resource "aws_lambda_permission" "scheduler_eventbridge" {
   source_arn    = aws_cloudwatch_event_rule.scheduler.arn
 }
 
+# Purchaser Lambda - Runs monthly to execute approved Savings Plans purchases from queue
+resource "aws_cloudwatch_event_rule" "purchaser" {
+  name                = "${local.module_name}-purchaser"
+  description         = "Triggers Purchaser Lambda to process and execute Savings Plans purchases from SQS queue"
+  schedule_expression = var.purchaser_schedule
+
+  tags = local.common_tags
+}
+
+resource "aws_cloudwatch_event_target" "purchaser" {
+  rule      = aws_cloudwatch_event_rule.purchaser.name
+  target_id = "PurchaserLambda"
+  arn       = aws_lambda_function.purchaser.arn # To be implemented in Lambda creation phase
+}
+
+resource "aws_lambda_permission" "purchaser_eventbridge" {
+  statement_id  = "AllowExecutionFromEventBridge"
+  action        = "lambda:InvokeFunction"
+  function_name = aws_lambda_function.purchaser.function_name # To be implemented in Lambda creation phase
+  principal     = "events.amazonaws.com"
+  source_arn    = aws_cloudwatch_event_rule.purchaser.arn
+}
+
 # ============================================================================
 # Components will be defined in subsequent implementation phases:
 # - SQS Queue for purchase intents
