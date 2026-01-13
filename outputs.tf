@@ -6,22 +6,22 @@
 
 output "queue_url" {
   description = "URL of the SQS queue holding purchase intents"
-  value       = "" # To be implemented: aws_sqs_queue.purchase_intents.url
+  value       = aws_sqs_queue.purchase_intents.url
 }
 
 output "queue_arn" {
   description = "ARN of the SQS queue"
-  value       = "" # To be implemented: aws_sqs_queue.purchase_intents.arn
+  value       = aws_sqs_queue.purchase_intents.arn
 }
 
 output "dlq_url" {
   description = "URL of the dead letter queue"
-  value       = "" # To be implemented: aws_sqs_queue.purchase_intents_dlq.url
+  value       = aws_sqs_queue.purchase_intents_dlq.url
 }
 
 output "dlq_arn" {
   description = "ARN of the dead letter queue"
-  value       = "" # To be implemented: aws_sqs_queue.purchase_intents_dlq.arn
+  value       = aws_sqs_queue.purchase_intents_dlq.arn
 }
 
 # ============================================================================
@@ -111,7 +111,7 @@ output "purchaser_error_alarm_arn" {
 
 output "dlq_alarm_arn" {
   description = "ARN of the DLQ depth alarm"
-  value       = var.enable_dlq_alarm ? "" : null # To be implemented: conditional output
+  value       = var.enable_dlq_alarm ? aws_cloudwatch_metric_alarm.dlq_alarm[0].arn : null
 }
 
 # ============================================================================
