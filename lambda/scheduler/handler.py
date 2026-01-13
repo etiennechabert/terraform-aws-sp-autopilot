@@ -852,6 +852,45 @@ def send_error_email(error_message: str) -> None:
     """
     logger.error("Sending error notification email")
 
-    # TODO: Implement error email
-    # - Format error details
-    # - Publish to SNS
+    # Format email body
+    email_lines = [
+        "Savings Plans Scheduler ERROR",
+        "=" * 50,
+        "",
+        "The Scheduler Lambda encountered an error and failed to complete.",
+        "",
+        "Error Details:",
+        "-" * 50,
+        error_message,
+        "-" * 50,
+        "",
+        "Action Required:",
+        "1. Check CloudWatch Logs for detailed error information",
+        "2. Review the Scheduler Lambda configuration",
+        "3. Investigate and resolve the issue",
+        "4. The scheduler will retry on the next scheduled run",
+        "",
+        "CloudWatch Logs:",
+        "Check the /aws/lambda/scheduler-function log group for full details.",
+    ]
+
+    message = "\n".join(email_lines)
+
+    # Get SNS topic ARN from environment (error may occur before config is loaded)
+    sns_topic_arn = os.environ.get('SNS_TOPIC_ARN')
+
+    if not sns_topic_arn:
+        logger.error("Cannot send error email - SNS_TOPIC_ARN not configured")
+        return
+
+    # Publish to SNS
+    try:
+        sns_client.publish(
+            TopicArn=sns_topic_arn,
+            Subject='ERROR: Savings Plans Scheduler Failed',
+            Message=message
+        )
+        logger.info(f"Error email sent successfully to {sns_topic_arn}")
+    except Exception as e:
+        # Don't raise - we're already in error handling
+        logger.error(f"Failed to send error email: {str(e)}")
