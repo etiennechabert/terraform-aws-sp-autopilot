@@ -11,7 +11,11 @@ variable "enable_compute_sp" {
 }
 
 variable "enable_database_sp" {
-  description = "Enable Database Savings Plans automation"
+  description = <<-EOT
+    Enable Database Savings Plans automation.
+    Covers: RDS, Aurora, DynamoDB, ElastiCache (Valkey), DocumentDB, Neptune, Keyspaces, Timestream, DMS.
+    AWS Constraints: Database SP always uses ONE_YEAR term and NO_UPFRONT payment (not configurable).
+  EOT
   type        = bool
   default     = false
 }
@@ -132,6 +136,20 @@ variable "partial_upfront_percent" {
   type        = number
   default     = 50
 }
+
+# ============================================================================
+# 7.5.1 Database SP Constraints
+# ============================================================================
+# Database Savings Plans have fixed AWS constraints (not configurable):
+#   - Term: Always ONE_YEAR (AWS does not support 3-year Database SP)
+#   - Payment: Always NO_UPFRONT (AWS does not support upfront payments for Database SP)
+#
+# These constraints are enforced in the Lambda scheduler code when fetching
+# Database SP recommendations from AWS Cost Explorer API.
+#
+# No additional configuration variables are needed for Database SP.
+# Coverage targets, risk management, and scheduling settings apply to both
+# Compute and Database SP types.
 
 # ============================================================================
 # 7.6 Scheduling
