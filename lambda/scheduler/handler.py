@@ -770,12 +770,77 @@ def send_dry_run_email(
     """
     logger.info("Sending dry run email")
 
-    # TODO: Implement dry run email
-    # - Format email with analysis results
-    # - Clear indication that no purchases were scheduled
-    # - Instructions to disable dry_run
+    # Format email body
+    email_lines = [
+        "***** DRY RUN MODE ***** Savings Plans Analysis",
+        "=" * 50,
+        "",
+        "*** NO PURCHASES WERE SCHEDULED ***",
+        "",
+        f"Total Plans Analyzed: {len(purchase_plans)}",
+        "",
+        "Current Coverage:",
+        f"  Compute SP:  {coverage.get('compute', 0):.2f}%",
+        f"  Database SP: {coverage.get('database', 0):.2f}%",
+        "",
+        f"Target Coverage: {config.get('coverage_target_percent', 90):.2f}%",
+        "",
+        "Purchase Plans (WOULD BE SCHEDULED if dry_run=false):",
+        "-" * 50,
+    ]
 
-    logger.info("Dry run email sent successfully")
+    # Add details for each purchase plan
+    total_annual_cost = 0.0
+    for i, plan in enumerate(purchase_plans, 1):
+        sp_type = plan.get('sp_type', 'unknown')
+        hourly_commitment = plan.get('hourly_commitment', 0.0)
+        term = plan.get('term', 'unknown')
+        payment_option = plan.get('payment_option', 'ALL_UPFRONT')
+
+        # Calculate estimated annual cost (hourly * 24 * 365)
+        annual_cost = hourly_commitment * 8760
+        total_annual_cost += annual_cost
+
+        email_lines.extend([
+            f"{i}. {sp_type.upper()} Savings Plan",
+            f"   Hourly Commitment: ${hourly_commitment:.4f}/hour",
+            f"   Term: {term}",
+            f"   Payment Option: {payment_option}",
+            f"   Estimated Annual Cost: ${annual_cost:,.2f}",
+            ""
+        ])
+
+    email_lines.extend([
+        "-" * 50,
+        f"Total Estimated Annual Cost: ${total_annual_cost:,.2f}",
+        "",
+        "TO ENABLE ACTUAL PURCHASES:",
+        "1. Set the DRY_RUN environment variable to 'false'",
+        "2. Update the Lambda configuration:",
+        "   aws lambda update-function-configuration \\",
+        "     --function-name <scheduler-lambda-name> \\",
+        "     --environment Variables={DRY_RUN=false,...}",
+        "",
+        "3. Or via Terraform:",
+        "   Set dry_run = false in your terraform.tfvars",
+        "",
+        "Once disabled, the Scheduler will queue purchase intents to SQS,",
+        "and the Purchaser Lambda will execute the actual purchases.",
+    ])
+
+    message = "\n".join(email_lines)
+
+    # Publish to SNS
+    try:
+        sns_client.publish(
+            TopicArn=config['sns_topic_arn'],
+            Subject='[DRY RUN] Savings Plans Analysis - No Purchases Scheduled',
+            Message=message
+        )
+        logger.info(f"Dry run email sent successfully to {config['sns_topic_arn']}")
+    except ClientError as e:
+        logger.error(f"Failed to send dry run email: {str(e)}")
+        raise
 
 
 def send_error_email(error_message: str) -> None:
