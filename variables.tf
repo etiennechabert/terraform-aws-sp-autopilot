@@ -11,7 +11,7 @@ variable "enable_compute_sp" {
 }
 
 variable "enable_database_sp" {
-  description = "Enable Database Savings Plans automation (EXPERIMENTAL - not fully implemented)"
+  description = "Enable Database Savings Plans automation"
   type        = bool
   default     = false
 }
