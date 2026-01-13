@@ -284,6 +284,48 @@ def test_get_aws_recommendations_database_disabled(mock_env_vars):
         assert result['database'] is None
 
 
+def test_get_aws_recommendations_database_enabled(monkeypatch):
+    """Test fetching Database SP recommendations with correct API parameters."""
+    # Enable Database SP
+    monkeypatch.setenv('QUEUE_URL', 'https://sqs.us-east-1.amazonaws.com/123456789012/test-queue')
+    monkeypatch.setenv('SNS_TOPIC_ARN', 'arn:aws:sns:us-east-1:123456789012:test-topic')
+    monkeypatch.setenv('ENABLE_DATABASE_SP', 'true')
+    monkeypatch.setenv('ENABLE_COMPUTE_SP', 'false')
+
+    config = handler.load_configuration()
+
+    with patch.object(handler.ce_client, 'get_savings_plans_purchase_recommendation') as mock_rec:
+        mock_rec.return_value = {
+            'Metadata': {
+                'RecommendationId': 'rec-db-456',
+                'GenerationTimestamp': '2026-01-13T00:00:00Z',
+                'LookbackPeriodInDays': '30'
+            },
+            'SavingsPlansPurchaseRecommendation': {
+                'SavingsPlansPurchaseRecommendationDetails': [
+                    {
+                        'HourlyCommitmentToPurchase': '1.25'
+                    }
+                ]
+            }
+        }
+
+        result = handler.get_aws_recommendations(config)
+
+        # Verify Database SP recommendation was returned
+        assert result['database'] is not None
+        assert result['database']['HourlyCommitmentToPurchase'] == '1.25'
+        assert result['database']['RecommendationId'] == 'rec-db-456'
+
+        # Verify API was called with correct Database SP parameters
+        mock_rec.assert_called_once_with(
+            SavingsPlansType='DATABASE_SP',
+            LookbackPeriodInDays='THIRTY_DAYS',
+            TermInYears='ONE_YEAR',
+            PaymentOption='NO_UPFRONT'
+        )
+
+
 def test_get_aws_recommendations_insufficient_data(mock_env_vars):
     """Test rejection of recommendations with insufficient data."""
     config = handler.load_configuration()
@@ -473,6 +515,37 @@ def test_calculate_purchase_need_zero_commitment():
     result = handler.calculate_purchase_need(config, coverage, recommendations)
 
     assert result == []
+
+
+def test_calculate_purchase_need_database_sp():
+    """Test that Database SP purchase plans use NO_UPFRONT payment and ONE_YEAR term."""
+    config = {
+        'enable_compute_sp': False,
+        'enable_database_sp': True,
+        'coverage_target_percent': 90.0
+    }
+
+    coverage = {
+        'compute': 0.0,
+        'database': 65.0
+    }
+
+    recommendations = {
+        'compute': None,
+        'database': {
+            'HourlyCommitmentToPurchase': '2.5',
+            'RecommendationId': 'test-db-rec-456'
+        }
+    }
+
+    result = handler.calculate_purchase_need(config, coverage, recommendations)
+
+    assert len(result) == 1
+    assert result[0]['sp_type'] == 'database'
+    assert result[0]['hourly_commitment'] == 2.5
+    assert result[0]['recommendation_id'] == 'test-db-rec-456'
+    assert result[0]['payment_option'] == 'NO_UPFRONT'
+    assert result[0]['term'] == 'ONE_YEAR'
 
 
 # ============================================================================

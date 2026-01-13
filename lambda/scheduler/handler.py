@@ -1,22 +1,17 @@
 """
 Scheduler Lambda - Analyzes usage and queues Savings Plan purchase intents.
 
+Supports both Compute Savings Plans and Database Savings Plans.
+
 This Lambda:
 1. Purges existing queue messages
 2. Calculates current coverage (excluding plans expiring within renewal_window_days)
 3. Gets AWS purchase recommendations
 4. Calculates purchase need based on coverage_target_percent
 5. Applies max_purchase_percent limit
-6. Splits commitment by term mix (for Compute SP)
+6. Splits commitment by term mix (for Compute SP) or applies Database SP term
 7. Queues purchase intents (or sends email only if dry_run=true)
 8. Sends notification email with analysis results
-
-LIMITATIONS:
-- Database SP support is not yet implemented. The AWS Cost Explorer API
-  does not have a direct "Database SP" type. RDS workloads may be covered
-  by Compute SPs or EC2 Instance Savings Plans. Database SP is disabled
-  by default (enable_database_sp=false). If enabled, recommendations may
-  be inaccurate as they use COMPUTE_SP as a proxy.
 """
 
 import json
@@ -59,13 +54,6 @@ def handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
         # Load configuration from environment
         config = load_configuration()
         logger.info(f"Configuration loaded: dry_run={config['dry_run']}")
-
-        # Validate configuration
-        if config['enable_database_sp']:
-            logger.warning(
-                "Database SP is enabled but not fully implemented. "
-                "Recommendations may be inaccurate. Consider setting enable_database_sp=false."
-            )
 
         # Step 1: Purge existing queue
         purge_queue(config['queue_url'])
@@ -338,15 +326,13 @@ def get_aws_recommendations(config: Dict[str, Any]) -> Dict[str, Any]:
     if config['enable_database_sp']:
         logger.info("Fetching Database Savings Plan recommendations")
         try:
-            # Note: Database SPs use the SAGEMAKER_SP type in the API
-            # AWS doesn't have a specific "Database SP" type - this is typically covered
-            # by EC2 Instance SPs for RDS. For now, we'll use COMPUTE_SP as a proxy.
-            # In production, you might need to adjust this based on your specific needs.
+            # Database Savings Plans were added to AWS in December 2025
+            # They use the DATABASE_SP type in the Cost Explorer API
             response = ce_client.get_savings_plans_purchase_recommendation(
-                SavingsPlansType='COMPUTE_SP',
+                SavingsPlansType='DATABASE_SP',
                 LookbackPeriodInDays=lookback_period,
                 TermInYears='ONE_YEAR',
-                PaymentOption='ALL_UPFRONT'
+                PaymentOption='NO_UPFRONT'
             )
 
             # Extract recommendation metadata
@@ -470,7 +456,7 @@ def calculate_purchase_need(
                     'sp_type': 'database',
                     'hourly_commitment': hourly_commitment_float,
                     'term': 'ONE_YEAR',  # Database SP always uses 1-year term
-                    'payment_option': 'ALL_UPFRONT',  # Database SP typically uses all upfront
+                    'payment_option': 'NO_UPFRONT',  # Database SP uses no upfront payment
                     'recommendation_id': recommendations['database'].get('RecommendationId', 'unknown')
                 }
                 purchase_plans.append(purchase_plan)

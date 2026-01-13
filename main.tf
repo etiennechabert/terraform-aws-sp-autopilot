@@ -154,8 +154,165 @@ resource "aws_cloudwatch_metric_alarm" "dlq_alarm" {
 }
 
 # ============================================================================
-# Components will be defined in subsequent implementation phases:
-# - Lambda functions (Scheduler and Purchaser)
+# Lambda Functions (Placeholder - Full implementation in future phase)
+# ============================================================================
+
+# TODO: Full Lambda implementation including:
+# - Actual Python code deployment
 # - IAM roles and policies
-# - EventBridge schedules
+# - Environment variables
+# - CloudWatch log groups
+# - Error handling and retries
+
+resource "aws_lambda_function" "scheduler" {
+  function_name = "${local.module_name}-scheduler"
+  description   = "Analyzes usage and queues Savings Plans purchase recommendations (PLACEHOLDER)"
+
+  # Placeholder configuration - minimal valid Lambda
+  role          = aws_iam_role.scheduler_placeholder.arn
+  handler       = "index.handler"
+  runtime       = "python3.11"
+
+  # Inline placeholder code (replace with actual deployment in future phase)
+  filename         = data.archive_file.scheduler_placeholder.output_path
+  source_code_hash = data.archive_file.scheduler_placeholder.output_base64sha256
+
+  tags = local.common_tags
+}
+
+resource "aws_lambda_function" "purchaser" {
+  function_name = "${local.module_name}-purchaser"
+  description   = "Executes Savings Plans purchases from queue (PLACEHOLDER)"
+
+  # Placeholder configuration - minimal valid Lambda
+  role          = aws_iam_role.purchaser_placeholder.arn
+  handler       = "index.handler"
+  runtime       = "python3.11"
+
+  # Inline placeholder code (replace with actual deployment in future phase)
+  filename         = data.archive_file.purchaser_placeholder.output_path
+  source_code_hash = data.archive_file.purchaser_placeholder.output_base64sha256
+
+  tags = local.common_tags
+}
+
+# Minimal IAM roles for placeholder Lambdas
+resource "aws_iam_role" "scheduler_placeholder" {
+  name = "${local.module_name}-scheduler-placeholder"
+
+  assume_role_policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [{
+      Action = "sts:AssumeRole"
+      Effect = "Allow"
+      Principal = {
+        Service = "lambda.amazonaws.com"
+      }
+    }]
+  })
+
+  tags = local.common_tags
+}
+
+resource "aws_iam_role" "purchaser_placeholder" {
+  name = "${local.module_name}-purchaser-placeholder"
+
+  assume_role_policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [{
+      Action = "sts:AssumeRole"
+      Effect = "Allow"
+      Principal = {
+        Service = "lambda.amazonaws.com"
+      }
+    }]
+  })
+
+  tags = local.common_tags
+}
+
+# Create placeholder ZIP files
+data "archive_file" "scheduler_placeholder" {
+  type        = "zip"
+  output_path = "${path.module}/.terraform/scheduler_placeholder.zip"
+
+  source {
+    content  = <<-EOT
+      def handler(event, context):
+          print("Scheduler Lambda placeholder - not yet implemented")
+          return {"statusCode": 200, "body": "Placeholder"}
+    EOT
+    filename = "index.py"
+  }
+}
+
+data "archive_file" "purchaser_placeholder" {
+  type        = "zip"
+  output_path = "${path.module}/.terraform/purchaser_placeholder.zip"
+
+  source {
+    content  = <<-EOT
+      def handler(event, context):
+          print("Purchaser Lambda placeholder - not yet implemented")
+          return {"statusCode": 200, "body": "Placeholder"}
+    EOT
+    filename = "index.py"
+  }
+}
+
+# ============================================================================
+# EventBridge Schedules
+# ============================================================================
+
+# Scheduler Lambda - Runs monthly to analyze usage and queue purchase recommendations
+resource "aws_cloudwatch_event_rule" "scheduler" {
+  name                = "${local.module_name}-scheduler"
+  description         = "Triggers Scheduler Lambda to analyze usage and recommend Savings Plans purchases"
+  schedule_expression = var.scheduler_schedule
+
+  tags = local.common_tags
+}
+
+resource "aws_cloudwatch_event_target" "scheduler" {
+  rule      = aws_cloudwatch_event_rule.scheduler.name
+  target_id = "SchedulerLambda"
+  arn       = aws_lambda_function.scheduler.arn # To be implemented in Lambda creation phase
+}
+
+resource "aws_lambda_permission" "scheduler_eventbridge" {
+  statement_id  = "AllowExecutionFromEventBridge"
+  action        = "lambda:InvokeFunction"
+  function_name = aws_lambda_function.scheduler.function_name # To be implemented in Lambda creation phase
+  principal     = "events.amazonaws.com"
+  source_arn    = aws_cloudwatch_event_rule.scheduler.arn
+}
+
+# Purchaser Lambda - Runs monthly to execute approved Savings Plans purchases from queue
+resource "aws_cloudwatch_event_rule" "purchaser" {
+  name                = "${local.module_name}-purchaser"
+  description         = "Triggers Purchaser Lambda to process and execute Savings Plans purchases from SQS queue"
+  schedule_expression = var.purchaser_schedule
+
+  tags = local.common_tags
+}
+
+resource "aws_cloudwatch_event_target" "purchaser" {
+  rule      = aws_cloudwatch_event_rule.purchaser.name
+  target_id = "PurchaserLambda"
+  arn       = aws_lambda_function.purchaser.arn # To be implemented in Lambda creation phase
+}
+
+resource "aws_lambda_permission" "purchaser_eventbridge" {
+  statement_id  = "AllowExecutionFromEventBridge"
+  action        = "lambda:InvokeFunction"
+  function_name = aws_lambda_function.purchaser.function_name # To be implemented in Lambda creation phase
+  principal     = "events.amazonaws.com"
+  source_arn    = aws_cloudwatch_event_rule.purchaser.arn
+}
+
+# ============================================================================
+# Components will be defined in subsequent implementation phases:
+# - Full Lambda implementation (currently using placeholders)
+# - Comprehensive IAM roles and policies
+# - Additional CloudWatch alarms for Lambda errors
 # ============================================================================
