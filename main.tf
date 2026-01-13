@@ -57,9 +57,24 @@ data "aws_caller_identity" "current" {}
 data "aws_region" "current" {}
 
 # ============================================================================
+# SNS Topic
+# ============================================================================
+
+resource "aws_sns_topic" "notifications" {
+  name         = "${local.module_name}-notifications"
+  display_name = "AWS Savings Plans Automation Notifications"
+
+  tags = merge(
+    local.common_tags,
+    {
+      Name = "${local.module_name}-notifications"
+    }
+  )
+}
+
+# ============================================================================
 # Components will be defined in subsequent implementation phases:
 # - SQS Queue for purchase intents
-# - SNS Topic for notifications
 # - Lambda functions (Scheduler and Purchaser)
 # - IAM roles and policies
 # - EventBridge schedules
