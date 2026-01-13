@@ -216,3 +216,6 @@ __marimo__/
 .worktrees/
 .security-key
 logs/security/
+
+# Claude temporary files
+tmpclaude-*-cwd
