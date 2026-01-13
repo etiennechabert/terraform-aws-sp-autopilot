@@ -457,18 +457,50 @@ def execute_purchase(
     Raises:
         ClientError: If purchase fails
     """
-    logger.info(f"Executing purchase: {purchase_intent.get('client_token')}")
+    client_token = purchase_intent.get('client_token')
+    offering_id = purchase_intent.get('offering_id')
+    commitment = purchase_intent.get('commitment')
+    upfront_amount = purchase_intent.get('upfront_amount')
 
-    # TODO: Implement actual purchase execution
-    # - Call savingsplans:CreateSavingsPlan
-    # - Use client_token for idempotency
-    # - Apply tags (default + custom)
-    # - Return SP ID
+    logger.info(f"Executing purchase: {client_token}")
+    logger.info(f"Offering ID: {offering_id}, Commitment: ${commitment}/hr")
 
-    # Placeholder
-    sp_id = "sp-placeholder-id"
-    logger.info(f"Purchase executed successfully: {sp_id}")
-    return sp_id
+    try:
+        # Prepare tags - merge default tags with custom tags from config
+        tags = {
+            'ManagedBy': 'terraform-aws-sp-autopilot',
+            'PurchaseDate': datetime.now(timezone.utc).isoformat(),
+            'ClientToken': client_token
+        }
+        tags.update(config.get('tags', {}))
+
+        # Build CreateSavingsPlan request parameters
+        create_params = {
+            'savingsPlanOfferingId': offering_id,
+            'commitment': commitment,
+            'clientToken': client_token,
+            'tags': tags
+        }
+
+        # Add upfront payment amount if applicable (for ALL_UPFRONT or PARTIAL_UPFRONT)
+        if upfront_amount is not None and float(upfront_amount) > 0:
+            create_params['upfrontPaymentAmount'] = upfront_amount
+            logger.info(f"Including upfront payment: ${upfront_amount}")
+
+        # Execute CreateSavingsPlan API call
+        logger.info(f"Calling CreateSavingsPlan API with offering_id={offering_id}")
+        response = savingsplans_client.create_savings_plan(**create_params)
+
+        sp_id = response.get('savingsPlanId')
+        logger.info(f"Purchase executed successfully: {sp_id}")
+
+        return sp_id
+
+    except ClientError as e:
+        error_code = e.response.get('Error', {}).get('Code', 'Unknown')
+        error_message = e.response.get('Error', {}).get('Message', str(e))
+        logger.error(f"CreateSavingsPlan failed - Code: {error_code}, Message: {error_message}")
+        raise
 
 
 def update_coverage_tracking(
