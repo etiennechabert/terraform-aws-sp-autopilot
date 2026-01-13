@@ -185,7 +185,7 @@ resource "aws_lambda_function" "purchaser" {
   description   = "Executes Savings Plans purchases from queue (PLACEHOLDER)"
 
   # Placeholder configuration - minimal valid Lambda
-  role          = aws_iam_role.purchaser_placeholder.arn
+  role          = aws_iam_role.purchaser.arn
   handler       = "index.handler"
   runtime       = "python3.11"
 
@@ -317,9 +317,10 @@ resource "aws_iam_role_policy" "scheduler_savingsplans" {
   })
 }
 
-# Minimal IAM role for purchaser placeholder (to be replaced in subtask-1-3)
-resource "aws_iam_role" "purchaser_placeholder" {
-  name = "${local.module_name}-purchaser-placeholder"
+# Purchaser Lambda IAM Role
+resource "aws_iam_role" "purchaser" {
+  name        = "${local.module_name}-purchaser"
+  description = "IAM role for Purchaser Lambda function - executes Savings Plans purchases from queue"
 
   assume_role_policy = jsonencode({
     Version = "2012-10-17"
@@ -332,7 +333,106 @@ resource "aws_iam_role" "purchaser_placeholder" {
     }]
   })
 
-  tags = local.common_tags
+  tags = merge(
+    local.common_tags,
+    {
+      Name = "${local.module_name}-purchaser-role"
+    }
+  )
+}
+
+# Purchaser Lambda Policy - CloudWatch Logs
+resource "aws_iam_role_policy" "purchaser_cloudwatch_logs" {
+  name = "cloudwatch-logs"
+  role = aws_iam_role.purchaser.id
+
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [{
+      Effect = "Allow"
+      Action = [
+        "logs:CreateLogStream",
+        "logs:PutLogEvents"
+      ]
+      Resource = "${aws_cloudwatch_log_group.purchaser.arn}:*"
+    }]
+  })
+}
+
+# Purchaser Lambda Policy - Cost Explorer
+resource "aws_iam_role_policy" "purchaser_cost_explorer" {
+  name = "cost-explorer"
+  role = aws_iam_role.purchaser.id
+
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [{
+      Effect = "Allow"
+      Action = [
+        "ce:GetSavingsPlansPurchaseRecommendation",
+        "ce:GetSavingsPlansUtilization",
+        "ce:GetSavingsPlansCoverage",
+        "ce:GetCostAndUsage"
+      ]
+      Resource = "*"
+    }]
+  })
+}
+
+# Purchaser Lambda Policy - SQS
+resource "aws_iam_role_policy" "purchaser_sqs" {
+  name = "sqs"
+  role = aws_iam_role.purchaser.id
+
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [{
+      Effect = "Allow"
+      Action = [
+        "sqs:ReceiveMessage",
+        "sqs:DeleteMessage",
+        "sqs:GetQueueAttributes"
+      ]
+      Resource = aws_sqs_queue.purchase_intents.arn
+    }]
+  })
+}
+
+# Purchaser Lambda Policy - SNS
+resource "aws_iam_role_policy" "purchaser_sns" {
+  name = "sns"
+  role = aws_iam_role.purchaser.id
+
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [{
+      Effect = "Allow"
+      Action = [
+        "sns:Publish"
+      ]
+      Resource = aws_sns_topic.notifications.arn
+    }]
+  })
+}
+
+# Purchaser Lambda Policy - Savings Plans
+resource "aws_iam_role_policy" "purchaser_savingsplans" {
+  name = "savingsplans"
+  role = aws_iam_role.purchaser.id
+
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [{
+      Effect = "Allow"
+      Action = [
+        "savingsplans:DescribeSavingsPlans",
+        "savingsplans:DescribeSavingsPlansOfferingRates",
+        "savingsplans:DescribeSavingsPlansOfferings",
+        "savingsplans:CreateSavingsPlan"
+      ]
+      Resource = "*"
+    }]
+  })
 }
 
 # Create placeholder ZIP files
