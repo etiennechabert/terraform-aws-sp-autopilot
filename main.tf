@@ -214,6 +214,17 @@ resource "aws_lambda_function" "purchaser" {
   filename         = data.archive_file.purchaser_placeholder.output_path
   source_code_hash = data.archive_file.purchaser_placeholder.output_base64sha256
 
+  environment {
+    variables = {
+      QUEUE_URL                   = aws_sqs_queue.purchase_intents.url
+      SNS_TOPIC_ARN               = aws_sns_topic.notifications.arn
+      MAX_COVERAGE_CAP            = tostring(var.max_coverage_cap)
+      RENEWAL_WINDOW_DAYS         = tostring(var.renewal_window_days)
+      MANAGEMENT_ACCOUNT_ROLE_ARN = var.management_account_role_arn
+      TAGS                        = jsonencode(local.common_tags)
+    }
+  }
+
   tags = local.common_tags
 }
 
