@@ -687,12 +687,72 @@ def send_scheduled_email(
     """
     logger.info("Sending scheduled purchases email")
 
-    # TODO: Implement email notification
-    # - Format email with purchase details
-    # - Include cancellation instructions
-    # - Publish to SNS
+    # Format email body
+    email_lines = [
+        "Savings Plans Scheduled for Purchase",
+        "=" * 50,
+        "",
+        f"Total Plans Queued: {len(purchase_plans)}",
+        "",
+        "Current Coverage:",
+        f"  Compute SP:  {coverage.get('compute', 0):.2f}%",
+        f"  Database SP: {coverage.get('database', 0):.2f}%",
+        "",
+        f"Target Coverage: {config.get('coverage_target_percent', 90):.2f}%",
+        "",
+        "Scheduled Purchase Plans:",
+        "-" * 50,
+    ]
 
-    logger.info("Email sent successfully")
+    # Add details for each purchase plan
+    total_annual_cost = 0.0
+    for i, plan in enumerate(purchase_plans, 1):
+        sp_type = plan.get('sp_type', 'unknown')
+        hourly_commitment = plan.get('hourly_commitment', 0.0)
+        term = plan.get('term', 'unknown')
+        payment_option = plan.get('payment_option', 'ALL_UPFRONT')
+
+        # Calculate estimated annual cost (hourly * 24 * 365)
+        annual_cost = hourly_commitment * 8760
+        total_annual_cost += annual_cost
+
+        email_lines.extend([
+            f"{i}. {sp_type.upper()} Savings Plan",
+            f"   Hourly Commitment: ${hourly_commitment:.4f}/hour",
+            f"   Term: {term}",
+            f"   Payment Option: {payment_option}",
+            f"   Estimated Annual Cost: ${annual_cost:,.2f}",
+            ""
+        ])
+
+    email_lines.extend([
+        "-" * 50,
+        f"Total Estimated Annual Cost: ${total_annual_cost:,.2f}",
+        "",
+        "CANCELLATION INSTRUCTIONS:",
+        "To cancel these purchases before they execute:",
+        "1. Purge the SQS queue to remove all pending purchase intents",
+        f"2. Queue URL: {config.get('queue_url', 'N/A')}",
+        "3. AWS CLI command:",
+        f"   aws sqs purge-queue --queue-url {config.get('queue_url', 'QUEUE_URL')}",
+        "",
+        "These purchases will be executed by the Purchaser Lambda.",
+        "Monitor CloudWatch Logs and SNS notifications for execution results.",
+    ])
+
+    message = "\n".join(email_lines)
+
+    # Publish to SNS
+    try:
+        sns_client.publish(
+            TopicArn=config['sns_topic_arn'],
+            Subject='Savings Plans Scheduled for Purchase',
+            Message=message
+        )
+        logger.info(f"Email sent successfully to {config['sns_topic_arn']}")
+    except ClientError as e:
+        logger.error(f"Failed to send email: {str(e)}")
+        raise
 
 
 def send_dry_run_email(
