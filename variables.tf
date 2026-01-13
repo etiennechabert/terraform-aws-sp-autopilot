@@ -138,18 +138,30 @@ variable "partial_upfront_percent" {
 }
 
 # ============================================================================
-# 7.5.1 Database SP Constraints
+# 7.5.1 Database SP Options
 # ============================================================================
-# Database Savings Plans have fixed AWS constraints (not configurable):
-#   - Term: Always ONE_YEAR (AWS does not support 3-year Database SP)
-#   - Payment: Always NO_UPFRONT (AWS does not support upfront payments for Database SP)
-#
-# These constraints are enforced in the Lambda scheduler code when fetching
-# Database SP recommendations from AWS Cost Explorer API.
-#
-# No additional configuration variables are needed for Database SP.
-# Coverage targets, risk management, and scheduling settings apply to both
-# Compute and Database SP types.
+
+variable "database_sp_term" {
+  description = "Term length for Database Savings Plans (AWS constraint: must be ONE_YEAR)"
+  type        = string
+  default     = "ONE_YEAR"
+
+  validation {
+    condition     = var.database_sp_term == "ONE_YEAR"
+    error_message = "database_sp_term must be ONE_YEAR. AWS Database Savings Plans only support 1-year terms."
+  }
+}
+
+variable "database_sp_payment_option" {
+  description = "Payment option for Database Savings Plans (AWS constraint: must be NO_UPFRONT)"
+  type        = string
+  default     = "NO_UPFRONT"
+
+  validation {
+    condition     = var.database_sp_payment_option == "NO_UPFRONT"
+    error_message = "database_sp_payment_option must be NO_UPFRONT. AWS Database Savings Plans only support no upfront payment."
+  }
+}
 
 # ============================================================================
 # 7.6 Scheduling
