@@ -579,14 +579,105 @@ def send_summary_email(
     """
     logger.info("Sending summary email")
 
-    # TODO: Implement summary email
-    # - Format email with all results
-    # - Include successful purchases with SP IDs
-    # - Include skipped purchases with reasons
-    # - Include final coverage levels
-    # - Publish to SNS
+    # Format execution timestamp
+    execution_time = datetime.now(timezone.utc).isoformat()
 
-    logger.info("Summary email sent successfully")
+    # Build email subject
+    total_purchases = results['successful_count'] + results['skipped_count']
+    subject = f"AWS Savings Plans Purchase Complete - {results['successful_count']} Executed, {results['skipped_count']} Skipped"
+
+    # Build email body
+    body_lines = [
+        "AWS Savings Plans Purchaser - Execution Summary",
+        "=" * 60,
+        f"Execution Time: {execution_time}",
+        f"Total Purchase Intents Processed: {total_purchases}",
+        f"Successful Purchases: {results['successful_count']}",
+        f"Skipped Purchases: {results['skipped_count']}",
+        "",
+        "Current Coverage After Execution:",
+        f"  Compute Savings Plans: {coverage.get('compute', 0):.2f}%",
+        f"  Database Savings Plans: {coverage.get('database', 0):.2f}%",
+        "",
+    ]
+
+    # Add successful purchases section
+    if results['successful']:
+        body_lines.append("SUCCESSFUL PURCHASES:")
+        body_lines.append("-" * 60)
+        for i, purchase in enumerate(results['successful'], 1):
+            intent = purchase['intent']
+            sp_id = purchase['sp_id']
+
+            # Format term (convert seconds to years)
+            term_years = intent['term_seconds'] / (365.25 * 24 * 3600)
+            term_str = f"{term_years:.0f}-year" if term_years == int(term_years) else f"{term_years:.1f}-year"
+
+            # Format SP type (remove "SavingsPlans" suffix for readability)
+            sp_type_display = intent['sp_type'].replace('SavingsPlans', ' SP')
+
+            body_lines.extend([
+                f"{i}. {sp_type_display}",
+                f"   Savings Plan ID: {sp_id}",
+                f"   Commitment: ${intent['commitment']}/hour",
+                f"   Term: {term_str}",
+                f"   Payment Option: {intent['payment_option']}",
+            ])
+
+            # Add upfront amount if applicable
+            if intent.get('upfront_amount') and float(intent['upfront_amount']) > 0:
+                body_lines.append(f"   Upfront Payment: ${float(intent['upfront_amount']):,.2f}")
+
+            body_lines.append("")
+    else:
+        body_lines.append("No successful purchases.")
+        body_lines.append("")
+
+    # Add skipped purchases section
+    if results['skipped']:
+        body_lines.append("SKIPPED PURCHASES:")
+        body_lines.append("-" * 60)
+        for i, skip in enumerate(results['skipped'], 1):
+            intent = skip['intent']
+            reason = skip['reason']
+
+            # Format term (convert seconds to years)
+            term_years = intent['term_seconds'] / (365.25 * 24 * 3600)
+            term_str = f"{term_years:.0f}-year" if term_years == int(term_years) else f"{term_years:.1f}-year"
+
+            # Format SP type
+            sp_type_display = intent['sp_type'].replace('SavingsPlans', ' SP')
+
+            body_lines.extend([
+                f"{i}. {sp_type_display}",
+                f"   Commitment: ${intent['commitment']}/hour",
+                f"   Term: {term_str}",
+                f"   Reason: {reason}",
+                "",
+            ])
+    else:
+        body_lines.append("No skipped purchases.")
+        body_lines.append("")
+
+    # Add footer
+    body_lines.extend([
+        "-" * 60,
+        "This is an automated message from AWS Savings Plans Automation.",
+    ])
+
+    # Publish to SNS
+    message_body = "\n".join(body_lines)
+
+    try:
+        sns_client.publish(
+            TopicArn=config['sns_topic_arn'],
+            Subject=subject,
+            Message=message_body
+        )
+        logger.info("Summary email sent successfully")
+    except ClientError as e:
+        logger.error(f"Failed to send summary email: {str(e)}")
+        raise
 
 
 def send_error_email(error_message: str) -> None:
