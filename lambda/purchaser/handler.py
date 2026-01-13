@@ -689,6 +689,58 @@ def send_error_email(error_message: str) -> None:
     """
     logger.error("Sending error notification email")
 
-    # TODO: Implement error email
-    # - Format error details
-    # - Publish to SNS
+    # Get configuration from environment
+    try:
+        sns_topic_arn = os.environ['SNS_TOPIC_ARN']
+        queue_url = os.environ['QUEUE_URL']
+    except KeyError as e:
+        logger.error(f"Missing required environment variable for error email: {e}")
+        return  # Cannot send email without SNS topic ARN
+
+    # Format execution timestamp
+    execution_time = datetime.now(timezone.utc).isoformat()
+
+    # Build email subject
+    subject = "AWS Savings Plans Purchaser - ERROR"
+
+    # Build email body
+    body_lines = [
+        "AWS Savings Plans Purchaser - ERROR NOTIFICATION",
+        "=" * 60,
+        f"Execution Time: {execution_time}",
+        "",
+        "ERROR DETAILS:",
+        "-" * 60,
+        error_message,
+        "",
+        "INVESTIGATION:",
+        "-" * 60,
+        "Review the SQS queue for pending purchase intents:",
+        f"Queue URL: {queue_url}",
+        "",
+        "Messages in the queue were NOT processed due to this error.",
+        "The Lambda will retry on the next scheduled execution.",
+        "",
+        "NEXT STEPS:",
+        "1. Check CloudWatch Logs for detailed error context",
+        "2. Verify queue messages are still valid",
+        "3. Review Lambda execution role permissions",
+        "4. Contact your AWS administrator if the issue persists",
+        "",
+        "-" * 60,
+        "This is an automated error notification from AWS Savings Plans Automation.",
+    ]
+
+    # Publish to SNS
+    message_body = "\n".join(body_lines)
+
+    try:
+        sns_client.publish(
+            TopicArn=sns_topic_arn,
+            Subject=subject,
+            Message=message_body
+        )
+        logger.info("Error notification email sent successfully")
+    except ClientError as e:
+        logger.error(f"Failed to send error notification email: {str(e)}")
+        # Don't raise - we're already in error handling, don't want to mask the original error
