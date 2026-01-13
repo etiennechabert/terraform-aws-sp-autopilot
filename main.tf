@@ -261,6 +261,34 @@ data "archive_file" "purchaser_placeholder" {
 }
 
 # ============================================================================
+# CloudWatch Log Groups
+# ============================================================================
+
+resource "aws_cloudwatch_log_group" "scheduler" {
+  name              = "/aws/lambda/${local.module_name}-scheduler"
+  retention_in_days = 30
+
+  tags = merge(
+    local.common_tags,
+    {
+      Name = "${local.module_name}-scheduler-logs"
+    }
+  )
+}
+
+resource "aws_cloudwatch_log_group" "purchaser" {
+  name              = "/aws/lambda/${local.module_name}-purchaser"
+  retention_in_days = 30
+
+  tags = merge(
+    local.common_tags,
+    {
+      Name = "${local.module_name}-purchaser-logs"
+    }
+  )
+}
+
+# ============================================================================
 # EventBridge Schedules
 # ============================================================================
 
