@@ -478,6 +478,10 @@ def update_coverage_tracking(
     """
     Update coverage tracking after a purchase.
 
+    This function updates the in-memory coverage tracking to reflect a completed purchase.
+    This enables accurate cap validation for subsequent purchases in the same run - each
+    purchase validates against coverage including all previous purchases.
+
     Args:
         current_coverage: Current coverage levels
         purchase_intent: Purchase intent that was executed
@@ -485,11 +489,28 @@ def update_coverage_tracking(
     Returns:
         dict: Updated coverage levels
     """
-    # TODO: Implement coverage tracking update
-    # - Update coverage based on purchase
-    # - Used for sequential purchase validation
+    updated_coverage = current_coverage.copy()
 
-    return current_coverage
+    # Determine which coverage type to update
+    sp_type = purchase_intent.get('sp_type', '')
+    projected_coverage = purchase_intent.get('projected_coverage_after', 0.0)
+
+    if sp_type == 'ComputeSavingsPlans':
+        updated_coverage['compute'] = projected_coverage
+        logger.info(
+            f"Updated Compute coverage tracking: {current_coverage['compute']:.2f}% -> {projected_coverage:.2f}%"
+        )
+    elif sp_type == 'DatabaseSavingsPlans':
+        updated_coverage['database'] = projected_coverage
+        logger.info(
+            f"Updated Database coverage tracking: {current_coverage['database']:.2f}% -> {projected_coverage:.2f}%"
+        )
+    else:
+        logger.warning(f"Unknown SP type for coverage tracking: {sp_type}")
+        # Return unchanged coverage for unknown types
+        return updated_coverage
+
+    return updated_coverage
 
 
 def delete_message(queue_url: str, receipt_handle: str) -> None:
