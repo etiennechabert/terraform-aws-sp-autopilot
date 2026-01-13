@@ -73,6 +73,18 @@ resource "aws_sns_topic" "notifications" {
 }
 
 # ============================================================================
+# SNS Email Subscriptions
+# ============================================================================
+
+resource "aws_sns_topic_subscription" "email_notifications" {
+  for_each = toset(var.notification_emails)
+
+  topic_arn = aws_sns_topic.notifications.arn
+  protocol  = "email"
+  endpoint  = each.value
+}
+
+# ============================================================================
 # Components will be defined in subsequent implementation phases:
 # - SQS Queue for purchase intents
 # - Lambda functions (Scheduler and Purchaser)
