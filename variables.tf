@@ -191,6 +191,12 @@ variable "enable_dlq_alarm" {
   default     = true
 }
 
+variable "lambda_error_threshold" {
+  description = "Number of Lambda errors to trigger alarm"
+  type        = number
+  default     = 1
+}
+
 # ============================================================================
 # 7.10 AWS Organizations
 # ============================================================================

@@ -101,12 +101,12 @@ output "purchaser_role_arn" {
 
 output "scheduler_error_alarm_arn" {
   description = "ARN of the Scheduler Lambda error alarm"
-  value       = var.enable_lambda_error_alarm ? "" : null # To be implemented: conditional output
+  value       = var.enable_lambda_error_alarm ? aws_cloudwatch_metric_alarm.scheduler_error_alarm[0].arn : null
 }
 
 output "purchaser_error_alarm_arn" {
   description = "ARN of the Purchaser Lambda error alarm"
-  value       = var.enable_lambda_error_alarm ? "" : null # To be implemented: conditional output
+  value       = var.enable_lambda_error_alarm ? aws_cloudwatch_metric_alarm.purchaser_error_alarm[0].arn : null
 }
 
 output "dlq_alarm_arn" {
