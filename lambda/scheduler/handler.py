@@ -338,12 +338,10 @@ def get_aws_recommendations(config: Dict[str, Any]) -> Dict[str, Any]:
     if config['enable_database_sp']:
         logger.info("Fetching Database Savings Plan recommendations")
         try:
-            # Note: Database SPs use the SAGEMAKER_SP type in the API
-            # AWS doesn't have a specific "Database SP" type - this is typically covered
-            # by EC2 Instance SPs for RDS. For now, we'll use COMPUTE_SP as a proxy.
-            # In production, you might need to adjust this based on your specific needs.
+            # Database Savings Plans were added to AWS in December 2025
+            # They use the DATABASE_SP type in the Cost Explorer API
             response = ce_client.get_savings_plans_purchase_recommendation(
-                SavingsPlansType='COMPUTE_SP',
+                SavingsPlansType='DATABASE_SP',
                 LookbackPeriodInDays=lookback_period,
                 TermInYears='ONE_YEAR',
                 PaymentOption='ALL_UPFRONT'
