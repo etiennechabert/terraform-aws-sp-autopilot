@@ -166,16 +166,16 @@ resource "aws_cloudwatch_metric_alarm" "dlq_alarm" {
 
 resource "aws_lambda_function" "scheduler" {
   function_name = "${local.module_name}-scheduler"
-  description   = "Analyzes usage and queues Savings Plans purchase recommendations (PLACEHOLDER)"
+  description   = "Analyzes usage and queues Savings Plans purchase recommendations"
 
-  # Placeholder configuration - minimal valid Lambda
+  # Deploy actual Lambda code with proper configuration
   role          = aws_iam_role.scheduler.arn
-  handler       = "index.handler"
+  handler       = "handler.handler"
   runtime       = "python3.11"
 
-  # Inline placeholder code (replace with actual deployment in future phase)
-  filename         = data.archive_file.scheduler_placeholder.output_path
-  source_code_hash = data.archive_file.scheduler_placeholder.output_base64sha256
+  # Deploy actual Lambda code from lambda/scheduler directory
+  filename         = data.archive_file.scheduler.output_path
+  source_code_hash = data.archive_file.scheduler.output_base64sha256
 
   environment {
     variables = {
@@ -203,16 +203,16 @@ resource "aws_lambda_function" "scheduler" {
 
 resource "aws_lambda_function" "purchaser" {
   function_name = "${local.module_name}-purchaser"
-  description   = "Executes Savings Plans purchases from queue (PLACEHOLDER)"
+  description   = "Executes Savings Plans purchases from queue"
 
-  # Placeholder configuration - minimal valid Lambda
+  # Deploy actual Lambda code with proper configuration
   role          = aws_iam_role.purchaser.arn
-  handler       = "index.handler"
+  handler       = "handler.handler"
   runtime       = "python3.11"
 
-  # Inline placeholder code (replace with actual deployment in future phase)
-  filename         = data.archive_file.purchaser_placeholder.output_path
-  source_code_hash = data.archive_file.purchaser_placeholder.output_base64sha256
+  # Deploy actual Lambda code from lambda/purchaser directory
+  filename         = data.archive_file.purchaser.output_path
+  source_code_hash = data.archive_file.purchaser.output_base64sha256
 
   environment {
     variables = {
