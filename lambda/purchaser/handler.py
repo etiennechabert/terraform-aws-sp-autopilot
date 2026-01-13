@@ -15,7 +15,7 @@ This Lambda:
 import json
 import logging
 import os
-from datetime import datetime, timezone
+from datetime import datetime, timezone, timedelta, date
 from typing import Dict, List, Any, Optional
 
 import boto3
@@ -148,19 +148,168 @@ def get_current_coverage(config: Dict[str, Any]) -> Dict[str, float]:
     """
     logger.info("Calculating current coverage")
 
-    # TODO: Implement actual coverage calculation
-    # - Get coverage from Cost Explorer
-    # - Get list of existing Savings Plans
-    # - Exclude plans expiring within renewal_window_days
-    # - Return coverage by type (compute, database)
+    try:
+        # Get date range for coverage query (last 7 days average for stability)
+        end_date = datetime.now(timezone.utc).date()
+        start_date = (datetime.now(timezone.utc) - timedelta(days=7)).date()
 
-    coverage = {
-        'compute': 0.0,
-        'database': 0.0
-    }
+        # Get raw coverage from Cost Explorer
+        raw_coverage = get_ce_coverage(start_date, end_date, config)
 
-    logger.info(f"Coverage calculated: {coverage}")
-    return coverage
+        # Get existing Savings Plans
+        expiring_plans = get_expiring_plans(config)
+
+        # Adjust coverage to exclude expiring plans
+        adjusted_coverage = adjust_coverage_for_expiring_plans(
+            raw_coverage,
+            expiring_plans
+        )
+
+        logger.info(f"Coverage calculated: Compute={adjusted_coverage['compute']:.2f}%, Database={adjusted_coverage['database']:.2f}%")
+        logger.info(f"Expiring plans excluded: {len(expiring_plans)} plans")
+
+        return adjusted_coverage
+
+    except ClientError as e:
+        logger.error(f"Failed to calculate coverage: {str(e)}")
+        raise
+
+
+def get_ce_coverage(start_date: date, end_date: date, config: Dict[str, Any]) -> Dict[str, Any]:
+    """
+    Get Savings Plans coverage from Cost Explorer.
+
+    Args:
+        start_date: Start date for coverage period
+        end_date: End date for coverage period
+        config: Configuration dictionary
+
+    Returns:
+        dict: Raw coverage data by SP type
+    """
+    logger.info(f"Getting coverage from Cost Explorer for {start_date} to {end_date}")
+
+    try:
+        # Get coverage for Compute Savings Plans
+        compute_response = ce_client.get_savings_plans_coverage(
+            TimePeriod={
+                'Start': start_date.isoformat(),
+                'End': end_date.isoformat()
+            },
+            Granularity='DAILY',
+            GroupBy=[
+                {
+                    'Type': 'DIMENSION',
+                    'Key': 'SAVINGS_PLANS_TYPE'
+                }
+            ]
+        )
+
+        # Calculate average coverage across the period
+        coverage = {
+            'compute': 0.0,
+            'database': 0.0
+        }
+
+        for result in compute_response.get('SavingsPlansCoverages', []):
+            for group in result.get('Groups', []):
+                sp_type = group.get('Attributes', {}).get('SAVINGS_PLANS_TYPE', '')
+                coverage_pct = float(group.get('Coverage', {}).get('CoveragePercentage', '0'))
+
+                if sp_type == 'ComputeSavingsPlans':
+                    coverage['compute'] = max(coverage['compute'], coverage_pct)
+                elif sp_type == 'DatabaseSavingsPlans':
+                    coverage['database'] = max(coverage['database'], coverage_pct)
+
+        logger.info(f"Raw coverage from CE: Compute={coverage['compute']:.2f}%, Database={coverage['database']:.2f}%")
+        return coverage
+
+    except ClientError as e:
+        logger.error(f"Failed to get Cost Explorer coverage: {str(e)}")
+        raise
+
+
+def get_expiring_plans(config: Dict[str, Any]) -> List[Dict[str, Any]]:
+    """
+    Get list of Savings Plans expiring within renewal_window_days.
+
+    Args:
+        config: Configuration dictionary
+
+    Returns:
+        list: List of expiring Savings Plans
+    """
+    renewal_window_days = config['renewal_window_days']
+    logger.info(f"Getting Savings Plans expiring within {renewal_window_days} days")
+
+    try:
+        # Get all active Savings Plans
+        response = savingsplans_client.describe_savings_plans(
+            states=['active']
+        )
+
+        # Calculate expiration threshold
+        expiration_threshold = datetime.now(timezone.utc) + timedelta(days=renewal_window_days)
+
+        # Filter to plans expiring within the window
+        expiring_plans = []
+        for plan in response.get('savingsPlans', []):
+            end_time = datetime.fromisoformat(plan['end'].replace('Z', '+00:00'))
+
+            if end_time <= expiration_threshold:
+                expiring_plans.append({
+                    'savingsPlanId': plan['savingsPlanId'],
+                    'savingsPlanType': plan['savingsPlanType'],
+                    'commitment': float(plan['commitment']),
+                    'end': plan['end']
+                })
+
+        logger.info(f"Found {len(expiring_plans)} plans expiring within {renewal_window_days} days")
+        return expiring_plans
+
+    except ClientError as e:
+        logger.error(f"Failed to get Savings Plans: {str(e)}")
+        raise
+
+
+def adjust_coverage_for_expiring_plans(
+    raw_coverage: Dict[str, float],
+    expiring_plans: List[Dict[str, Any]]
+) -> Dict[str, float]:
+    """
+    Adjust coverage by excluding expiring plans.
+
+    Since expiring plans are still active but should be treated as if expired,
+    we return 0% coverage if ANY plans are expiring. This forces recalculation
+    of their coverage need.
+
+    Args:
+        raw_coverage: Raw coverage percentages from Cost Explorer
+        expiring_plans: List of plans expiring within renewal window
+
+    Returns:
+        dict: Adjusted coverage percentages by type
+    """
+    adjusted_coverage = raw_coverage.copy()
+
+    # Check if we have expiring plans by type
+    has_expiring_compute = any(
+        p['savingsPlanType'] == 'ComputeSavingsPlans' for p in expiring_plans
+    )
+    has_expiring_database = any(
+        p['savingsPlanType'] == 'DatabaseSavingsPlans' for p in expiring_plans
+    )
+
+    # If expiring plans exist for a type, set coverage to 0 to force renewal
+    if has_expiring_compute:
+        logger.info("Compute Savings Plans expiring - setting coverage to 0% to force renewal")
+        adjusted_coverage['compute'] = 0.0
+
+    if has_expiring_database:
+        logger.info("Database Savings Plans expiring - setting coverage to 0% to force renewal")
+        adjusted_coverage['database'] = 0.0
+
+    return adjusted_coverage
 
 
 def process_purchase_messages(
@@ -263,11 +412,31 @@ def would_exceed_cap(
     Returns:
         bool: True if purchase would exceed cap
     """
-    # TODO: Implement actual coverage cap validation
-    # - Calculate projected coverage after this purchase
-    # - Compare against max_coverage_cap
-    # - Return True if would exceed
+    max_cap = config['max_coverage_cap']
+    sp_type = purchase_intent.get('sp_type', '')
+    projected_coverage = purchase_intent.get('projected_coverage_after', 0.0)
 
+    # Determine which coverage type to check
+    if sp_type == 'ComputeSavingsPlans':
+        coverage_type = 'compute'
+    elif sp_type == 'DatabaseSavingsPlans':
+        coverage_type = 'database'
+    else:
+        logger.warning(f"Unknown SP type: {sp_type}, defaulting to compute")
+        coverage_type = 'compute'
+
+    # Check if projected coverage would exceed cap
+    if projected_coverage > max_cap:
+        logger.warning(
+            f"Purchase would exceed cap - Type: {coverage_type}, "
+            f"Projected: {projected_coverage:.2f}%, Cap: {max_cap:.2f}%"
+        )
+        return True
+
+    logger.info(
+        f"Purchase within cap - Type: {coverage_type}, "
+        f"Projected: {projected_coverage:.2f}%, Cap: {max_cap:.2f}%"
+    )
     return False
 
 
@@ -288,18 +457,50 @@ def execute_purchase(
     Raises:
         ClientError: If purchase fails
     """
-    logger.info(f"Executing purchase: {purchase_intent.get('client_token')}")
+    client_token = purchase_intent.get('client_token')
+    offering_id = purchase_intent.get('offering_id')
+    commitment = purchase_intent.get('commitment')
+    upfront_amount = purchase_intent.get('upfront_amount')
 
-    # TODO: Implement actual purchase execution
-    # - Call savingsplans:CreateSavingsPlan
-    # - Use client_token for idempotency
-    # - Apply tags (default + custom)
-    # - Return SP ID
+    logger.info(f"Executing purchase: {client_token}")
+    logger.info(f"Offering ID: {offering_id}, Commitment: ${commitment}/hr")
 
-    # Placeholder
-    sp_id = "sp-placeholder-id"
-    logger.info(f"Purchase executed successfully: {sp_id}")
-    return sp_id
+    try:
+        # Prepare tags - merge default tags with custom tags from config
+        tags = {
+            'ManagedBy': 'terraform-aws-sp-autopilot',
+            'PurchaseDate': datetime.now(timezone.utc).isoformat(),
+            'ClientToken': client_token
+        }
+        tags.update(config.get('tags', {}))
+
+        # Build CreateSavingsPlan request parameters
+        create_params = {
+            'savingsPlanOfferingId': offering_id,
+            'commitment': commitment,
+            'clientToken': client_token,
+            'tags': tags
+        }
+
+        # Add upfront payment amount if applicable (for ALL_UPFRONT or PARTIAL_UPFRONT)
+        if upfront_amount is not None and float(upfront_amount) > 0:
+            create_params['upfrontPaymentAmount'] = upfront_amount
+            logger.info(f"Including upfront payment: ${upfront_amount}")
+
+        # Execute CreateSavingsPlan API call
+        logger.info(f"Calling CreateSavingsPlan API with offering_id={offering_id}")
+        response = savingsplans_client.create_savings_plan(**create_params)
+
+        sp_id = response.get('savingsPlanId')
+        logger.info(f"Purchase executed successfully: {sp_id}")
+
+        return sp_id
+
+    except ClientError as e:
+        error_code = e.response.get('Error', {}).get('Code', 'Unknown')
+        error_message = e.response.get('Error', {}).get('Message', str(e))
+        logger.error(f"CreateSavingsPlan failed - Code: {error_code}, Message: {error_message}")
+        raise
 
 
 def update_coverage_tracking(
@@ -309,6 +510,10 @@ def update_coverage_tracking(
     """
     Update coverage tracking after a purchase.
 
+    This function updates the in-memory coverage tracking to reflect a completed purchase.
+    This enables accurate cap validation for subsequent purchases in the same run - each
+    purchase validates against coverage including all previous purchases.
+
     Args:
         current_coverage: Current coverage levels
         purchase_intent: Purchase intent that was executed
@@ -316,11 +521,28 @@ def update_coverage_tracking(
     Returns:
         dict: Updated coverage levels
     """
-    # TODO: Implement coverage tracking update
-    # - Update coverage based on purchase
-    # - Used for sequential purchase validation
+    updated_coverage = current_coverage.copy()
 
-    return current_coverage
+    # Determine which coverage type to update
+    sp_type = purchase_intent.get('sp_type', '')
+    projected_coverage = purchase_intent.get('projected_coverage_after', 0.0)
+
+    if sp_type == 'ComputeSavingsPlans':
+        updated_coverage['compute'] = projected_coverage
+        logger.info(
+            f"Updated Compute coverage tracking: {current_coverage['compute']:.2f}% -> {projected_coverage:.2f}%"
+        )
+    elif sp_type == 'DatabaseSavingsPlans':
+        updated_coverage['database'] = projected_coverage
+        logger.info(
+            f"Updated Database coverage tracking: {current_coverage['database']:.2f}% -> {projected_coverage:.2f}%"
+        )
+    else:
+        logger.warning(f"Unknown SP type for coverage tracking: {sp_type}")
+        # Return unchanged coverage for unknown types
+        return updated_coverage
+
+    return updated_coverage
 
 
 def delete_message(queue_url: str, receipt_handle: str) -> None:
@@ -357,14 +579,105 @@ def send_summary_email(
     """
     logger.info("Sending summary email")
 
-    # TODO: Implement summary email
-    # - Format email with all results
-    # - Include successful purchases with SP IDs
-    # - Include skipped purchases with reasons
-    # - Include final coverage levels
-    # - Publish to SNS
+    # Format execution timestamp
+    execution_time = datetime.now(timezone.utc).isoformat()
 
-    logger.info("Summary email sent successfully")
+    # Build email subject
+    total_purchases = results['successful_count'] + results['skipped_count']
+    subject = f"AWS Savings Plans Purchase Complete - {results['successful_count']} Executed, {results['skipped_count']} Skipped"
+
+    # Build email body
+    body_lines = [
+        "AWS Savings Plans Purchaser - Execution Summary",
+        "=" * 60,
+        f"Execution Time: {execution_time}",
+        f"Total Purchase Intents Processed: {total_purchases}",
+        f"Successful Purchases: {results['successful_count']}",
+        f"Skipped Purchases: {results['skipped_count']}",
+        "",
+        "Current Coverage After Execution:",
+        f"  Compute Savings Plans: {coverage.get('compute', 0):.2f}%",
+        f"  Database Savings Plans: {coverage.get('database', 0):.2f}%",
+        "",
+    ]
+
+    # Add successful purchases section
+    if results['successful']:
+        body_lines.append("SUCCESSFUL PURCHASES:")
+        body_lines.append("-" * 60)
+        for i, purchase in enumerate(results['successful'], 1):
+            intent = purchase['intent']
+            sp_id = purchase['sp_id']
+
+            # Format term (convert seconds to years)
+            term_years = intent['term_seconds'] / (365.25 * 24 * 3600)
+            term_str = f"{term_years:.0f}-year" if term_years == int(term_years) else f"{term_years:.1f}-year"
+
+            # Format SP type (remove "SavingsPlans" suffix for readability)
+            sp_type_display = intent['sp_type'].replace('SavingsPlans', ' SP')
+
+            body_lines.extend([
+                f"{i}. {sp_type_display}",
+                f"   Savings Plan ID: {sp_id}",
+                f"   Commitment: ${intent['commitment']}/hour",
+                f"   Term: {term_str}",
+                f"   Payment Option: {intent['payment_option']}",
+            ])
+
+            # Add upfront amount if applicable
+            if intent.get('upfront_amount') and float(intent['upfront_amount']) > 0:
+                body_lines.append(f"   Upfront Payment: ${float(intent['upfront_amount']):,.2f}")
+
+            body_lines.append("")
+    else:
+        body_lines.append("No successful purchases.")
+        body_lines.append("")
+
+    # Add skipped purchases section
+    if results['skipped']:
+        body_lines.append("SKIPPED PURCHASES:")
+        body_lines.append("-" * 60)
+        for i, skip in enumerate(results['skipped'], 1):
+            intent = skip['intent']
+            reason = skip['reason']
+
+            # Format term (convert seconds to years)
+            term_years = intent['term_seconds'] / (365.25 * 24 * 3600)
+            term_str = f"{term_years:.0f}-year" if term_years == int(term_years) else f"{term_years:.1f}-year"
+
+            # Format SP type
+            sp_type_display = intent['sp_type'].replace('SavingsPlans', ' SP')
+
+            body_lines.extend([
+                f"{i}. {sp_type_display}",
+                f"   Commitment: ${intent['commitment']}/hour",
+                f"   Term: {term_str}",
+                f"   Reason: {reason}",
+                "",
+            ])
+    else:
+        body_lines.append("No skipped purchases.")
+        body_lines.append("")
+
+    # Add footer
+    body_lines.extend([
+        "-" * 60,
+        "This is an automated message from AWS Savings Plans Automation.",
+    ])
+
+    # Publish to SNS
+    message_body = "\n".join(body_lines)
+
+    try:
+        sns_client.publish(
+            TopicArn=config['sns_topic_arn'],
+            Subject=subject,
+            Message=message_body
+        )
+        logger.info("Summary email sent successfully")
+    except ClientError as e:
+        logger.error(f"Failed to send summary email: {str(e)}")
+        raise
 
 
 def send_error_email(error_message: str) -> None:
@@ -376,6 +689,58 @@ def send_error_email(error_message: str) -> None:
     """
     logger.error("Sending error notification email")
 
-    # TODO: Implement error email
-    # - Format error details
-    # - Publish to SNS
+    # Get configuration from environment
+    try:
+        sns_topic_arn = os.environ['SNS_TOPIC_ARN']
+        queue_url = os.environ['QUEUE_URL']
+    except KeyError as e:
+        logger.error(f"Missing required environment variable for error email: {e}")
+        return  # Cannot send email without SNS topic ARN
+
+    # Format execution timestamp
+    execution_time = datetime.now(timezone.utc).isoformat()
+
+    # Build email subject
+    subject = "AWS Savings Plans Purchaser - ERROR"
+
+    # Build email body
+    body_lines = [
+        "AWS Savings Plans Purchaser - ERROR NOTIFICATION",
+        "=" * 60,
+        f"Execution Time: {execution_time}",
+        "",
+        "ERROR DETAILS:",
+        "-" * 60,
+        error_message,
+        "",
+        "INVESTIGATION:",
+        "-" * 60,
+        "Review the SQS queue for pending purchase intents:",
+        f"Queue URL: {queue_url}",
+        "",
+        "Messages in the queue were NOT processed due to this error.",
+        "The Lambda will retry on the next scheduled execution.",
+        "",
+        "NEXT STEPS:",
+        "1. Check CloudWatch Logs for detailed error context",
+        "2. Verify queue messages are still valid",
+        "3. Review Lambda execution role permissions",
+        "4. Contact your AWS administrator if the issue persists",
+        "",
+        "-" * 60,
+        "This is an automated error notification from AWS Savings Plans Automation.",
+    ]
+
+    # Publish to SNS
+    message_body = "\n".join(body_lines)
+
+    try:
+        sns_client.publish(
+            TopicArn=sns_topic_arn,
+            Subject=subject,
+            Message=message_body
+        )
+        logger.info("Error notification email sent successfully")
+    except ClientError as e:
+        logger.error(f"Failed to send error notification email: {str(e)}")
+        # Don't raise - we're already in error handling, don't want to mask the original error
