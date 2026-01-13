@@ -446,6 +446,13 @@ data "archive_file" "scheduler" {
   output_path = "${path.module}/.terraform/scheduler.zip"
 }
 
+# Purchaser Lambda deployment package
+data "archive_file" "purchaser" {
+  type        = "zip"
+  source_dir  = "${path.module}/lambda/purchaser"
+  output_path = "${path.module}/.terraform/purchaser.zip"
+}
+
 # Create placeholder ZIP files
 data "archive_file" "scheduler_placeholder" {
   type        = "zip"
