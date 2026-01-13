@@ -435,6 +435,17 @@ resource "aws_iam_role_policy" "purchaser_savingsplans" {
   })
 }
 
+# ============================================================================
+# Lambda Deployment Packages
+# ============================================================================
+
+# Scheduler Lambda deployment package
+data "archive_file" "scheduler" {
+  type        = "zip"
+  source_dir  = "${path.module}/lambda/scheduler"
+  output_path = "${path.module}/.terraform/scheduler.zip"
+}
+
 # Create placeholder ZIP files
 data "archive_file" "scheduler_placeholder" {
   type        = "zip"
