@@ -85,6 +85,22 @@ resource "aws_sns_topic_subscription" "email_notifications" {
 }
 
 # ============================================================================
+# SQS Dead Letter Queue
+# ============================================================================
+
+resource "aws_sqs_queue" "purchase_intents_dlq" {
+  name                      = "${local.module_name}-purchase-intents-dlq"
+  message_retention_seconds = 1209600 # 14 days (AWS maximum)
+
+  tags = merge(
+    local.common_tags,
+    {
+      Name = "${local.module_name}-purchase-intents-dlq"
+    }
+  )
+}
+
+# ============================================================================
 # Components will be defined in subsequent implementation phases:
 # - SQS Queue for purchase intents
 # - Lambda functions (Scheduler and Purchaser)
