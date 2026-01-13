@@ -468,7 +468,7 @@ def calculate_purchase_need(
                     'sp_type': 'database',
                     'hourly_commitment': hourly_commitment_float,
                     'term': 'ONE_YEAR',  # Database SP always uses 1-year term
-                    'payment_option': 'ALL_UPFRONT',  # Database SP typically uses all upfront
+                    'payment_option': 'NO_UPFRONT',  # Database SP uses no upfront payment
                     'recommendation_id': recommendations['database'].get('RecommendationId', 'unknown')
                 }
                 purchase_plans.append(purchase_plan)
