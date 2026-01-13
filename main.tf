@@ -101,8 +101,28 @@ resource "aws_sqs_queue" "purchase_intents_dlq" {
 }
 
 # ============================================================================
+# SQS Main Queue
+# ============================================================================
+
+resource "aws_sqs_queue" "purchase_intents" {
+  name                       = "${local.module_name}-purchase-intents"
+  visibility_timeout_seconds = 300 # 5 minutes (matching Lambda timeout)
+
+  redrive_policy = jsonencode({
+    deadLetterTargetArn = aws_sqs_queue.purchase_intents_dlq.arn
+    maxReceiveCount     = 3
+  })
+
+  tags = merge(
+    local.common_tags,
+    {
+      Name = "${local.module_name}-purchase-intents"
+    }
+  )
+}
+
+# ============================================================================
 # Components will be defined in subsequent implementation phases:
-# - SQS Queue for purchase intents
 # - Lambda functions (Scheduler and Purchaser)
 # - IAM roles and policies
 # - EventBridge schedules
