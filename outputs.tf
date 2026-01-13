@@ -39,22 +39,22 @@ output "sns_topic_arn" {
 
 output "scheduler_lambda_arn" {
   description = "ARN of the Scheduler Lambda function"
-  value       = "" # To be implemented: aws_lambda_function.scheduler.arn
+  value       = aws_lambda_function.scheduler.arn
 }
 
 output "scheduler_lambda_name" {
   description = "Name of the Scheduler Lambda function"
-  value       = "" # To be implemented: aws_lambda_function.scheduler.function_name
+  value       = aws_lambda_function.scheduler.function_name
 }
 
 output "purchaser_lambda_arn" {
   description = "ARN of the Purchaser Lambda function"
-  value       = "" # To be implemented: aws_lambda_function.purchaser.arn
+  value       = aws_lambda_function.purchaser.arn
 }
 
 output "purchaser_lambda_name" {
   description = "Name of the Purchaser Lambda function"
-  value       = "" # To be implemented: aws_lambda_function.purchaser.function_name
+  value       = aws_lambda_function.purchaser.function_name
 }
 
 # ============================================================================
@@ -87,12 +87,12 @@ output "purchaser_rule_name" {
 
 output "scheduler_role_arn" {
   description = "ARN of the Scheduler Lambda execution role"
-  value       = "" # To be implemented: aws_iam_role.scheduler.arn
+  value       = aws_iam_role.scheduler.arn
 }
 
 output "purchaser_role_arn" {
   description = "ARN of the Purchaser Lambda execution role"
-  value       = "" # To be implemented: aws_iam_role.purchaser.arn
+  value       = aws_iam_role.purchaser.arn
 }
 
 # ============================================================================
