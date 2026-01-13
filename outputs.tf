@@ -133,3 +133,37 @@ output "module_configuration" {
     notification_emails     = length(var.notification_emails)
   }
 }
+
+# ============================================================================
+# Database SP Monitoring Outputs
+# ============================================================================
+
+output "database_sp_configuration" {
+  description = "Database Savings Plans specific configuration for monitoring"
+  value = {
+    enabled         = var.enable_database_sp
+    term            = var.database_sp_term
+    payment_option  = var.database_sp_payment_option
+    supported_services = [
+      "RDS",
+      "Aurora",
+      "DynamoDB",
+      "ElastiCache (Valkey)",
+      "DocumentDB",
+      "Neptune",
+      "Keyspaces",
+      "Timestream",
+      "DMS"
+    ]
+    aws_constraints = {
+      term_fixed           = "ONE_YEAR only"
+      payment_option_fixed = "NO_UPFRONT only"
+      configurable         = false
+    }
+  }
+}
+
+output "lambda_environment_database_sp" {
+  description = "Database SP environment variable value passed to Lambda functions"
+  value       = var.enable_database_sp ? "true" : "false"
+}
