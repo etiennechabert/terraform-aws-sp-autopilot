@@ -30,7 +30,7 @@ output "dlq_arn" {
 
 output "sns_topic_arn" {
   description = "ARN of the SNS topic for notifications"
-  value       = "" # To be implemented: aws_sns_topic.notifications.arn
+  value       = aws_sns_topic.notifications.arn
 }
 
 # ============================================================================
