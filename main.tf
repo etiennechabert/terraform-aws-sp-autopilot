@@ -75,12 +75,19 @@ resource "aws_cloudwatch_event_target" "scheduler" {
   arn       = aws_lambda_function.scheduler.arn # To be implemented in Lambda creation phase
 }
 
+resource "aws_lambda_permission" "scheduler_eventbridge" {
+  statement_id  = "AllowExecutionFromEventBridge"
+  action        = "lambda:InvokeFunction"
+  function_name = aws_lambda_function.scheduler.function_name # To be implemented in Lambda creation phase
+  principal     = "events.amazonaws.com"
+  source_arn    = aws_cloudwatch_event_rule.scheduler.arn
+}
+
 # ============================================================================
 # Components will be defined in subsequent implementation phases:
 # - SQS Queue for purchase intents
 # - SNS Topic for notifications
 # - Lambda functions (Scheduler and Purchaser)
 # - IAM roles and policies
-# - EventBridge targets and Lambda permissions
 # - CloudWatch alarms
 # ============================================================================
