@@ -1,13 +1,15 @@
 """
 Scheduler Lambda - Analyzes usage and queues Savings Plan purchase intents.
 
+Supports both Compute Savings Plans and Database Savings Plans.
+
 This Lambda:
 1. Purges existing queue messages
 2. Calculates current coverage (excluding plans expiring within renewal_window_days)
 3. Gets AWS purchase recommendations
 4. Calculates purchase need based on coverage_target_percent
 5. Applies max_purchase_percent limit
-6. Splits commitment by term mix (for Compute SP)
+6. Splits commitment by term mix (for Compute SP) or applies Database SP term
 7. Queues purchase intents (or sends email only if dry_run=true)
 8. Sends notification email with analysis results
 """
