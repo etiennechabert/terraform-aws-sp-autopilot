@@ -517,6 +517,37 @@ def test_calculate_purchase_need_zero_commitment():
     assert result == []
 
 
+def test_calculate_purchase_need_database_sp():
+    """Test that Database SP purchase plans use NO_UPFRONT payment and ONE_YEAR term."""
+    config = {
+        'enable_compute_sp': False,
+        'enable_database_sp': True,
+        'coverage_target_percent': 90.0
+    }
+
+    coverage = {
+        'compute': 0.0,
+        'database': 65.0
+    }
+
+    recommendations = {
+        'compute': None,
+        'database': {
+            'HourlyCommitmentToPurchase': '2.5',
+            'RecommendationId': 'test-db-rec-456'
+        }
+    }
+
+    result = handler.calculate_purchase_need(config, coverage, recommendations)
+
+    assert len(result) == 1
+    assert result[0]['sp_type'] == 'database'
+    assert result[0]['hourly_commitment'] == 2.5
+    assert result[0]['recommendation_id'] == 'test-db-rec-456'
+    assert result[0]['payment_option'] == 'NO_UPFRONT'
+    assert result[0]['term'] == 'ONE_YEAR'
+
+
 # ============================================================================
 # Purchase Limits Tests
 # ============================================================================
