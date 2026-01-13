@@ -624,12 +624,52 @@ def queue_purchase_intents(
     """
     logger.info(f"Queuing {len(purchase_plans)} purchase intents")
 
-    # TODO: Implement message queuing
-    # - For each purchase plan
-    # - Create SQS message with required fields
-    # - Send to queue
+    if not purchase_plans:
+        logger.info("No purchase plans to queue")
+        return
 
-    logger.info("All purchase intents queued successfully")
+    queue_url = config['queue_url']
+    queued_count = 0
+
+    for plan in purchase_plans:
+        try:
+            # Generate unique client token for idempotency
+            timestamp = datetime.now(timezone.utc).isoformat()
+            sp_type = plan.get('sp_type', 'unknown')
+            term = plan.get('term', 'unknown')
+            commitment = plan.get('hourly_commitment', 0.0)
+            client_token = f"scheduler-{sp_type}-{term}-{timestamp}"
+
+            # Create purchase intent message
+            purchase_intent = {
+                'client_token': client_token,
+                'sp_type': sp_type,
+                'term': term,
+                'hourly_commitment': commitment,
+                'payment_option': plan.get('payment_option', 'ALL_UPFRONT'),
+                'recommendation_id': plan.get('recommendation_id', 'unknown'),
+                'queued_at': timestamp,
+                'tags': config.get('tags', {})
+            }
+
+            # Send message to SQS
+            response = sqs_client.send_message(
+                QueueUrl=queue_url,
+                MessageBody=json.dumps(purchase_intent)
+            )
+
+            message_id = response.get('MessageId')
+            logger.info(
+                f"Queued purchase intent: {sp_type} {term} ${commitment:.4f}/hour "
+                f"(message_id: {message_id}, client_token: {client_token})"
+            )
+            queued_count += 1
+
+        except ClientError as e:
+            logger.error(f"Failed to queue purchase intent: {str(e)}")
+            raise
+
+    logger.info(f"All {queued_count} purchase intents queued successfully")
 
 
 def send_scheduled_email(
