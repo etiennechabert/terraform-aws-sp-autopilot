@@ -1341,7 +1341,7 @@ def test_handler_error_raises_exception(mock_env_vars):
 
 def test_get_assumed_role_session_with_valid_arn():
     """Test that AssumeRole is called when ARN is provided."""
-    with patch('handler.boto3.client') as mock_boto3_client:
+    with patch('shared.aws_utils.boto3.client') as mock_boto3_client:
         mock_sts = MagicMock()
         mock_boto3_client.return_value = mock_sts
 
@@ -1380,7 +1380,7 @@ def test_get_assumed_role_session_without_arn():
 def test_get_assumed_role_session_access_denied():
     """Test that AccessDenied error is raised with clear message."""
     from botocore.exceptions import ClientError
-    with patch('handler.boto3.client') as mock_boto3_client:
+    with patch('shared.aws_utils.boto3.client') as mock_boto3_client:
         mock_sts = MagicMock()
         mock_boto3_client.return_value = mock_sts
 
@@ -1406,7 +1406,7 @@ def test_get_clients_with_role_arn():
     config = {'management_account_role_arn': 'arn:aws:iam::123456789012:role/TestRole'}
 
     with patch('handler.get_assumed_role_session') as mock_assume, \
-         patch('handler.boto3.client') as mock_boto3_client:
+         patch('shared.aws_utils.boto3.client') as mock_boto3_client:
 
         # Mock session from assumed role
         mock_session = MagicMock()
@@ -1439,7 +1439,7 @@ def test_get_clients_without_role_arn():
     """Test that all clients use default credentials when no role ARN provided (backward compatibility)."""
     config = {'management_account_role_arn': None}
 
-    with patch('handler.boto3.client') as mock_boto3_client:
+    with patch('shared.aws_utils.boto3.client') as mock_boto3_client:
         mock_boto3_client.return_value = MagicMock()
 
         # Call function
