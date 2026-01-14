@@ -152,6 +152,7 @@ jobs:
         working-directory: lambda/purchaser
         env:
           PYTHONPATH: ${{ github.workspace }}/lambda
+          AWS_DEFAULT_REGION: us-east-1
         run: |
           python test_integration.py
 
