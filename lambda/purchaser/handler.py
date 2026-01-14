@@ -21,6 +21,8 @@ from typing import Dict, List, Any, Optional
 import boto3
 from botocore.exceptions import ClientError
 
+from validation import validate_purchase_intent
+
 # Configure logging
 logger = logging.getLogger()
 logger.setLevel(logging.INFO)
@@ -434,6 +436,19 @@ def process_purchase_messages(
             # Parse message body
             purchase_intent = json.loads(message['Body'])
 
+            # Validate message schema
+            try:
+                validate_purchase_intent(purchase_intent)
+            except ValueError as e:
+                logger.error(f"Message validation failed: {str(e)}")
+                results['failed'].append({
+                    'intent': purchase_intent,
+                    'error': f"Validation error: {str(e)}"
+                })
+                results['failed_count'] += 1
+                # Message stays in queue for retry - do not delete
+                continue
+
             # Validate against coverage cap
             if would_exceed_cap(config, purchase_intent, current_coverage):
                 logger.warning(f"Skipping purchase - would exceed coverage cap: {purchase_intent.get('client_token')}")
@@ -671,8 +686,8 @@ def send_summary_email(
     execution_time = datetime.now(timezone.utc).isoformat()
 
     # Build email subject
-    total_purchases = results['successful_count'] + results['skipped_count']
-    subject = f"AWS Savings Plans Purchase Complete - {results['successful_count']} Executed, {results['skipped_count']} Skipped"
+    total_purchases = results['successful_count'] + results['skipped_count'] + results['failed_count']
+    subject = f"AWS Savings Plans Purchase Complete - {results['successful_count']} Executed, {results['skipped_count']} Skipped, {results['failed_count']} Failed"
 
     # Build email body
     body_lines = [
@@ -682,6 +697,7 @@ def send_summary_email(
         f"Total Purchase Intents Processed: {total_purchases}",
         f"Successful Purchases: {results['successful_count']}",
         f"Skipped Purchases: {results['skipped_count']}",
+        f"Failed Purchases: {results['failed_count']}",
         "",
         "Current Coverage After Execution:",
         f"  Compute Savings Plans: {coverage.get('compute', 0):.2f}%",
@@ -745,6 +761,33 @@ def send_summary_email(
             ])
     else:
         body_lines.append("No skipped purchases.")
+        body_lines.append("")
+
+    # Add failed purchases section
+    if results['failed']:
+        body_lines.append("FAILED PURCHASES:")
+        body_lines.append("-" * 60)
+        for i, failure in enumerate(results['failed'], 1):
+            error = failure.get('error', 'Unknown error')
+            intent = failure.get('intent', {})
+
+            # Try to show basic info if intent is available
+            if intent:
+                sp_type = intent.get('sp_type', 'Unknown')
+                commitment = intent.get('commitment', 'Unknown')
+                body_lines.extend([
+                    f"{i}. Error: {error}",
+                    f"   SP Type: {sp_type}",
+                    f"   Commitment: ${commitment}/hour",
+                    "",
+                ])
+            else:
+                body_lines.extend([
+                    f"{i}. Error: {error}",
+                    "",
+                ])
+    else:
+        body_lines.append("No failed purchases.")
         body_lines.append("")
 
     # Add footer

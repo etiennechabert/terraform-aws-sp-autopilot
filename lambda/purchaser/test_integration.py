@@ -9,6 +9,8 @@ to verify all required behaviors:
 3. Cap enforcement works
 4. Messages deleted appropriately
 5. Emails sent correctly
+6. Input validation rejects malformed messages
+7. Failed validation messages are NOT deleted (kept for retry)
 """
 
 import json
@@ -833,6 +835,143 @@ def test_mixed_compute_and_database_sp():
     return scenario.passed
 
 
+def test_malformed_message():
+    """Test 9: Malformed message (missing required fields) should fail validation"""
+    scenario = TestScenario("Test 9: Malformed Message Validation")
+    scenario.log("Testing malformed message with missing required fields...")
+
+    with patch.object(handler, 'sqs_client') as mock_sqs, \
+         patch.object(handler, 'sns_client') as mock_sns:
+
+        # Mock SQS message with missing required fields (no client_token, no offering_id)
+        malformed_intent = {
+            'commitment': '1.50',
+            'sp_type': 'ComputeSavingsPlans',
+            'term_seconds': 94608000,
+            'payment_option': 'NO_UPFRONT',
+            'projected_coverage_after': 75.0
+        }
+
+        mock_sqs.receive_message.return_value = {
+            'Messages': [
+                {
+                    'Body': json.dumps(malformed_intent),
+                    'ReceiptHandle': 'receipt-handle-malformed'
+                }
+            ]
+        }
+
+        # Set environment variables
+        os.environ['QUEUE_URL'] = 'https://sqs.us-east-1.amazonaws.com/123456789012/test-queue'
+        os.environ['SNS_TOPIC_ARN'] = 'arn:aws:sns:us-east-1:123456789012:test-topic'
+        os.environ['MAX_COVERAGE_CAP'] = '95'
+
+        # Execute handler
+        response = handler.handler({}, {})
+
+        # Verify
+        scenario.assert_true(
+            response['statusCode'] == 200,
+            f"Expected statusCode 200, got {response['statusCode']}"
+        )
+        scenario.assert_true(
+            not mock_sqs.delete_message.called,
+            "Message should NOT be deleted from queue (kept for retry)"
+        )
+        scenario.assert_true(
+            mock_sns.publish.called,
+            "Summary email should be sent"
+        )
+
+        # Verify email content shows failed purchase
+        email_call = mock_sns.publish.call_args
+        scenario.assert_true(
+            'Failed Purchases: 1' in email_call[1]['Message'],
+            "Email should show 1 failed purchase"
+        )
+        scenario.assert_true(
+            'Validation error' in email_call[1]['Message'],
+            "Email should mention validation error"
+        )
+
+        scenario.log(f"Response: {response}")
+
+    scenario.complete()
+    return scenario.passed
+
+
+def test_invalid_sp_type():
+    """Test 10: Invalid sp_type should fail validation"""
+    scenario = TestScenario("Test 10: Invalid SP Type Validation")
+    scenario.log("Testing invalid sp_type value...")
+
+    with patch.object(handler, 'sqs_client') as mock_sqs, \
+         patch.object(handler, 'sns_client') as mock_sns:
+
+        # Mock SQS message with invalid sp_type
+        invalid_sp_type_intent = {
+            'client_token': 'test-token-invalid',
+            'offering_id': 'sp-offering-invalid',
+            'commitment': '1.50',
+            'sp_type': 'InvalidSavingsPlans',  # Invalid type
+            'term_seconds': 94608000,
+            'payment_option': 'NO_UPFRONT',
+            'upfront_amount': None,
+            'projected_coverage_after': 75.0
+        }
+
+        mock_sqs.receive_message.return_value = {
+            'Messages': [
+                {
+                    'Body': json.dumps(invalid_sp_type_intent),
+                    'ReceiptHandle': 'receipt-handle-invalid'
+                }
+            ]
+        }
+
+        # Set environment variables
+        os.environ['QUEUE_URL'] = 'https://sqs.us-east-1.amazonaws.com/123456789012/test-queue'
+        os.environ['SNS_TOPIC_ARN'] = 'arn:aws:sns:us-east-1:123456789012:test-topic'
+        os.environ['MAX_COVERAGE_CAP'] = '95'
+
+        # Execute handler
+        response = handler.handler({}, {})
+
+        # Verify
+        scenario.assert_true(
+            response['statusCode'] == 200,
+            f"Expected statusCode 200, got {response['statusCode']}"
+        )
+        scenario.assert_true(
+            not mock_sqs.delete_message.called,
+            "Message should NOT be deleted from queue (kept for retry)"
+        )
+        scenario.assert_true(
+            mock_sns.publish.called,
+            "Summary email should be sent"
+        )
+
+        # Verify email content shows failed purchase with sp_type validation error
+        email_call = mock_sns.publish.call_args
+        scenario.assert_true(
+            'Failed Purchases: 1' in email_call[1]['Message'],
+            "Email should show 1 failed purchase"
+        )
+        scenario.assert_true(
+            'Validation error' in email_call[1]['Message'],
+            "Email should mention validation error"
+        )
+        scenario.assert_true(
+            'sp_type' in email_call[1]['Message'].lower(),
+            "Email should mention sp_type validation issue"
+        )
+
+        scenario.log(f"Response: {response}")
+
+    scenario.complete()
+    return scenario.passed
+
+
 def main():
     """Run all integration tests"""
     print("=" * 70)
@@ -848,7 +987,9 @@ def main():
         'Test 5: API Error': test_api_error(),
         'Test 6: Database SP Purchase': test_database_sp_purchase(),
         'Test 7: Database SP Cap': test_database_sp_cap_enforcement(),
-        'Test 8: Mixed Compute/Database': test_mixed_compute_and_database_sp()
+        'Test 8: Mixed Compute/Database': test_mixed_compute_and_database_sp(),
+        'Test 9: Malformed Message': test_malformed_message(),
+        'Test 10: Invalid SP Type': test_invalid_sp_type()
     }
 
     print("=" * 70)
