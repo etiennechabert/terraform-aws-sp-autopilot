@@ -19,7 +19,7 @@ from typing import Dict, List, Any, Optional
 import boto3
 from botocore.exceptions import ClientError
 
-import notifications
+from shared import notifications
 from shared.aws_utils import get_assumed_role_session, get_clients
 
 # Configure logging

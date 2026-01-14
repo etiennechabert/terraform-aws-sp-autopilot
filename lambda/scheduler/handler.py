@@ -25,6 +25,7 @@ import boto3
 from botocore.exceptions import ClientError
 
 from shared.aws_utils import get_assumed_role_session, get_clients
+from shared import notifications
 
 # Configure logging
 logger = logging.getLogger()

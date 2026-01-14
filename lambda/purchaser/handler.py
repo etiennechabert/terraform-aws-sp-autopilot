@@ -22,6 +22,7 @@ import boto3
 from botocore.exceptions import ClientError
 
 from shared.aws_utils import get_assumed_role_session, get_clients
+from shared import notifications
 from validation import validate_purchase_intent
 
 # Configure logging
