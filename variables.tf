@@ -266,3 +266,47 @@ variable "tags" {
   type        = map(string)
   default     = {}
 }
+
+# ============================================================================
+# 7.12 Report Configuration
+# ============================================================================
+
+variable "enable_reports" {
+  description = "Enable periodic coverage and savings reports"
+  type        = bool
+  default     = true
+}
+
+variable "report_schedule" {
+  description = "When reporter runs (EventBridge cron expression)"
+  type        = string
+  default     = "cron(0 9 1 * ? *)"
+}
+
+variable "report_retention_days" {
+  description = "Days to retain reports in S3 before expiration"
+  type        = number
+  default     = 365
+
+  validation {
+    condition     = var.report_retention_days >= 1
+    error_message = "report_retention_days must be at least 1."
+  }
+}
+
+variable "report_format" {
+  description = "Format for generated reports"
+  type        = string
+  default     = "html"
+
+  validation {
+    condition     = contains(["html", "pdf"], var.report_format)
+    error_message = "report_format must be one of: html, pdf."
+  }
+}
+
+variable "email_reports" {
+  description = "Send reports via email to notification_emails"
+  type        = bool
+  default     = false
+}

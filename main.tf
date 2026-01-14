@@ -143,6 +143,83 @@ resource "aws_cloudwatch_metric_alarm" "dlq_alarm" {
 }
 
 # ============================================================================
+# S3 Bucket for Report Storage
+# ============================================================================
+
+resource "aws_s3_bucket" "reports" {
+  bucket = "${local.module_name}-reports-${data.aws_caller_identity.current.account_id}"
+
+  tags = merge(
+    local.common_tags,
+    {
+      Name = "${local.module_name}-reports"
+    }
+  )
+}
+
+# Enable versioning for report bucket
+resource "aws_s3_bucket_versioning" "reports" {
+  bucket = aws_s3_bucket.reports.id
+
+  versioning_configuration {
+    status = "Enabled"
+  }
+}
+
+# Enable server-side encryption
+resource "aws_s3_bucket_server_side_encryption_configuration" "reports" {
+  bucket = aws_s3_bucket.reports.id
+
+  rule {
+    apply_server_side_encryption_by_default {
+      sse_algorithm = "AES256"
+    }
+  }
+}
+
+# Block public access
+resource "aws_s3_bucket_public_access_block" "reports" {
+  bucket = aws_s3_bucket.reports.id
+
+  block_public_acls       = true
+  block_public_policy     = true
+  ignore_public_acls      = true
+  restrict_public_buckets = true
+}
+
+# Lifecycle policy for automatic cleanup of old reports
+resource "aws_s3_bucket_lifecycle_configuration" "reports" {
+  bucket = aws_s3_bucket.reports.id
+
+  rule {
+    id     = "cleanup-old-reports"
+    status = "Enabled"
+
+    # Transition to cheaper storage after 90 days
+    transition {
+      days          = 90
+      storage_class = "STANDARD_IA"
+    }
+
+    # Transition to Glacier after 180 days
+    transition {
+      days          = 180
+      storage_class = "GLACIER"
+    }
+
+    # Delete reports after 365 days
+    expiration {
+      days = 365
+    }
+
+    # Clean up old versions
+    noncurrent_version_expiration {
+      noncurrent_days = 90
+    }
+  }
+}
+
+# ============================================================================
 # Lambda Functions (Placeholder - Full implementation in future phase)
 # ============================================================================
 
@@ -209,6 +286,33 @@ resource "aws_lambda_function" "purchaser" {
       SNS_TOPIC_ARN               = aws_sns_topic.notifications.arn
       MAX_COVERAGE_CAP            = tostring(var.max_coverage_cap)
       RENEWAL_WINDOW_DAYS         = tostring(var.renewal_window_days)
+      MANAGEMENT_ACCOUNT_ROLE_ARN = var.management_account_role_arn
+      TAGS                        = jsonencode(local.common_tags)
+    }
+  }
+
+  tags = local.common_tags
+}
+
+resource "aws_lambda_function" "reporter" {
+  function_name = "${local.module_name}-reporter"
+  description   = "Generates periodic coverage and savings reports"
+
+  # Deploy actual Lambda code with proper configuration
+  role          = aws_iam_role.reporter.arn
+  handler       = "handler.handler"
+  runtime       = "python3.11"
+
+  # Deploy actual Lambda code from lambda/reporter directory
+  filename         = data.archive_file.reporter.output_path
+  source_code_hash = data.archive_file.reporter.output_base64sha256
+
+  environment {
+    variables = {
+      REPORTS_BUCKET              = aws_s3_bucket.reports.id
+      SNS_TOPIC_ARN               = aws_sns_topic.notifications.arn
+      REPORT_FORMAT               = var.report_format
+      EMAIL_REPORTS               = tostring(var.email_reports)
       MANAGEMENT_ACCOUNT_ROLE_ARN = var.management_account_role_arn
       TAGS                        = jsonencode(local.common_tags)
     }
@@ -490,6 +594,140 @@ resource "aws_iam_role_policy" "purchaser_assume_role" {
   })
 }
 
+# Reporter Lambda IAM Role
+resource "aws_iam_role" "reporter" {
+  name        = "${local.module_name}-reporter"
+  description = "IAM role for Reporter Lambda function - generates periodic coverage and savings reports"
+
+  assume_role_policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [{
+      Action = "sts:AssumeRole"
+      Effect = "Allow"
+      Principal = {
+        Service = "lambda.amazonaws.com"
+      }
+    }]
+  })
+
+  tags = merge(
+    local.common_tags,
+    {
+      Name = "${local.module_name}-reporter-role"
+    }
+  )
+}
+
+# Reporter Lambda Policy - CloudWatch Logs
+resource "aws_iam_role_policy" "reporter_cloudwatch_logs" {
+  name = "cloudwatch-logs"
+  role = aws_iam_role.reporter.id
+
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [{
+      Effect = "Allow"
+      Action = [
+        "logs:CreateLogStream",
+        "logs:PutLogEvents"
+      ]
+      Resource = "${aws_cloudwatch_log_group.reporter.arn}:*"
+    }]
+  })
+}
+
+# Reporter Lambda Policy - Cost Explorer
+resource "aws_iam_role_policy" "reporter_cost_explorer" {
+  name = "cost-explorer"
+  role = aws_iam_role.reporter.id
+
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [{
+      Effect = "Allow"
+      Action = [
+        "ce:GetSavingsPlansPurchaseRecommendation",
+        "ce:GetSavingsPlansUtilization",
+        "ce:GetSavingsPlansCoverage",
+        "ce:GetCostAndUsage"
+      ]
+      Resource = "*"
+    }]
+  })
+}
+
+# Reporter Lambda Policy - S3
+resource "aws_iam_role_policy" "reporter_s3" {
+  name = "s3"
+  role = aws_iam_role.reporter.id
+
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [{
+      Effect = "Allow"
+      Action = [
+        "s3:PutObject",
+        "s3:PutObjectAcl",
+        "s3:GetObject"
+      ]
+      Resource = "${aws_s3_bucket.reports.arn}/*"
+    }]
+  })
+}
+
+# Reporter Lambda Policy - SNS
+resource "aws_iam_role_policy" "reporter_sns" {
+  name = "sns"
+  role = aws_iam_role.reporter.id
+
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [{
+      Effect = "Allow"
+      Action = [
+        "sns:Publish"
+      ]
+      Resource = aws_sns_topic.notifications.arn
+    }]
+  })
+}
+
+# Reporter Lambda Policy - Savings Plans
+resource "aws_iam_role_policy" "reporter_savingsplans" {
+  name = "savingsplans"
+  role = aws_iam_role.reporter.id
+
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [{
+      Effect = "Allow"
+      Action = [
+        "savingsplans:DescribeSavingsPlans",
+        "savingsplans:DescribeSavingsPlansOfferingRates",
+        "savingsplans:DescribeSavingsPlansOfferings"
+      ]
+      Resource = "*"
+    }]
+  })
+}
+
+# Reporter Lambda Policy - Assume Role (conditional)
+resource "aws_iam_role_policy" "reporter_assume_role" {
+  count = var.management_account_role_arn != null ? 1 : 0
+
+  name = "assume-role"
+  role = aws_iam_role.reporter.id
+
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [{
+      Effect   = "Allow"
+      Action   = "sts:AssumeRole"
+      Resource = var.management_account_role_arn
+    }]
+  })
+}
+
 # ============================================================================
 # Lambda Deployment Packages
 # ============================================================================
@@ -506,6 +744,13 @@ data "archive_file" "purchaser" {
   type        = "zip"
   source_dir  = "${path.module}/lambda/purchaser"
   output_path = "${path.module}/.terraform/purchaser.zip"
+}
+
+# Reporter Lambda deployment package
+data "archive_file" "reporter" {
+  type        = "zip"
+  source_dir  = "${path.module}/lambda/reporter"
+  output_path = "${path.module}/.terraform/reporter.zip"
 }
 
 # Create placeholder ZIP files
@@ -627,6 +872,18 @@ resource "aws_cloudwatch_log_group" "purchaser" {
   )
 }
 
+resource "aws_cloudwatch_log_group" "reporter" {
+  name              = "/aws/lambda/${local.module_name}-reporter"
+  retention_in_days = 30
+
+  tags = merge(
+    local.common_tags,
+    {
+      Name = "${local.module_name}-reporter-logs"
+    }
+  )
+}
+
 # ============================================================================
 # EventBridge Schedules
 # ============================================================================
@@ -675,6 +932,35 @@ resource "aws_lambda_permission" "purchaser_eventbridge" {
   function_name = aws_lambda_function.purchaser.function_name # To be implemented in Lambda creation phase
   principal     = "events.amazonaws.com"
   source_arn    = aws_cloudwatch_event_rule.purchaser.arn
+}
+
+# Reporter Lambda - Runs monthly to generate coverage and savings reports
+resource "aws_cloudwatch_event_rule" "reporter" {
+  count = var.enable_reports ? 1 : 0
+
+  name                = "${local.module_name}-reporter"
+  description         = "Triggers Reporter Lambda to generate periodic coverage and savings reports"
+  schedule_expression = var.report_schedule
+
+  tags = local.common_tags
+}
+
+resource "aws_cloudwatch_event_target" "reporter" {
+  count = var.enable_reports ? 1 : 0
+
+  rule      = aws_cloudwatch_event_rule.reporter[0].name
+  target_id = "ReporterLambda"
+  arn       = aws_lambda_function.reporter.arn
+}
+
+resource "aws_lambda_permission" "reporter_eventbridge" {
+  count = var.enable_reports ? 1 : 0
+
+  statement_id  = "AllowExecutionFromEventBridge"
+  action        = "lambda:InvokeFunction"
+  function_name = aws_lambda_function.reporter.function_name
+  principal     = "events.amazonaws.com"
+  source_arn    = aws_cloudwatch_event_rule.reporter[0].arn
 }
 
 # ============================================================================

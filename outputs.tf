@@ -57,6 +57,16 @@ output "purchaser_lambda_name" {
   value       = aws_lambda_function.purchaser.function_name
 }
 
+output "reporter_lambda_arn" {
+  description = "ARN of the Reporter Lambda function"
+  value       = aws_lambda_function.reporter.arn
+}
+
+output "reporter_lambda_name" {
+  description = "Name of the Reporter Lambda function"
+  value       = aws_lambda_function.reporter.function_name
+}
+
 # ============================================================================
 # EventBridge Schedule Outputs
 # ============================================================================
@@ -81,6 +91,30 @@ output "purchaser_rule_name" {
   value       = aws_cloudwatch_event_rule.purchaser.name
 }
 
+output "reporter_rule_arn" {
+  description = "ARN of the EventBridge rule for Reporter Lambda"
+  value       = var.enable_reports ? aws_cloudwatch_event_rule.reporter[0].arn : null
+}
+
+output "reporter_rule_name" {
+  description = "Name of the EventBridge rule for Reporter Lambda"
+  value       = var.enable_reports ? aws_cloudwatch_event_rule.reporter[0].name : null
+}
+
+# ============================================================================
+# S3 Bucket Outputs
+# ============================================================================
+
+output "reports_bucket_name" {
+  description = "Name of the S3 bucket for storing reports"
+  value       = aws_s3_bucket.reports.id
+}
+
+output "reports_bucket_arn" {
+  description = "ARN of the S3 bucket for storing reports"
+  value       = aws_s3_bucket.reports.arn
+}
+
 # ============================================================================
 # IAM Role Outputs
 # ============================================================================
@@ -93,6 +127,11 @@ output "scheduler_role_arn" {
 output "purchaser_role_arn" {
   description = "ARN of the Purchaser Lambda execution role"
   value       = aws_iam_role.purchaser.arn
+}
+
+output "reporter_role_arn" {
+  description = "ARN of the Reporter Lambda execution role"
+  value       = aws_iam_role.reporter.arn
 }
 
 # ============================================================================
