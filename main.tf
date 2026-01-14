@@ -220,15 +220,8 @@ resource "aws_s3_bucket_lifecycle_configuration" "reports" {
 }
 
 # ============================================================================
-# Lambda Functions (Placeholder - Full implementation in future phase)
+# Lambda Functions
 # ============================================================================
-
-# TODO: Full Lambda implementation including:
-# - Actual Python code deployment
-# - IAM roles and policies
-# - Environment variables
-# - CloudWatch log groups
-# - Error handling and retries
 
 resource "aws_lambda_function" "scheduler" {
   function_name = "${local.module_name}-scheduler"
@@ -962,10 +955,3 @@ resource "aws_lambda_permission" "reporter_eventbridge" {
   principal     = "events.amazonaws.com"
   source_arn    = aws_cloudwatch_event_rule.reporter[0].arn
 }
-
-# ============================================================================
-# Components will be defined in subsequent implementation phases:
-# - Full Lambda implementation (currently using placeholders)
-# - Comprehensive IAM roles and policies
-# - Additional CloudWatch alarms for Lambda errors
-# ============================================================================

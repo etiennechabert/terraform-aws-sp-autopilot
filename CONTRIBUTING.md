@@ -162,25 +162,6 @@ with AWS-enforced constraints (1-year term, No Upfront payment).
 Includes separate coverage tracking and email notifications.
 ```
 
-#### Bug Fix
-```
-fix(scheduler): correct coverage calculation for mixed SP types
-
-The coverage percentage calculation was incorrectly combining
-Compute and Database SP coverage. Now tracks separately per
-AWS recommendations API response.
-
-Fixes #123
-```
-
-#### Documentation Update
-```
-docs(readme): add Database Savings Plans usage examples
-
-Added configuration examples for database-only, mixed, and
-gradual rollout strategies. Clarified AWS constraints.
-```
-
 #### Breaking Change
 ```
 feat(purchaser)!: enforce separate coverage caps per SP type
@@ -188,29 +169,14 @@ feat(purchaser)!: enforce separate coverage caps per SP type
 BREAKING CHANGE: The max_coverage_cap is now enforced separately
 for Compute and Database Savings Plans. Organizations using both
 SP types may need to adjust their cap settings.
-
-Migration: No configuration changes required. The cap now applies
-independently to each SP type instead of combining them.
-```
-
-#### Chore
-```
-chore(deps): update boto3 to 1.34.0
-
-Updates boto3 dependency to latest version for improved
-Cost Explorer API support.
 ```
 
 ### Commit Message Best Practices
 
-1. **Use imperative mood** in the subject line ("add" not "added" or "adds")
-2. **Capitalize the subject line**
-3. **No period at the end of the subject line**
-4. **Limit subject line to 72 characters**
-5. **Separate subject from body with a blank line**
-6. **Wrap body at 72 characters**
-7. **Use the body to explain what and why, not how**
-8. **Reference issues and PRs in the footer** (`Fixes #123`, `Closes #456`)
+- **Use imperative mood** in the subject line ("add" not "added")
+- **Limit subject line to 72 characters**
+- **Use the body to explain what and why, not how**
+- **Reference issues in the footer** (`Fixes #123`, `Closes #456`)
 
 ## Pull Request Process
 
@@ -252,34 +218,12 @@ Cost Explorer API support.
      - **Breaking changes** (if any)
      - **Related issues** (`Closes #123`)
 
-3. **PR Template Example**:
-   ```markdown
-   ## Summary
-   Adds Database Savings Plans automation with separate coverage tracking.
-
-   ## Motivation
-   Organizations requested ability to automate Database Savings Plans purchases
-   separately from Compute SP, with independent coverage targets.
-
-   ## Changes
-   - Added `enable_database_sp` configuration variable
-   - Implemented separate AWS API calls for Database SP recommendations
-   - Updated scheduler to track coverage independently per SP type
-   - Added Database SP constraints validation
-
-   ## Testing
-   - [x] All Terraform validations pass
-   - [x] Security scan passes
-   - [x] Scheduler tests pass with 85% coverage
-   - [x] Purchaser integration tests pass
-   - [x] Manually tested with test AWS account
-
-   ## Breaking Changes
-   None
-
-   ## Related Issues
-   Closes #45
-   ```
+3. **Include in PR description**:
+   - Summary of changes
+   - Motivation for the change
+   - Testing performed (all validations, tests, manual testing)
+   - Breaking changes (if any)
+   - Related issues (`Closes #45`)
 
 ### Automated PR Checks
 
@@ -326,22 +270,6 @@ All Terraform code must:
 - **Mocking** AWS API calls using moto or boto3 stubs
 - **Test file location**: `lambda/scheduler/test_*.py`
 
-Example test:
-```python
-import pytest
-from moto import mock_ce
-from scheduler import calculate_coverage_gap
-
-@mock_ce
-def test_calculate_coverage_gap():
-    """Test coverage gap calculation logic."""
-    result = calculate_coverage_gap(
-        current_coverage=75.0,
-        target_coverage=90.0
-    )
-    assert result == 15.0
-```
-
 #### Purchaser Lambda
 - **Integration tests** for purchase workflow validation
 - **Idempotency testing** for duplicate purchase prevention
@@ -377,73 +305,19 @@ When adding new functionality:
 
 - **Formatting**: Use `terraform fmt -recursive` before committing
 - **Naming**: Use snake_case for all resources, variables, and outputs
-- **Variables**: Include `description`, `type`, and `default` (if applicable)
+- **Variables**: Include `description`, `type`, and `default` (if applicable) with validation where appropriate
 - **Outputs**: Include `description` and `value`
 - **Comments**: Add comments for complex logic or non-obvious decisions
 - **Modules**: Follow HashiCorp's [Terraform Module Standards](https://www.terraform.io/docs/registry/modules/publish.html)
 
-Example variable:
-```hcl
-variable "coverage_target_percent" {
-  description = "Target hourly coverage percentage (applies to each SP type separately)"
-  type        = number
-  default     = 90
-
-  validation {
-    condition     = var.coverage_target_percent >= 0 && var.coverage_target_percent <= 100
-    error_message = "coverage_target_percent must be between 0 and 100"
-  }
-}
-```
-
 ### Python Standards
 
-- **Style**: Follow PEP 8 (enforced by linters)
-- **Docstrings**: Required for all functions (Google or NumPy style)
+- **Style**: Follow PEP 8
+- **Docstrings**: Required for all functions
 - **Type hints**: Encouraged for function signatures
 - **Error handling**: Use try/except with specific exception types
 - **Logging**: Use Python logging module (not print statements)
 - **Constants**: Use UPPER_CASE for constants
-
-Example function:
-```python
-import logging
-from typing import Dict, Optional
-
-logger = logging.getLogger(__name__)
-
-def calculate_purchase_amount(
-    coverage_gap_percent: float,
-    monthly_spend: float,
-    max_purchase_percent: float
-) -> Optional[float]:
-    """
-    Calculate the hourly commitment amount for Savings Plan purchase.
-
-    Args:
-        coverage_gap_percent: Coverage gap percentage (0-100)
-        monthly_spend: Current monthly on-demand spend in USD
-        max_purchase_percent: Maximum purchase as percentage of monthly spend
-
-    Returns:
-        Hourly commitment amount in USD, or None if purchase not recommended
-
-    Raises:
-        ValueError: If parameters are out of valid range
-    """
-    if coverage_gap_percent < 0 or coverage_gap_percent > 100:
-        raise ValueError("coverage_gap_percent must be between 0 and 100")
-
-    if coverage_gap_percent == 0:
-        logger.info("No coverage gap, skipping purchase calculation")
-        return None
-
-    max_purchase = monthly_spend * (max_purchase_percent / 100)
-    hourly_amount = max_purchase / 730  # Average hours per month
-
-    logger.info(f"Calculated purchase: ${hourly_amount:.2f}/hour")
-    return hourly_amount
-```
 
 ### Security Standards
 

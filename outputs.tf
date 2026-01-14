@@ -5,12 +5,12 @@
 # ============================================================================
 
 output "queue_url" {
-  description = "URL of the SQS queue holding purchase intents"
+  description = "URL of the purchase intents queue"
   value       = aws_sqs_queue.purchase_intents.url
 }
 
 output "queue_arn" {
-  description = "ARN of the SQS queue"
+  description = "ARN of the purchase intents queue"
   value       = aws_sqs_queue.purchase_intents.arn
 }
 
@@ -106,12 +106,12 @@ output "reporter_rule_name" {
 # ============================================================================
 
 output "reports_bucket_name" {
-  description = "Name of the S3 bucket for storing reports"
+  description = "Name of the reports bucket"
   value       = aws_s3_bucket.reports.id
 }
 
 output "reports_bucket_arn" {
-  description = "ARN of the S3 bucket for storing reports"
+  description = "ARN of the reports bucket"
   value       = aws_s3_bucket.reports.arn
 }
 
@@ -158,7 +158,7 @@ output "dlq_alarm_arn" {
 # ============================================================================
 
 output "module_configuration" {
-  description = "Current module configuration summary"
+  description = "Module configuration summary"
   value = {
     compute_sp_enabled      = var.enable_compute_sp
     database_sp_enabled     = var.enable_database_sp
@@ -178,7 +178,7 @@ output "module_configuration" {
 # ============================================================================
 
 output "database_sp_configuration" {
-  description = "Database Savings Plans specific configuration for monitoring"
+  description = "Database Savings Plans configuration for monitoring"
   value = {
     enabled         = var.enable_database_sp
     term            = var.database_sp_term
@@ -203,6 +203,6 @@ output "database_sp_configuration" {
 }
 
 output "lambda_environment_database_sp" {
-  description = "Database SP environment variable value passed to Lambda functions"
+  description = "Database SP enablement flag for Lambda functions"
   value       = var.enable_database_sp ? "true" : "false"
 }

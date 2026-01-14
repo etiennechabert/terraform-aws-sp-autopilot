@@ -34,16 +34,6 @@ Database Savings Plans automatically cover usage from:
 | **Timestream** | Time series database |
 | **DMS** | Database Migration Service |
 
-## AWS Database SP Constraints
-
-⚠️ **Important:** Database Savings Plans have fixed AWS constraints that cannot be changed:
-
-- **Term:** Must be 1-year (cannot use 3-year)
-- **Payment:** Must be No Upfront (cannot use All Upfront or Partial Upfront)
-- **Discount:** Up to 35% for serverless, up to 20% for provisioned
-
-These constraints are enforced by AWS and apply to all Database Savings Plans regardless of configuration.
-
 ## Architecture
 
 This configuration deploys:
@@ -94,27 +84,15 @@ notification_emails = [
 ]
 ```
 
-### 2. Initialize Terraform
+### 2. Deploy
 
 ```bash
 terraform init
-```
-
-### 3. Review Plan
-
-```bash
 terraform plan
-```
-
-Expected resources: ~20-25 resources including Lambda functions, SQS queues, SNS topics, IAM roles, EventBridge rules, and CloudWatch alarms.
-
-### 4. Deploy
-
-```bash
 terraform apply
 ```
 
-### 5. Confirm SNS Subscription
+### 3. Confirm SNS Subscription
 
 After deployment:
 
@@ -219,6 +197,14 @@ scheduler_schedule = "cron(0 8 1 * ? *)"   # 1st of month
 purchaser_schedule = "cron(0 8 10 * ? *)"  # 10th of month (9-day window)
 ```
 
+### Database SP Constraints
+
+⚠️ **Note:** Database Savings Plans have AWS-mandated constraints:
+- **Term:** 1-year only (no 3-year option)
+- **Payment:** No Upfront only (no All/Partial Upfront)
+
+These constraints are enforced by AWS and cannot be changed.
+
 ## Monitoring
 
 ### CloudWatch Logs
@@ -258,18 +244,6 @@ aws sqs receive-message \
   --max-number-of-messages 10
 ```
 
-### Checking Database SP Coverage
-
-View current Database Savings Plans coverage:
-
-```bash
-# Get coverage for current month
-aws ce get-savings-plans-coverage \
-  --time-period Start=$(date -d "$(date +%Y-%m-01)" +%Y-%m-%d),End=$(date +%Y-%m-%d) \
-  --granularity MONTHLY \
-  --filter file://<(echo '{"Dimensions":{"Key":"SAVINGS_PLAN_TYPE","Values":["DATABASE"]}}')
-```
-
 ## Canceling Purchases
 
 To cancel a scheduled purchase before execution:
@@ -305,49 +279,17 @@ Actual Savings Plans purchases depend on your database usage:
 
 ## Troubleshooting
 
-### No Email Received
+**No Email Received:** Confirm SNS subscription in email, check spam folder, verify `notification_emails` list.
 
-1. Check SNS subscription confirmation in email
-2. Verify email in `notification_emails` list
-3. Check spam folder
+**Scheduler Not Running:** Check EventBridge rule is enabled, review CloudWatch logs, verify Lambda execution role permissions.
 
-### Scheduler Not Running
+**Purchases Not Executing:** Verify `dry_run = false`, ensure purchaser schedule is after scheduler schedule, check SQS queue has messages, review Lambda logs.
 
-1. Verify EventBridge rule is enabled:
-   ```bash
-   aws events list-rules --name-prefix sp-autopilot
-   ```
-2. Check Lambda execution role permissions
-3. Review CloudWatch logs for errors
+**No Recommendations Generated:** Verify eligible database workloads exist and have run for at least `min_data_days`, check current coverage is below target, review CloudWatch logs for API errors.
 
-### Purchases Not Executing
+**Coverage Cap Exceeded:** Adjust `max_coverage_cap` if appropriate, review current coverage and expiring plans.
 
-1. Verify `dry_run = false` in configuration
-2. Check SQS queue has messages between scheduler and purchaser runs
-3. Ensure purchaser schedule is AFTER scheduler schedule
-4. Review purchaser Lambda logs for errors
-
-### No Recommendations Generated
-
-If the scheduler finds no Database SP recommendations:
-
-1. Verify you have eligible database workloads running (RDS, Aurora, DynamoDB, etc.)
-2. Check that services have been running for at least `min_data_days` (default: 14 days)
-3. Verify current coverage is below `coverage_target_percent`
-4. Check CloudWatch logs for API errors
-
-### Coverage Cap Exceeded
-
-If purchases are blocked by coverage cap:
-
-1. Check current coverage:
-   ```bash
-   aws ce get-savings-plans-coverage \
-     --time-period Start=$(date -d "$(date +%Y-%m-01)" +%Y-%m-%d),End=$(date +%Y-%m-%d) \
-     --filter file://<(echo '{"Dimensions":{"Key":"SAVINGS_PLAN_TYPE","Values":["DATABASE"]}}')
-   ```
-2. Adjust `max_coverage_cap` if appropriate
-3. Review expiring plans (may be excluded from coverage calculation)
+For detailed troubleshooting steps, see the [main module README](../../README.md).
 
 ## Cleanup
 
@@ -366,37 +308,6 @@ After validating this database-only setup, consider:
 - **Add Compute SP** — Enable `enable_compute_sp = true` for EC2/Lambda/Fargate coverage
 - **AWS Organizations** — Set `management_account_role_arn` for org-wide SPs
 - **Increase Targets** — Raise `coverage_target_percent` as confidence grows
-- **Optimize Coverage** — Monitor which database services benefit most from SPs
-
-## Database-Specific Considerations
-
-### When to Use Database SPs
-
-Database Savings Plans are most effective for:
-
-- **Steady-state workloads** — RDS/Aurora instances running 24/7
-- **DynamoDB provisioned capacity** — Predictable read/write throughput
-- **Production databases** — Long-running mission-critical databases
-- **ElastiCache clusters** — Persistent caching layers
-
-### When NOT to Use Database SPs
-
-Consider on-demand pricing for:
-
-- **Development/test databases** — Frequently stopped/started instances
-- **Spiky workloads** — Highly variable usage patterns
-- **Short-lived projects** — Databases with uncertain lifespan
-- **Aurora Serverless v1** — Already cost-optimized for variable workloads
-
-### Mixing with Reserved Instances
-
-Database Savings Plans can complement Reserved Instances:
-
-- **RI-first strategy** — Use existing RIs, fill gaps with Database SPs
-- **SP-first strategy** — Use Database SPs for flexibility across services
-- **Hybrid approach** — RIs for predictable workloads, SPs for dynamic coverage
-
-AWS applies discounts in this order: Reserved Instances → Savings Plans → On-Demand
 
 ## Support
 

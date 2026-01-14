@@ -44,15 +44,6 @@ This module should be deployed in one of these accounts:
    - Use `management_account_role_arn` to assume role in management account
    - Better separation of concerns and security
 
-### Why Organization-Level SPs?
-
-Organization-level Savings Plans provide benefits across all linked accounts:
-
-- **Automatic sharing** — SPs automatically apply to eligible usage in any member account
-- **Centralized management** — One place to view and purchase all SPs
-- **Better pricing** — Aggregate org-wide usage for more accurate recommendations
-- **Simplified governance** — Central FinOps team controls all SP purchasing
-
 ## Prerequisites
 
 ### 1. AWS Organization
@@ -300,18 +291,9 @@ Successfully assumed role in management account
 
 ## Enabling Real Purchases
 
-Once you've validated the recommendations in dry-run mode:
+Once you've validated the recommendations in dry-run mode and coordinated with stakeholders:
 
-### 1. Review with Stakeholders
-
-Organization-level purchases affect all accounts. Before enabling:
-
-1. Share dry-run email results with FinOps, governance, and finance teams
-2. Confirm coverage targets align with organizational goals
-3. Verify purchase limits (`max_purchase_percent = 8`) are acceptable
-4. Ensure review window (5 days) provides adequate time for oversight
-
-### 2. Update Configuration
+### 1. Update Configuration
 
 Edit `main.tf`:
 
@@ -319,13 +301,13 @@ Edit `main.tf`:
 dry_run = false  # Enable actual purchases
 ```
 
-### 3. Apply Changes
+### 2. Apply Changes
 
 ```bash
 terraform apply
 ```
 
-### 4. Monitor First Cycle
+### 3. Monitor First Cycle
 
 After enabling purchases:
 
@@ -343,30 +325,9 @@ After enabling purchases:
 
 ## Multi-Account Considerations
 
-### Member Account Visibility
-
-Savings Plans purchased at the organization level automatically benefit all member accounts:
-
-- No configuration needed in member accounts
-- SP discount automatically applies to eligible usage
-- Member accounts see SP coverage in their Cost Explorer
-- Central team maintains full control
-
-### Account-Specific Exclusions
-
-If certain accounts should not benefit from organization SPs:
-
-1. This is not supported by AWS Savings Plans
-2. Consider using separate SPs purchased within those accounts
-3. Contact AWS support for advanced scenarios
-
-### Cost Allocation
-
-Organization-level SP costs appear in the management account:
-
-- Use AWS Cost Allocation Tags for chargeback/showback
-- Configure cost allocation in Billing console
-- Consider AWS Cost Categories for department/team allocation
+- **Member accounts** — SPs automatically benefit all linked accounts
+- **Cost allocation** — SP costs appear in management account; use Cost Allocation Tags for chargeback
+- **Account isolation** — Not supported; organization-level SPs apply to all member accounts
 
 ## Monitoring
 
@@ -525,60 +486,22 @@ If Lambda cannot assume the management account role:
    aws iam get-role --role-name SavingsPlansAutomationRole
    ```
 2. Check trust policy allows delegation from your account
-3. Verify external ID is configured correctly (if using one)
+3. Verify external ID matches (if configured)
 4. Review Lambda CloudWatch logs for specific error messages
 
 ### No Organization-Level Recommendations
 
 If Cost Explorer doesn't return organization-level data:
 
-1. Verify consolidated billing is enabled
-2. Check that Cost Explorer is enabled in management account
-3. Ensure at least 14 days of usage data exists
-4. Confirm role has `ce:GetSavingsPlansPurchaseRecommendation` permission
-
-### Purchases Applied to Wrong Accounts
-
-Organization-level SPs automatically apply to all accounts:
-
-1. This is expected behavior - SPs share across all linked accounts
-2. Use AWS Cost Categories for cost allocation
-3. Consider account-level SPs for isolation (deploy module per account)
-
-### Multi-Team Coordination
-
-For large organizations with many stakeholders:
-
-1. Set up a shared Slack/Teams channel for SP notifications
-2. Use SNS to trigger webhooks instead of/in addition to email
-3. Increase review window to allow time for distributed teams
-4. Document escalation process for urgent cancellations
+1. Verify consolidated billing is enabled in management account
+2. Ensure at least 14 days of usage data exists
+3. Confirm role has `ce:GetSavingsPlansPurchaseRecommendation` permission
 
 ## Security Considerations
 
-### Least Privilege
-
-The cross-account role should have minimal permissions:
-
-- Only Cost Explorer and Savings Plans actions
-- No access to EC2, RDS, or other service APIs
-- Consider adding condition keys to further restrict
-
-### Audit Trail
-
-All Savings Plans purchases are logged:
-
-- Lambda CloudWatch logs contain full purchase details
-- AWS CloudTrail logs all `CreateSavingsPlan` API calls
-- SQS messages include idempotency tokens for tracking
-
-### Access Control
-
-Limit who can modify the infrastructure:
-
-- Restrict Terraform state access
-- Use separate IAM roles for deploying vs operating
-- Enable MFA for management account access
+- **Least privilege** — Cross-account role should only have Cost Explorer and Savings Plans permissions
+- **Audit trail** — CloudWatch logs and CloudTrail track all purchases
+- **Access control** — Restrict Terraform state access; enable MFA for management account
 
 ## Cleanup
 

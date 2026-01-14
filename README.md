@@ -83,106 +83,73 @@ EventBridge Schedule (4th of month)
 
 > **💡 Module Source:** This module is published to the [Terraform Registry](https://registry.terraform.io/modules/etiennechabert/sp-autopilot/aws). Use the registry source format shown below for automatic version management.
 
-### Basic Usage (Compute SP Only)
+### Basic Usage
 
 ```hcl
 module "savings_plans" {
-  source = "etiennechabert/sp-autopilot/aws"
+  source  = "etiennechabert/sp-autopilot/aws"
   version = "~> 1.0"
 
-  # Enable Compute Savings Plans (enabled by default)
-  enable_compute_sp = true
-  enable_database_sp = false
-
-  # Coverage targets
   coverage_target_percent = 90
   max_coverage_cap        = 95
+  max_purchase_percent    = 10
+  notification_emails     = ["devops@example.com"]
 
-  # Risk management
-  max_purchase_percent = 10  # Max 10% of monthly spend per cycle
-
-  # Notifications
-  notification_emails = ["devops@example.com"]
-
-  # Start in dry-run mode (recommended)
-  dry_run = true
+  dry_run = true  # Start in dry-run mode (recommended)
 }
 ```
 
-### Database Savings Plans Configuration
+This enables **Compute Savings Plans** (default). For other configurations:
 
-To enable Database Savings Plans automation:
+<details>
+<summary><b>Database Savings Plans Only</b></summary>
 
 ```hcl
 module "savings_plans" {
-  source = "etiennechabert/sp-autopilot/aws"
+  source  = "etiennechabert/sp-autopilot/aws"
   version = "~> 1.0"
 
-  # Enable Database Savings Plans
+  enable_compute_sp  = false
   enable_database_sp = true
 
-  # Optionally disable Compute SP if you only want Database coverage
-  enable_compute_sp = false
-
-  # Coverage targets (applies to both SP types independently)
   coverage_target_percent = 90
-  max_coverage_cap        = 95
-
-  # Risk management
-  max_purchase_percent = 10
-
-  # Notifications
-  notification_emails = ["database-team@example.com"]
-
-  # Start in dry-run mode
-  dry_run = true
+  notification_emails     = ["database-team@example.com"]
+  dry_run                 = true
 }
 ```
+</details>
 
-### Mixed Configuration (Both SP Types)
-
-Run both Compute and Database Savings Plans automation:
+<details>
+<summary><b>Both Compute and Database (Production Example)</b></summary>
 
 ```hcl
 module "savings_plans" {
-  source = "etiennechabert/sp-autopilot/aws"
+  source  = "etiennechabert/sp-autopilot/aws"
   version = "~> 1.0"
 
-  # Enable both SP types
   enable_compute_sp  = true
   enable_database_sp = true
 
-  # Coverage targets (separate tracking per SP type)
   coverage_target_percent = 90
   max_coverage_cap        = 95
+  max_purchase_percent    = 10
 
-  # Risk management
-  max_purchase_percent = 10
-
-  # Compute SP configuration
+  # Compute SP customization
   compute_sp_term_mix = {
     three_year = 0.67
     one_year   = 0.33
   }
   compute_sp_payment_option = "ALL_UPFRONT"
 
-  # Database SP uses fixed AWS constraints
-  # database_sp_term = "ONE_YEAR"           # Fixed (cannot change)
-  # database_sp_payment_option = "NO_UPFRONT"  # Fixed (cannot change)
+  # Schedule with 3-day review window
+  scheduler_schedule = "cron(0 8 1 * ? *)"  # 1st of month
+  purchaser_schedule = "cron(0 8 4 * ? *)"  # 4th of month
 
-  # Scheduling
-  scheduler_schedule = "cron(0 8 1 * ? *)"  # 1st of month at 8:00 AM UTC
-  purchaser_schedule = "cron(0 8 4 * ? *)"  # 4th of month at 8:00 AM UTC (3-day review window)
-
-  # Notifications
-  notification_emails = [
-    "devops@example.com",
-    "finops@example.com"
-  ]
-
-  dry_run = false  # Enable actual purchases
+  notification_emails = ["devops@example.com", "finops@example.com"]
+  dry_run             = false
 }
 ```
+</details>
 
 ## Configuration Variables
 
@@ -191,7 +158,7 @@ module "savings_plans" {
 | Variable | Type | Default | Description |
 |----------|------|---------|-------------|
 | `enable_compute_sp` | `bool` | `true` | Enable Compute Savings Plans automation |
-| `enable_database_sp` | `bool` | `false` | Enable Database Savings Plans automation<br/>**Covers:** RDS, Aurora, DynamoDB, ElastiCache (Valkey), DocumentDB, Neptune, Keyspaces, Timestream, DMS<br/>**AWS Constraints:** 1-year term and No Upfront payment (not configurable) |
+| `enable_database_sp` | `bool` | `false` | Enable Database Savings Plans automation (see [Supported Savings Plan Types](#supported-savings-plan-types) for coverage and constraints) |
 
 > **Note:** At least one of `enable_compute_sp` or `enable_database_sp` must be `true`.
 
@@ -229,10 +196,10 @@ module "savings_plans" {
 
 | Variable | Type | Default | Description |
 |----------|------|---------|-------------|
-| `database_sp_term` | `string` | `"ONE_YEAR"` | **⚠️ Fixed AWS constraint** — Must be `ONE_YEAR` (validation only) |
-| `database_sp_payment_option` | `string` | `"NO_UPFRONT"` | **⚠️ Fixed AWS constraint** — Must be `NO_UPFRONT` (validation only) |
+| `database_sp_term` | `string` | `"ONE_YEAR"` | Must be `ONE_YEAR` (AWS constraint — validation only) |
+| `database_sp_payment_option` | `string` | `"NO_UPFRONT"` | Must be `NO_UPFRONT` (AWS constraint — validation only) |
 
-> **⚠️ AWS Constraints:** Database Savings Plans ALWAYS use 1-year terms and No Upfront payment. These variables exist only for validation and cannot be changed to other values.
+> **Note:** These variables exist for validation only. See [Database Savings Plans](#database-savings-plans) for AWS constraint details.
 
 ### Scheduling
 
@@ -276,29 +243,6 @@ module "savings_plans" {
 |----------|------|---------|-------------|
 | `tags` | `map(string)` | `{}` | Additional tags to apply to purchased Savings Plans |
 
-## AWS Constraints for Database Savings Plans
-
-Database Savings Plans have restrictions imposed by AWS that differ from Compute Savings Plans:
-
-| Constraint | Compute SP | Database SP |
-|------------|------------|-------------|
-| **Term Options** | 1-year or 3-year | **1-year only** |
-| **Payment Options** | All Upfront, Partial Upfront, No Upfront | **No Upfront only** |
-| **Configurability** | Fully configurable | Fixed (not configurable) |
-
-This module enforces these constraints through Terraform validation. Attempting to set invalid values will fail at plan time:
-
-```hcl
-# ❌ This will FAIL validation:
-database_sp_term = "THREE_YEAR"  # Error: must be ONE_YEAR
-
-# ❌ This will FAIL validation:
-database_sp_payment_option = "ALL_UPFRONT"  # Error: must be NO_UPFRONT
-
-# ✅ This is correct (uses defaults):
-enable_database_sp = true  # Automatically uses ONE_YEAR and NO_UPFRONT
-```
-
 ## Supported Services
 
 ### Database Savings Plans Cover:
@@ -328,28 +272,7 @@ enable_database_sp = true  # Automatically uses ONE_YEAR and NO_UPFRONT
 - **Independent Caps:** The `max_coverage_cap` is enforced independently for each SP type
 - **Separate Email Sections:** Notifications show coverage percentages for each SP type separately
 
-### Example Email Notification
-
-When both SP types are enabled, emails will show:
-
-```
-=== Compute Savings Plans ===
-Current Coverage: 85.2%
-Target Coverage: 90.0%
-Coverage Gap: 4.8%
-Recommended Purchase: $5.50/hour (1-year and 3-year mix)
-
-=== Database Savings Plans ===
-Current Coverage: 72.3%
-Target Coverage: 90.0%
-Coverage Gap: 17.7%
-Recommended Purchase: $8.25/hour (1-year, No Upfront)
-```
-
-This separation ensures that:
-- Database coverage doesn't affect Compute SP purchasing decisions
-- You can have different coverage levels for each workload type
-- You can enable/disable each SP type independently without affecting the other
+When both SP types are enabled, email notifications show coverage and recommendations separately for each type, ensuring independent purchasing decisions and flexible workload management.
 
 ## Outputs
 
@@ -375,79 +298,25 @@ The module provides the following outputs for monitoring and integration:
 - `database_sp_configuration` — Database SP specific configuration with supported services and AWS constraints
 - `lambda_environment_database_sp` — Database SP enable flag passed to Lambda functions
 
-### Example Output Usage
+### Example Usage
 
 ```hcl
-output "database_sp_status" {
-  value = module.savings_plans.database_sp_configuration
+output "sp_config" {
+  value = module.savings_plans.module_configuration
 }
-
-# Output:
-# {
-#   enabled = true
-#   term = "ONE_YEAR"
-#   payment_option = "NO_UPFRONT"
-#   supported_services = ["RDS", "Aurora", "DynamoDB", "ElastiCache (Valkey)", ...]
-#   aws_constraints = {
-#     term_fixed = "ONE_YEAR only"
-#     payment_option_fixed = "NO_UPFRONT only"
-#     configurable = false
-#   }
-# }
 ```
 
 ## Advanced Usage
 
-### Database-Only Deployment
-
-For organizations that only want Database Savings Plans automation:
-
-```hcl
-module "database_savings_plans" {
-  source = "etiennechabert/sp-autopilot/aws"
-  version = "~> 1.0"
-
-  # Database SP only
-  enable_compute_sp  = false
-  enable_database_sp = true
-
-  # Lower coverage target for databases (more conservative)
-  coverage_target_percent = 70
-  max_coverage_cap        = 80
-
-  # Smaller purchase increments for DB workloads
-  max_purchase_percent = 5
-
-  # Notifications to database team
-  notification_emails = ["database-ops@example.com"]
-
-  dry_run = false
-}
-```
-
 ### Gradual Rollout Strategy
 
-1. **Start with Dry Run (Week 1)**
-   ```hcl
-   dry_run = true
-   enable_database_sp = true
-   ```
-   Review email recommendations without purchasing
+Recommended approach for new deployments:
 
-2. **Enable Purchases with Conservative Limits (Week 2-4)**
-   ```hcl
-   dry_run = false
-   coverage_target_percent = 70
-   max_purchase_percent = 5
-   ```
-   Make small purchases, monitor results
-
-3. **Increase Targets (Month 2+)**
-   ```hcl
-   coverage_target_percent = 90
-   max_purchase_percent = 10
-   ```
-   Scale up as confidence grows
+| Phase | Settings | Purpose |
+|-------|----------|---------|
+| **Week 1** | `dry_run = true` | Review email recommendations only |
+| **Week 2-4** | `dry_run = false`<br>`coverage_target_percent = 70`<br>`max_purchase_percent = 5` | Small purchases, monitor results |
+| **Month 2+** | `coverage_target_percent = 90`<br>`max_purchase_percent = 10` | Scale up as confidence grows |
 
 ### Canceling Purchases
 
@@ -557,23 +426,13 @@ When `management_account_role_arn` is configured:
 
 ### Verification
 
-After deployment, verify the setup:
+Test the cross-account setup:
 
-1. **Check Lambda Logs** (CloudWatch Logs → `/aws/lambda/sp-autopilot-scheduler`):
-   ```
-   Assuming role: arn:aws:iam::123456789012:role/SavingsPlansAutomationRole
-   Successfully assumed role, session expires: 2024-01-15T10:30:00Z
-   ```
+```bash
+aws lambda invoke --function-name sp-autopilot-scheduler output.json
+```
 
-2. **Test Scheduler** (dry run mode):
-   ```bash
-   aws lambda invoke --function-name sp-autopilot-scheduler output.json
-   ```
-   Check logs for successful role assumption and Cost Explorer API calls.
-
-3. **Verify CloudTrail** (Management Account):
-   - Look for events from assumed role identity
-   - UserIdentity should show: `arn:aws:sts::123456789012:assumed-role/SavingsPlansAutomationRole/sp-autopilot-lambda`
+Check CloudWatch Logs (`/aws/lambda/sp-autopilot-scheduler`) for successful role assumption and API calls.
 
 ### Troubleshooting
 

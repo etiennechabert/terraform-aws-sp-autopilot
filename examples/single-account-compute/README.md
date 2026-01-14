@@ -65,27 +65,15 @@ notification_emails = [
 ]
 ```
 
-### 2. Initialize Terraform
+### 2. Deploy
 
 ```bash
 terraform init
-```
-
-### 3. Review Plan
-
-```bash
 terraform plan
-```
-
-Expected resources: ~20-25 resources including Lambda functions, SQS queues, SNS topics, IAM roles, EventBridge rules, and CloudWatch alarms.
-
-### 4. Deploy
-
-```bash
 terraform apply
 ```
 
-### 5. Confirm SNS Subscription
+### 3. Confirm SNS Subscription
 
 After deployment:
 
@@ -285,39 +273,13 @@ Actual Savings Plans purchases depend on your usage and configuration:
 
 ## Troubleshooting
 
-### No Email Received
+**No Email Received:** Confirm SNS subscription in email, check spam folder, verify `notification_emails` list.
 
-1. Check SNS subscription confirmation in email
-2. Verify email in `notification_emails` list
-3. Check spam folder
+**Scheduler Not Running:** Check EventBridge rule is enabled, review CloudWatch logs, verify Lambda execution role permissions.
 
-### Scheduler Not Running
+**Purchases Not Executing:** Verify `dry_run = false`, ensure purchaser schedule is after scheduler schedule, check SQS queue has messages, review Lambda logs.
 
-1. Verify EventBridge rule is enabled:
-   ```bash
-   aws events list-rules --name-prefix sp-autopilot
-   ```
-2. Check Lambda execution role permissions
-3. Review CloudWatch logs for errors
-
-### Purchases Not Executing
-
-1. Verify `dry_run = false` in configuration
-2. Check SQS queue has messages between scheduler and purchaser runs
-3. Ensure purchaser schedule is AFTER scheduler schedule
-4. Review purchaser Lambda logs for errors
-
-### Coverage Cap Exceeded
-
-If purchases are blocked by coverage cap:
-
-1. Check current coverage:
-   ```bash
-   aws ce get-savings-plans-coverage \
-     --time-period Start=2024-01-01,End=2024-01-31
-   ```
-2. Adjust `max_coverage_cap` if appropriate
-3. Review expiring plans (may be excluded from coverage calculation)
+**Coverage Cap Exceeded:** Adjust `max_coverage_cap` if appropriate, review current coverage and expiring plans.
 
 ## Cleanup
 

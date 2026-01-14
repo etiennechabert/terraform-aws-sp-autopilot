@@ -11,11 +11,7 @@ variable "enable_compute_sp" {
 }
 
 variable "enable_database_sp" {
-  description = <<-EOT
-    Enable Database Savings Plans automation.
-    Covers: RDS, Aurora, DynamoDB, ElastiCache (Valkey), DocumentDB, Neptune, Keyspaces, Timestream, DMS.
-    AWS Constraints: Database SP always uses ONE_YEAR term and NO_UPFRONT payment (not configurable).
-  EOT
+  description = "Enable Database Savings Plans automation"
   type        = bool
   default     = false
 }
