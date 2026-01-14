@@ -21,6 +21,14 @@ from typing import Dict, List, Any, Optional
 import boto3
 from botocore.exceptions import ClientError
 
+# Import notification functions
+from notifications import (
+    format_slack_message,
+    format_teams_message,
+    send_slack_notification,
+    send_teams_notification
+)
+
 # Configure logging
 logger = logging.getLogger()
 logger.setLevel(logging.INFO)
@@ -100,6 +108,8 @@ def load_configuration() -> Dict[str, Any]:
     return {
         'queue_url': os.environ['QUEUE_URL'],
         'sns_topic_arn': os.environ['SNS_TOPIC_ARN'],
+        'slack_webhook_url': os.environ.get('SLACK_WEBHOOK_URL'),
+        'teams_webhook_url': os.environ.get('TEAMS_WEBHOOK_URL'),
         'max_coverage_cap': float(os.environ.get('MAX_COVERAGE_CAP', '95')),
         'renewal_window_days': int(os.environ.get('RENEWAL_WINDOW_DAYS', '7')),
         'management_account_role_arn': os.environ.get('MANAGEMENT_ACCOUNT_ROLE_ARN'),
@@ -679,6 +689,15 @@ def send_summary_email(
         logger.error(f"Failed to send summary email: {str(e)}")
         raise
 
+    # Send webhook notifications (best-effort, don't fail on webhook errors)
+    if config.get('slack_webhook_url'):
+        slack_message = format_slack_message(subject, body_lines)
+        send_slack_notification(config['slack_webhook_url'], slack_message)
+
+    if config.get('teams_webhook_url'):
+        teams_message = format_teams_message(subject, body_lines)
+        send_teams_notification(config['teams_webhook_url'], teams_message)
+
 
 def send_error_email(error_message: str) -> None:
     """
@@ -693,6 +712,8 @@ def send_error_email(error_message: str) -> None:
     try:
         sns_topic_arn = os.environ['SNS_TOPIC_ARN']
         queue_url = os.environ['QUEUE_URL']
+        slack_webhook_url = os.environ.get('SLACK_WEBHOOK_URL')
+        teams_webhook_url = os.environ.get('TEAMS_WEBHOOK_URL')
     except KeyError as e:
         logger.error(f"Missing required environment variable for error email: {e}")
         return  # Cannot send email without SNS topic ARN
@@ -744,3 +765,12 @@ def send_error_email(error_message: str) -> None:
     except ClientError as e:
         logger.error(f"Failed to send error notification email: {str(e)}")
         # Don't raise - we're already in error handling, don't want to mask the original error
+
+    # Send webhook notifications (best-effort, don't fail on webhook errors)
+    if slack_webhook_url:
+        slack_message = format_slack_message(subject, body_lines)
+        send_slack_notification(slack_webhook_url, slack_message)
+
+    if teams_webhook_url:
+        teams_message = format_teams_message(subject, body_lines)
+        send_teams_notification(teams_webhook_url, teams_message)

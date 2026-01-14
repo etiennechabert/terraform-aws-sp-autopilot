@@ -23,6 +23,14 @@ from typing import Dict, List, Any, Optional
 import boto3
 from botocore.exceptions import ClientError
 
+# Import notification functions
+from notifications import (
+    format_slack_message,
+    format_teams_message,
+    send_slack_notification,
+    send_teams_notification
+)
+
 # Configure logging
 logger = logging.getLogger()
 logger.setLevel(logging.INFO)
@@ -105,6 +113,8 @@ def load_configuration() -> Dict[str, Any]:
     return {
         'queue_url': os.environ['QUEUE_URL'],
         'sns_topic_arn': os.environ['SNS_TOPIC_ARN'],
+        'slack_webhook_url': os.environ.get('SLACK_WEBHOOK_URL'),
+        'teams_webhook_url': os.environ.get('TEAMS_WEBHOOK_URL'),
         'dry_run': os.environ.get('DRY_RUN', 'true').lower() == 'true',
         'enable_compute_sp': os.environ.get('ENABLE_COMPUTE_SP', 'true').lower() == 'true',
         'enable_database_sp': os.environ.get('ENABLE_DATABASE_SP', 'false').lower() == 'true',
@@ -741,18 +751,30 @@ def send_scheduled_email(
     ])
 
     message = "\n".join(email_lines)
+    subject = 'Savings Plans Scheduled for Purchase'
 
     # Publish to SNS
     try:
         sns_client.publish(
             TopicArn=config['sns_topic_arn'],
-            Subject='Savings Plans Scheduled for Purchase',
+            Subject=subject,
             Message=message
         )
         logger.info(f"Email sent successfully to {config['sns_topic_arn']}")
     except ClientError as e:
         logger.error(f"Failed to send email: {str(e)}")
         raise
+
+    # Send webhook notifications
+    slack_webhook_url = config.get('slack_webhook_url')
+    if slack_webhook_url:
+        slack_message = format_slack_message(subject, email_lines)
+        send_slack_notification(slack_webhook_url, slack_message)
+
+    teams_webhook_url = config.get('teams_webhook_url')
+    if teams_webhook_url:
+        teams_message = format_teams_message(subject, email_lines)
+        send_teams_notification(teams_webhook_url, teams_message)
 
 
 def send_dry_run_email(
@@ -829,18 +851,30 @@ def send_dry_run_email(
     ])
 
     message = "\n".join(email_lines)
+    subject = '[DRY RUN] Savings Plans Analysis - No Purchases Scheduled'
 
     # Publish to SNS
     try:
         sns_client.publish(
             TopicArn=config['sns_topic_arn'],
-            Subject='[DRY RUN] Savings Plans Analysis - No Purchases Scheduled',
+            Subject=subject,
             Message=message
         )
         logger.info(f"Dry run email sent successfully to {config['sns_topic_arn']}")
     except ClientError as e:
         logger.error(f"Failed to send dry run email: {str(e)}")
         raise
+
+    # Send webhook notifications
+    slack_webhook_url = config.get('slack_webhook_url')
+    if slack_webhook_url:
+        slack_message = format_slack_message(subject, email_lines)
+        send_slack_notification(slack_webhook_url, slack_message)
+
+    teams_webhook_url = config.get('teams_webhook_url')
+    if teams_webhook_url:
+        teams_message = format_teams_message(subject, email_lines)
+        send_teams_notification(teams_webhook_url, teams_message)
 
 
 def send_error_email(error_message: str) -> None:
@@ -884,13 +918,25 @@ def send_error_email(error_message: str) -> None:
         return
 
     # Publish to SNS
+    subject = 'ERROR: Savings Plans Scheduler Failed'
     try:
         sns_client.publish(
             TopicArn=sns_topic_arn,
-            Subject='ERROR: Savings Plans Scheduler Failed',
+            Subject=subject,
             Message=message
         )
         logger.info(f"Error email sent successfully to {sns_topic_arn}")
     except Exception as e:
         # Don't raise - we're already in error handling
         logger.error(f"Failed to send error email: {str(e)}")
+
+    # Send webhook notifications
+    slack_webhook_url = os.environ.get('SLACK_WEBHOOK_URL')
+    if slack_webhook_url:
+        slack_message = format_slack_message(subject, email_lines)
+        send_slack_notification(slack_webhook_url, slack_message)
+
+    teams_webhook_url = os.environ.get('TEAMS_WEBHOOK_URL')
+    if teams_webhook_url:
+        teams_message = format_teams_message(subject, email_lines)
+        send_teams_notification(teams_webhook_url, teams_message)

@@ -170,6 +170,8 @@ resource "aws_lambda_function" "scheduler" {
     variables = {
       QUEUE_URL                     = aws_sqs_queue.purchase_intents.url
       SNS_TOPIC_ARN                 = aws_sns_topic.notifications.arn
+      SLACK_WEBHOOK_URL             = var.slack_webhook_url
+      TEAMS_WEBHOOK_URL             = var.teams_webhook_url
       DRY_RUN                       = tostring(var.dry_run)
       ENABLE_COMPUTE_SP             = tostring(var.enable_compute_sp)
       ENABLE_DATABASE_SP            = tostring(var.enable_database_sp)
@@ -207,6 +209,8 @@ resource "aws_lambda_function" "purchaser" {
     variables = {
       QUEUE_URL                   = aws_sqs_queue.purchase_intents.url
       SNS_TOPIC_ARN               = aws_sns_topic.notifications.arn
+      SLACK_WEBHOOK_URL           = var.slack_webhook_url
+      TEAMS_WEBHOOK_URL           = var.teams_webhook_url
       MAX_COVERAGE_CAP            = tostring(var.max_coverage_cap)
       RENEWAL_WINDOW_DAYS         = tostring(var.renewal_window_days)
       MANAGEMENT_ACCOUNT_ROLE_ARN = var.management_account_role_arn

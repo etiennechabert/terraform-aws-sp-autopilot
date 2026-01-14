@@ -205,6 +205,20 @@ variable "notification_emails" {
   default     = []
 }
 
+variable "slack_webhook_url" {
+  description = "Slack webhook URL for notifications"
+  type        = string
+  default     = null
+  sensitive   = true
+}
+
+variable "teams_webhook_url" {
+  description = "Microsoft Teams webhook URL for notifications"
+  type        = string
+  default     = null
+  sensitive   = true
+}
+
 # ============================================================================
 # 7.9 Monitoring
 # ============================================================================
