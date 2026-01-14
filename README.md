@@ -2,10 +2,10 @@
 
 An open-source Terraform module that automates AWS Savings Plans purchases based on usage analysis. The module maintains consistent coverage while limiting financial exposure through incremental, spread-out commitments.
 
-[![Terraform Validation](https://github.com/your-org/terraform-aws-sp-autopilot/actions/workflows/terraform-validation.yml/badge.svg)](https://github.com/your-org/terraform-aws-sp-autopilot/actions/workflows/terraform-validation.yml)
-[![Python Tests](https://github.com/your-org/terraform-aws-sp-autopilot/actions/workflows/python-tests.yml/badge.svg)](https://github.com/your-org/terraform-aws-sp-autopilot/actions/workflows/python-tests.yml)
-[![Security Scan](https://github.com/your-org/terraform-aws-sp-autopilot/actions/workflows/security-scan.yml/badge.svg)](https://github.com/your-org/terraform-aws-sp-autopilot/actions/workflows/security-scan.yml)
 [![PR Checks](https://github.com/your-org/terraform-aws-sp-autopilot/actions/workflows/pr-checks.yml/badge.svg)](https://github.com/your-org/terraform-aws-sp-autopilot/actions/workflows/pr-checks.yml)
+[![Security Scan](https://github.com/your-org/terraform-aws-sp-autopilot/actions/workflows/security-scan.yml/badge.svg)](https://github.com/your-org/terraform-aws-sp-autopilot/actions/workflows/security-scan.yml)
+[![Tests](https://github.com/your-org/terraform-aws-sp-autopilot/actions/workflows/tests.yml/badge.svg)](https://github.com/your-org/terraform-aws-sp-autopilot/actions/workflows/tests.yml)
+[![Release](https://github.com/your-org/terraform-aws-sp-autopilot/actions/workflows/release.yml/badge.svg)](https://github.com/your-org/terraform-aws-sp-autopilot/actions/workflows/release.yml)
 
 ## Features
 
@@ -499,7 +499,7 @@ Validates Terraform configuration integrity:
 
 **Triggers:** Push/PR on `.tf` or `.tfvars` files, manual workflow dispatch
 
-#### 🧪 Python Tests (`python-tests.yml`)
+#### 🧪 Python Tests (`tests.yml`)
 
 Comprehensive testing for Lambda functions:
 
@@ -585,8 +585,8 @@ All PRs must pass these gates before merging:
 | **Terraform Format** | All `.tf` files must be formatted with `terraform fmt` | `terraform-validation.yml` |
 | **Terraform Validation** | Module must pass `terraform validate` | `terraform-validation.yml` |
 | **Security Scan** | No HIGH or CRITICAL security issues | `security-scan.yml` |
-| **Scheduler Tests** | All tests pass with ≥80% code coverage | `python-tests.yml` |
-| **Purchaser Tests** | All integration tests pass | `python-tests.yml` |
+| **Scheduler Tests** | All tests pass with ≥80% code coverage | `tests.yml` |
+| **Purchaser Tests** | All integration tests pass | `tests.yml` |
 
 ### Running Workflows Manually
 
@@ -598,7 +598,7 @@ Actions → Select Workflow → Run workflow
 
 # Via GitHub CLI
 gh workflow run terraform-validation.yml
-gh workflow run python-tests.yml
+gh workflow run tests.yml
 gh workflow run security-scan.yml
 gh workflow run pr-checks.yml
 gh workflow run release.yml
