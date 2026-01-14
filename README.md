@@ -11,7 +11,6 @@
 
 ![Code Coverage](https://img.shields.io/badge/Coverage-97%25-brightgreen.svg?logo=pytest)
 ![Code Style](https://img.shields.io/badge/Code%20Style-Ruff-black.svg?logo=ruff)
-![Maintained](https://img.shields.io/badge/Maintained-Yes-brightgreen.svg)
 
 An open-source Terraform module that automates AWS Savings Plans purchases based on usage analysis. The module maintains consistent coverage while limiting financial exposure through incremental, spread-out commitments.
 
