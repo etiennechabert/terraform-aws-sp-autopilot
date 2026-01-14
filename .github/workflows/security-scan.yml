@@ -1,0 +1,83 @@
+name: Security Scanning
+
+on:
+  pull_request:
+    branches:
+      - main
+      - develop
+    paths:
+      - '**.tf'
+      - '**.tfvars'
+      - '.github/workflows/security-scan.yml'
+  push:
+    branches:
+      - main
+      - develop
+    paths:
+      - '**.tf'
+      - '**.tfvars'
+      - '.github/workflows/security-scan.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pull-requests: write
+  security-events: write
+
+jobs:
+  tfsec-scan:
+    name: tfsec Security Scan
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Run tfsec
+        uses: aquasecurity/tfsec-action@v1.0.3
+        with:
+          soft_fail: false
+          format: default
+          additional_args: --minimum-severity HIGH
+
+      - name: Run tfsec with SARIF output
+        if: always()
+        uses: aquasecurity/tfsec-action@v1.0.3
+        with:
+          soft_fail: true
+          format: sarif
+          output: tfsec-results.sarif
+
+      - name: Upload SARIF file
+        if: always()
+        uses: github/codeql-action/upload-sarif@v3
+        with:
+          sarif_file: tfsec-results.sarif
+          category: tfsec
+
+      - name: Comment PR with Security Issues
+        if: github.event_name == 'pull_request' && failure()
+        uses: actions/github-script@v7
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            const output = `#### Security Scan Failed ❌
+
+            **tfsec found HIGH or CRITICAL security issues in your Terraform code.**
+
+            Please review the security findings above and address them before merging.
+
+            Common fixes:
+            - Enable encryption for resources
+            - Restrict security group rules
+            - Enable logging and monitoring
+            - Use secure default configurations
+
+            *Pushed by: @${{ github.actor }}, Action: \`${{ github.event_name }}\`*`;
+
+            github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: output
+            });
