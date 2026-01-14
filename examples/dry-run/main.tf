@@ -28,7 +28,7 @@ provider "aws" {
 }
 
 module "savings_plans" {
-  source = "etiennechabert/sp-autopilot/aws"
+  source  = "etiennechabert/sp-autopilot/aws"
   version = "~> 1.0"
 
   # Enable Compute Savings Plans only (simplest starting point)
@@ -36,33 +36,33 @@ module "savings_plans" {
   enable_database_sp = false
 
   # Ultra-conservative coverage targets for evaluation
-  coverage_target_percent = 60  # Very conservative 60% target
-  max_coverage_cap        = 70  # Low ceiling to limit exposure
+  coverage_target_percent = 60 # Very conservative 60% target
+  max_coverage_cap        = 70 # Low ceiling to limit exposure
 
   # Minimal purchase limits (won't be used in dry-run, but sets expectations)
-  max_purchase_percent = 3      # Only 3% of monthly spend per cycle
-  lookback_days        = 30     # 30 days of usage history
-  min_data_days        = 21     # Require 3 weeks of data for confidence
+  max_purchase_percent = 3  # Only 3% of monthly spend per cycle
+  lookback_days        = 30 # 30 days of usage history
+  min_data_days        = 21 # Require 3 weeks of data for confidence
 
   # Conservative compute SP configuration
   compute_sp_term_mix = {
-    three_year = 0.50  # 50/50 split for flexibility
+    three_year = 0.50 # 50/50 split for flexibility
     one_year   = 0.50
   }
-  compute_sp_payment_option = "PARTIAL_UPFRONT"  # Balance between savings and cash flow
+  compute_sp_payment_option = "PARTIAL_UPFRONT" # Balance between savings and cash flow
 
   # Extended review window (though not used in dry-run)
-  scheduler_schedule = "cron(0 8 1 * ? *)"  # 1st of month at 8:00 AM UTC
-  purchaser_schedule = "cron(0 8 8 * ? *)"  # 8th of month at 8:00 AM UTC (7-day window)
+  scheduler_schedule = "cron(0 8 1 * ? *)" # 1st of month at 8:00 AM UTC
+  purchaser_schedule = "cron(0 8 8 * ? *)" # 8th of month at 8:00 AM UTC (7-day window)
 
   # Notifications - evaluation reports sent here
   notification_emails = [
-    "finops@example.com"  # Replace with your email for evaluation reports
+    "finops@example.com" # Replace with your email for evaluation reports
   ]
 
   # DRY-RUN MODE - THE CRITICAL SETTING
-  dry_run              = true  # KEEPS THIS SAFE - emails only, no purchases
-  send_no_action_email = true  # Get reports even when no action recommended
+  dry_run              = true # KEEPS THIS SAFE - emails only, no purchases
+  send_no_action_email = true # Get reports even when no action recommended
 
   # Monitoring (for infrastructure health only)
   enable_lambda_error_alarm = true
@@ -96,5 +96,5 @@ output "module_configuration" {
 
 output "dry_run_status" {
   description = "Confirms dry-run mode is enabled (should be true)"
-  value       = true  # Hardcoded reminder that this is a dry-run example
+  value       = true # Hardcoded reminder that this is a dry-run example
 }

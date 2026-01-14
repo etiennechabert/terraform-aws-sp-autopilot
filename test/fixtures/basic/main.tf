@@ -66,8 +66,8 @@ module "sp_autopilot" {
   purchaser_schedule = var.purchaser_schedule
 
   # Operations
-  dry_run               = var.dry_run
-  send_no_action_email  = var.send_no_action_email
+  dry_run              = var.dry_run
+  send_no_action_email = var.send_no_action_email
 
   # Notifications
   notification_emails = var.notification_emails

@@ -10,9 +10,9 @@ resource "aws_lambda_function" "scheduler" {
   description   = "Analyzes usage and queues Savings Plans purchase recommendations"
 
   # Deploy actual Lambda code with proper configuration
-  role          = aws_iam_role.scheduler.arn
-  handler       = "handler.handler"
-  runtime       = "python3.11"
+  role    = aws_iam_role.scheduler.arn
+  handler = "handler.handler"
+  runtime = "python3.11"
 
   # Deploy actual Lambda code from lambda/scheduler directory
   filename         = data.archive_file.scheduler.output_path
@@ -20,22 +20,22 @@ resource "aws_lambda_function" "scheduler" {
 
   environment {
     variables = {
-      QUEUE_URL                     = aws_sqs_queue.purchase_intents.url
-      SNS_TOPIC_ARN                 = aws_sns_topic.notifications.arn
-      DRY_RUN                       = tostring(var.dry_run)
-      ENABLE_COMPUTE_SP             = tostring(var.enable_compute_sp)
-      ENABLE_DATABASE_SP            = tostring(var.enable_database_sp)
-      COVERAGE_TARGET_PERCENT       = tostring(var.coverage_target_percent)
-      MAX_PURCHASE_PERCENT          = tostring(var.max_purchase_percent)
-      RENEWAL_WINDOW_DAYS           = tostring(var.renewal_window_days)
-      LOOKBACK_DAYS                 = tostring(var.lookback_days)
-      MIN_DATA_DAYS                 = tostring(var.min_data_days)
-      MIN_COMMITMENT_PER_PLAN       = tostring(var.min_commitment_per_plan)
-      COMPUTE_SP_TERM_MIX           = jsonencode(var.compute_sp_term_mix)
-      COMPUTE_SP_PAYMENT_OPTION     = var.compute_sp_payment_option
-      PARTIAL_UPFRONT_PERCENT       = tostring(var.partial_upfront_percent)
-      MANAGEMENT_ACCOUNT_ROLE_ARN   = var.management_account_role_arn
-      TAGS                          = jsonencode(local.common_tags)
+      QUEUE_URL                   = aws_sqs_queue.purchase_intents.url
+      SNS_TOPIC_ARN               = aws_sns_topic.notifications.arn
+      DRY_RUN                     = tostring(var.dry_run)
+      ENABLE_COMPUTE_SP           = tostring(var.enable_compute_sp)
+      ENABLE_DATABASE_SP          = tostring(var.enable_database_sp)
+      COVERAGE_TARGET_PERCENT     = tostring(var.coverage_target_percent)
+      MAX_PURCHASE_PERCENT        = tostring(var.max_purchase_percent)
+      RENEWAL_WINDOW_DAYS         = tostring(var.renewal_window_days)
+      LOOKBACK_DAYS               = tostring(var.lookback_days)
+      MIN_DATA_DAYS               = tostring(var.min_data_days)
+      MIN_COMMITMENT_PER_PLAN     = tostring(var.min_commitment_per_plan)
+      COMPUTE_SP_TERM_MIX         = jsonencode(var.compute_sp_term_mix)
+      COMPUTE_SP_PAYMENT_OPTION   = var.compute_sp_payment_option
+      PARTIAL_UPFRONT_PERCENT     = tostring(var.partial_upfront_percent)
+      MANAGEMENT_ACCOUNT_ROLE_ARN = var.management_account_role_arn
+      TAGS                        = jsonencode(local.common_tags)
     }
   }
 
@@ -47,9 +47,9 @@ resource "aws_lambda_function" "purchaser" {
   description   = "Executes Savings Plans purchases from queue"
 
   # Deploy actual Lambda code with proper configuration
-  role          = aws_iam_role.purchaser.arn
-  handler       = "handler.handler"
-  runtime       = "python3.11"
+  role    = aws_iam_role.purchaser.arn
+  handler = "handler.handler"
+  runtime = "python3.11"
 
   # Deploy actual Lambda code from lambda/purchaser directory
   filename         = data.archive_file.purchaser.output_path
@@ -74,9 +74,9 @@ resource "aws_lambda_function" "reporter" {
   description   = "Generates periodic coverage and savings reports"
 
   # Deploy actual Lambda code with proper configuration
-  role          = aws_iam_role.reporter.arn
-  handler       = "handler.handler"
-  runtime       = "python3.11"
+  role    = aws_iam_role.reporter.arn
+  handler = "handler.handler"
+  runtime = "python3.11"
 
   # Deploy actual Lambda code from lambda/reporter directory
   filename         = data.archive_file.reporter.output_path

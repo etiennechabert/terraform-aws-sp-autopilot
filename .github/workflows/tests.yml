@@ -99,6 +99,9 @@ jobs:
 
       - name: Run pytest with coverage
         working-directory: lambda/scheduler
+        env:
+          PYTHONPATH: ${{ github.workspace }}/lambda
+          AWS_DEFAULT_REGION: us-east-1
         run: |
           pytest -v --cov=. --cov-report=term-missing --cov-fail-under=80
 
@@ -147,6 +150,8 @@ jobs:
 
       - name: Run integration tests
         working-directory: lambda/purchaser
+        env:
+          PYTHONPATH: ${{ github.workspace }}/lambda
         run: |
           python test_integration.py
 

@@ -22,7 +22,7 @@ provider "aws" {
 }
 
 module "savings_plans" {
-  source = "etiennechabert/sp-autopilot/aws"
+  source  = "etiennechabert/sp-autopilot/aws"
   version = "~> 1.0"
 
   # Enable Compute Savings Plans only
@@ -30,24 +30,24 @@ module "savings_plans" {
   enable_database_sp = false
 
   # Coverage strategy - conservative targets
-  coverage_target_percent = 80  # Target 80% coverage
-  max_coverage_cap        = 90  # Never exceed 90% coverage
+  coverage_target_percent = 80 # Target 80% coverage
+  max_coverage_cap        = 90 # Never exceed 90% coverage
 
   # Risk management - gradual commitment growth
-  max_purchase_percent = 5      # Max 5% of monthly spend per cycle
-  lookback_days        = 30     # 30 days of usage history
-  min_data_days        = 14     # Require at least 14 days of data
+  max_purchase_percent = 5  # Max 5% of monthly spend per cycle
+  lookback_days        = 30 # 30 days of usage history
+  min_data_days        = 14 # Require at least 14 days of data
 
   # Compute SP configuration
   compute_sp_term_mix = {
-    three_year = 0.70  # 70% in 3-year plans (higher discount)
-    one_year   = 0.30  # 30% in 1-year plans (more flexibility)
+    three_year = 0.70 # 70% in 3-year plans (higher discount)
+    one_year   = 0.30 # 30% in 1-year plans (more flexibility)
   }
-  compute_sp_payment_option = "ALL_UPFRONT"  # Maximum savings
+  compute_sp_payment_option = "ALL_UPFRONT" # Maximum savings
 
   # Scheduling - 3-day review window
-  scheduler_schedule = "cron(0 8 1 * ? *)"  # 1st of month at 8:00 AM UTC
-  purchaser_schedule = "cron(0 8 4 * ? *)"  # 4th of month at 8:00 AM UTC
+  scheduler_schedule = "cron(0 8 1 * ? *)" # 1st of month at 8:00 AM UTC
+  purchaser_schedule = "cron(0 8 4 * ? *)" # 4th of month at 8:00 AM UTC
 
   # Notifications
   notification_emails = [
@@ -56,8 +56,8 @@ module "savings_plans" {
   ]
 
   # Operations
-  dry_run              = true  # Start in dry-run mode - emails only
-  send_no_action_email = true  # Get notified even when no action needed
+  dry_run              = true # Start in dry-run mode - emails only
+  send_no_action_email = true # Get notified even when no action needed
 
   # Monitoring
   enable_lambda_error_alarm = true
