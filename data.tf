@@ -20,7 +20,7 @@ locals {
   module_name = "sp-autopilot"
 
   # Validate at least one SP type is enabled
-  sp_types_enabled = var.enable_compute_sp || var.enable_database_sp
+  sp_types_enabled = var.enable_compute_sp || var.enable_database_sp || var.enable_sagemaker_sp
 }
 
 # ============================================================================
@@ -32,7 +32,7 @@ resource "terraform_data" "validate_sp_types" {
   lifecycle {
     precondition {
       condition     = local.sp_types_enabled
-      error_message = "At least one of enable_compute_sp or enable_database_sp must be true."
+      error_message = "At least one of enable_compute_sp, enable_database_sp, or enable_sagemaker_sp must be true."
     }
   }
 }

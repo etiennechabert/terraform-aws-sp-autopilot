@@ -165,16 +165,19 @@ output "dlq_alarm_arn" {
 output "module_configuration" {
   description = "Module configuration summary"
   value = {
-    compute_sp_enabled  = var.enable_compute_sp
-    database_sp_enabled = var.enable_database_sp
-    database_sp_term    = var.database_sp_term
-    database_sp_payment = var.database_sp_payment_option
-    coverage_target     = var.coverage_target_percent
-    max_coverage_cap    = var.max_coverage_cap
-    dry_run             = var.dry_run
-    scheduler_schedule  = var.scheduler_schedule
-    purchaser_schedule  = var.purchaser_schedule
-    notification_emails = length(var.notification_emails)
+    compute_sp_enabled       = var.enable_compute_sp
+    database_sp_enabled      = var.enable_database_sp
+    database_sp_term         = var.database_sp_term
+    database_sp_payment      = var.database_sp_payment_option
+    sagemaker_sp_enabled     = var.enable_sagemaker_sp
+    sagemaker_sp_term_mix    = var.sagemaker_sp_term_mix
+    sagemaker_sp_payment     = var.sagemaker_sp_payment_option
+    coverage_target          = var.coverage_target_percent
+    max_coverage_cap         = var.max_coverage_cap
+    dry_run                  = var.dry_run
+    scheduler_schedule       = var.scheduler_schedule
+    purchaser_schedule       = var.purchaser_schedule
+    notification_emails      = length(var.notification_emails)
   }
 }
 
@@ -185,9 +188,9 @@ output "module_configuration" {
 output "database_sp_configuration" {
   description = "Database Savings Plans configuration for monitoring"
   value = {
-    enabled        = var.enable_database_sp
-    term           = var.database_sp_term
-    payment_option = var.database_sp_payment_option
+    enabled         = var.enable_database_sp
+    term            = var.database_sp_term
+    payment_option  = var.database_sp_payment_option
     supported_services = [
       "RDS",
       "Aurora",
@@ -210,4 +213,30 @@ output "database_sp_configuration" {
 output "lambda_environment_database_sp" {
   description = "Database SP enablement flag for Lambda functions"
   value       = var.enable_database_sp ? "true" : "false"
+}
+
+# ============================================================================
+# SageMaker SP Monitoring Outputs
+# ============================================================================
+
+output "sagemaker_sp_configuration" {
+  description = "SageMaker Savings Plans configuration for monitoring"
+  value = {
+    enabled         = var.enable_sagemaker_sp
+    term_mix        = var.sagemaker_sp_term_mix
+    payment_option  = var.sagemaker_sp_payment_option
+    supported_services = [
+      "SageMaker"
+    ]
+    aws_constraints = {
+      terms_available      = "ONE_YEAR and THREE_YEAR"
+      payment_options      = "ALL_UPFRONT, PARTIAL_UPFRONT, NO_UPFRONT"
+      configurable         = true
+    }
+  }
+}
+
+output "lambda_environment_sagemaker_sp" {
+  description = "SageMaker SP enablement flag for Lambda functions"
+  value       = var.enable_sagemaker_sp ? "true" : "false"
 }

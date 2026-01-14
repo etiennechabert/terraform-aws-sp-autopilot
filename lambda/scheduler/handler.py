@@ -19,13 +19,13 @@ import logging
 import os
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from datetime import datetime, timezone
-from typing import Any, Dict, List, Optional
+from typing import Dict, List, Any, Optional
 
 import boto3
 from botocore.exceptions import ClientError
 
-from shared.aws_utils import get_clients
-
+from shared.aws_utils import get_assumed_role_session, get_clients
+from shared import notifications
 
 # Configure logging
 logger = logging.getLogger()
@@ -66,9 +66,9 @@ def handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
             ce_client = clients['ce']
             savingsplans_client = clients['savingsplans']
         except ClientError as e:
-            error_msg = f"Failed to initialize AWS clients: {e!s}"
+            error_msg = f"Failed to initialize AWS clients: {str(e)}"
             if config.get('management_account_role_arn'):
-                error_msg = f"Failed to assume role {config['management_account_role_arn']}: {e!s}"
+                error_msg = f"Failed to assume role {config['management_account_role_arn']}: {str(e)}"
             logger.error(error_msg, exc_info=True)
             send_error_email(error_msg)
             raise
@@ -80,7 +80,7 @@ def handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
 
         # Step 2: Calculate current coverage
         coverage = calculate_current_coverage(config)
-        logger.info(f"Current coverage - Compute: {coverage.get('compute', 0)}%, Database: {coverage.get('database', 0)}%")
+        logger.info(f"Current coverage - Compute: {coverage.get('compute', 0)}%, Database: {coverage.get('database', 0)}%, SageMaker: {coverage.get('sagemaker', 0)}%")
 
         # Step 3: Get AWS recommendations
         recommendations = get_aws_recommendations(config)
@@ -115,7 +115,7 @@ def handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
         }
 
     except Exception as e:
-        logger.error(f"Scheduler Lambda failed: {e!s}", exc_info=True)
+        logger.error(f"Scheduler Lambda failed: {str(e)}", exc_info=True)
         send_error_email(str(e))
         raise  # Re-raise to ensure Lambda fails visibly
 
@@ -128,6 +128,7 @@ def load_configuration() -> Dict[str, Any]:
         'dry_run': os.environ.get('DRY_RUN', 'true').lower() == 'true',
         'enable_compute_sp': os.environ.get('ENABLE_COMPUTE_SP', 'true').lower() == 'true',
         'enable_database_sp': os.environ.get('ENABLE_DATABASE_SP', 'false').lower() == 'true',
+        'enable_sagemaker_sp': os.environ.get('ENABLE_SAGEMAKER_SP', 'false').lower() == 'true',
         'coverage_target_percent': float(os.environ.get('COVERAGE_TARGET_PERCENT', '90')),
         'max_purchase_percent': float(os.environ.get('MAX_PURCHASE_PERCENT', '10')),
         'renewal_window_days': int(os.environ.get('RENEWAL_WINDOW_DAYS', '7')),
@@ -136,6 +137,8 @@ def load_configuration() -> Dict[str, Any]:
         'min_commitment_per_plan': float(os.environ.get('MIN_COMMITMENT_PER_PLAN', '0.001')),
         'compute_sp_term_mix': json.loads(os.environ.get('COMPUTE_SP_TERM_MIX', '{"three_year": 0.67, "one_year": 0.33}')),
         'compute_sp_payment_option': os.environ.get('COMPUTE_SP_PAYMENT_OPTION', 'ALL_UPFRONT'),
+        'sagemaker_sp_term_mix': json.loads(os.environ.get('SAGEMAKER_SP_TERM_MIX', '{"three_year": 0.67, "one_year": 0.33}')),
+        'sagemaker_sp_payment_option': os.environ.get('SAGEMAKER_SP_PAYMENT_OPTION', 'ALL_UPFRONT'),
         'partial_upfront_percent': float(os.environ.get('PARTIAL_UPFRONT_PERCENT', '50')),
         'management_account_role_arn': os.environ.get('MANAGEMENT_ACCOUNT_ROLE_ARN'),
         'tags': json.loads(os.environ.get('TAGS', '{}')),
@@ -206,7 +209,7 @@ def calculate_current_coverage(config: Dict[str, Any]) -> Dict[str, float]:
         logger.info(f"Valid plans after filtering: {len(valid_plan_ids)}")
 
     except ClientError as e:
-        logger.error(f"Failed to describe Savings Plans: {e!s}")
+        logger.error(f"Failed to describe Savings Plans: {str(e)}")
         raise
 
     # Get coverage from Cost Explorer
@@ -230,7 +233,8 @@ def calculate_current_coverage(config: Dict[str, Any]) -> Dict[str, float]:
             logger.warning("No coverage data available from Cost Explorer")
             return {
                 'compute': 0.0,
-                'database': 0.0
+                'database': 0.0,
+                'sagemaker': 0.0
             }
 
         # Get the most recent coverage data point
@@ -245,16 +249,17 @@ def calculate_current_coverage(config: Dict[str, Any]) -> Dict[str, float]:
         logger.info(f"Overall Savings Plans coverage: {coverage_percentage}%")
 
         # Note: Cost Explorer doesn't separate coverage by SP type in the basic API call
-        # For now, we'll use the overall coverage for compute and assume 0 for database
+        # For now, we'll use the overall coverage for compute and assume 0 for database and sagemaker
         # In a production system, you might need to call GetSavingsPlansCoverage with
         # GroupBy to separate by service or use DescribeSavingsPlans to categorize
         coverage = {
             'compute': coverage_percentage,
-            'database': 0.0
+            'database': 0.0,
+            'sagemaker': 0.0
         }
 
     except ClientError as e:
-        logger.error(f"Failed to get coverage from Cost Explorer: {e!s}")
+        logger.error(f"Failed to get coverage from Cost Explorer: {str(e)}")
         raise
 
     logger.info(f"Coverage calculated: {coverage}")
@@ -322,11 +327,12 @@ def _fetch_compute_sp_recommendation(config: Dict[str, Any], lookback_period: st
                 'GenerationTimestamp': generation_timestamp,
                 'Details': best_recommendation
             }
-        logger.info("No Compute SP recommendations available from AWS")
-        return None
+        else:
+            logger.info("No Compute SP recommendations available from AWS")
+            return None
 
     except ClientError as e:
-        logger.error(f"Failed to get Compute SP recommendations: {e!s}")
+        logger.error(f"Failed to get Compute SP recommendations: {str(e)}")
         raise
 
 
@@ -393,11 +399,83 @@ def _fetch_database_sp_recommendation(config: Dict[str, Any], lookback_period: s
                 'GenerationTimestamp': generation_timestamp,
                 'Details': best_recommendation
             }
-        logger.info("No Database SP recommendations available from AWS")
-        return None
+        else:
+            logger.info("No Database SP recommendations available from AWS")
+            return None
 
     except ClientError as e:
-        logger.error(f"Failed to get Database SP recommendations: {e!s}")
+        logger.error(f"Failed to get Database SP recommendations: {str(e)}")
+        raise
+
+
+def _fetch_sagemaker_sp_recommendation(config: Dict[str, Any], lookback_period: str) -> Optional[Dict[str, Any]]:
+    """
+    Fetch SageMaker Savings Plan recommendation from AWS Cost Explorer.
+
+    This function is designed to be executed in parallel with other recommendation
+    fetches using ThreadPoolExecutor. It makes a synchronous API call to AWS Cost
+    Explorer's GetSavingsPlansPurchaseRecommendation API.
+
+    Args:
+        config: Configuration dictionary
+        lookback_period: AWS API lookback period value
+
+    Returns:
+        dict: SageMaker SP recommendation or None
+
+    Raises:
+        ClientError: If the Cost Explorer API call fails
+    """
+    logger.info("Fetching SageMaker Savings Plan recommendations")
+    try:
+        # SageMaker Savings Plans use the SAGEMAKER_SP type in the Cost Explorer API
+        response = ce_client.get_savings_plans_purchase_recommendation(
+            SavingsPlansType='SAGEMAKER_SP',
+            LookbackPeriodInDays=lookback_period,
+            TermInYears='ONE_YEAR',
+            PaymentOption='NO_UPFRONT'
+        )
+
+        # Extract recommendation metadata
+        metadata = response.get('Metadata', {})
+        recommendation_id = metadata.get('RecommendationId', 'unknown')
+        generation_timestamp = metadata.get('GenerationTimestamp', 'unknown')
+
+        # Validate sufficient data
+        lookback_period_days = metadata.get('LookbackPeriodInDays', '0')
+        if lookback_period_days and int(lookback_period_days) < config['min_data_days']:
+            logger.warning(
+                f"SageMaker SP recommendation has insufficient data: "
+                f"{lookback_period_days} days < {config['min_data_days']} days minimum"
+            )
+            return None
+
+        # Extract recommendation details
+        recommendation_details = response.get('SavingsPlansPurchaseRecommendation', {})
+        recommendation_summary = recommendation_details.get('SavingsPlansPurchaseRecommendationDetails', [])
+
+        if recommendation_summary:
+            # Get the first (best) recommendation
+            best_recommendation = recommendation_summary[0]
+            hourly_commitment = best_recommendation.get('HourlyCommitmentToPurchase', '0')
+
+            logger.info(
+                f"SageMaker SP recommendation: ${hourly_commitment}/hour "
+                f"(recommendation_id: {recommendation_id}, generated: {generation_timestamp})"
+            )
+
+            return {
+                'HourlyCommitmentToPurchase': hourly_commitment,
+                'RecommendationId': recommendation_id,
+                'GenerationTimestamp': generation_timestamp,
+                'Details': best_recommendation
+            }
+        else:
+            logger.info("No SageMaker SP recommendations available from AWS")
+            return None
+
+    except ClientError as e:
+        logger.error(f"Failed to get SageMaker SP recommendations: {str(e)}")
         raise
 
 
@@ -436,7 +514,8 @@ def get_aws_recommendations(config: Dict[str, Any]) -> Dict[str, Any]:
 
     recommendations = {
         'compute': None,
-        'database': None
+        'database': None,
+        'sagemaker': None
     }
 
     # Map lookback_days to AWS API parameter value
@@ -456,6 +535,8 @@ def get_aws_recommendations(config: Dict[str, Any]) -> Dict[str, Any]:
         tasks['compute'] = ('compute', _fetch_compute_sp_recommendation, config, lookback_period)
     if config['enable_database_sp']:
         tasks['database'] = ('database', _fetch_database_sp_recommendation, config, lookback_period)
+    if config['enable_sagemaker_sp']:
+        tasks['sagemaker'] = ('sagemaker', _fetch_sagemaker_sp_recommendation, config, lookback_period)
 
     # Execute API calls in parallel using ThreadPoolExecutor
     if tasks:
@@ -473,7 +554,7 @@ def get_aws_recommendations(config: Dict[str, Any]) -> Dict[str, Any]:
                     result = future.result()
                     recommendations[key] = result
                 except Exception as e:
-                    logger.error(f"Failed to fetch {key} recommendation: {e!s}")
+                    logger.error(f"Failed to fetch {key} recommendation: {str(e)}")
                     raise
 
     logger.info(f"Recommendations retrieved: {recommendations}")
@@ -570,6 +651,40 @@ def calculate_purchase_need(
         else:
             logger.info("Database SP has coverage gap but no AWS recommendation available")
 
+    # Process SageMaker SP if enabled
+    if config['enable_sagemaker_sp']:
+        current_sagemaker_coverage = coverage.get('sagemaker', 0.0)
+        coverage_gap = target_coverage - current_sagemaker_coverage
+
+        logger.info(
+            f"SageMaker SP - Current: {current_sagemaker_coverage}%, "
+            f"Target: {target_coverage}%, Gap: {coverage_gap}%"
+        )
+
+        # Only purchase if gap is positive and we have a recommendation
+        if coverage_gap > 0 and recommendations.get('sagemaker'):
+            hourly_commitment = recommendations['sagemaker'].get('HourlyCommitmentToPurchase', '0')
+            hourly_commitment_float = float(hourly_commitment)
+
+            if hourly_commitment_float > 0:
+                purchase_plan = {
+                    'sp_type': 'sagemaker',
+                    'hourly_commitment': hourly_commitment_float,
+                    'payment_option': config.get('sagemaker_sp_payment_option', 'ALL_UPFRONT'),
+                    'recommendation_id': recommendations['sagemaker'].get('RecommendationId', 'unknown')
+                }
+                purchase_plans.append(purchase_plan)
+                logger.info(
+                    f"SageMaker SP purchase planned: ${hourly_commitment_float}/hour "
+                    f"(recommendation_id: {purchase_plan['recommendation_id']})"
+                )
+            else:
+                logger.info("SageMaker SP recommendation has zero commitment - skipping")
+        elif coverage_gap <= 0:
+            logger.info("SageMaker SP coverage already meets or exceeds target - no purchase needed")
+        else:
+            logger.info("SageMaker SP has coverage gap but no AWS recommendation available")
+
     logger.info(f"Purchase need calculated: {len(purchase_plans)} plans")
     return purchase_plans
 
@@ -633,7 +748,7 @@ def split_by_term(
     purchase_plans: List[Dict[str, Any]]
 ) -> List[Dict[str, Any]]:
     """
-    Split Compute SP commitments by term mix.
+    Split Compute and SageMaker SP commitments by term mix.
 
     Args:
         config: Configuration dictionary
@@ -649,7 +764,8 @@ def split_by_term(
         return []
 
     split_plans = []
-    term_mix = config.get('compute_sp_term_mix', {})
+    compute_term_mix = config.get('compute_sp_term_mix', {})
+    sagemaker_term_mix = config.get('sagemaker_sp_term_mix', {})
 
     # Map term_mix keys to API term values
     term_mapping = {
@@ -671,9 +787,45 @@ def split_by_term(
             base_commitment = plan.get('hourly_commitment', 0.0)
             min_commitment = config.get('min_commitment_per_plan', 0.001)
 
-            logger.info(f"Splitting Compute SP: ${base_commitment:.4f}/hour across {len(term_mix)} terms")
+            logger.info(f"Splitting Compute SP: ${base_commitment:.4f}/hour across {len(compute_term_mix)} terms")
 
-            for term_key, percentage in term_mix.items():
+            for term_key, percentage in compute_term_mix.items():
+                # Calculate commitment for this term
+                term_commitment = base_commitment * percentage
+
+                # Skip if below minimum threshold
+                if term_commitment < min_commitment:
+                    logger.info(
+                        f"Skipping {term_key} term: commitment ${term_commitment:.4f}/hour "
+                        f"below minimum ${min_commitment:.4f}/hour"
+                    )
+                    continue
+
+                # Map term key to API value
+                term_value = term_mapping.get(term_key)
+                if not term_value:
+                    logger.warning(f"Unknown term key '{term_key}' - skipping")
+                    continue
+
+                # Create new plan for this term
+                term_plan = plan.copy()
+                term_plan['hourly_commitment'] = term_commitment
+                term_plan['term'] = term_value
+
+                split_plans.append(term_plan)
+                logger.info(
+                    f"Created {term_value} plan: ${term_commitment:.4f}/hour "
+                    f"({percentage * 100:.1f}% of base commitment)"
+                )
+
+        # SageMaker SP needs to be split by term mix
+        elif sp_type == 'sagemaker':
+            base_commitment = plan.get('hourly_commitment', 0.0)
+            min_commitment = config.get('min_commitment_per_plan', 0.001)
+
+            logger.info(f"Splitting SageMaker SP: ${base_commitment:.4f}/hour across {len(sagemaker_term_mix)} terms")
+
+            for term_key, percentage in sagemaker_term_mix.items():
                 # Calculate commitment for this term
                 term_commitment = base_commitment * percentage
 
@@ -765,7 +917,7 @@ def queue_purchase_intents(
             queued_count += 1
 
         except ClientError as e:
-            logger.error(f"Failed to queue purchase intent: {e!s}")
+            logger.error(f"Failed to queue purchase intent: {str(e)}")
             raise
 
     logger.info(f"All {queued_count} purchase intents queued successfully")
@@ -796,6 +948,7 @@ def send_scheduled_email(
         "Current Coverage:",
         f"  Compute SP:  {coverage.get('compute', 0):.2f}%",
         f"  Database SP: {coverage.get('database', 0):.2f}%",
+        f"  SageMaker SP: {coverage.get('sagemaker', 0):.2f}%",
         "",
         f"Target Coverage: {config.get('coverage_target_percent', 90):.2f}%",
         "",
@@ -850,7 +1003,7 @@ def send_scheduled_email(
         )
         logger.info(f"Email sent successfully to {config['sns_topic_arn']}")
     except ClientError as e:
-        logger.error(f"Failed to send email: {e!s}")
+        logger.error(f"Failed to send email: {str(e)}")
         raise
 
 
@@ -881,6 +1034,7 @@ def send_dry_run_email(
         "Current Coverage:",
         f"  Compute SP:  {coverage.get('compute', 0):.2f}%",
         f"  Database SP: {coverage.get('database', 0):.2f}%",
+        f"  SageMaker SP: {coverage.get('sagemaker', 0):.2f}%",
         "",
         f"Target Coverage: {config.get('coverage_target_percent', 90):.2f}%",
         "",
@@ -938,7 +1092,7 @@ def send_dry_run_email(
         )
         logger.info(f"Dry run email sent successfully to {config['sns_topic_arn']}")
     except ClientError as e:
-        logger.error(f"Failed to send dry run email: {e!s}")
+        logger.error(f"Failed to send dry run email: {str(e)}")
         raise
 
 
@@ -992,4 +1146,4 @@ def send_error_email(error_message: str) -> None:
         logger.info(f"Error email sent successfully to {sns_topic_arn}")
     except Exception as e:
         # Don't raise - we're already in error handling
-        logger.error(f"Failed to send error email: {e!s}")
+        logger.error(f"Failed to send error email: {str(e)}")

@@ -1,16 +1,11 @@
 # AWS Savings Plans Automation Module
 
 [![License](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](https://opensource.org/licenses/Apache-2.0)
-![Terraform Version](https://img.shields.io/badge/Terraform-%3E%3D%201.4-623CE4.svg)
+![Terraform Version](https://img.shields.io/badge/Terraform-%3E%3D%201.0-623CE4.svg)
 ![AWS Provider Version](https://img.shields.io/badge/AWS%20Provider-%3E%3D%205.0-FF9900.svg)
-![Python Version](https://img.shields.io/badge/Python-3.11%2B-3776AB.svg?logo=python&logoColor=white)
-
 [![Terraform Validation](https://github.com/etiennechabert/terraform-aws-sp-autopilot/actions/workflows/terraform-validation.yml/badge.svg)](https://github.com/etiennechabert/terraform-aws-sp-autopilot/actions/workflows/terraform-validation.yml)
 [![Tests](https://github.com/etiennechabert/terraform-aws-sp-autopilot/actions/workflows/tests.yml/badge.svg)](https://github.com/etiennechabert/terraform-aws-sp-autopilot/actions/workflows/tests.yml)
 [![Security Scan](https://github.com/etiennechabert/terraform-aws-sp-autopilot/actions/workflows/security-scan.yml/badge.svg)](https://github.com/etiennechabert/terraform-aws-sp-autopilot/actions/workflows/security-scan.yml)
-
-[![codecov](https://codecov.io/gh/etiennechabert/terraform-aws-sp-autopilot/branch/main/graph/badge.svg)](https://codecov.io/gh/etiennechabert/terraform-aws-sp-autopilot)
-![Code Style](https://img.shields.io/badge/Code%20Style-Ruff-black.svg?logo=ruff)
 
 An open-source Terraform module that automates AWS Savings Plans purchases based on usage analysis. The module maintains consistent coverage while limiting financial exposure through incremental, spread-out commitments.
 
@@ -35,7 +30,7 @@ An open-source Terraform module that automates AWS Savings Plans purchases based
 ## Features
 
 - **Automated Savings Plans purchasing** — Maintains target coverage levels without manual intervention
-- **Dual SP type support** — Supports both Compute and Database Savings Plans independently
+- **Triple SP type support** — Supports Compute, Database, and SageMaker Savings Plans independently
 - **Human review window** — Configurable delay between scheduling and purchasing allows cancellation
 - **Risk management** — Spread financial commitments over time with configurable purchase limits
 - **Coverage cap enforcement** — Hard ceiling prevents over-commitment if usage shrinks
@@ -66,6 +61,18 @@ An open-source Terraform module that automates AWS Savings Plans purchases based
 
 > **⚠️ Important:** Database Savings Plans have fixed AWS constraints. The `database_sp_term` and `database_sp_payment_option` variables exist for validation only — they cannot be changed from `ONE_YEAR` and `NO_UPFRONT` respectively.
 
+### SageMaker Savings Plans
+
+| Attribute | Details |
+|-----------|---------|
+| **Coverage** | SageMaker training, inference (real-time and serverless), and notebook instances |
+| **Terms** | 1-year, 3-year (configurable mix) |
+| **Payment Options** | All Upfront, Partial Upfront, No Upfront |
+| **Max Discount** | Up to 64% |
+| **Configuration** | Enable via `enable_sagemaker_sp = true` |
+
+> **✓ Fully Configurable:** SageMaker Savings Plans offer complete flexibility in term and payment options, similar to Compute Savings Plans. You can customize the term mix (e.g., 70% 3-year, 30% 1-year) via `sagemaker_sp_term_mix` and select any payment option via `sagemaker_sp_payment_option` (`ALL_UPFRONT`, `PARTIAL_UPFRONT`, or `NO_UPFRONT`).
+
 ## Architecture
 
 The module consists of two Lambda functions with an SQS queue between them:
@@ -76,7 +83,7 @@ The module consists of two Lambda functions with an SQS queue between them:
 
 1. **Scheduler Lambda** runs on configurable schedule (e.g., 1st of month)
    - Purges any stale queue messages
-   - Fetches current coverage and AWS recommendations (separate calls for Compute and Database)
+   - Fetches current coverage and AWS recommendations (separate calls for Compute, Database, and SageMaker)
    - Calculates purchase need to reach target coverage
    - Queues purchase intents to SQS (or sends email only if `dry_run = true`)
 
@@ -86,7 +93,7 @@ The module consists of two Lambda functions with an SQS queue between them:
 
 3. **Purchaser Lambda** runs on separate schedule (e.g., 4th of month)
    - Processes each message from queue
-   - Validates purchase won't exceed `max_coverage_cap` (checked separately for Compute and Database)
+   - Validates purchase won't exceed `max_coverage_cap` (checked separately for Compute, Database, and SageMaker)
    - Executes purchase via AWS CreateSavingsPlan API
    - Sends aggregated email summary of all purchases
 
@@ -131,15 +138,41 @@ module "savings_plans" {
 </details>
 
 <details>
-<summary><b>Both Compute and Database (Production Example)</b></summary>
+<summary><b>SageMaker Savings Plans Only</b></summary>
 
 ```hcl
 module "savings_plans" {
   source  = "etiennechabert/sp-autopilot/aws"
   version = "~> 1.0"
 
-  enable_compute_sp  = true
-  enable_database_sp = true
+  enable_compute_sp  = false
+  enable_sagemaker_sp = true
+
+  coverage_target_percent = 90
+  notification_emails     = ["ml-team@example.com"]
+  dry_run                 = true
+
+  # SageMaker SP customization (optional)
+  sagemaker_sp_term_mix = {
+    three_year = 0.70
+    one_year   = 0.30
+  }
+  sagemaker_sp_payment_option = "ALL_UPFRONT"
+}
+```
+</details>
+
+<details>
+<summary><b>All Three SP Types (Production Example)</b></summary>
+
+```hcl
+module "savings_plans" {
+  source  = "etiennechabert/sp-autopilot/aws"
+  version = "~> 1.0"
+
+  enable_compute_sp   = true
+  enable_database_sp  = true
+  enable_sagemaker_sp = true
 
   coverage_target_percent = 90
   max_coverage_cap        = 95
@@ -152,11 +185,18 @@ module "savings_plans" {
   }
   compute_sp_payment_option = "ALL_UPFRONT"
 
+  # SageMaker SP customization
+  sagemaker_sp_term_mix = {
+    three_year = 0.70
+    one_year   = 0.30
+  }
+  sagemaker_sp_payment_option = "ALL_UPFRONT"
+
   # Schedule with 3-day review window
   scheduler_schedule = "cron(0 8 1 * ? *)"  # 1st of month
   purchaser_schedule = "cron(0 8 4 * ? *)"  # 4th of month
 
-  notification_emails = ["devops@example.com", "finops@example.com"]
+  notification_emails = ["devops@example.com", "finops@example.com", "ml-team@example.com"]
   dry_run             = false
 }
 ```
@@ -208,8 +248,9 @@ module "savings_plans" {
 |----------|------|---------|-------------|
 | `enable_compute_sp` | `bool` | `true` | Enable Compute Savings Plans automation |
 | `enable_database_sp` | `bool` | `false` | Enable Database Savings Plans automation (see [Supported Savings Plan Types](#supported-savings-plan-types) for coverage and constraints) |
+| `enable_sagemaker_sp` | `bool` | `false` | Enable SageMaker Savings Plans automation for ML/AI workloads |
 
-> **Note:** At least one of `enable_compute_sp` or `enable_database_sp` must be `true`.
+> **Note:** At least one of `enable_compute_sp`, `enable_database_sp`, or `enable_sagemaker_sp` must be `true`.
 
 ### Coverage Strategy
 
@@ -249,6 +290,13 @@ module "savings_plans" {
 | `database_sp_payment_option` | `string` | `"NO_UPFRONT"` | Must be `NO_UPFRONT` (AWS constraint — validation only) |
 
 > **Note:** These variables exist for validation only. See [Database Savings Plans](#database-savings-plans) for AWS constraint details.
+
+### SageMaker SP Options
+
+| Variable | Type | Default | Description |
+|----------|------|---------|-------------|
+| `sagemaker_sp_term_mix` | `object` | `{three_year: 0.67, one_year: 0.33}` | Split of commitment between 3-year and 1-year terms (must sum to 1.0) |
+| `sagemaker_sp_payment_option` | `string` | `"ALL_UPFRONT"` | Payment option: `ALL_UPFRONT`, `PARTIAL_UPFRONT`, `NO_UPFRONT` |
 
 ### Scheduling
 
@@ -296,6 +344,12 @@ module "savings_plans" {
 
 ## Supported Services
 
+### Compute Savings Plans Cover:
+
+- **Amazon EC2** — Elastic Compute Cloud instances (any family, size, region, OS, tenancy)
+- **AWS Lambda** — Serverless compute
+- **AWS Fargate** — Serverless containers for ECS and EKS
+
 ### Database Savings Plans Cover:
 
 - **Amazon RDS** — Relational Database Service (MySQL, PostgreSQL, MariaDB, Oracle, SQL Server)
@@ -308,22 +362,23 @@ module "savings_plans" {
 - **Amazon Timestream** — Time series database service
 - **AWS Database Migration Service (DMS)** — Database migration workloads
 
-### Compute Savings Plans Cover:
+### SageMaker Savings Plans Cover:
 
-- **Amazon EC2** — Elastic Compute Cloud instances (any family, size, region, OS, tenancy)
-- **AWS Lambda** — Serverless compute
-- **AWS Fargate** — Serverless containers for ECS and EKS
+- **Amazon SageMaker Training** — ML model training jobs
+- **Amazon SageMaker Real-Time Inference** — Hosted model endpoints
+- **Amazon SageMaker Serverless Inference** — On-demand inference endpoints
+- **Amazon SageMaker Notebook Instances** — Jupyter notebook environments
 
 ## Coverage Tracking
 
-**Important:** Coverage for Compute and Database Savings Plans is tracked **separately**.
+**Important:** Coverage for Compute, Database, and SageMaker Savings Plans is tracked **separately**.
 
-- **Separate Recommendations:** Scheduler fetches separate AWS recommendations for Compute and Database
-- **Independent Targets:** Both SP types work toward the same `coverage_target_percent`, but separately
+- **Separate Recommendations:** Scheduler fetches separate AWS recommendations for Compute, Database, and SageMaker
+- **Independent Targets:** All SP types work toward the same `coverage_target_percent`, but separately
 - **Independent Caps:** The `max_coverage_cap` is enforced independently for each SP type
 - **Separate Email Sections:** Notifications show coverage percentages for each SP type separately
 
-When both SP types are enabled, email notifications show coverage and recommendations separately for each type, ensuring independent purchasing decisions and flexible workload management.
+When multiple SP types are enabled, email notifications show coverage and recommendations separately for each type, ensuring independent purchasing decisions and flexible workload management.
 
 ## Outputs
 

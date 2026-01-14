@@ -15,15 +15,15 @@ This Lambda:
 import json
 import logging
 import os
-from datetime import date, datetime, timedelta, timezone
-from typing import Any, Dict, List
+from datetime import datetime, timezone, timedelta, date
+from typing import Dict, List, Any, Optional
 
 import boto3
 from botocore.exceptions import ClientError
+
+from shared.aws_utils import get_assumed_role_session, get_clients
+from shared import notifications
 from validation import validate_purchase_intent
-
-from shared.aws_utils import get_clients
-
 
 # Configure logging
 logger = logging.getLogger()
@@ -64,9 +64,9 @@ def handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
             ce_client = clients['ce']
             savingsplans_client = clients['savingsplans']
         except ClientError as e:
-            error_msg = f"Failed to initialize AWS clients: {e!s}"
+            error_msg = f"Failed to initialize AWS clients: {str(e)}"
             if config.get('management_account_role_arn'):
-                error_msg = f"Failed to assume role {config['management_account_role_arn']}: {e!s}"
+                error_msg = f"Failed to assume role {config['management_account_role_arn']}: {str(e)}"
             logger.error(error_msg, exc_info=True)
             send_error_email(error_msg)
             raise
@@ -89,7 +89,7 @@ def handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
 
         # Step 2: Get current coverage
         coverage = get_current_coverage(config)
-        logger.info(f"Current coverage - Compute: {coverage.get('compute', 0)}%, Database: {coverage.get('database', 0)}%")
+        logger.info(f"Current coverage - Compute: {coverage.get('compute', 0)}%, Database: {coverage.get('database', 0)}%, SageMaker: {coverage.get('sagemaker', 0)}%")
 
         # Step 3: Process each message
         results = process_purchase_messages(config, messages, coverage)
@@ -109,7 +109,7 @@ def handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
         }
 
     except Exception as e:
-        logger.error(f"Purchaser Lambda failed: {e!s}", exc_info=True)
+        logger.error(f"Purchaser Lambda failed: {str(e)}", exc_info=True)
         send_error_email(str(e))
         raise  # Re-raise to ensure Lambda fails visibly
 
@@ -151,7 +151,7 @@ def receive_messages(queue_url: str, max_messages: int = 10) -> List[Dict[str, A
         return messages
 
     except ClientError as e:
-        logger.error(f"Failed to receive messages: {e!s}")
+        logger.error(f"Failed to receive messages: {str(e)}")
         raise
 
 
@@ -184,13 +184,13 @@ def get_current_coverage(config: Dict[str, Any]) -> Dict[str, float]:
             expiring_plans
         )
 
-        logger.info(f"Coverage calculated: Compute={adjusted_coverage['compute']:.2f}%, Database={adjusted_coverage['database']:.2f}%")
+        logger.info(f"Coverage calculated: Compute={adjusted_coverage['compute']:.2f}%, Database={adjusted_coverage['database']:.2f}%, SageMaker={adjusted_coverage['sagemaker']:.2f}%")
         logger.info(f"Expiring plans excluded: {len(expiring_plans)} plans")
 
         return adjusted_coverage
 
     except ClientError as e:
-        logger.error(f"Failed to calculate coverage: {e!s}")
+        logger.error(f"Failed to calculate coverage: {str(e)}")
         raise
 
 
@@ -227,7 +227,8 @@ def get_ce_coverage(start_date: date, end_date: date, config: Dict[str, Any]) ->
         # Calculate average coverage across the period
         coverage = {
             'compute': 0.0,
-            'database': 0.0
+            'database': 0.0,
+            'sagemaker': 0.0
         }
 
         for result in compute_response.get('SavingsPlansCoverages', []):
@@ -239,12 +240,14 @@ def get_ce_coverage(start_date: date, end_date: date, config: Dict[str, Any]) ->
                     coverage['compute'] = max(coverage['compute'], coverage_pct)
                 elif sp_type == 'DatabaseSavingsPlans':
                     coverage['database'] = max(coverage['database'], coverage_pct)
+                elif sp_type == 'SageMakerSavingsPlans':
+                    coverage['sagemaker'] = max(coverage['sagemaker'], coverage_pct)
 
-        logger.info(f"Raw coverage from CE: Compute={coverage['compute']:.2f}%, Database={coverage['database']:.2f}%")
+        logger.info(f"Raw coverage from CE: Compute={coverage['compute']:.2f}%, Database={coverage['database']:.2f}%, SageMaker={coverage['sagemaker']:.2f}%")
         return coverage
 
     except ClientError as e:
-        logger.error(f"Failed to get Cost Explorer coverage: {e!s}")
+        logger.error(f"Failed to get Cost Explorer coverage: {str(e)}")
         raise
 
 
@@ -287,7 +290,7 @@ def get_expiring_plans(config: Dict[str, Any]) -> List[Dict[str, Any]]:
         return expiring_plans
 
     except ClientError as e:
-        logger.error(f"Failed to get Savings Plans: {e!s}")
+        logger.error(f"Failed to get Savings Plans: {str(e)}")
         raise
 
 
@@ -318,6 +321,9 @@ def adjust_coverage_for_expiring_plans(
     has_expiring_database = any(
         p['savingsPlanType'] == 'DatabaseSavingsPlans' for p in expiring_plans
     )
+    has_expiring_sagemaker = any(
+        p['savingsPlanType'] == 'SageMakerSavingsPlans' for p in expiring_plans
+    )
 
     # If expiring plans exist for a type, set coverage to 0 to force renewal
     if has_expiring_compute:
@@ -327,6 +333,10 @@ def adjust_coverage_for_expiring_plans(
     if has_expiring_database:
         logger.info("Database Savings Plans expiring - setting coverage to 0% to force renewal")
         adjusted_coverage['database'] = 0.0
+
+    if has_expiring_sagemaker:
+        logger.info("SageMaker Savings Plans expiring - setting coverage to 0% to force renewal")
+        adjusted_coverage['sagemaker'] = 0.0
 
     return adjusted_coverage
 
@@ -369,10 +379,10 @@ def process_purchase_messages(
             try:
                 validate_purchase_intent(purchase_intent)
             except ValueError as e:
-                logger.error(f"Message validation failed: {e!s}")
+                logger.error(f"Message validation failed: {str(e)}")
                 results['failed'].append({
                     'intent': purchase_intent,
-                    'error': f"Validation error: {e!s}"
+                    'error': f"Validation error: {str(e)}"
                 })
                 results['failed_count'] += 1
                 # Message stays in queue for retry - do not delete
@@ -408,7 +418,7 @@ def process_purchase_messages(
                 delete_message(config['queue_url'], message['ReceiptHandle'])
 
         except ClientError as e:
-            logger.error(f"Failed to process purchase: {e!s}")
+            logger.error(f"Failed to process purchase: {str(e)}")
             results['failed'].append({
                 'intent': purchase_intent if 'purchase_intent' in locals() else {},
                 'error': str(e)
@@ -417,7 +427,7 @@ def process_purchase_messages(
             # Message stays in queue for retry
 
         except Exception as e:
-            logger.error(f"Unexpected error processing message: {e!s}")
+            logger.error(f"Unexpected error processing message: {str(e)}")
             results['failed'].append({
                 'error': str(e)
             })
@@ -453,6 +463,8 @@ def would_exceed_cap(
         coverage_type = 'compute'
     elif sp_type == 'DatabaseSavingsPlans':
         coverage_type = 'database'
+    elif sp_type == 'SageMakerSavingsPlans':
+        coverage_type = 'sagemaker'
     else:
         logger.warning(f"Unknown SP type: {sp_type}, defaulting to compute")
         coverage_type = 'compute'
@@ -569,6 +581,11 @@ def update_coverage_tracking(
         logger.info(
             f"Updated Database coverage tracking: {current_coverage['database']:.2f}% -> {projected_coverage:.2f}%"
         )
+    elif sp_type == 'SageMakerSavingsPlans':
+        updated_coverage['sagemaker'] = projected_coverage
+        logger.info(
+            f"Updated SageMaker coverage tracking: {current_coverage['sagemaker']:.2f}% -> {projected_coverage:.2f}%"
+        )
     else:
         logger.warning(f"Unknown SP type for coverage tracking: {sp_type}")
         # Return unchanged coverage for unknown types
@@ -592,7 +609,7 @@ def delete_message(queue_url: str, receipt_handle: str) -> None:
         )
         logger.info("Message deleted from queue")
     except ClientError as e:
-        logger.error(f"Failed to delete message: {e!s}")
+        logger.error(f"Failed to delete message: {str(e)}")
         raise
 
 
@@ -631,6 +648,7 @@ def send_summary_email(
         "Current Coverage After Execution:",
         f"  Compute Savings Plans: {coverage.get('compute', 0):.2f}%",
         f"  Database Savings Plans: {coverage.get('database', 0):.2f}%",
+        f"  SageMaker Savings Plans: {coverage.get('sagemaker', 0):.2f}%",
         "",
     ]
 
@@ -736,7 +754,7 @@ def send_summary_email(
         )
         logger.info("Summary email sent successfully")
     except ClientError as e:
-        logger.error(f"Failed to send summary email: {e!s}")
+        logger.error(f"Failed to send summary email: {str(e)}")
         raise
 
 
@@ -802,5 +820,5 @@ def send_error_email(error_message: str) -> None:
         )
         logger.info("Error notification email sent successfully")
     except ClientError as e:
-        logger.error(f"Failed to send error notification email: {e!s}")
+        logger.error(f"Failed to send error notification email: {str(e)}")
         # Don't raise - we're already in error handling, don't want to mask the original error

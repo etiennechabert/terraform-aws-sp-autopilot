@@ -16,6 +16,12 @@ variable "enable_database_sp" {
   default     = false
 }
 
+variable "enable_sagemaker_sp" {
+  description = "Enable SageMaker Savings Plans automation"
+  type        = bool
+  default     = false
+}
+
 # ============================================================================
 # 7.2 Coverage Strategy
 # ============================================================================
@@ -27,7 +33,7 @@ variable "coverage_target_percent" {
 
   validation {
     condition     = var.coverage_target_percent >= 1 && var.coverage_target_percent <= 100
-    error_message = "Coverage target percent must be between 1 and 100."
+    error_message = "coverage_target_percent must be between 1 and 100."
   }
 }
 
@@ -38,7 +44,12 @@ variable "max_coverage_cap" {
 
   validation {
     condition     = var.max_coverage_cap <= 100
-    error_message = "Max coverage cap must be less than or equal to 100."
+    error_message = "max_coverage_cap must be <= 100."
+  }
+
+  validation {
+    condition     = var.max_coverage_cap > var.coverage_target_percent
+    error_message = "max_coverage_cap must be greater than coverage_target_percent."
   }
 }
 
@@ -71,7 +82,7 @@ variable "min_commitment_per_plan" {
 
   validation {
     condition     = var.min_commitment_per_plan >= 0.001
-    error_message = "Min commitment per plan must be at least 0.001 (AWS minimum)."
+    error_message = "min_commitment_per_plan must be >= 0.001 (AWS minimum)."
   }
 }
 
@@ -107,7 +118,7 @@ variable "compute_sp_term_mix" {
 
   validation {
     condition     = abs(var.compute_sp_term_mix.three_year + var.compute_sp_term_mix.one_year - 1) < 0.0001
-    error_message = "The sum of compute_sp_term_mix.three_year and compute_sp_term_mix.one_year must equal 1."
+    error_message = "compute_sp_term_mix.three_year + compute_sp_term_mix.one_year must equal 1."
   }
 }
 
@@ -151,6 +162,43 @@ variable "database_sp_payment_option" {
   validation {
     condition     = var.database_sp_payment_option == "NO_UPFRONT"
     error_message = "database_sp_payment_option must be NO_UPFRONT. AWS Database Savings Plans only support no upfront payment."
+  }
+}
+
+# ============================================================================
+# 7.5.2 SageMaker SP Options
+# ============================================================================
+
+variable "sagemaker_sp_term_mix" {
+  description = "Split of commitment between terms for SageMaker Savings Plans"
+  type = object({
+    three_year = number
+    one_year   = number
+  })
+  default = {
+    three_year = 0.67
+    one_year   = 0.33
+  }
+
+  validation {
+    condition     = var.sagemaker_sp_term_mix.three_year >= 0 && var.sagemaker_sp_term_mix.one_year >= 0
+    error_message = "Both term mix values must be non-negative."
+  }
+
+  validation {
+    condition     = abs(var.sagemaker_sp_term_mix.three_year + var.sagemaker_sp_term_mix.one_year - 1) < 0.0001
+    error_message = "sagemaker_sp_term_mix.three_year + sagemaker_sp_term_mix.one_year must equal 1."
+  }
+}
+
+variable "sagemaker_sp_payment_option" {
+  description = "Payment option for SageMaker Savings Plans"
+  type        = string
+  default     = "ALL_UPFRONT"
+
+  validation {
+    condition     = contains(["ALL_UPFRONT", "PARTIAL_UPFRONT", "NO_UPFRONT"], var.sagemaker_sp_payment_option)
+    error_message = "sagemaker_sp_payment_option must be one of: ALL_UPFRONT, PARTIAL_UPFRONT, NO_UPFRONT."
   }
 }
 
@@ -303,7 +351,12 @@ variable "s3_lifecycle_transition_glacier_days" {
 
   validation {
     condition     = var.s3_lifecycle_transition_glacier_days >= 1
-    error_message = "S3 lifecycle transition to Glacier must be at least 1 day."
+    error_message = "s3_lifecycle_transition_glacier_days must be at least 1."
+  }
+
+  validation {
+    condition     = var.s3_lifecycle_transition_glacier_days > var.s3_lifecycle_transition_ia_days
+    error_message = "s3_lifecycle_transition_glacier_days must be greater than s3_lifecycle_transition_ia_days."
   }
 }
 
@@ -314,7 +367,12 @@ variable "s3_lifecycle_expiration_days" {
 
   validation {
     condition     = var.s3_lifecycle_expiration_days >= 1
-    error_message = "S3 lifecycle expiration must be at least 1 day."
+    error_message = "s3_lifecycle_expiration_days must be at least 1."
+  }
+
+  validation {
+    condition     = var.s3_lifecycle_expiration_days >= var.s3_lifecycle_transition_glacier_days
+    error_message = "s3_lifecycle_expiration_days must be greater than or equal to s3_lifecycle_transition_glacier_days."
   }
 }
 
@@ -325,7 +383,7 @@ variable "s3_lifecycle_noncurrent_expiration_days" {
 
   validation {
     condition     = var.s3_lifecycle_noncurrent_expiration_days >= 1
-    error_message = "S3 lifecycle noncurrent version expiration must be at least 1 day."
+    error_message = "s3_lifecycle_noncurrent_expiration_days must be at least 1."
   }
 }
 
