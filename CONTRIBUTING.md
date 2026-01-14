@@ -7,6 +7,9 @@ Thank you for your interest in contributing to the AWS Savings Plans Automation 
 - [Code of Conduct](#code-of-conduct)
 - [Getting Started](#getting-started)
 - [Development Workflow](#development-workflow)
+  - [Creating a Branch](#creating-a-branch)
+  - [Terraform File Organization](#terraform-file-organization)
+  - [Local Validation](#local-validation)
 - [Commit Message Guidelines](#commit-message-guidelines)
 - [Pull Request Process](#pull-request-process)
 - [Testing Requirements](#testing-requirements)
@@ -80,6 +83,36 @@ Branch naming conventions:
 - `refactor/` — Code refactoring without behavior changes
 - `test/` — Adding or updating tests
 - `chore/` — Maintenance tasks, dependency updates
+
+### Terraform File Organization
+
+This module follows a **domain-specific file structure** to improve maintainability and code navigation. Instead of a monolithic `main.tf`, infrastructure resources are organized by AWS service domain:
+
+| File | Purpose | Resource Count |
+|------|---------|----------------|
+| **data.tf** | Data sources (caller identity, region) and local values | ~7 items |
+| **sns.tf** | SNS notification topics and subscriptions | 2 resources |
+| **sqs.tf** | SQS queues (purchase intents queue + DLQ) and alarms | 3 resources |
+| **s3.tf** | S3 bucket for recommendations with versioning, encryption, lifecycle | 5 resources |
+| **lambda.tf** | Lambda functions (scheduler, purchaser, reporter) and deployment packages | 6 resources |
+| **iam.tf** | IAM roles and policies for Lambda execution | 21 resources |
+| **cloudwatch.tf** | CloudWatch alarms and log groups for monitoring | 10 resources |
+| **eventbridge.tf** | EventBridge schedules for triggering Lambda functions | 9 resources |
+| **main.tf** | Module entry point with minimal header (points to other files) | Header only |
+
+**When making changes:**
+- **Adding SNS notifications?** → Modify `sns.tf`
+- **Changing Lambda configuration?** → Modify `lambda.tf`
+- **Adding IAM permissions?** → Modify `iam.tf`
+- **Creating new CloudWatch alarms?** → Modify `cloudwatch.tf`
+- **Modifying schedule timing?** → Modify `eventbridge.tf`
+- **Adding data sources or local values?** → Modify `data.tf`
+
+This organization makes it easier to:
+- **Navigate** — Find resources by AWS service instead of scrolling through a large file
+- **Review** — Focus PR reviews on specific infrastructure domains
+- **Maintain** — Reduce merge conflicts when multiple contributors work on different services
+- **Understand** — See all resources for a service (e.g., Lambda) in one place
 
 ### Local Validation
 
