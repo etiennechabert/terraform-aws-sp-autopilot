@@ -16,12 +16,6 @@ variable "enable_database_sp" {
   default     = false
 }
 
-variable "enable_sagemaker_sp" {
-  description = "Enable SageMaker Savings Plans automation"
-  type        = bool
-  default     = false
-}
-
 # ============================================================================
 # 7.2 Coverage Strategy
 # ============================================================================
@@ -33,7 +27,7 @@ variable "coverage_target_percent" {
 
   validation {
     condition     = var.coverage_target_percent >= 1 && var.coverage_target_percent <= 100
-    error_message = "coverage_target_percent must be between 1 and 100."
+    error_message = "Coverage target percent must be between 1 and 100."
   }
 }
 
@@ -44,12 +38,7 @@ variable "max_coverage_cap" {
 
   validation {
     condition     = var.max_coverage_cap <= 100
-    error_message = "max_coverage_cap must be <= 100."
-  }
-
-  validation {
-    condition     = var.max_coverage_cap > var.coverage_target_percent
-    error_message = "max_coverage_cap must be greater than coverage_target_percent."
+    error_message = "Max coverage cap must be less than or equal to 100."
   }
 }
 
@@ -82,7 +71,7 @@ variable "min_commitment_per_plan" {
 
   validation {
     condition     = var.min_commitment_per_plan >= 0.001
-    error_message = "min_commitment_per_plan must be >= 0.001 (AWS minimum)."
+    error_message = "Min commitment per plan must be at least 0.001 (AWS minimum)."
   }
 }
 
@@ -118,7 +107,7 @@ variable "compute_sp_term_mix" {
 
   validation {
     condition     = abs(var.compute_sp_term_mix.three_year + var.compute_sp_term_mix.one_year - 1) < 0.0001
-    error_message = "compute_sp_term_mix.three_year + compute_sp_term_mix.one_year must equal 1."
+    error_message = "The sum of compute_sp_term_mix.three_year and compute_sp_term_mix.one_year must equal 1."
   }
 }
 
@@ -162,43 +151,6 @@ variable "database_sp_payment_option" {
   validation {
     condition     = var.database_sp_payment_option == "NO_UPFRONT"
     error_message = "database_sp_payment_option must be NO_UPFRONT. AWS Database Savings Plans only support no upfront payment."
-  }
-}
-
-# ============================================================================
-# 7.5.2 SageMaker SP Options
-# ============================================================================
-
-variable "sagemaker_sp_term_mix" {
-  description = "Split of commitment between terms for SageMaker Savings Plans"
-  type = object({
-    three_year = number
-    one_year   = number
-  })
-  default = {
-    three_year = 0.67
-    one_year   = 0.33
-  }
-
-  validation {
-    condition     = var.sagemaker_sp_term_mix.three_year >= 0 && var.sagemaker_sp_term_mix.one_year >= 0
-    error_message = "Both term mix values must be non-negative."
-  }
-
-  validation {
-    condition     = abs(var.sagemaker_sp_term_mix.three_year + var.sagemaker_sp_term_mix.one_year - 1) < 0.0001
-    error_message = "sagemaker_sp_term_mix.three_year + sagemaker_sp_term_mix.one_year must equal 1."
-  }
-}
-
-variable "sagemaker_sp_payment_option" {
-  description = "Payment option for SageMaker Savings Plans"
-  type        = string
-  default     = "ALL_UPFRONT"
-
-  validation {
-    condition     = contains(["ALL_UPFRONT", "PARTIAL_UPFRONT", "NO_UPFRONT"], var.sagemaker_sp_payment_option)
-    error_message = "sagemaker_sp_payment_option must be one of: ALL_UPFRONT, PARTIAL_UPFRONT, NO_UPFRONT."
   }
 }
 
@@ -262,12 +214,6 @@ variable "teams_webhook_url" {
   type        = string
   default     = null
   sensitive   = true
-}
-
-variable "enable_sns_kms_encryption" {
-  description = "Enable KMS encryption for SNS topic"
-  type        = bool
-  default     = true
 }
 
 # ============================================================================
@@ -357,12 +303,7 @@ variable "s3_lifecycle_transition_glacier_days" {
 
   validation {
     condition     = var.s3_lifecycle_transition_glacier_days >= 1
-    error_message = "s3_lifecycle_transition_glacier_days must be at least 1."
-  }
-
-  validation {
-    condition     = var.s3_lifecycle_transition_glacier_days > var.s3_lifecycle_transition_ia_days
-    error_message = "s3_lifecycle_transition_glacier_days must be greater than s3_lifecycle_transition_ia_days."
+    error_message = "S3 lifecycle transition to Glacier must be at least 1 day."
   }
 }
 
@@ -373,12 +314,7 @@ variable "s3_lifecycle_expiration_days" {
 
   validation {
     condition     = var.s3_lifecycle_expiration_days >= 1
-    error_message = "s3_lifecycle_expiration_days must be at least 1."
-  }
-
-  validation {
-    condition     = var.s3_lifecycle_expiration_days >= var.s3_lifecycle_transition_glacier_days
-    error_message = "s3_lifecycle_expiration_days must be greater than or equal to s3_lifecycle_transition_glacier_days."
+    error_message = "S3 lifecycle expiration must be at least 1 day."
   }
 }
 
@@ -389,7 +325,7 @@ variable "s3_lifecycle_noncurrent_expiration_days" {
 
   validation {
     condition     = var.s3_lifecycle_noncurrent_expiration_days >= 1
-    error_message = "s3_lifecycle_noncurrent_expiration_days must be at least 1."
+    error_message = "S3 lifecycle noncurrent version expiration must be at least 1 day."
   }
 }
 
@@ -411,71 +347,7 @@ variable "email_reports" {
 }
 
 # ============================================================================
-# 7.13 Lambda Configuration
+# 7.13 Security & Encryption
 # ============================================================================
-
-variable "lambda_scheduler_memory_size" {
-  description = "Memory size in MB for scheduler Lambda function"
-  type        = number
-  default     = 128
-
-  validation {
-    condition     = var.lambda_scheduler_memory_size >= 128 && var.lambda_scheduler_memory_size <= 10240
-    error_message = "lambda_scheduler_memory_size must be between 128 and 10240."
-  }
-}
-
-variable "lambda_scheduler_timeout" {
-  description = "Timeout in seconds for scheduler Lambda function"
-  type        = number
-  default     = 300
-
-  validation {
-    condition     = var.lambda_scheduler_timeout >= 1 && var.lambda_scheduler_timeout <= 900
-    error_message = "lambda_scheduler_timeout must be between 1 and 900."
-  }
-}
-
-variable "lambda_purchaser_memory_size" {
-  description = "Memory size in MB for purchaser Lambda function"
-  type        = number
-  default     = 128
-
-  validation {
-    condition     = var.lambda_purchaser_memory_size >= 128 && var.lambda_purchaser_memory_size <= 10240
-    error_message = "lambda_purchaser_memory_size must be between 128 and 10240."
-  }
-}
-
-variable "lambda_purchaser_timeout" {
-  description = "Timeout in seconds for purchaser Lambda function"
-  type        = number
-  default     = 300
-
-  validation {
-    condition     = var.lambda_purchaser_timeout >= 1 && var.lambda_purchaser_timeout <= 900
-    error_message = "lambda_purchaser_timeout must be between 1 and 900."
-  }
-}
-
-variable "lambda_reporter_memory_size" {
-  description = "Memory size in MB for reporter Lambda function"
-  type        = number
-  default     = 128
-
-  validation {
-    condition     = var.lambda_reporter_memory_size >= 128 && var.lambda_reporter_memory_size <= 10240
-    error_message = "lambda_reporter_memory_size must be between 128 and 10240."
-  }
-}
-
-variable "lambda_reporter_timeout" {
-  description = "Timeout in seconds for reporter Lambda function"
-  type        = number
-  default     = 300
-
-  validation {
-    condition     = var.lambda_reporter_timeout >= 1 && var.lambda_reporter_timeout <= 900
-    error_message = "lambda_reporter_timeout must be between 1 and 900."
-  }
-}
+# SQS queues use AWS-managed encryption (alias/aws/sqs) which provides free at-rest
+# encryption without requiring customer-managed KMS keys or additional IAM permissions.
