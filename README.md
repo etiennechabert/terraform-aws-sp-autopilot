@@ -37,6 +37,23 @@ An open-source Terraform module that automates AWS Savings Plans purchases based
 - **Email notifications** — SNS-based alerts for all scheduling and purchasing activities
 - **Auditable and transparent** — All decisions logged, all purchases tracked with idempotency
 
+## Table of Contents
+
+- [Features](#features)
+- [Supported Savings Plan Types](#supported-savings-plan-types)
+- [Architecture](#architecture)
+- [Quick Start](#quick-start)
+- [Configuration Variables](#configuration-variables)
+- [Supported Services](#supported-services)
+- [Coverage Tracking](#coverage-tracking)
+- [Outputs](#outputs)
+- [Advanced Usage](#advanced-usage)
+- [Cross-Account Setup for AWS Organizations](#cross-account-setup-for-aws-organizations)
+- [Requirements](#requirements)
+- [License](#license)
+- [Contributing](#contributing)
+- [Support](#support)
+
 ## Supported Savings Plan Types
 
 ### Compute Savings Plans
