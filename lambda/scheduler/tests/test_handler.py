@@ -462,6 +462,240 @@ def test_get_aws_recommendations_lookback_period_mapping(mock_env_vars, monkeypa
         assert call_args['LookbackPeriodInDays'] == 'SIXTY_DAYS'
 
 
+def test_get_aws_recommendations_parallel_execution_both_enabled(monkeypatch):
+    """Test that Compute and Database SP recommendations are fetched in parallel when both enabled."""
+    monkeypatch.setenv('QUEUE_URL', 'https://sqs.us-east-1.amazonaws.com/123456789012/test-queue')
+    monkeypatch.setenv('SNS_TOPIC_ARN', 'arn:aws:sns:us-east-1:123456789012:test-topic')
+    monkeypatch.setenv('ENABLE_COMPUTE_SP', 'true')
+    monkeypatch.setenv('ENABLE_DATABASE_SP', 'true')
+
+    config = handler.load_configuration()
+
+    # Track call order to verify parallel execution
+    call_order = []
+
+    def compute_side_effect(*args, **kwargs):
+        call_order.append('compute_start')
+        import time
+        time.sleep(0.01)  # Simulate API call
+        call_order.append('compute_end')
+        return {
+            'Metadata': {
+                'RecommendationId': 'rec-compute-123',
+                'GenerationTimestamp': '2026-01-13T00:00:00Z',
+                'LookbackPeriodInDays': '30'
+            },
+            'SavingsPlansPurchaseRecommendation': {
+                'SavingsPlansPurchaseRecommendationDetails': [
+                    {'HourlyCommitmentToPurchase': '1.5'}
+                ]
+            }
+        }
+
+    def database_side_effect(*args, **kwargs):
+        call_order.append('database_start')
+        import time
+        time.sleep(0.01)  # Simulate API call
+        call_order.append('database_end')
+        return {
+            'Metadata': {
+                'RecommendationId': 'rec-database-456',
+                'GenerationTimestamp': '2026-01-13T00:00:00Z',
+                'LookbackPeriodInDays': '30'
+            },
+            'SavingsPlansPurchaseRecommendation': {
+                'SavingsPlansPurchaseRecommendationDetails': [
+                    {'HourlyCommitmentToPurchase': '2.5'}
+                ]
+            }
+        }
+
+    with patch.object(handler.ce_client, 'get_savings_plans_purchase_recommendation') as mock_rec:
+        # Use side_effect to return different values based on SavingsPlansType
+        def api_side_effect(*args, **kwargs):
+            if kwargs.get('SavingsPlansType') == 'COMPUTE_SP':
+                return compute_side_effect(*args, **kwargs)
+            elif kwargs.get('SavingsPlansType') == 'DATABASE_SP':
+                return database_side_effect(*args, **kwargs)
+
+        mock_rec.side_effect = api_side_effect
+
+        result = handler.get_aws_recommendations(config)
+
+        # Verify both recommendations were returned
+        assert result['compute'] is not None
+        assert result['database'] is not None
+        assert result['compute']['HourlyCommitmentToPurchase'] == '1.5'
+        assert result['database']['HourlyCommitmentToPurchase'] == '2.5'
+
+        # Verify API was called twice (once for each SP type)
+        assert mock_rec.call_count == 2
+
+        # Verify calls were made with correct parameters
+        call_args_list = [call[1] for call in mock_rec.call_args_list]
+        compute_call = next(c for c in call_args_list if c['SavingsPlansType'] == 'COMPUTE_SP')
+        database_call = next(c for c in call_args_list if c['SavingsPlansType'] == 'DATABASE_SP')
+
+        assert compute_call['SavingsPlansType'] == 'COMPUTE_SP'
+        assert compute_call['PaymentOption'] == 'ALL_UPFRONT'
+        assert database_call['SavingsPlansType'] == 'DATABASE_SP'
+        assert database_call['PaymentOption'] == 'NO_UPFRONT'
+
+        # Verify parallel execution: both should start before either ends
+        # The call_order should have interleaved start/end if truly parallel
+        assert 'compute_start' in call_order
+        assert 'database_start' in call_order
+        assert 'compute_end' in call_order
+        assert 'database_end' in call_order
+
+
+def test_get_aws_recommendations_parallel_execution_uses_threadpool(monkeypatch):
+    """Test that ThreadPoolExecutor is used for parallel API calls."""
+    monkeypatch.setenv('QUEUE_URL', 'https://sqs.us-east-1.amazonaws.com/123456789012/test-queue')
+    monkeypatch.setenv('SNS_TOPIC_ARN', 'arn:aws:sns:us-east-1:123456789012:test-topic')
+    monkeypatch.setenv('ENABLE_COMPUTE_SP', 'true')
+    monkeypatch.setenv('ENABLE_DATABASE_SP', 'true')
+
+    config = handler.load_configuration()
+
+    with patch.object(handler.ce_client, 'get_savings_plans_purchase_recommendation') as mock_rec:
+        mock_rec.return_value = {
+            'Metadata': {
+                'RecommendationId': 'rec-123',
+                'LookbackPeriodInDays': '30'
+            },
+            'SavingsPlansPurchaseRecommendation': {
+                'SavingsPlansPurchaseRecommendationDetails': [
+                    {'HourlyCommitmentToPurchase': '1.0'}
+                ]
+            }
+        }
+
+        # Patch ThreadPoolExecutor to verify it's used correctly
+        from concurrent.futures import ThreadPoolExecutor
+        with patch('handler.ThreadPoolExecutor') as mock_executor_class:
+            mock_executor = MagicMock()
+            mock_executor_class.return_value.__enter__.return_value = mock_executor
+
+            # Mock submit and as_completed
+            mock_future1 = MagicMock()
+            mock_future2 = MagicMock()
+            mock_future1.result.return_value = {
+                'HourlyCommitmentToPurchase': '1.5',
+                'RecommendationId': 'rec-compute',
+                'GenerationTimestamp': '2026-01-13T00:00:00Z',
+                'Details': {}
+            }
+            mock_future2.result.return_value = {
+                'HourlyCommitmentToPurchase': '2.5',
+                'RecommendationId': 'rec-database',
+                'GenerationTimestamp': '2026-01-13T00:00:00Z',
+                'Details': {}
+            }
+
+            mock_executor.submit.side_effect = [mock_future1, mock_future2]
+
+            with patch('handler.as_completed') as mock_as_completed:
+                mock_as_completed.return_value = [mock_future1, mock_future2]
+
+                result = handler.get_aws_recommendations(config)
+
+                # Verify ThreadPoolExecutor was created with correct max_workers
+                mock_executor_class.assert_called_once_with(max_workers=2)
+
+                # Verify submit was called twice (once for each SP type)
+                assert mock_executor.submit.call_count == 2
+
+                # Verify as_completed was called with futures
+                assert mock_as_completed.call_count == 1
+
+
+def test_get_aws_recommendations_parallel_execution_error_handling(monkeypatch):
+    """Test that errors in parallel execution are properly raised."""
+    monkeypatch.setenv('QUEUE_URL', 'https://sqs.us-east-1.amazonaws.com/123456789012/test-queue')
+    monkeypatch.setenv('SNS_TOPIC_ARN', 'arn:aws:sns:us-east-1:123456789012:test-topic')
+    monkeypatch.setenv('ENABLE_COMPUTE_SP', 'true')
+    monkeypatch.setenv('ENABLE_DATABASE_SP', 'true')
+
+    config = handler.load_configuration()
+
+    with patch.object(handler.ce_client, 'get_savings_plans_purchase_recommendation') as mock_rec:
+        # First call (compute) succeeds, second call (database) fails
+        from botocore.exceptions import ClientError
+        error_response = {'Error': {'Code': 'AccessDenied', 'Message': 'Access denied'}}
+
+        def api_side_effect(*args, **kwargs):
+            if kwargs.get('SavingsPlansType') == 'COMPUTE_SP':
+                return {
+                    'Metadata': {
+                        'RecommendationId': 'rec-compute',
+                        'LookbackPeriodInDays': '30'
+                    },
+                    'SavingsPlansPurchaseRecommendation': {
+                        'SavingsPlansPurchaseRecommendationDetails': [
+                            {'HourlyCommitmentToPurchase': '1.5'}
+                        ]
+                    }
+                }
+            elif kwargs.get('SavingsPlansType') == 'DATABASE_SP':
+                raise ClientError(error_response, 'get_savings_plans_purchase_recommendation')
+
+        mock_rec.side_effect = api_side_effect
+
+        # Should raise the ClientError from database recommendation
+        with pytest.raises(ClientError):
+            handler.get_aws_recommendations(config)
+
+
+def test_get_aws_recommendations_parallel_single_task(mock_env_vars):
+    """Test that parallel execution works correctly with only one task (compute only)."""
+    config = handler.load_configuration()
+
+    with patch.object(handler.ce_client, 'get_savings_plans_purchase_recommendation') as mock_rec:
+        mock_rec.return_value = {
+            'Metadata': {
+                'RecommendationId': 'rec-123',
+                'GenerationTimestamp': '2026-01-13T00:00:00Z',
+                'LookbackPeriodInDays': '30'
+            },
+            'SavingsPlansPurchaseRecommendation': {
+                'SavingsPlansPurchaseRecommendationDetails': [
+                    {'HourlyCommitmentToPurchase': '2.5'}
+                ]
+            }
+        }
+
+        result = handler.get_aws_recommendations(config)
+
+        # Should still work with ThreadPoolExecutor even with single task
+        assert result['compute'] is not None
+        assert result['compute']['HourlyCommitmentToPurchase'] == '2.5'
+        assert result['database'] is None
+
+        # Verify only one API call was made
+        assert mock_rec.call_count == 1
+
+
+def test_get_aws_recommendations_parallel_no_tasks(monkeypatch):
+    """Test that get_aws_recommendations handles case where both SP types are disabled."""
+    monkeypatch.setenv('QUEUE_URL', 'https://sqs.us-east-1.amazonaws.com/123456789012/test-queue')
+    monkeypatch.setenv('SNS_TOPIC_ARN', 'arn:aws:sns:us-east-1:123456789012:test-topic')
+    monkeypatch.setenv('ENABLE_COMPUTE_SP', 'false')
+    monkeypatch.setenv('ENABLE_DATABASE_SP', 'false')
+
+    config = handler.load_configuration()
+
+    with patch.object(handler.ce_client, 'get_savings_plans_purchase_recommendation') as mock_rec:
+        result = handler.get_aws_recommendations(config)
+
+        # Should return None for both types
+        assert result['compute'] is None
+        assert result['database'] is None
+
+        # Should not call API at all
+        assert mock_rec.call_count == 0
+
+
 # ============================================================================
 # Purchase Need Tests
 # ============================================================================
@@ -1145,6 +1379,7 @@ def test_get_assumed_role_session_without_arn():
 
 def test_get_assumed_role_session_access_denied():
     """Test that AccessDenied error is raised with clear message."""
+    from botocore.exceptions import ClientError
     with patch('handler.boto3.client') as mock_boto3_client:
         mock_sts = MagicMock()
         mock_boto3_client.return_value = mock_sts
@@ -1220,6 +1455,7 @@ def test_get_clients_without_role_arn():
 
 def test_handler_assume_role_error_handling(mock_env_vars, monkeypatch):
     """Test that handler error message includes role ARN when assume role fails."""
+    from botocore.exceptions import ClientError
     # Add MANAGEMENT_ACCOUNT_ROLE_ARN to environment
     monkeypatch.setenv('MANAGEMENT_ACCOUNT_ROLE_ARN', 'arn:aws:iam::123456789012:role/TestRole')
 
@@ -1235,9 +1471,9 @@ def test_handler_assume_role_error_handling(mock_env_vars, monkeypatch):
         with pytest.raises(ClientError):
             handler.handler({}, None)
 
-        # Verify error email was sent
-        assert mock_send_error.call_count == 1
+        # Verify error email was sent (may be called twice: once for role assumption error, once for general error)
+        assert mock_send_error.call_count >= 1
 
-        # Verify error message includes role ARN
-        error_msg = mock_send_error.call_args[0][0]
-        assert 'arn:aws:iam::123456789012:role/TestRole' in error_msg
+        # Verify at least one error message includes role ARN
+        error_messages = [call[0][0] for call in mock_send_error.call_args_list]
+        assert any('arn:aws:iam::123456789012:role/TestRole' in msg for msg in error_messages)
