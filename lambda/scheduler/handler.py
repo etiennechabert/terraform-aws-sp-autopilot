@@ -21,24 +21,22 @@ from concurrent.futures import ThreadPoolExecutor, as_completed
 from datetime import datetime, timezone
 from typing import Dict, List, Any, Optional
 
-import boto3
 from botocore.exceptions import ClientError
 
-from shared.aws_utils import get_assumed_role_session, get_clients
 from shared import notifications
-from shared import email_templates
+from shared.handler_utils import (
+    load_config_from_env,
+    initialize_clients,
+    lambda_handler_wrapper,
+    send_error_notification
+)
 
 # Configure logging
 logger = logging.getLogger()
 logger.setLevel(logging.INFO)
 
-# AWS clients (initialized as globals, reassigned in handler if using assume role)
-ce_client = boto3.client('ce')
-sqs_client = boto3.client('sqs')
-sns_client = boto3.client('sns')
-savingsplans_client = boto3.client('savingsplans')
 
-
+@lambda_handler_wrapper('Scheduler')
 def handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
     """
     Main handler for Scheduler Lambda.
@@ -53,38 +51,41 @@ def handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
     Raises:
         Exception: All errors are raised (no silent failures)
     """
-    global ce_client, savingsplans_client
-
     try:
-        logger.info("Starting Scheduler Lambda execution")
-
         # Load configuration from environment
-        config = load_configuration()
+        config = load_config_from_env(CONFIG_SCHEMA)
+
+        # Create error callback function
+        def send_error_email(error_msg: str) -> None:
+            """Send error notification using shared utility."""
+            # Get SNS client directly (before full client initialization)
+            import boto3
+            sns = boto3.client('sns')
+            send_error_notification(
+                sns_client=sns,
+                sns_topic_arn=config['sns_topic_arn'],
+                error_message=error_msg,
+                lambda_name='Scheduler'
+            )
 
         # Initialize clients (with assume role if configured)
-        try:
-            clients = get_clients(config, session_name='sp-autopilot-scheduler')
-            ce_client = clients['ce']
-            savingsplans_client = clients['savingsplans']
-        except ClientError as e:
-            error_msg = f"Failed to initialize AWS clients: {str(e)}"
-            if config.get('management_account_role_arn'):
-                error_msg = f"Failed to assume role {config['management_account_role_arn']}: {str(e)}"
-            logger.error(error_msg, exc_info=True)
-            send_error_email(error_msg)
-            raise
+        clients = initialize_clients(config, 'sp-autopilot-scheduler', send_error_email)
+        ce_client = clients['ce']
+        savingsplans_client = clients['savingsplans']
+        sqs_client = clients['sqs']
+        sns_client = clients['sns']
 
         logger.info(f"Configuration loaded: dry_run={config['dry_run']}")
 
         # Step 1: Purge existing queue
-        purge_queue(config['queue_url'])
+        purge_queue(sqs_client, config['queue_url'])
 
         # Step 2: Calculate current coverage
-        coverage = calculate_current_coverage(config)
+        coverage = calculate_current_coverage(savingsplans_client, ce_client, config)
         logger.info(f"Current coverage - Compute: {coverage.get('compute', 0)}%, Database: {coverage.get('database', 0)}%, SageMaker: {coverage.get('sagemaker', 0)}%")
 
         # Step 3: Get AWS recommendations
-        recommendations = get_aws_recommendations(config)
+        recommendations = get_aws_recommendations(ce_client, config)
 
         # Step 4: Calculate purchase need
         purchase_plans = calculate_purchase_need(config, coverage, recommendations)
@@ -98,13 +99,11 @@ def handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
         # Step 7: Queue or notify
         if config['dry_run']:
             logger.info("Dry run mode - sending email only, NOT queuing messages")
-            send_dry_run_email(config, purchase_plans, coverage)
+            send_dry_run_email(sns_client, config, purchase_plans, coverage)
         else:
             logger.info("Queuing purchase intents to SQS")
-            queue_purchase_intents(config, purchase_plans)
-            send_scheduled_email(config, purchase_plans, coverage)
-
-        logger.info("Scheduler Lambda completed successfully")
+            queue_purchase_intents(sqs_client, config, purchase_plans)
+            send_scheduled_email(sns_client, config, purchase_plans, coverage)
 
         return {
             'statusCode': 200,
@@ -116,41 +115,144 @@ def handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
         }
 
     except Exception as e:
-        logger.error(f"Scheduler Lambda failed: {str(e)}", exc_info=True)
-        send_error_email(str(e))
+        # Try to send error notification
+        try:
+            config = load_config_from_env(CONFIG_SCHEMA)
+            import boto3
+            sns = boto3.client('sns')
+            send_error_notification(
+                sns_client=sns,
+                sns_topic_arn=config['sns_topic_arn'],
+                error_message=str(e),
+                lambda_name='Scheduler'
+            )
+        except Exception as notification_error:
+            logger.warning(f"Failed to send error notification: {notification_error}")
         raise  # Re-raise to ensure Lambda fails visibly
 
 
-def load_configuration() -> Dict[str, Any]:
-    """Load and validate configuration from environment variables."""
-    return {
-        'queue_url': os.environ['QUEUE_URL'],
-        'sns_topic_arn': os.environ['SNS_TOPIC_ARN'],
-        'dry_run': os.environ.get('DRY_RUN', 'true').lower() == 'true',
-        'enable_compute_sp': os.environ.get('ENABLE_COMPUTE_SP', 'true').lower() == 'true',
-        'enable_database_sp': os.environ.get('ENABLE_DATABASE_SP', 'false').lower() == 'true',
-        'enable_sagemaker_sp': os.environ.get('ENABLE_SAGEMAKER_SP', 'false').lower() == 'true',
-        'coverage_target_percent': float(os.environ.get('COVERAGE_TARGET_PERCENT', '90')),
-        'max_purchase_percent': float(os.environ.get('MAX_PURCHASE_PERCENT', '10')),
-        'renewal_window_days': int(os.environ.get('RENEWAL_WINDOW_DAYS', '7')),
-        'lookback_days': int(os.environ.get('LOOKBACK_DAYS', '30')),
-        'min_data_days': int(os.environ.get('MIN_DATA_DAYS', '14')),
-        'min_commitment_per_plan': float(os.environ.get('MIN_COMMITMENT_PER_PLAN', '0.001')),
-        'compute_sp_term_mix': json.loads(os.environ.get('COMPUTE_SP_TERM_MIX', '{"three_year": 0.67, "one_year": 0.33}')),
-        'compute_sp_payment_option': os.environ.get('COMPUTE_SP_PAYMENT_OPTION', 'ALL_UPFRONT'),
-        'sagemaker_sp_term_mix': json.loads(os.environ.get('SAGEMAKER_SP_TERM_MIX', '{"three_year": 0.67, "one_year": 0.33}')),
-        'sagemaker_sp_payment_option': os.environ.get('SAGEMAKER_SP_PAYMENT_OPTION', 'ALL_UPFRONT'),
-        'partial_upfront_percent': float(os.environ.get('PARTIAL_UPFRONT_PERCENT', '50')),
-        'management_account_role_arn': os.environ.get('MANAGEMENT_ACCOUNT_ROLE_ARN'),
-        'tags': json.loads(os.environ.get('TAGS', '{}')),
+# Configuration schema for environment variable loading
+CONFIG_SCHEMA = {
+    'queue_url': {
+        'required': True,
+        'type': 'str',
+        'env_var': 'QUEUE_URL'
+    },
+    'sns_topic_arn': {
+        'required': True,
+        'type': 'str',
+        'env_var': 'SNS_TOPIC_ARN'
+    },
+    'dry_run': {
+        'required': False,
+        'type': 'bool',
+        'default': 'true',
+        'env_var': 'DRY_RUN'
+    },
+    'enable_compute_sp': {
+        'required': False,
+        'type': 'bool',
+        'default': 'true',
+        'env_var': 'ENABLE_COMPUTE_SP'
+    },
+    'enable_database_sp': {
+        'required': False,
+        'type': 'bool',
+        'default': 'false',
+        'env_var': 'ENABLE_DATABASE_SP'
+    },
+    'enable_sagemaker_sp': {
+        'required': False,
+        'type': 'bool',
+        'default': 'false',
+        'env_var': 'ENABLE_SAGEMAKER_SP'
+    },
+    'coverage_target_percent': {
+        'required': False,
+        'type': 'float',
+        'default': '90',
+        'env_var': 'COVERAGE_TARGET_PERCENT'
+    },
+    'max_purchase_percent': {
+        'required': False,
+        'type': 'float',
+        'default': '10',
+        'env_var': 'MAX_PURCHASE_PERCENT'
+    },
+    'renewal_window_days': {
+        'required': False,
+        'type': 'int',
+        'default': '7',
+        'env_var': 'RENEWAL_WINDOW_DAYS'
+    },
+    'lookback_days': {
+        'required': False,
+        'type': 'int',
+        'default': '30',
+        'env_var': 'LOOKBACK_DAYS'
+    },
+    'min_data_days': {
+        'required': False,
+        'type': 'int',
+        'default': '14',
+        'env_var': 'MIN_DATA_DAYS'
+    },
+    'min_commitment_per_plan': {
+        'required': False,
+        'type': 'float',
+        'default': '0.001',
+        'env_var': 'MIN_COMMITMENT_PER_PLAN'
+    },
+    'compute_sp_term_mix': {
+        'required': False,
+        'type': 'json',
+        'default': '{"three_year": 0.67, "one_year": 0.33}',
+        'env_var': 'COMPUTE_SP_TERM_MIX'
+    },
+    'compute_sp_payment_option': {
+        'required': False,
+        'type': 'str',
+        'default': 'ALL_UPFRONT',
+        'env_var': 'COMPUTE_SP_PAYMENT_OPTION'
+    },
+    'sagemaker_sp_term_mix': {
+        'required': False,
+        'type': 'json',
+        'default': '{"three_year": 0.67, "one_year": 0.33}',
+        'env_var': 'SAGEMAKER_SP_TERM_MIX'
+    },
+    'sagemaker_sp_payment_option': {
+        'required': False,
+        'type': 'str',
+        'default': 'ALL_UPFRONT',
+        'env_var': 'SAGEMAKER_SP_PAYMENT_OPTION'
+    },
+    'partial_upfront_percent': {
+        'required': False,
+        'type': 'float',
+        'default': '50',
+        'env_var': 'PARTIAL_UPFRONT_PERCENT'
+    },
+    'management_account_role_arn': {
+        'required': False,
+        'type': 'str',
+        'env_var': 'MANAGEMENT_ACCOUNT_ROLE_ARN'
+    },
+    'tags': {
+        'required': False,
+        'type': 'json',
+        'default': '{}',
+        'env_var': 'TAGS'
     }
+}
 
 
-def purge_queue(queue_url: str) -> None:
+def purge_queue(sqs_client: Any, queue_url: str) -> None:
     """
     Purge all existing messages from the SQS queue.
 
     Args:
+        sqs_client: Boto3 SQS client
         queue_url: SQS queue URL
     """
     logger.info(f"Purging queue: {queue_url}")
@@ -164,11 +266,13 @@ def purge_queue(queue_url: str) -> None:
             raise
 
 
-def calculate_current_coverage(config: Dict[str, Any]) -> Dict[str, float]:
+def calculate_current_coverage(savingsplans_client: Any, ce_client: Any, config: Dict[str, Any]) -> Dict[str, float]:
     """
     Calculate current Savings Plans coverage, excluding plans expiring soon.
 
     Args:
+        savingsplans_client: Boto3 Savings Plans client
+        ce_client: Boto3 Cost Explorer client
         config: Configuration dictionary
 
     Returns:
@@ -267,7 +371,7 @@ def calculate_current_coverage(config: Dict[str, Any]) -> Dict[str, float]:
     return coverage
 
 
-def _fetch_compute_sp_recommendation(config: Dict[str, Any], lookback_period: str) -> Optional[Dict[str, Any]]:
+def _fetch_compute_sp_recommendation(ce_client: Any, config: Dict[str, Any], lookback_period: str) -> Optional[Dict[str, Any]]:
     """
     Fetch Compute Savings Plan recommendation from AWS Cost Explorer.
 
@@ -276,6 +380,7 @@ def _fetch_compute_sp_recommendation(config: Dict[str, Any], lookback_period: st
     Explorer's GetSavingsPlansPurchaseRecommendation API.
 
     Args:
+        ce_client: Boto3 Cost Explorer client
         config: Configuration dictionary
         lookback_period: AWS API lookback period value
 
@@ -337,7 +442,7 @@ def _fetch_compute_sp_recommendation(config: Dict[str, Any], lookback_period: st
         raise
 
 
-def _fetch_database_sp_recommendation(config: Dict[str, Any], lookback_period: str) -> Optional[Dict[str, Any]]:
+def _fetch_database_sp_recommendation(ce_client: Any, config: Dict[str, Any], lookback_period: str) -> Optional[Dict[str, Any]]:
     """
     Fetch Database Savings Plan recommendation from AWS Cost Explorer.
 
@@ -346,6 +451,7 @@ def _fetch_database_sp_recommendation(config: Dict[str, Any], lookback_period: s
     Explorer's GetSavingsPlansPurchaseRecommendation API.
 
     Args:
+        ce_client: Boto3 Cost Explorer client
         config: Configuration dictionary
         lookback_period: AWS API lookback period value
 
@@ -409,7 +515,7 @@ def _fetch_database_sp_recommendation(config: Dict[str, Any], lookback_period: s
         raise
 
 
-def _fetch_sagemaker_sp_recommendation(config: Dict[str, Any], lookback_period: str) -> Optional[Dict[str, Any]]:
+def _fetch_sagemaker_sp_recommendation(ce_client: Any, config: Dict[str, Any], lookback_period: str) -> Optional[Dict[str, Any]]:
     """
     Fetch SageMaker Savings Plan recommendation from AWS Cost Explorer.
 
@@ -418,6 +524,7 @@ def _fetch_sagemaker_sp_recommendation(config: Dict[str, Any], lookback_period: 
     Explorer's GetSavingsPlansPurchaseRecommendation API.
 
     Args:
+        ce_client: Boto3 Cost Explorer client
         config: Configuration dictionary
         lookback_period: AWS API lookback period value
 
@@ -480,7 +587,7 @@ def _fetch_sagemaker_sp_recommendation(config: Dict[str, Any], lookback_period: 
         raise
 
 
-def get_aws_recommendations(config: Dict[str, Any]) -> Dict[str, Any]:
+def get_aws_recommendations(ce_client: Any, config: Dict[str, Any]) -> Dict[str, Any]:
     """
     Get Savings Plans purchase recommendations from AWS Cost Explorer.
 
@@ -500,6 +607,7 @@ def get_aws_recommendations(config: Dict[str, Any]) -> Dict[str, Any]:
     (2 sequential calls -> 2 parallel calls).
 
     Args:
+        ce_client: Boto3 Cost Explorer client
         config: Configuration dictionary with enable_compute_sp, enable_database_sp,
                 and lookback_days settings
 
@@ -533,19 +641,19 @@ def get_aws_recommendations(config: Dict[str, Any]) -> Dict[str, Any]:
     # Prepare tasks for parallel execution
     tasks = {}
     if config['enable_compute_sp']:
-        tasks['compute'] = ('compute', _fetch_compute_sp_recommendation, config, lookback_period)
+        tasks['compute'] = ('compute', _fetch_compute_sp_recommendation, ce_client, config, lookback_period)
     if config['enable_database_sp']:
-        tasks['database'] = ('database', _fetch_database_sp_recommendation, config, lookback_period)
+        tasks['database'] = ('database', _fetch_database_sp_recommendation, ce_client, config, lookback_period)
     if config['enable_sagemaker_sp']:
-        tasks['sagemaker'] = ('sagemaker', _fetch_sagemaker_sp_recommendation, config, lookback_period)
+        tasks['sagemaker'] = ('sagemaker', _fetch_sagemaker_sp_recommendation, ce_client, config, lookback_period)
 
     # Execute API calls in parallel using ThreadPoolExecutor
     if tasks:
         with ThreadPoolExecutor(max_workers=len(tasks)) as executor:
             # Submit all tasks
             futures = {}
-            for sp_type, (key, func, cfg, period) in tasks.items():
-                future = executor.submit(func, cfg, period)
+            for sp_type, (key, func, client, cfg, period) in tasks.items():
+                future = executor.submit(func, client, cfg, period)
                 futures[future] = key
 
             # Collect results as they complete
@@ -864,6 +972,7 @@ def split_by_term(
 
 
 def queue_purchase_intents(
+    sqs_client: Any,
     config: Dict[str, Any],
     purchase_plans: List[Dict[str, Any]]
 ) -> None:
@@ -871,6 +980,7 @@ def queue_purchase_intents(
     Queue purchase intents to SQS.
 
     Args:
+        sqs_client: Boto3 SQS client
         config: Configuration dictionary
         purchase_plans: List of planned purchases
     """
@@ -925,6 +1035,7 @@ def queue_purchase_intents(
 
 
 def send_scheduled_email(
+    sns_client: Any,
     config: Dict[str, Any],
     purchase_plans: List[Dict[str, Any]],
     coverage: Dict[str, float]
@@ -933,42 +1044,32 @@ def send_scheduled_email(
     Send email notification for scheduled purchases.
 
     Args:
+        sns_client: Boto3 SNS client
         config: Configuration dictionary
         purchase_plans: List of planned purchases
         coverage: Current coverage
     """
     logger.info("Sending scheduled purchases email")
 
-    # Build email using email_templates helpers
-    lines = []
+    # Format email body
+    email_lines = [
+        "Savings Plans Scheduled for Purchase",
+        "=" * 50,
+        "",
+        f"Total Plans Queued: {len(purchase_plans)}",
+        "",
+        "Current Coverage:",
+        f"  Compute SP:  {coverage.get('compute', 0):.2f}%",
+        f"  Database SP: {coverage.get('database', 0):.2f}%",
+        f"  SageMaker SP: {coverage.get('sagemaker', 0):.2f}%",
+        "",
+        f"Target Coverage: {config.get('coverage_target_percent', 90):.2f}%",
+        "",
+        "Scheduled Purchase Plans:",
+        "-" * 50,
+    ]
 
-    # Header
-    lines.extend(email_templates.build_header("Savings Plans Scheduled for Purchase"))
-    lines.append("")
-
-    # Summary section
-    lines.extend(email_templates.build_key_value_section({
-        'Total Plans Queued': len(purchase_plans)
-    }))
-    lines.append("")
-
-    # Coverage section
-    lines.append("Current Coverage:")
-    lines.extend(email_templates.build_key_value_section({
-        'Compute SP': email_templates.format_percentage(coverage.get('compute', 0)),
-        'Database SP': email_templates.format_percentage(coverage.get('database', 0)),
-        'SageMaker SP': email_templates.format_percentage(coverage.get('sagemaker', 0))
-    }, indent='  ', format_numbers=False))
-    lines.append("")
-
-    # Target coverage
-    lines.extend(email_templates.build_key_value_section({
-        'Target Coverage': email_templates.format_percentage(config.get('coverage_target_percent', 90))
-    }, format_numbers=False))
-    lines.append("")
-
-    # Purchase plans section
-    purchase_items = []
+    # Add details for each purchase plan
     total_annual_cost = 0.0
     for i, plan in enumerate(purchase_plans, 1):
         sp_type = plan.get('sp_type', 'unknown')
@@ -980,42 +1081,31 @@ def send_scheduled_email(
         annual_cost = hourly_commitment * 8760
         total_annual_cost += annual_cost
 
-        purchase_items.extend([
+        email_lines.extend([
             f"{i}. {sp_type.upper()} Savings Plan",
-            f"   Hourly Commitment: {email_templates.format_currency(hourly_commitment, hourly=True)}",
+            f"   Hourly Commitment: ${hourly_commitment:.4f}/hour",
             f"   Term: {term}",
             f"   Payment Option: {payment_option}",
-            f"   Estimated Annual Cost: {email_templates.format_currency(annual_cost)}",
+            f"   Estimated Annual Cost: ${annual_cost:,.2f}",
             ""
         ])
 
-    lines.extend(email_templates.build_list_section(
-        "Scheduled Purchase Plans:",
-        purchase_items
-    ))
-
-    # Total cost
-    lines.extend(email_templates.build_separator())
-    lines.append(f"Total Estimated Annual Cost: {email_templates.format_currency(total_annual_cost)}")
-    lines.append("")
-
-    # Cancellation instructions
-    lines.extend(email_templates.build_list_section(
+    email_lines.extend([
+        "-" * 50,
+        f"Total Estimated Annual Cost: ${total_annual_cost:,.2f}",
+        "",
         "CANCELLATION INSTRUCTIONS:",
-        [
-            "To cancel these purchases before they execute:",
-            "1. Purge the SQS queue to remove all pending purchase intents",
-            f"2. Queue URL: {config.get('queue_url', 'N/A')}",
-            "3. AWS CLI command:",
-            f"   aws sqs purge-queue --queue-url {config.get('queue_url', 'QUEUE_URL')}",
-            "",
-            "These purchases will be executed by the Purchaser Lambda.",
-            "Monitor CloudWatch Logs and SNS notifications for execution results."
-        ],
-        include_separator=False
-    ))
+        "To cancel these purchases before they execute:",
+        "1. Purge the SQS queue to remove all pending purchase intents",
+        f"2. Queue URL: {config.get('queue_url', 'N/A')}",
+        "3. AWS CLI command:",
+        f"   aws sqs purge-queue --queue-url {config.get('queue_url', 'QUEUE_URL')}",
+        "",
+        "These purchases will be executed by the Purchaser Lambda.",
+        "Monitor CloudWatch Logs and SNS notifications for execution results.",
+    ])
 
-    message = "\n".join(lines)
+    message = "\n".join(email_lines)
 
     # Publish to SNS
     try:
@@ -1031,6 +1121,7 @@ def send_scheduled_email(
 
 
 def send_dry_run_email(
+    sns_client: Any,
     config: Dict[str, Any],
     purchase_plans: List[Dict[str, Any]],
     coverage: Dict[str, float]
@@ -1039,46 +1130,34 @@ def send_dry_run_email(
     Send email notification for dry run analysis.
 
     Args:
+        sns_client: Boto3 SNS client
         config: Configuration dictionary
         purchase_plans: List of what would be purchased
         coverage: Current coverage
     """
     logger.info("Sending dry run email")
 
-    # Build email using email_templates helpers
-    lines = []
+    # Format email body
+    email_lines = [
+        "***** DRY RUN MODE ***** Savings Plans Analysis",
+        "=" * 50,
+        "",
+        "*** NO PURCHASES WERE SCHEDULED ***",
+        "",
+        f"Total Plans Analyzed: {len(purchase_plans)}",
+        "",
+        "Current Coverage:",
+        f"  Compute SP:  {coverage.get('compute', 0):.2f}%",
+        f"  Database SP: {coverage.get('database', 0):.2f}%",
+        f"  SageMaker SP: {coverage.get('sagemaker', 0):.2f}%",
+        "",
+        f"Target Coverage: {config.get('coverage_target_percent', 90):.2f}%",
+        "",
+        "Purchase Plans (WOULD BE SCHEDULED if dry_run=false):",
+        "-" * 50,
+    ]
 
-    # Header
-    lines.extend(email_templates.build_header("***** DRY RUN MODE ***** Savings Plans Analysis"))
-    lines.append("")
-
-    # Warning notice
-    lines.append("*** NO PURCHASES WERE SCHEDULED ***")
-    lines.append("")
-
-    # Summary section
-    lines.extend(email_templates.build_key_value_section({
-        'Total Plans Analyzed': len(purchase_plans)
-    }))
-    lines.append("")
-
-    # Coverage section
-    lines.append("Current Coverage:")
-    lines.extend(email_templates.build_key_value_section({
-        'Compute SP': email_templates.format_percentage(coverage.get('compute', 0)),
-        'Database SP': email_templates.format_percentage(coverage.get('database', 0)),
-        'SageMaker SP': email_templates.format_percentage(coverage.get('sagemaker', 0))
-    }, indent='  ', format_numbers=False))
-    lines.append("")
-
-    # Target coverage
-    lines.extend(email_templates.build_key_value_section({
-        'Target Coverage': email_templates.format_percentage(config.get('coverage_target_percent', 90))
-    }, format_numbers=False))
-    lines.append("")
-
-    # Purchase plans section
-    purchase_items = []
+    # Add details for each purchase plan
     total_annual_cost = 0.0
     for i, plan in enumerate(purchase_plans, 1):
         sp_type = plan.get('sp_type', 'unknown')
@@ -1090,45 +1169,34 @@ def send_dry_run_email(
         annual_cost = hourly_commitment * 8760
         total_annual_cost += annual_cost
 
-        purchase_items.extend([
+        email_lines.extend([
             f"{i}. {sp_type.upper()} Savings Plan",
-            f"   Hourly Commitment: {email_templates.format_currency(hourly_commitment, hourly=True)}",
+            f"   Hourly Commitment: ${hourly_commitment:.4f}/hour",
             f"   Term: {term}",
             f"   Payment Option: {payment_option}",
-            f"   Estimated Annual Cost: {email_templates.format_currency(annual_cost)}",
+            f"   Estimated Annual Cost: ${annual_cost:,.2f}",
             ""
         ])
 
-    lines.extend(email_templates.build_list_section(
-        "Purchase Plans (WOULD BE SCHEDULED if dry_run=false):",
-        purchase_items
-    ))
-
-    # Total cost
-    lines.extend(email_templates.build_separator())
-    lines.append(f"Total Estimated Annual Cost: {email_templates.format_currency(total_annual_cost)}")
-    lines.append("")
-
-    # Instructions for enabling purchases
-    lines.extend(email_templates.build_list_section(
+    email_lines.extend([
+        "-" * 50,
+        f"Total Estimated Annual Cost: ${total_annual_cost:,.2f}",
+        "",
         "TO ENABLE ACTUAL PURCHASES:",
-        [
-            "1. Set the DRY_RUN environment variable to 'false'",
-            "2. Update the Lambda configuration:",
-            "   aws lambda update-function-configuration \\",
-            "     --function-name <scheduler-lambda-name> \\",
-            "     --environment Variables={DRY_RUN=false,...}",
-            "",
-            "3. Or via Terraform:",
-            "   Set dry_run = false in your terraform.tfvars",
-            "",
-            "Once disabled, the Scheduler will queue purchase intents to SQS,",
-            "and the Purchaser Lambda will execute the actual purchases."
-        ],
-        include_separator=False
-    ))
+        "1. Set the DRY_RUN environment variable to 'false'",
+        "2. Update the Lambda configuration:",
+        "   aws lambda update-function-configuration \\",
+        "     --function-name <scheduler-lambda-name> \\",
+        "     --environment Variables={DRY_RUN=false,...}",
+        "",
+        "3. Or via Terraform:",
+        "   Set dry_run = false in your terraform.tfvars",
+        "",
+        "Once disabled, the Scheduler will queue purchase intents to SQS,",
+        "and the Purchaser Lambda will execute the actual purchases.",
+    ])
 
-    message = "\n".join(lines)
+    message = "\n".join(email_lines)
 
     # Publish to SNS
     try:
@@ -1141,74 +1209,3 @@ def send_dry_run_email(
     except ClientError as e:
         logger.error(f"Failed to send dry run email: {str(e)}")
         raise
-
-
-def send_error_email(error_message: str) -> None:
-    """
-    Send error notification email.
-
-    Args:
-        error_message: Error details
-    """
-    logger.error("Sending error notification email")
-
-    # Build email using email_templates helpers
-    lines = []
-
-    # Header
-    lines.extend(email_templates.build_header("Savings Plans Scheduler ERROR"))
-    lines.append("")
-
-    # Error notice
-    lines.append("The Scheduler Lambda encountered an error and failed to complete.")
-    lines.append("")
-
-    # Error details section
-    lines.extend(email_templates.build_list_section(
-        "Error Details:",
-        [error_message]
-    ))
-    lines.append("")
-
-    # Action required section
-    lines.extend(email_templates.build_list_section(
-        "Action Required:",
-        [
-            "1. Check CloudWatch Logs for detailed error information",
-            "2. Review the Scheduler Lambda configuration",
-            "3. Investigate and resolve the issue",
-            "4. The scheduler will retry on the next scheduled run"
-        ],
-        include_separator=False
-    ))
-    lines.append("")
-
-    # CloudWatch Logs section
-    lines.extend(email_templates.build_list_section(
-        "CloudWatch Logs:",
-        [
-            "Check the /aws/lambda/scheduler-function log group for full details."
-        ],
-        include_separator=False
-    ))
-
-    message = "\n".join(lines)
-
-    # Get SNS topic ARN from environment (error may occur before config is loaded)
-    sns_topic_arn = os.environ.get('SNS_TOPIC_ARN')
-
-    if not sns_topic_arn:
-        logger.error("Cannot send error email - SNS_TOPIC_ARN not configured")
-        return
-
-    # Publish to SNS
-    try:
-        sns_client.publish(
-            TopicArn=sns_topic_arn,
-            Subject='ERROR: Savings Plans Scheduler Failed',
-            Message=message
-        )
-        logger.info(f"Error email sent successfully to {sns_topic_arn}")
-    except Exception as e:
-        # Don't raise - we're already in error handling
-        logger.error(f"Failed to send error email: {str(e)}")

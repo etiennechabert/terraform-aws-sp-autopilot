@@ -12,36 +12,25 @@ This Lambda:
 
 import json
 import logging
-import os
 from datetime import datetime, timezone, timedelta
 from typing import Dict, List, Any, Optional
 
-import boto3
 from botocore.exceptions import ClientError
 
 from shared import notifications
-from shared.aws_utils import get_assumed_role_session, get_clients
-from shared.email_templates import (
-    build_header,
-    build_key_value_section,
-    build_list_section,
-    build_separator,
-    build_footer,
-    format_currency,
-    format_percentage
+from shared.handler_utils import (
+    load_config_from_env,
+    initialize_clients,
+    lambda_handler_wrapper,
+    send_error_notification
 )
 
 # Configure logging
 logger = logging.getLogger()
 logger.setLevel(logging.INFO)
 
-# AWS clients (initialized as globals, reassigned in handler if using assume role)
-ce_client = boto3.client('ce')
-s3_client = boto3.client('s3')
-sns_client = boto3.client('sns')
-savingsplans_client = boto3.client('savingsplans')
 
-
+@lambda_handler_wrapper('Reporter')
 def handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
     """
     Main handler for Reporter Lambda.
@@ -56,34 +45,40 @@ def handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
     Raises:
         Exception: All errors are raised (no silent failures)
     """
-    global ce_client, savingsplans_client, s3_client
-
     try:
-        logger.info("Starting Reporter Lambda execution")
-
         # Load configuration from environment
         config = load_configuration()
 
+        # Create error callback function
+        def send_error_email(error_msg: str) -> None:
+            """Send error notification using shared utility."""
+            # Get SNS client directly (before full client initialization)
+            import boto3
+            sns = boto3.client('sns')
+            send_error_notification(
+                sns_client=sns,
+                sns_topic_arn=config['sns_topic_arn'],
+                error_message=error_msg,
+                lambda_name='Reporter',
+                slack_webhook_url=config.get('slack_webhook_url'),
+                teams_webhook_url=config.get('teams_webhook_url')
+            )
+
         # Initialize clients (with assume role if configured)
-        try:
-            clients = get_clients(config, session_name='sp-autopilot-reporter')
-            ce_client = clients['ce']
-            savingsplans_client = clients['savingsplans']
-            s3_client = clients['s3']
-        except ClientError as e:
-            error_msg = f"Failed to initialize AWS clients: {str(e)}"
-            if config.get('management_account_role_arn'):
-                error_msg = f"Failed to assume role {config['management_account_role_arn']}: {str(e)}"
-            logger.error(error_msg, exc_info=True)
-            send_error_email(config, error_msg)
-            raise
+        clients = initialize_clients(config, 'sp-autopilot-reporter', send_error_email)
+        ce_client = clients['ce']
+        savingsplans_client = clients['savingsplans']
+        s3_client = clients['s3']
+        sns_client = clients['sns']
+
+        logger.info("Configuration loaded and clients initialized successfully")
 
         # Step 1: Collect coverage history
-        coverage_history = get_coverage_history(lookback_days=30)
+        coverage_history = get_coverage_history(ce_client, lookback_days=30)
         logger.info(f"Coverage history collected: {len(coverage_history)} data points")
 
         # Step 2: Gather savings data
-        savings_data = get_savings_data()
+        savings_data = get_savings_data(savingsplans_client, ce_client)
         logger.info(f"Savings data collected: {savings_data.get('plans_count', 0)} active plans")
 
         # Step 3: Generate report based on format
@@ -93,7 +88,7 @@ def handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
             report_content = generate_html_report(coverage_history, savings_data)
 
         # Step 4: Upload report to S3
-        s3_object_key = upload_report_to_s3(config, report_content, config['report_format'])
+        s3_object_key = upload_report_to_s3(s3_client, config, report_content, config['report_format'])
         logger.info(f"Report uploaded to S3: {s3_object_key}")
 
         # Step 5: Send email notification (if enabled)
@@ -122,12 +117,10 @@ def handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
                 'trend_direction': trend_direction
             }
 
-            send_report_email(config, s3_object_key, coverage_summary, savings_data)
+            send_report_email(sns_client, config, s3_object_key, coverage_summary, savings_data)
             logger.info("Report email notification sent")
         else:
             logger.info("Email notifications disabled - skipping email")
-
-        logger.info("Reporter Lambda completed successfully")
 
         return {
             'statusCode': 200,
@@ -140,30 +133,81 @@ def handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
         }
 
     except Exception as e:
-        logger.error(f"Reporter Lambda failed: {str(e)}", exc_info=True)
-        send_error_email(config, str(e))
+        # Try to send error notification
+        try:
+            config = load_configuration()
+            import boto3
+            sns = boto3.client('sns')
+            send_error_notification(
+                sns_client=sns,
+                sns_topic_arn=config['sns_topic_arn'],
+                error_message=str(e),
+                lambda_name='Reporter',
+                slack_webhook_url=config.get('slack_webhook_url'),
+                teams_webhook_url=config.get('teams_webhook_url')
+            )
+        except Exception as notification_error:
+            logger.warning(f"Failed to send error notification: {notification_error}")
         raise  # Re-raise to ensure Lambda fails visibly
 
 
 def load_configuration() -> Dict[str, Any]:
     """Load and validate configuration from environment variables."""
-    return {
-        'reports_bucket': os.environ['REPORTS_BUCKET'],
-        'sns_topic_arn': os.environ['SNS_TOPIC_ARN'],
-        'report_format': os.environ.get('REPORT_FORMAT', 'html'),
-        'email_reports': os.environ.get('EMAIL_REPORTS', 'false').lower() == 'true',
-        'management_account_role_arn': os.environ.get('MANAGEMENT_ACCOUNT_ROLE_ARN'),
-        'tags': json.loads(os.environ.get('TAGS', '{}')),
-        'slack_webhook_url': os.environ.get('SLACK_WEBHOOK_URL'),
-        'teams_webhook_url': os.environ.get('TEAMS_WEBHOOK_URL'),
+    schema = {
+        'reports_bucket': {
+            'required': True,
+            'type': 'str',
+            'env_var': 'REPORTS_BUCKET'
+        },
+        'sns_topic_arn': {
+            'required': True,
+            'type': 'str',
+            'env_var': 'SNS_TOPIC_ARN'
+        },
+        'report_format': {
+            'required': False,
+            'type': 'str',
+            'default': 'html',
+            'env_var': 'REPORT_FORMAT'
+        },
+        'email_reports': {
+            'required': False,
+            'type': 'bool',
+            'default': 'false',
+            'env_var': 'EMAIL_REPORTS'
+        },
+        'management_account_role_arn': {
+            'required': False,
+            'type': 'str',
+            'env_var': 'MANAGEMENT_ACCOUNT_ROLE_ARN'
+        },
+        'tags': {
+            'required': False,
+            'type': 'json',
+            'default': '{}',
+            'env_var': 'TAGS'
+        },
+        'slack_webhook_url': {
+            'required': False,
+            'type': 'str',
+            'env_var': 'SLACK_WEBHOOK_URL'
+        },
+        'teams_webhook_url': {
+            'required': False,
+            'type': 'str',
+            'env_var': 'TEAMS_WEBHOOK_URL'
+        }
     }
 
+    return load_config_from_env(schema)
 
-def get_coverage_history(lookback_days: int = 30) -> List[Dict[str, Any]]:
+
+def get_coverage_history(ce_client: Any, lookback_days: int = 30) -> List[Dict[str, Any]]:
     """
     Get Savings Plans coverage history from Cost Explorer.
 
     Args:
+        ce_client: Boto3 Cost Explorer client
         lookback_days: Number of days to look back for coverage data
 
     Returns:
@@ -229,11 +273,12 @@ def get_coverage_history(lookback_days: int = 30) -> List[Dict[str, Any]]:
         raise
 
 
-def get_actual_cost_data(lookback_days: int = 30) -> Dict[str, Any]:
+def get_actual_cost_data(ce_client: Any, lookback_days: int = 30) -> Dict[str, Any]:
     """
     Get actual Savings Plans and On-Demand costs from Cost Explorer.
 
     Args:
+        ce_client: Boto3 Cost Explorer client
         lookback_days: Number of days to look back for cost data
 
     Returns:
@@ -341,9 +386,13 @@ def get_actual_cost_data(lookback_days: int = 30) -> Dict[str, Any]:
         raise
 
 
-def get_savings_data() -> Dict[str, Any]:
+def get_savings_data(savingsplans_client: Any, ce_client: Any) -> Dict[str, Any]:
     """
     Get savings data from active Savings Plans.
+
+    Args:
+        savingsplans_client: Boto3 Savings Plans client
+        ce_client: Boto3 Cost Explorer client
 
     Returns:
         dict: Savings Plans data including commitment, utilization, and estimated savings
@@ -1009,6 +1058,7 @@ def generate_json_report(
 
 
 def upload_report_to_s3(
+    s3_client: Any,
     config: Dict[str, Any],
     report_content: str,
     report_format: str = 'html'
@@ -1017,6 +1067,7 @@ def upload_report_to_s3(
     Upload report to S3 with timestamp-based key.
 
     Args:
+        s3_client: Boto3 S3 client
         config: Configuration dictionary with reports_bucket
         report_content: HTML report content
         report_format: Report format (default: 'html')
@@ -1058,6 +1109,7 @@ def upload_report_to_s3(
 
 
 def send_report_email(
+    sns_client: Any,
     config: Dict[str, Any],
     s3_object_key: str,
     coverage_summary: Dict[str, Any],
@@ -1067,6 +1119,7 @@ def send_report_email(
     Send email notification with S3 report link and summary.
 
     Args:
+        sns_client: Boto3 SNS client
         config: Configuration dictionary with sns_topic_arn and reports_bucket
         s3_object_key: S3 object key of the uploaded report
         coverage_summary: Coverage summary metrics
@@ -1107,79 +1160,54 @@ def send_report_email(
     # Build email subject
     subject = f"Savings Plans Report - {current_coverage:.1f}% Coverage, ${net_savings:,.0f}/mo Actual Savings"
 
-    # Build email body using email_templates helpers
-    body_lines = []
-
-    # Header
-    body_lines.extend(build_header("AWS Savings Plans - Coverage & Savings Report", width=60))
-    body_lines.append("")
-
-    # Report metadata
-    body_lines.extend(build_key_value_section({
-        'Report Generated': execution_time,
-        'Reporting Period': f"{coverage_days} days"
-    }, format_numbers=False))
-    body_lines.append("")
-
-    # Coverage summary section
-    body_lines.append("COVERAGE SUMMARY:")
-    body_lines.extend(build_separator(width=60))
-    body_lines.extend(build_key_value_section({
-        'Current Coverage': format_percentage(current_coverage),
-        f'Average Coverage ({coverage_days} days)': format_percentage(avg_coverage),
-        'Trend': trend_direction
-    }, format_numbers=False))
-    body_lines.append("")
-
-    # Savings summary section
-    body_lines.append("SAVINGS SUMMARY:")
-    body_lines.extend(build_separator(width=60))
-    monthly_commitment = total_commitment * 730
-    body_lines.extend(build_key_value_section({
-        'Active Savings Plans': active_plans,
-        'Total Hourly Commitment': f"{format_currency(total_commitment, hourly=True)} ({format_currency(monthly_commitment, monthly=True)})",
-        'Average Utilization (7 days)': format_percentage(average_utilization),
-        'Estimated Monthly Savings': format_currency(estimated_monthly_savings)
-    }, format_numbers=False))
-    body_lines.append("")
-
-    # Actual savings summary section
-    body_lines.append("ACTUAL SAVINGS SUMMARY (30 days):")
-    body_lines.extend(build_separator(width=60))
-    body_lines.extend(build_key_value_section({
-        'On-Demand Equivalent Cost': format_currency(on_demand_equivalent_cost),
-        'Actual Savings Plans Cost': format_currency(actual_sp_cost),
-        'Net Savings': format_currency(net_savings),
-        'Savings Percentage': format_percentage(savings_percentage)
-    }, format_numbers=False))
+    # Build email body
+    body_lines = [
+        "AWS Savings Plans - Coverage & Savings Report",
+        "=" * 60,
+        f"Report Generated: {execution_time}",
+        f"Reporting Period: {coverage_days} days",
+        "",
+        "COVERAGE SUMMARY:",
+        "-" * 60,
+        f"Current Coverage: {current_coverage:.2f}%",
+        f"Average Coverage ({coverage_days} days): {avg_coverage:.2f}%",
+        f"Trend: {trend_direction}",
+        "",
+        "SAVINGS SUMMARY:",
+        "-" * 60,
+        f"Active Savings Plans: {active_plans}",
+        f"Total Hourly Commitment: ${total_commitment:.4f}/hour (${total_commitment * 730:,.2f}/month)",
+        f"Average Utilization (7 days): {average_utilization:.2f}%",
+        f"Estimated Monthly Savings: ${estimated_monthly_savings:,.2f}",
+        "",
+        "ACTUAL SAVINGS SUMMARY (30 days):",
+        "-" * 60,
+        f"On-Demand Equivalent Cost: ${on_demand_equivalent_cost:,.2f}",
+        f"Actual Savings Plans Cost: ${actual_sp_cost:,.2f}",
+        f"Net Savings: ${net_savings:,.2f}",
+        f"Savings Percentage: {savings_percentage:.2f}%",
+    ]
 
     # Add breakdown by type if available
     if breakdown_by_type:
         body_lines.append("")
         body_lines.append("Breakdown by Plan Type:")
-        breakdown_items = {}
         for plan_type, breakdown in breakdown_by_type.items():
             plans_count = breakdown.get('plans_count', 0)
             total_commitment_type = breakdown.get('total_commitment', 0.0)
-            breakdown_items[plan_type] = f"{plans_count} plan(s), {format_currency(total_commitment_type, hourly=True)}"
-        body_lines.extend(build_key_value_section(breakdown_items, indent='  ', format_numbers=False))
+            body_lines.append(f"  {plan_type}: {plans_count} plan(s), ${total_commitment_type:.4f}/hr")
 
-    body_lines.append("")
-
-    # Report access section
-    body_lines.append("REPORT ACCESS:")
-    body_lines.extend(build_separator(width=60))
-    body_lines.extend(build_key_value_section({
-        'S3 Location': f"s3://{bucket_name}/{s3_object_key}",
-        'Direct Link': s3_url,
-        'Console Link': s3_console_url
-    }, format_numbers=False))
-
-    # Footer
-    body_lines.extend(build_footer(
-        custom_message="This is an automated report from AWS Savings Plans Automation.",
-        width=60
-    ))
+    body_lines.extend([
+        "",
+        "REPORT ACCESS:",
+        "-" * 60,
+        f"S3 Location: s3://{bucket_name}/{s3_object_key}",
+        f"Direct Link: {s3_url}",
+        f"Console Link: {s3_console_url}",
+        "",
+        "-" * 60,
+        "This is an automated report from AWS Savings Plans Automation.",
+    ]
 
     # Publish to SNS
     message_body = "\n".join(body_lines)
@@ -1221,98 +1249,3 @@ def send_report_email(
                 logger.warning("Teams notification failed")
     except Exception as e:
         logger.warning(f"Teams notification error (non-fatal): {str(e)}")
-
-
-def send_error_email(config: Dict[str, Any], error_message: str) -> None:
-    """
-    Send error notification via SNS.
-
-    Args:
-        config: Configuration dictionary with sns_topic_arn
-        error_message: Error message to send
-    """
-    try:
-        # Format execution timestamp
-        execution_time = datetime.now(timezone.utc).isoformat()
-
-        # Build email subject
-        subject = "[SP Autopilot] Reporter Lambda Failed"
-
-        # Build email body using email_templates helpers
-        body_lines = []
-
-        # Header
-        body_lines.extend(build_header("AWS Savings Plans Reporter - ERROR NOTIFICATION", width=60))
-        body_lines.extend(build_key_value_section({"Execution Time": execution_time}, format_numbers=False))
-        body_lines.append("")
-
-        # Error details section
-        error_details_items = [error_message]
-        body_lines.extend(build_list_section("ERROR DETAILS:", error_details_items, width=60))
-        body_lines.append("")
-
-        # Investigation section
-        investigation_items = [
-            "The Reporter Lambda failed while generating the coverage and savings report.",
-            "This may affect periodic reporting of Savings Plans coverage trends.",
-            "",
-            "Please check CloudWatch Logs for full details."
-        ]
-        body_lines.extend(build_list_section("INVESTIGATION:", investigation_items, width=60))
-        body_lines.append("")
-
-        # Next steps section
-        next_steps_items = [
-            "1. Check CloudWatch Logs for detailed error context",
-            "2. Verify Cost Explorer API permissions",
-            "3. Verify S3 bucket access permissions",
-            "4. Contact your AWS administrator if the issue persists"
-        ]
-        body_lines.extend(build_list_section("NEXT STEPS:", next_steps_items, width=60))
-        body_lines.append("")
-
-        # Footer
-        body_lines.extend(build_footer(
-            custom_message="This is an automated error notification from AWS Savings Plans Automation.",
-            width=60
-        ))
-
-        # Publish to SNS
-        message_body = "\n".join(body_lines)
-
-        sns_client.publish(
-            TopicArn=config['sns_topic_arn'],
-            Subject=subject,
-            Message=message_body
-        )
-
-        logger.info("Error notification sent via SNS")
-
-        # Send Slack notification
-        slack_webhook_url = config.get('slack_webhook_url')
-        if slack_webhook_url:
-            slack_message = notifications.format_slack_message(
-                subject,
-                body_lines,
-                severity='error'
-            )
-            if notifications.send_slack_notification(slack_webhook_url, slack_message):
-                logger.info("Slack error notification sent successfully")
-            else:
-                logger.warning("Slack error notification failed")
-
-        # Send Teams notification
-        teams_webhook_url = config.get('teams_webhook_url')
-        if teams_webhook_url:
-            teams_message = notifications.format_teams_message(
-                subject,
-                body_lines
-            )
-            if notifications.send_teams_notification(teams_webhook_url, teams_message):
-                logger.info("Teams error notification sent successfully")
-            else:
-                logger.warning("Teams error notification failed")
-
-    except Exception as e:
-        logger.error(f"Failed to send error notification: {str(e)}")
-        # Don't raise - we already have an error, don't mask it

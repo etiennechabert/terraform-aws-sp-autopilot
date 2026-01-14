@@ -14,36 +14,20 @@ This Lambda:
 
 import json
 import logging
-import os
 from datetime import datetime, timezone, timedelta, date
 from typing import Dict, List, Any, Optional
 
-import boto3
 from botocore.exceptions import ClientError
 
-from shared.aws_utils import get_assumed_role_session, get_clients
-from shared import notifications
-from shared.email_templates import (
-    build_header,
-    build_key_value_section,
-    build_list_section,
-    build_footer,
-    format_currency,
-    format_percentage
-)
+from shared import handler_utils, notifications
 from validation import validate_purchase_intent
 
 # Configure logging
 logger = logging.getLogger()
 logger.setLevel(logging.INFO)
 
-# AWS clients (initialized as globals, reassigned in handler if using assume role)
-ce_client = boto3.client('ce')
-sqs_client = boto3.client('sqs')
-sns_client = boto3.client('sns')
-savingsplans_client = boto3.client('savingsplans')
 
-
+@handler_utils.lambda_handler_wrapper('Purchaser')
 def handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
     """
     Main handler for Purchaser Lambda.
@@ -58,29 +42,34 @@ def handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
     Raises:
         Exception: Raised on API errors (no silent failures)
     """
-    global ce_client, savingsplans_client
-
     try:
-        logger.info("Starting Purchaser Lambda execution")
-
         # Load configuration from environment
         config = load_configuration()
 
+        # Create error callback function
+        def send_error_email(error_msg: str) -> None:
+            """Send error notification using shared utility."""
+            # Get SNS client directly (before full client initialization)
+            import boto3
+            sns = boto3.client('sns')
+            handler_utils.send_error_notification(
+                sns_client=sns,
+                sns_topic_arn=config['sns_topic_arn'],
+                error_message=error_msg,
+                lambda_name='Purchaser',
+                slack_webhook_url=config.get('slack_webhook_url'),
+                teams_webhook_url=config.get('teams_webhook_url')
+            )
+
         # Initialize clients (with assume role if configured)
-        try:
-            clients = get_clients(config, session_name='sp-autopilot-purchaser')
-            ce_client = clients['ce']
-            savingsplans_client = clients['savingsplans']
-        except ClientError as e:
-            error_msg = f"Failed to initialize AWS clients: {str(e)}"
-            if config.get('management_account_role_arn'):
-                error_msg = f"Failed to assume role {config['management_account_role_arn']}: {str(e)}"
-            logger.error(error_msg, exc_info=True)
-            send_error_email(error_msg)
-            raise
+        clients = handler_utils.initialize_clients(
+            config,
+            session_name='sp-autopilot-purchaser',
+            error_callback=send_error_email
+        )
 
         # Step 1: Check queue
-        messages = receive_messages(config['queue_url'])
+        messages = receive_messages(clients['sqs'], config['queue_url'])
 
         # If queue is empty, exit silently (no email, no error)
         if not messages:
@@ -96,16 +85,14 @@ def handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
         logger.info(f"Found {len(messages)} purchase intents in queue")
 
         # Step 2: Get current coverage
-        coverage = get_current_coverage(config)
+        coverage = get_current_coverage(clients, config)
         logger.info(f"Current coverage - Compute: {coverage.get('compute', 0)}%, Database: {coverage.get('database', 0)}%, SageMaker: {coverage.get('sagemaker', 0)}%")
 
         # Step 3: Process each message
-        results = process_purchase_messages(config, messages, coverage)
+        results = process_purchase_messages(clients, config, messages, coverage)
 
         # Step 4: Send aggregated email
-        send_summary_email(config, results, coverage)
-
-        logger.info("Purchaser Lambda completed successfully")
+        send_summary_email(clients['sns'], config, results, coverage)
 
         return {
             'statusCode': 200,
@@ -117,28 +104,81 @@ def handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
         }
 
     except Exception as e:
-        logger.error(f"Purchaser Lambda failed: {str(e)}", exc_info=True)
-        send_error_email(str(e))
+        # Try to send error notification
+        try:
+            config = load_configuration()
+            import boto3
+            sns = boto3.client('sns')
+            handler_utils.send_error_notification(
+                sns_client=sns,
+                sns_topic_arn=config['sns_topic_arn'],
+                error_message=str(e),
+                lambda_name='Purchaser',
+                slack_webhook_url=config.get('slack_webhook_url'),
+                teams_webhook_url=config.get('teams_webhook_url')
+            )
+        except Exception as notification_error:
+            logger.warning(f"Failed to send error notification: {notification_error}")
         raise  # Re-raise to ensure Lambda fails visibly
 
 
 def load_configuration() -> Dict[str, Any]:
     """Load and validate configuration from environment variables."""
-    return {
-        'queue_url': os.environ['QUEUE_URL'],
-        'sns_topic_arn': os.environ['SNS_TOPIC_ARN'],
-        'max_coverage_cap': float(os.environ.get('MAX_COVERAGE_CAP', '95')),
-        'renewal_window_days': int(os.environ.get('RENEWAL_WINDOW_DAYS', '7')),
-        'management_account_role_arn': os.environ.get('MANAGEMENT_ACCOUNT_ROLE_ARN'),
-        'tags': json.loads(os.environ.get('TAGS', '{}')),
+    schema = {
+        'queue_url': {
+            'required': True,
+            'type': 'str',
+            'env_var': 'QUEUE_URL'
+        },
+        'sns_topic_arn': {
+            'required': True,
+            'type': 'str',
+            'env_var': 'SNS_TOPIC_ARN'
+        },
+        'max_coverage_cap': {
+            'required': False,
+            'type': 'float',
+            'default': '95',
+            'env_var': 'MAX_COVERAGE_CAP'
+        },
+        'renewal_window_days': {
+            'required': False,
+            'type': 'int',
+            'default': '7',
+            'env_var': 'RENEWAL_WINDOW_DAYS'
+        },
+        'management_account_role_arn': {
+            'required': False,
+            'type': 'str',
+            'env_var': 'MANAGEMENT_ACCOUNT_ROLE_ARN'
+        },
+        'tags': {
+            'required': False,
+            'type': 'json',
+            'default': '{}',
+            'env_var': 'TAGS'
+        },
+        'slack_webhook_url': {
+            'required': False,
+            'type': 'str',
+            'env_var': 'SLACK_WEBHOOK_URL'
+        },
+        'teams_webhook_url': {
+            'required': False,
+            'type': 'str',
+            'env_var': 'TEAMS_WEBHOOK_URL'
+        }
     }
 
+    return handler_utils.load_config_from_env(schema)
 
-def receive_messages(queue_url: str, max_messages: int = 10) -> List[Dict[str, Any]]:
+
+def receive_messages(sqs_client: Any, queue_url: str, max_messages: int = 10) -> List[Dict[str, Any]]:
     """
     Receive messages from SQS queue.
 
     Args:
+        sqs_client: Boto3 SQS client
         queue_url: SQS queue URL
         max_messages: Maximum number of messages to retrieve
 
@@ -163,11 +203,12 @@ def receive_messages(queue_url: str, max_messages: int = 10) -> List[Dict[str, A
         raise
 
 
-def get_current_coverage(config: Dict[str, Any]) -> Dict[str, float]:
+def get_current_coverage(clients: Dict[str, Any], config: Dict[str, Any]) -> Dict[str, float]:
     """
     Calculate current Savings Plans coverage, excluding plans expiring soon.
 
     Args:
+        clients: Dictionary of AWS clients
         config: Configuration dictionary
 
     Returns:
@@ -181,10 +222,10 @@ def get_current_coverage(config: Dict[str, Any]) -> Dict[str, float]:
         start_date = (datetime.now(timezone.utc) - timedelta(days=7)).date()
 
         # Get raw coverage from Cost Explorer
-        raw_coverage = get_ce_coverage(start_date, end_date, config)
+        raw_coverage = get_ce_coverage(clients['ce'], start_date, end_date, config)
 
         # Get existing Savings Plans
-        expiring_plans = get_expiring_plans(config)
+        expiring_plans = get_expiring_plans(clients['savingsplans'], config)
 
         # Adjust coverage to exclude expiring plans
         adjusted_coverage = adjust_coverage_for_expiring_plans(
@@ -202,11 +243,12 @@ def get_current_coverage(config: Dict[str, Any]) -> Dict[str, float]:
         raise
 
 
-def get_ce_coverage(start_date: date, end_date: date, config: Dict[str, Any]) -> Dict[str, Any]:
+def get_ce_coverage(ce_client: Any, start_date: date, end_date: date, config: Dict[str, Any]) -> Dict[str, Any]:
     """
     Get Savings Plans coverage from Cost Explorer.
 
     Args:
+        ce_client: Boto3 Cost Explorer client
         start_date: Start date for coverage period
         end_date: End date for coverage period
         config: Configuration dictionary
@@ -259,11 +301,12 @@ def get_ce_coverage(start_date: date, end_date: date, config: Dict[str, Any]) ->
         raise
 
 
-def get_expiring_plans(config: Dict[str, Any]) -> List[Dict[str, Any]]:
+def get_expiring_plans(savingsplans_client: Any, config: Dict[str, Any]) -> List[Dict[str, Any]]:
     """
     Get list of Savings Plans expiring within renewal_window_days.
 
     Args:
+        savingsplans_client: Boto3 Savings Plans client
         config: Configuration dictionary
 
     Returns:
@@ -350,6 +393,7 @@ def adjust_coverage_for_expiring_plans(
 
 
 def process_purchase_messages(
+    clients: Dict[str, Any],
     config: Dict[str, Any],
     messages: List[Dict[str, Any]],
     initial_coverage: Dict[str, float]
@@ -358,6 +402,7 @@ def process_purchase_messages(
     Process all purchase messages from the queue.
 
     Args:
+        clients: Dictionary of AWS clients
         config: Configuration dictionary
         messages: List of SQS messages
         initial_coverage: Current coverage before purchases
@@ -406,11 +451,11 @@ def process_purchase_messages(
                 results['skipped_count'] += 1
 
                 # Delete message even though we skipped it
-                delete_message(config['queue_url'], message['ReceiptHandle'])
+                delete_message(clients['sqs'], config['queue_url'], message['ReceiptHandle'])
 
             else:
                 # Execute purchase
-                sp_id = execute_purchase(config, purchase_intent)
+                sp_id = execute_purchase(clients['savingsplans'], config, purchase_intent)
                 logger.info(f"Purchase successful: {sp_id}")
 
                 results['successful'].append({
@@ -423,7 +468,7 @@ def process_purchase_messages(
                 current_coverage = update_coverage_tracking(current_coverage, purchase_intent)
 
                 # Delete message after successful purchase
-                delete_message(config['queue_url'], message['ReceiptHandle'])
+                delete_message(clients['sqs'], config['queue_url'], message['ReceiptHandle'])
 
         except ClientError as e:
             logger.error(f"Failed to process purchase: {str(e)}")
@@ -493,6 +538,7 @@ def would_exceed_cap(
 
 
 def execute_purchase(
+    savingsplans_client: Any,
     config: Dict[str, Any],
     purchase_intent: Dict[str, Any]
 ) -> str:
@@ -500,6 +546,7 @@ def execute_purchase(
     Execute a Savings Plan purchase via AWS API.
 
     Args:
+        savingsplans_client: Boto3 Savings Plans client
         config: Configuration dictionary
         purchase_intent: Purchase intent details
 
@@ -602,11 +649,12 @@ def update_coverage_tracking(
     return updated_coverage
 
 
-def delete_message(queue_url: str, receipt_handle: str) -> None:
+def delete_message(sqs_client: Any, queue_url: str, receipt_handle: str) -> None:
     """
     Delete a message from the SQS queue.
 
     Args:
+        sqs_client: Boto3 SQS client
         queue_url: SQS queue URL
         receipt_handle: Message receipt handle
     """
@@ -622,6 +670,7 @@ def delete_message(queue_url: str, receipt_handle: str) -> None:
 
 
 def send_summary_email(
+    sns_client: Any,
     config: Dict[str, Any],
     results: Dict[str, Any],
     coverage: Dict[str, float]
@@ -630,6 +679,7 @@ def send_summary_email(
     Send aggregated summary email for all purchases.
 
     Args:
+        sns_client: Boto3 SNS client
         config: Configuration dictionary
         results: Purchase results
         coverage: Final coverage levels
@@ -643,34 +693,27 @@ def send_summary_email(
     total_purchases = results['successful_count'] + results['skipped_count'] + results['failed_count']
     subject = f"AWS Savings Plans Purchase Complete - {results['successful_count']} Executed, {results['skipped_count']} Skipped, {results['failed_count']} Failed"
 
-    # Build email body using email_templates helpers
-    body_lines = []
-
-    # Header
-    body_lines.extend(build_header("AWS Savings Plans Purchaser - Execution Summary", width=60))
-
-    # Summary section
-    body_lines.extend(build_key_value_section({
-        'Execution Time': execution_time,
-        'Total Purchase Intents Processed': total_purchases,
-        'Successful Purchases': results['successful_count'],
-        'Skipped Purchases': results['skipped_count'],
-        'Failed Purchases': results['failed_count']
-    }, format_numbers=False))
-    body_lines.append("")
-
-    # Coverage section
-    body_lines.append("Current Coverage After Execution:")
-    body_lines.extend(build_key_value_section({
-        'Compute Savings Plans': format_percentage(coverage.get('compute', 0)),
-        'Database Savings Plans': format_percentage(coverage.get('database', 0)),
-        'SageMaker Savings Plans': format_percentage(coverage.get('sagemaker', 0))
-    }, indent='  ', format_numbers=False))
-    body_lines.append("")
+    # Build email body
+    body_lines = [
+        "AWS Savings Plans Purchaser - Execution Summary",
+        "=" * 60,
+        f"Execution Time: {execution_time}",
+        f"Total Purchase Intents Processed: {total_purchases}",
+        f"Successful Purchases: {results['successful_count']}",
+        f"Skipped Purchases: {results['skipped_count']}",
+        f"Failed Purchases: {results['failed_count']}",
+        "",
+        "Current Coverage After Execution:",
+        f"  Compute Savings Plans: {coverage.get('compute', 0):.2f}%",
+        f"  Database Savings Plans: {coverage.get('database', 0):.2f}%",
+        f"  SageMaker Savings Plans: {coverage.get('sagemaker', 0):.2f}%",
+        "",
+    ]
 
     # Add successful purchases section
     if results['successful']:
-        successful_items = []
+        body_lines.append("SUCCESSFUL PURCHASES:")
+        body_lines.append("-" * 60)
         for i, purchase in enumerate(results['successful'], 1):
             intent = purchase['intent']
             sp_id = purchase['sp_id']
@@ -682,29 +725,27 @@ def send_summary_email(
             # Format SP type (remove "SavingsPlans" suffix for readability)
             sp_type_display = intent['sp_type'].replace('SavingsPlans', ' SP')
 
-            item_lines = [
+            body_lines.extend([
                 f"{i}. {sp_type_display}",
                 f"   Savings Plan ID: {sp_id}",
-                f"   Commitment: {format_currency(float(intent['commitment']), hourly=True)}",
+                f"   Commitment: ${intent['commitment']}/hour",
                 f"   Term: {term_str}",
                 f"   Payment Option: {intent['payment_option']}",
-            ]
+            ])
 
             # Add upfront amount if applicable
             if intent.get('upfront_amount') and float(intent['upfront_amount']) > 0:
-                item_lines.append(f"   Upfront Payment: {format_currency(float(intent['upfront_amount']))}")
+                body_lines.append(f"   Upfront Payment: ${float(intent['upfront_amount']):,.2f}")
 
-            successful_items.extend(item_lines)
-            successful_items.append("")
-
-        body_lines.extend(build_list_section("SUCCESSFUL PURCHASES:", successful_items, width=60))
+            body_lines.append("")
     else:
-        body_lines.extend(build_list_section("SUCCESSFUL PURCHASES:", ["No successful purchases."], width=60))
+        body_lines.append("No successful purchases.")
         body_lines.append("")
 
     # Add skipped purchases section
     if results['skipped']:
-        skipped_items = []
+        body_lines.append("SKIPPED PURCHASES:")
+        body_lines.append("-" * 60)
         for i, skip in enumerate(results['skipped'], 1):
             intent = skip['intent']
             reason = skip['reason']
@@ -716,22 +757,21 @@ def send_summary_email(
             # Format SP type
             sp_type_display = intent['sp_type'].replace('SavingsPlans', ' SP')
 
-            skipped_items.extend([
+            body_lines.extend([
                 f"{i}. {sp_type_display}",
-                f"   Commitment: {format_currency(float(intent['commitment']), hourly=True)}",
+                f"   Commitment: ${intent['commitment']}/hour",
                 f"   Term: {term_str}",
                 f"   Reason: {reason}",
                 "",
             ])
-
-        body_lines.extend(build_list_section("SKIPPED PURCHASES:", skipped_items, width=60))
     else:
-        body_lines.extend(build_list_section("SKIPPED PURCHASES:", ["No skipped purchases."], width=60))
+        body_lines.append("No skipped purchases.")
         body_lines.append("")
 
     # Add failed purchases section
     if results['failed']:
-        failed_items = []
+        body_lines.append("FAILED PURCHASES:")
+        body_lines.append("-" * 60)
         for i, failure in enumerate(results['failed'], 1):
             error = failure.get('error', 'Unknown error')
             intent = failure.get('intent', {})
@@ -740,25 +780,26 @@ def send_summary_email(
             if intent:
                 sp_type = intent.get('sp_type', 'Unknown')
                 commitment = intent.get('commitment', 'Unknown')
-                failed_items.extend([
+                body_lines.extend([
                     f"{i}. Error: {error}",
                     f"   SP Type: {sp_type}",
-                    f"   Commitment: {format_currency(float(commitment), hourly=True) if commitment != 'Unknown' else 'Unknown'}",
+                    f"   Commitment: ${commitment}/hour",
                     "",
                 ])
             else:
-                failed_items.extend([
+                body_lines.extend([
                     f"{i}. Error: {error}",
                     "",
                 ])
-
-        body_lines.extend(build_list_section("FAILED PURCHASES:", failed_items, width=60))
     else:
-        body_lines.extend(build_list_section("FAILED PURCHASES:", ["No failed purchases."], width=60))
+        body_lines.append("No failed purchases.")
         body_lines.append("")
 
     # Add footer
-    body_lines.extend(build_footer(width=60))
+    body_lines.extend([
+        "-" * 60,
+        "This is an automated message from AWS Savings Plans Automation.",
+    ])
 
     # Publish to SNS
     message_body = "\n".join(body_lines)
@@ -773,81 +814,3 @@ def send_summary_email(
     except ClientError as e:
         logger.error(f"Failed to send summary email: {str(e)}")
         raise
-
-
-def send_error_email(error_message: str) -> None:
-    """
-    Send error notification email.
-
-    Args:
-        error_message: Error details
-    """
-    logger.error("Sending error notification email")
-
-    # Get configuration from environment
-    try:
-        sns_topic_arn = os.environ['SNS_TOPIC_ARN']
-        queue_url = os.environ['QUEUE_URL']
-    except KeyError as e:
-        logger.error(f"Missing required environment variable for error email: {e}")
-        return  # Cannot send email without SNS topic ARN
-
-    # Format execution timestamp
-    execution_time = datetime.now(timezone.utc).isoformat()
-
-    # Build email subject
-    subject = "AWS Savings Plans Purchaser - ERROR"
-
-    # Build email body
-    body_lines = []
-
-    # Header
-    body_lines.extend(build_header("AWS Savings Plans Purchaser - ERROR NOTIFICATION", width=60))
-    body_lines.extend(build_key_value_section({"Execution Time": execution_time}))
-    body_lines.append("")
-
-    # Error details section
-    error_details_items = [error_message]
-    body_lines.extend(build_list_section("ERROR DETAILS:", error_details_items, width=60))
-    body_lines.append("")
-
-    # Investigation section
-    investigation_items = [
-        "Review the SQS queue for pending purchase intents:",
-        f"Queue URL: {queue_url}",
-        "",
-        "Messages in the queue were NOT processed due to this error.",
-        "The Lambda will retry on the next scheduled execution.",
-    ]
-    body_lines.extend(build_list_section("INVESTIGATION:", investigation_items, width=60))
-    body_lines.append("")
-
-    # Next steps section
-    next_steps_items = [
-        "1. Check CloudWatch Logs for detailed error context",
-        "2. Verify queue messages are still valid",
-        "3. Review Lambda execution role permissions",
-        "4. Contact your AWS administrator if the issue persists",
-    ]
-    body_lines.extend(build_list_section("NEXT STEPS:", next_steps_items, width=60))
-    body_lines.append("")
-
-    # Footer
-    body_lines.extend(build_footer(
-        custom_message="This is an automated error notification from AWS Savings Plans Automation.",
-        width=60
-    ))
-
-    # Publish to SNS
-    message_body = "\n".join(body_lines)
-
-    try:
-        sns_client.publish(
-            TopicArn=sns_topic_arn,
-            Subject=subject,
-            Message=message_body
-        )
-        logger.info("Error notification email sent successfully")
-    except ClientError as e:
-        logger.error(f"Failed to send error notification email: {str(e)}")
-        # Don't raise - we're already in error handling, don't want to mask the original error
