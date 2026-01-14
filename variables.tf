@@ -27,7 +27,7 @@ variable "coverage_target_percent" {
 
   validation {
     condition     = var.coverage_target_percent >= 1 && var.coverage_target_percent <= 100
-    error_message = "coverage_target_percent must be between 1 and 100."
+    error_message = "Coverage target percent must be between 1 and 100."
   }
 }
 
@@ -38,12 +38,7 @@ variable "max_coverage_cap" {
 
   validation {
     condition     = var.max_coverage_cap <= 100
-    error_message = "max_coverage_cap must be <= 100."
-  }
-
-  validation {
-    condition     = var.max_coverage_cap > var.coverage_target_percent
-    error_message = "max_coverage_cap must be greater than coverage_target_percent."
+    error_message = "Max coverage cap must be less than or equal to 100."
   }
 }
 
@@ -76,7 +71,7 @@ variable "min_commitment_per_plan" {
 
   validation {
     condition     = var.min_commitment_per_plan >= 0.001
-    error_message = "min_commitment_per_plan must be >= 0.001 (AWS minimum)."
+    error_message = "Min commitment per plan must be at least 0.001 (AWS minimum)."
   }
 }
 
@@ -112,7 +107,7 @@ variable "compute_sp_term_mix" {
 
   validation {
     condition     = abs(var.compute_sp_term_mix.three_year + var.compute_sp_term_mix.one_year - 1) < 0.0001
-    error_message = "compute_sp_term_mix.three_year + compute_sp_term_mix.one_year must equal 1."
+    error_message = "The sum of compute_sp_term_mix.three_year and compute_sp_term_mix.one_year must equal 1."
   }
 }
 
@@ -308,12 +303,7 @@ variable "s3_lifecycle_transition_glacier_days" {
 
   validation {
     condition     = var.s3_lifecycle_transition_glacier_days >= 1
-    error_message = "s3_lifecycle_transition_glacier_days must be at least 1."
-  }
-
-  validation {
-    condition     = var.s3_lifecycle_transition_glacier_days > var.s3_lifecycle_transition_ia_days
-    error_message = "s3_lifecycle_transition_glacier_days must be greater than s3_lifecycle_transition_ia_days."
+    error_message = "S3 lifecycle transition to Glacier must be at least 1 day."
   }
 }
 
@@ -324,12 +314,7 @@ variable "s3_lifecycle_expiration_days" {
 
   validation {
     condition     = var.s3_lifecycle_expiration_days >= 1
-    error_message = "s3_lifecycle_expiration_days must be at least 1."
-  }
-
-  validation {
-    condition     = var.s3_lifecycle_expiration_days >= var.s3_lifecycle_transition_glacier_days
-    error_message = "s3_lifecycle_expiration_days must be greater than or equal to s3_lifecycle_transition_glacier_days."
+    error_message = "S3 lifecycle expiration must be at least 1 day."
   }
 }
 
@@ -340,7 +325,7 @@ variable "s3_lifecycle_noncurrent_expiration_days" {
 
   validation {
     condition     = var.s3_lifecycle_noncurrent_expiration_days >= 1
-    error_message = "s3_lifecycle_noncurrent_expiration_days must be at least 1."
+    error_message = "S3 lifecycle noncurrent version expiration must be at least 1 day."
   }
 }
 

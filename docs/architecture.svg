@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<svg width="1100" height="550" xmlns="http://www.w3.org/2000/svg">
+<svg width="1200" height="700" xmlns="http://www.w3.org/2000/svg">
   <defs>
-    <!-- AWS service color gradients -->
+    <!-- Enhanced AWS service color gradients -->
     <linearGradient id="lambdaGrad" x1="0%" y1="0%" x2="0%" y2="100%">
       <stop offset="0%" style="stop-color:#FF9900;stop-opacity:1" />
       <stop offset="100%" style="stop-color:#FF7700;stop-opacity:1" />
@@ -22,6 +22,15 @@
       <stop offset="0%" style="stop-color:#D13212;stop-opacity:1" />
       <stop offset="100%" style="stop-color:#A82810;stop-opacity:1" />
     </linearGradient>
+    <linearGradient id="s3Grad" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" style="stop-color:#569A31;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#4A7F2A;stop-opacity:1" />
+    </linearGradient>
+
+    <!-- Shadow filter -->
+    <filter id="shadow" x="-50%" y="-50%" width="200%" height="200%">
+      <feDropShadow dx="0" dy="2" stdDeviation="3" flood-opacity="0.3"/>
+    </filter>
 
     <!-- Arrow markers -->
     <marker id="arrowhead" markerWidth="10" markerHeight="10" refX="9" refY="3" orient="auto">
@@ -30,111 +39,182 @@
     <marker id="arrowheadRed" markerWidth="10" markerHeight="10" refX="9" refY="3" orient="auto">
       <polygon points="0 0, 10 3, 0 6" fill="#D13212" />
     </marker>
+    <marker id="arrowheadGreen" markerWidth="10" markerHeight="10" refX="9" refY="3" orient="auto">
+      <polygon points="0 0, 10 3, 0 6" fill="#569A31" />
+    </marker>
   </defs>
 
   <!-- Title -->
-  <text x="550" y="30" text-anchor="middle" font-family="Arial, sans-serif" font-size="22" font-weight="bold" fill="#232F3E">
-    AWS Savings Plans Auto-Pilot - Core Flow
+  <text x="600" y="30" text-anchor="middle" font-family="Arial, sans-serif" font-size="24" font-weight="bold" fill="#232F3E">
+    AWS Savings Plans Automation - Architecture Flow
   </text>
 
-  <!-- LEFT SIDE: Schedule Trigger -->
-  <rect x="30" y="100" width="150" height="65" rx="5" fill="url(#eventBridgeGrad)" stroke="#232F3E" stroke-width="2"/>
-  <text x="105" y="125" text-anchor="middle" font-family="Arial, sans-serif" font-size="13" font-weight="bold" fill="white">EventBridge</text>
-  <text x="105" y="143" text-anchor="middle" font-family="Arial, sans-serif" font-size="11" fill="white">Monthly Schedule</text>
-  <text x="105" y="158" text-anchor="middle" font-family="Arial, sans-serif" font-size="10" fill="white">(1st of month)</text>
+  <!-- Subtitle -->
+  <text x="600" y="52" text-anchor="middle" font-family="Arial, sans-serif" font-size="12" fill="#666">
+    Compute &amp; Database Savings Plans | Automated Analysis → Review → Purchase
+  </text>
+
+  <!-- ========== ANALYSIS PHASE ========== -->
+
+  <!-- Phase Label -->
+  <text x="30" y="90" font-family="Arial, sans-serif" font-size="14" font-weight="bold" fill="#FF9900">
+    ① ANALYSIS
+  </text>
+
+  <!-- EventBridge Scheduler Trigger -->
+  <rect x="50" y="105" width="160" height="75" rx="8" fill="url(#eventBridgeGrad)" stroke="#232F3E" stroke-width="2" filter="url(#shadow)"/>
+  <text x="130" y="132" text-anchor="middle" font-family="Arial, sans-serif" font-size="14" font-weight="bold" fill="white">EventBridge</text>
+  <text x="130" y="150" text-anchor="middle" font-family="Arial, sans-serif" font-size="11" fill="white">Monthly Trigger</text>
+  <text x="130" y="168" text-anchor="middle" font-family="Arial, sans-serif" font-size="10" fill="white">(1st of month)</text>
 
   <!-- Scheduler Lambda -->
-  <rect x="230" y="90" width="160" height="85" rx="5" fill="url(#lambdaGrad)" stroke="#232F3E" stroke-width="2"/>
-  <text x="310" y="115" text-anchor="middle" font-family="Arial, sans-serif" font-size="14" font-weight="bold" fill="white">Scheduler Lambda</text>
-  <text x="310" y="135" text-anchor="middle" font-family="Arial, sans-serif" font-size="11" fill="white">Analyze usage</text>
-  <text x="310" y="152" text-anchor="middle" font-family="Arial, sans-serif" font-size="11" fill="white">Get recommendations</text>
-  <text x="310" y="168" text-anchor="middle" font-family="Arial, sans-serif" font-size="11" fill="white">Queue purchase tasks</text>
+  <rect x="260" y="95" width="180" height="95" rx="8" fill="url(#lambdaGrad)" stroke="#232F3E" stroke-width="2" filter="url(#shadow)"/>
+  <text x="350" y="122" text-anchor="middle" font-family="Arial, sans-serif" font-size="15" font-weight="bold" fill="white">Scheduler Lambda</text>
+  <text x="350" y="142" text-anchor="middle" font-family="Arial, sans-serif" font-size="11" fill="white">• Analyze usage patterns</text>
+  <text x="350" y="159" text-anchor="middle" font-family="Arial, sans-serif" font-size="11" fill="white">• Get AWS recommendations</text>
+  <text x="350" y="176" text-anchor="middle" font-family="Arial, sans-serif" font-size="11" fill="white">• Calculate purchase needs</text>
 
-  <!-- Arrow: EventBridge -> Scheduler Lambda -->
-  <line x1="180" y1="132" x2="230" y2="132" stroke="#232F3E" stroke-width="2" marker-end="url(#arrowhead)"/>
+  <!-- Arrow: EventBridge -> Scheduler -->
+  <line x1="210" y1="142" x2="260" y2="142" stroke="#232F3E" stroke-width="2.5" marker-end="url(#arrowhead)"/>
+  <text x="235" y="135" text-anchor="middle" font-family="Arial, sans-serif" font-size="9" fill="#232F3E" font-weight="bold">trigger</text>
 
-  <!-- AWS APIs (Cost Explorer + Savings Plans) -->
-  <rect x="440" y="90" width="150" height="85" rx="5" fill="url(#apiGrad)" stroke="#232F3E" stroke-width="2"/>
-  <text x="515" y="115" text-anchor="middle" font-family="Arial, sans-serif" font-size="13" font-weight="bold" fill="white">AWS APIs</text>
-  <text x="515" y="135" text-anchor="middle" font-family="Arial, sans-serif" font-size="11" fill="white">Cost Explorer</text>
-  <text x="515" y="152" text-anchor="middle" font-family="Arial, sans-serif" font-size="11" fill="white">Savings Plans</text>
-  <text x="515" y="168" text-anchor="middle" font-family="Arial, sans-serif" font-size="10" fill="white">(Recommendations)</text>
+  <!-- AWS Cost Explorer & SP APIs -->
+  <rect x="490" y="95" width="180" height="95" rx="8" fill="url(#apiGrad)" stroke="#232F3E" stroke-width="2" filter="url(#shadow)"/>
+  <text x="580" y="122" text-anchor="middle" font-family="Arial, sans-serif" font-size="15" font-weight="bold" fill="white">AWS APIs</text>
+  <text x="580" y="142" text-anchor="middle" font-family="Arial, sans-serif" font-size="11" fill="white">Cost Explorer</text>
+  <text x="580" y="159" text-anchor="middle" font-family="Arial, sans-serif" font-size="11" fill="white">Savings Plans</text>
+  <text x="580" y="176" text-anchor="middle" font-family="Arial, sans-serif" font-size="10" fill="white">(Get Recommendations)</text>
 
-  <!-- Arrow: Scheduler Lambda <-> AWS APIs -->
-  <line x1="390" y1="125" x2="440" y2="125" stroke="#232F3E" stroke-width="2" marker-end="url(#arrowhead)"/>
-  <line x1="440" y1="145" x2="390" y2="145" stroke="#232F3E" stroke-width="2" marker-end="url(#arrowhead)"/>
+  <!-- Arrows: Scheduler <-> AWS APIs -->
+  <line x1="440" y1="130" x2="490" y2="130" stroke="#232F3E" stroke-width="2.5" marker-end="url(#arrowhead)"/>
+  <text x="465" y="120" text-anchor="middle" font-family="Arial, sans-serif" font-size="9" fill="#232F3E" font-weight="bold">request</text>
+  <line x1="490" y1="155" x2="440" y2="155" stroke="#232F3E" stroke-width="2.5" marker-end="url(#arrowhead)"/>
+  <text x="465" y="175" text-anchor="middle" font-family="Arial, sans-serif" font-size="9" fill="#232F3E" font-weight="bold">coverage data</text>
 
-  <!-- SQS Queue (Human Review) -->
-  <rect x="230" y="240" width="160" height="75" rx="5" fill="url(#sqsGrad)" stroke="#232F3E" stroke-width="2"/>
-  <text x="310" y="265" text-anchor="middle" font-family="Arial, sans-serif" font-size="14" font-weight="bold" fill="white">SQS Queue</text>
-  <text x="310" y="285" text-anchor="middle" font-family="Arial, sans-serif" font-size="11" fill="white">Purchase Messages</text>
-  <text x="310" y="305" text-anchor="middle" font-family="Arial, sans-serif" font-size="10" font-style="italic" fill="white">72-hour review window</text>
+  <!-- ========== REVIEW PHASE ========== -->
 
-  <!-- Arrow: Scheduler Lambda -> SQS -->
-  <line x1="310" y1="175" x2="310" y2="240" stroke="#232F3E" stroke-width="2" marker-end="url(#arrowhead)"/>
+  <!-- Phase Label -->
+  <text x="30" y="245" font-family="Arial, sans-serif" font-size="14" font-weight="bold" fill="#FF4F8B">
+    ② REVIEW (72h window)
+  </text>
+
+  <!-- SQS Queue -->
+  <rect x="260" y="260" width="180" height="90" rx="8" fill="url(#sqsGrad)" stroke="#232F3E" stroke-width="2" filter="url(#shadow)"/>
+  <text x="350" y="287" text-anchor="middle" font-family="Arial, sans-serif" font-size="15" font-weight="bold" fill="white">SQS Queue</text>
+  <text x="350" y="307" text-anchor="middle" font-family="Arial, sans-serif" font-size="11" fill="white">Purchase Intent Messages</text>
+  <text x="350" y="324" text-anchor="middle" font-family="Arial, sans-serif" font-size="10" fill="white">Review period: 1st → 4th</text>
+  <text x="350" y="340" text-anchor="middle" font-family="Arial, sans-serif" font-size="9" font-style="italic" fill="white">Delete messages to cancel</text>
+
+  <!-- Arrow: Scheduler -> SQS -->
+  <line x1="350" y1="190" x2="350" y2="260" stroke="#232F3E" stroke-width="2.5" marker-end="url(#arrowhead)"/>
+  <text x="365" y="225" font-family="Arial, sans-serif" font-size="9" fill="#232F3E" font-weight="bold">queue tasks</text>
 
   <!-- Dead Letter Queue -->
-  <rect x="440" y="240" width="150" height="75" rx="5" fill="url(#sqsGrad)" stroke="#232F3E" stroke-width="2"/>
-  <text x="515" y="270" text-anchor="middle" font-family="Arial, sans-serif" font-size="13" font-weight="bold" fill="white">Dead Letter Queue</text>
-  <text x="515" y="290" text-anchor="middle" font-family="Arial, sans-serif" font-size="11" fill="white">Failed Messages</text>
+  <rect x="490" y="270" width="160" height="70" rx="8" fill="url(#sqsGrad)" stroke="#232F3E" stroke-width="2" filter="url(#shadow)"/>
+  <text x="570" y="297" text-anchor="middle" font-family="Arial, sans-serif" font-size="14" font-weight="bold" fill="white">Dead Letter Queue</text>
+  <text x="570" y="317" text-anchor="middle" font-family="Arial, sans-serif" font-size="11" fill="white">Failed Messages</text>
+  <text x="570" y="332" text-anchor="middle" font-family="Arial, sans-serif" font-size="9" fill="white">(Max retries exceeded)</text>
 
-  <!-- Arrow: SQS -> DLQ (error path) -->
-  <line x1="390" y1="277" x2="440" y2="277" stroke="#D13212" stroke-width="2" marker-end="url(#arrowheadRed)" stroke-dasharray="5,5"/>
-  <text x="415" y="270" text-anchor="middle" font-family="Arial, sans-serif" font-size="9" fill="#D13212">errors</text>
+  <!-- Arrow: SQS -> DLQ -->
+  <line x1="440" y1="305" x2="490" y2="305" stroke="#D13212" stroke-width="2.5" marker-end="url(#arrowheadRed)" stroke-dasharray="5,5"/>
+  <text x="465" y="298" text-anchor="middle" font-family="Arial, sans-serif" font-size="9" fill="#D13212" font-weight="bold">errors</text>
 
-  <!-- Purchase Trigger -->
-  <rect x="30" y="380" width="150" height="65" rx="5" fill="url(#eventBridgeGrad)" stroke="#232F3E" stroke-width="2"/>
-  <text x="105" y="405" text-anchor="middle" font-family="Arial, sans-serif" font-size="13" font-weight="bold" fill="white">EventBridge</text>
-  <text x="105" y="423" text-anchor="middle" font-family="Arial, sans-serif" font-size="11" fill="white">Monthly Schedule</text>
-  <text x="105" y="438" text-anchor="middle" font-family="Arial, sans-serif" font-size="10" fill="white">(4th of month)</text>
+  <!-- ========== PURCHASE PHASE ========== -->
+
+  <!-- Phase Label -->
+  <text x="30" y="405" font-family="Arial, sans-serif" font-size="14" font-weight="bold" fill="#FF9900">
+    ③ PURCHASE
+  </text>
+
+  <!-- EventBridge Purchaser Trigger -->
+  <rect x="50" y="420" width="160" height="75" rx="8" fill="url(#eventBridgeGrad)" stroke="#232F3E" stroke-width="2" filter="url(#shadow)"/>
+  <text x="130" y="447" text-anchor="middle" font-family="Arial, sans-serif" font-size="14" font-weight="bold" fill="white">EventBridge</text>
+  <text x="130" y="465" text-anchor="middle" font-family="Arial, sans-serif" font-size="11" fill="white">Monthly Trigger</text>
+  <text x="130" y="483" text-anchor="middle" font-family="Arial, sans-serif" font-size="10" fill="white">(4th of month)</text>
 
   <!-- Purchaser Lambda -->
-  <rect x="230" y="370" width="160" height="85" rx="5" fill="url(#lambdaGrad)" stroke="#232F3E" stroke-width="2"/>
-  <text x="310" y="395" text-anchor="middle" font-family="Arial, sans-serif" font-size="14" font-weight="bold" fill="white">Purchaser Lambda</text>
-  <text x="310" y="415" text-anchor="middle" font-family="Arial, sans-serif" font-size="11" fill="white">Read from queue</text>
-  <text x="310" y="432" text-anchor="middle" font-family="Arial, sans-serif" font-size="11" fill="white">Execute purchases</text>
-  <text x="310" y="448" text-anchor="middle" font-family="Arial, sans-serif" font-size="11" fill="white">Validate coverage cap</text>
+  <rect x="260" y="410" width="180" height="95" rx="8" fill="url(#lambdaGrad)" stroke="#232F3E" stroke-width="2" filter="url(#shadow)"/>
+  <text x="350" y="437" text-anchor="middle" font-family="Arial, sans-serif" font-size="15" font-weight="bold" fill="white">Purchaser Lambda</text>
+  <text x="350" y="457" text-anchor="middle" font-family="Arial, sans-serif" font-size="11" fill="white">• Poll queue messages</text>
+  <text x="350" y="474" text-anchor="middle" font-family="Arial, sans-serif" font-size="11" fill="white">• Validate coverage cap</text>
+  <text x="350" y="491" text-anchor="middle" font-family="Arial, sans-serif" font-size="11" fill="white">• Execute purchases</text>
 
-  <!-- Arrow: EventBridge -> Purchaser Lambda -->
-  <line x1="180" y1="412" x2="230" y2="412" stroke="#232F3E" stroke-width="2" marker-end="url(#arrowhead)"/>
+  <!-- Arrow: EventBridge -> Purchaser -->
+  <line x1="210" y1="457" x2="260" y2="457" stroke="#232F3E" stroke-width="2.5" marker-end="url(#arrowhead)"/>
+  <text x="235" y="450" text-anchor="middle" font-family="Arial, sans-serif" font-size="9" fill="#232F3E" font-weight="bold">trigger</text>
 
-  <!-- Arrow: SQS Queue -> Purchaser Lambda -->
-  <line x1="310" y1="315" x2="310" y2="370" stroke="#232F3E" stroke-width="2" marker-end="url(#arrowhead)"/>
-  <text x="320" y="345" font-family="Arial, sans-serif" font-size="10" fill="#232F3E">poll</text>
+  <!-- Arrow: SQS -> Purchaser -->
+  <line x1="350" y1="350" x2="350" y2="410" stroke="#232F3E" stroke-width="2.5" marker-end="url(#arrowhead)"/>
+  <text x="365" y="380" font-family="Arial, sans-serif" font-size="9" fill="#232F3E" font-weight="bold">poll &amp; process</text>
 
   <!-- Savings Plans Purchase API -->
-  <rect x="440" y="370" width="150" height="85" rx="5" fill="url(#apiGrad)" stroke="#232F3E" stroke-width="2"/>
-  <text x="515" y="395" text-anchor="middle" font-family="Arial, sans-serif" font-size="13" font-weight="bold" fill="white">Savings Plans API</text>
-  <text x="515" y="415" text-anchor="middle" font-family="Arial, sans-serif" font-size="11" fill="white">Purchase Plans</text>
-  <text x="515" y="432" text-anchor="middle" font-family="Arial, sans-serif" font-size="11" fill="white">Commit to Savings</text>
+  <rect x="490" y="410" width="180" height="95" rx="8" fill="url(#apiGrad)" stroke="#232F3E" stroke-width="2" filter="url(#shadow)"/>
+  <text x="580" y="437" text-anchor="middle" font-family="Arial, sans-serif" font-size="15" font-weight="bold" fill="white">Savings Plans API</text>
+  <text x="580" y="457" text-anchor="middle" font-family="Arial, sans-serif" font-size="11" fill="white">CreateSavingsPlan</text>
+  <text x="580" y="474" text-anchor="middle" font-family="Arial, sans-serif" font-size="11" fill="white">Commit to Savings</text>
+  <text x="580" y="491" text-anchor="middle" font-family="Arial, sans-serif" font-size="10" fill="white">(Compute &amp; Database)</text>
 
-  <!-- Arrow: Purchaser Lambda -> Savings Plans API -->
-  <line x1="390" y1="412" x2="440" y2="412" stroke="#232F3E" stroke-width="2" marker-end="url(#arrowhead)"/>
+  <!-- Arrow: Purchaser -> SP API -->
+  <line x1="440" y1="457" x2="490" y2="457" stroke="#232F3E" stroke-width="2.5" marker-end="url(#arrowhead)"/>
+  <text x="465" y="450" text-anchor="middle" font-family="Arial, sans-serif" font-size="9" fill="#232F3E" font-weight="bold">purchase</text>
 
-  <!-- RIGHT SIDE: SNS Notifications -->
-  <rect x="920" y="220" width="150" height="80" rx="5" fill="url(#snsGrad)" stroke="#232F3E" stroke-width="2"/>
-  <text x="995" y="250" text-anchor="middle" font-family="Arial, sans-serif" font-size="14" font-weight="bold" fill="white">SNS Notifications</text>
-  <text x="995" y="270" text-anchor="middle" font-family="Arial, sans-serif" font-size="11" fill="white">Success alerts</text>
-  <text x="995" y="287" text-anchor="middle" font-family="Arial, sans-serif" font-size="11" fill="white">Failure alerts</text>
+  <!-- ========== REPORTING ========== -->
 
-  <!-- Arrows: Lambdas -> SNS (notifications) -->
-  <line x1="390" y1="132" x2="920" y2="250" stroke="#232F3E" stroke-width="1.5" stroke-dasharray="3,3"/>
-  <line x1="390" y1="412" x2="920" y2="270" stroke="#232F3E" stroke-width="1.5" stroke-dasharray="3,3"/>
+  <!-- Phase Label -->
+  <text x="30" y="570" font-family="Arial, sans-serif" font-size="14" font-weight="bold" fill="#569A31">
+    ④ REPORTING
+  </text>
 
-  <!-- Legend -->
-  <rect x="30" y="490" width="1040" height="40" rx="5" fill="#F5F5F5" stroke="#232F3E" stroke-width="1"/>
-  <text x="40" y="510" font-family="Arial, sans-serif" font-size="11" font-weight="bold" fill="#232F3E">Legend:</text>
+  <!-- Reporter Lambda -->
+  <rect x="260" y="555" width="180" height="85" rx="8" fill="url(#lambdaGrad)" stroke="#232F3E" stroke-width="2" filter="url(#shadow)"/>
+  <text x="350" y="582" text-anchor="middle" font-family="Arial, sans-serif" font-size="15" font-weight="bold" fill="white">Reporter Lambda</text>
+  <text x="350" y="602" text-anchor="middle" font-family="Arial, sans-serif" font-size="11" fill="white">• Generate coverage reports</text>
+  <text x="350" y="619" text-anchor="middle" font-family="Arial, sans-serif" font-size="11" fill="white">• Track savings realized</text>
+  <text x="350" y="633" text-anchor="middle" font-family="Arial, sans-serif" font-size="9" fill="white" font-style="italic">(Optional - Weekly/Monthly)</text>
 
-  <line x1="100" y1="505" x2="140" y2="505" stroke="#232F3E" stroke-width="2" marker-end="url(#arrowhead)"/>
-  <text x="145" y="510" font-family="Arial, sans-serif" font-size="10" fill="#232F3E">Data Flow</text>
+  <!-- S3 Reports Bucket -->
+  <rect x="490" y="565" width="160" height="65" rx="8" fill="url(#s3Grad)" stroke="#232F3E" stroke-width="2" filter="url(#shadow)"/>
+  <text x="570" y="592" text-anchor="middle" font-family="Arial, sans-serif" font-size="14" font-weight="bold" fill="white">S3 Bucket</text>
+  <text x="570" y="612" text-anchor="middle" font-family="Arial, sans-serif" font-size="11" fill="white">Coverage Reports</text>
+  <text x="570" y="625" text-anchor="middle" font-family="Arial, sans-serif" font-size="9" fill="white">(HTML/PDF/JSON)</text>
 
-  <line x1="220" y1="505" x2="260" y2="505" stroke="#232F3E" stroke-width="1.5" stroke-dasharray="3,3"/>
-  <text x="265" y="510" font-family="Arial, sans-serif" font-size="10" fill="#232F3E">Notifications</text>
+  <!-- Arrow: Reporter -> S3 -->
+  <line x1="440" y1="597" x2="490" y2="597" stroke="#569A31" stroke-width="2.5" marker-end="url(#arrowheadGreen)"/>
+  <text x="465" y="590" text-anchor="middle" font-family="Arial, sans-serif" font-size="9" fill="#569A31" font-weight="bold">store</text>
 
-  <line x1="350" y1="505" x2="390" y2="505" stroke="#D13212" stroke-width="2" stroke-dasharray="5,5" marker-end="url(#arrowheadRed)"/>
-  <text x="395" y="510" font-family="Arial, sans-serif" font-size="10" fill="#232F3E">Error Path</text>
+  <!-- ========== RIGHT SIDE: NOTIFICATIONS ========== -->
 
-  <text x="490" y="510" font-family="Arial, sans-serif" font-size="10" fill="#666">
-    Human Review: 72-hour window between 1st (analysis) and 4th (purchase) - delete SQS messages to cancel
+  <!-- SNS Notifications -->
+  <rect x="940" y="260" width="210" height="130" rx="8" fill="url(#snsGrad)" stroke="#232F3E" stroke-width="2" filter="url(#shadow)"/>
+  <text x="1045" y="290" text-anchor="middle" font-family="Arial, sans-serif" font-size="16" font-weight="bold" fill="white">SNS Notifications</text>
+  <text x="1045" y="315" text-anchor="middle" font-family="Arial, sans-serif" font-size="12" fill="white">Email Alerts:</text>
+  <text x="1045" y="335" text-anchor="middle" font-family="Arial, sans-serif" font-size="11" fill="white">• Purchase scheduled</text>
+  <text x="1045" y="352" text-anchor="middle" font-family="Arial, sans-serif" font-size="11" fill="white">• Purchase executed</text>
+  <text x="1045" y="369" text-anchor="middle" font-family="Arial, sans-serif" font-size="11" fill="white">• Errors &amp; failures</text>
+  <text x="1045" y="383" text-anchor="middle" font-family="Arial, sans-serif" font-size="9" fill="white" font-style="italic">(+ optional report emails)</text>
+
+  <!-- Notification Arrows -->
+  <line x1="440" y1="142" x2="940" y2="300" stroke="#D13212" stroke-width="2" stroke-dasharray="4,4"/>
+  <line x1="670" y1="305" x2="940" y2="320" stroke="#D13212" stroke-width="2" stroke-dasharray="4,4"/>
+  <line x1="440" y1="457" x2="940" y2="340" stroke="#D13212" stroke-width="2" stroke-dasharray="4,4"/>
+  <line x1="440" y1="597" x2="940" y2="360" stroke="#D13212" stroke-width="2" stroke-dasharray="4,4"/>
+
+  <!-- ========== LEGEND ========== -->
+
+  <rect x="50" y="660" width="1100" height="30" rx="5" fill="#F8F9FA" stroke="#DEE2E6" stroke-width="1.5"/>
+
+  <text x="65" y="680" font-family="Arial, sans-serif" font-size="11" font-weight="bold" fill="#232F3E">Legend:</text>
+
+  <line x1="130" y1="675" x2="170" y2="675" stroke="#232F3E" stroke-width="2.5" marker-end="url(#arrowhead)"/>
+  <text x="175" y="680" font-family="Arial, sans-serif" font-size="10" fill="#232F3E">Data Flow</text>
+
+  <line x1="260" y1="675" x2="300" y2="675" stroke="#D13212" stroke-width="2" stroke-dasharray="4,4"/>
+  <text x="305" y="680" font-family="Arial, sans-serif" font-size="10" fill="#232F3E">Notifications</text>
+
+  <line x1="400" y1="675" x2="440" y2="675" stroke="#D13212" stroke-width="2.5" stroke-dasharray="5,5" marker-end="url(#arrowheadRed)"/>
+  <text x="445" y="680" font-family="Arial, sans-serif" font-size="10" fill="#232F3E">Error Handling</text>
+
+  <text x="570" y="680" font-family="Arial, sans-serif" font-size="10" fill="#666">
+    Human Review Window: 72 hours between scheduling (1st) and purchase (4th) • Delete SQS messages to cancel purchases
   </text>
 </svg>

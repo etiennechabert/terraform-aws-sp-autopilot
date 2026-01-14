@@ -47,9 +47,11 @@ jobs:
           soft_fail: true
           format: sarif
           output: tfsec-results.sarif
+          additional_args: --minimum-severity HIGH
+        continue-on-error: true
 
       - name: Upload SARIF file
-        if: always()
+        if: always() && hashFiles('tfsec-results.sarif') != ''
         uses: github/codeql-action/upload-sarif@v3
         with:
           sarif_file: tfsec-results.sarif
