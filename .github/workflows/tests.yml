@@ -103,7 +103,15 @@ jobs:
           PYTHONPATH: ${{ github.workspace }}/lambda
           AWS_DEFAULT_REGION: us-east-1
         run: |
-          pytest -v --cov=. --cov-report=term-missing --cov-fail-under=80
+          pytest -v --cov=. --cov-report=term-missing --cov-report=xml --cov-fail-under=80
+
+      - name: Upload coverage to Codecov
+        uses: codecov/codecov-action@v4
+        with:
+          files: ./lambda/scheduler/coverage.xml
+          flags: scheduler
+          name: scheduler-coverage
+          fail_ci_if_error: false
 
       - name: Comment PR with Test Results
         if: github.event_name == 'pull_request' && failure()
