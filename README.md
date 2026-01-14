@@ -471,6 +471,119 @@ To cancel a scheduled purchase before it executes:
   - SNS (Publish)
   - CloudWatch Logs (for Lambda logging)
 
+## Testing
+
+This module includes a comprehensive integration test suite using [Terratest](https://terratest.gruntwork.io/) that validates full module deployment, resource creation, and Lambda function execution in a real AWS account.
+
+### Quick Start
+
+**Recommended: Use helper scripts** (validates prerequisites automatically):
+
+```bash
+# Linux/macOS/Git Bash
+cd test
+./run-test.sh
+
+# Windows PowerShell
+cd test
+.\run-test.ps1
+```
+
+**Alternative: Direct Go execution**:
+
+```bash
+# Navigate to test directory
+cd test
+
+# Download Go dependencies
+go mod download
+
+# Run all tests (requires AWS credentials)
+go test -v -timeout 30m
+```
+
+### Test Coverage
+
+The test suite includes:
+
+| Test | Duration | Purpose |
+|------|----------|---------|
+| **TestTerraformBasicDeployment** | ~4 min | Validates all core resources deploy successfully |
+| **TestSQSQueueConfiguration** | ~3 min | Validates queue attributes and redrive policy |
+| **TestSNSTopicConfiguration** | ~3 min | Validates SNS topic and email subscriptions |
+| **TestLambdaDeployment** | ~4 min | Validates Lambda configuration (runtime, env vars, IAM) |
+| **TestSchedulerLambdaInvocation** | ~4 min | Validates Scheduler Lambda execution in dry-run mode |
+| **TestLambdaIAMPermissions** | ~3 min | Validates IAM roles follow principle of least privilege |
+| **TestEventBridgeSchedules** | ~3 min | Validates EventBridge scheduled rules |
+| **TestFullDeploymentAndCleanup** | ~7 min | End-to-end integration test of complete lifecycle |
+
+**Total Suite Duration:** ~15 minutes
+
+### Prerequisites
+
+- **Go** 1.21+
+- **Terraform** 1.6.0+
+- **AWS CLI** 2.x
+- **AWS Account** with permissions to create Lambda, SQS, SNS, IAM, EventBridge, and CloudWatch resources
+
+### Running Specific Tests
+
+```bash
+# Run only Lambda tests
+go test -v -run TestLambda -timeout 15m
+
+# Run basic deployment test
+go test -v -run TestTerraformBasicDeployment -timeout 10m
+
+# Run end-to-end test
+go test -v -run TestFullDeploymentAndCleanup -timeout 15m
+```
+
+### Performance Measurement
+
+Measure test execution time and validate performance targets (<15 minutes):
+
+```bash
+# Linux/macOS/Git Bash
+cd test
+./measure-performance.sh
+
+# Windows PowerShell
+cd test
+.\measure-performance.ps1
+```
+
+### CI/CD Integration
+
+Tests run automatically on pull requests via GitHub Actions (`.github/workflows/terratest.yml`):
+
+- ✅ Triggers on PRs to `main` or `develop`
+- ✅ Validates all resource creation
+- ✅ Tests Lambda function invocation
+- ✅ Cleans up all resources automatically
+- ✅ Posts test results as PR comments
+
+**Required GitHub Secrets:**
+- `AWS_ACCESS_KEY_ID`
+- `AWS_SECRET_ACCESS_KEY`
+
+### Detailed Documentation
+
+For comprehensive testing documentation including:
+- Setup instructions
+- AWS credentials configuration
+- Troubleshooting guide
+- Cost estimates
+- Test descriptions
+
+See **[test/README.md](test/README.md)** for complete details.
+
+### Estimated Test Costs
+
+Running the full test suite once: **~$0.01** (covered by AWS free tier)
+
+Tests clean up all resources automatically, leaving no ongoing costs.
+
 ## License
 
 This module is open-source software licensed under the MIT License.

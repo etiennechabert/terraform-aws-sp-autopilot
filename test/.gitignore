@@ -1,0 +1,30 @@
+# Test binaries
+*.test
+*.out
+
+# Go workspace file
+go.work
+
+# Terraform state files
+*.tfstate
+*.tfstate.*
+.terraform/
+.terraform.lock.hcl
+
+# Crash log files
+crash.log
+
+# Test cache
+.test-data/
+
+# Performance measurement output
+test-results.log
+performance-report.txt
+terraform-debug.log
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
