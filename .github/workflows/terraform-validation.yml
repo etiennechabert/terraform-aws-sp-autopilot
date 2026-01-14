@@ -1,0 +1,74 @@
+name: Terraform Validation
+
+on:
+  pull_request:
+    branches:
+      - main
+      - develop
+    paths:
+      - '**.tf'
+      - '**.tfvars'
+      - '.github/workflows/terraform-validation.yml'
+  push:
+    branches:
+      - main
+      - develop
+    paths:
+      - '**.tf'
+      - '**.tfvars'
+      - '.github/workflows/terraform-validation.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pull-requests: read
+
+jobs:
+  terraform-validation:
+    name: Terraform Format and Validate
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: ~1.0
+
+      - name: Terraform Format Check
+        id: fmt
+        run: terraform fmt -check -recursive
+        continue-on-error: false
+
+      - name: Terraform Init
+        id: init
+        run: terraform init -backend=false
+        continue-on-error: false
+
+      - name: Terraform Validate
+        id: validate
+        run: terraform validate
+        continue-on-error: false
+
+      - name: Comment PR with Results
+        if: github.event_name == 'pull_request' && failure()
+        uses: actions/github-script@v7
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            const output = `#### Terraform Validation Failed ❌
+
+            **Format Check:** \`${{ steps.fmt.outcome }}\`
+            **Initialization:** \`${{ steps.init.outcome }}\`
+            **Validation:** \`${{ steps.validate.outcome }}\`
+
+            *Pushed by: @${{ github.actor }}, Action: \`${{ github.event_name }}\`*`;
+
+            github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: output
+            });
