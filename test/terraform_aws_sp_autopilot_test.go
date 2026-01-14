@@ -156,11 +156,13 @@ func TestTerraformBasicDeployment(t *testing.T) {
 	// Retrieve CloudWatch alarm ARNs from Terraform outputs
 	schedulerErrorAlarmARN := terraform.Output(t, terraformOptions, "scheduler_error_alarm_arn")
 	purchaserErrorAlarmARN := terraform.Output(t, terraformOptions, "purchaser_error_alarm_arn")
+	reporterErrorAlarmARN := terraform.Output(t, terraformOptions, "reporter_error_alarm_arn")
 	dlqAlarmARN := terraform.Output(t, terraformOptions, "dlq_alarm_arn")
 
 	// Validate CloudWatch alarms exist
 	assert.NotEmpty(t, schedulerErrorAlarmARN, "Scheduler error alarm ARN should not be empty")
 	assert.NotEmpty(t, purchaserErrorAlarmARN, "Purchaser error alarm ARN should not be empty")
+	assert.NotEmpty(t, reporterErrorAlarmARN, "Reporter error alarm ARN should not be empty")
 	assert.NotEmpty(t, dlqAlarmARN, "DLQ alarm ARN should not be empty")
 
 	// ============================================================================
@@ -1468,10 +1470,12 @@ func TestFullDeploymentAndCleanup(t *testing.T) {
 
 	schedulerErrorAlarmARN := terraform.Output(t, terraformOptions, "scheduler_error_alarm_arn")
 	purchaserErrorAlarmARN := terraform.Output(t, terraformOptions, "purchaser_error_alarm_arn")
+	reporterErrorAlarmARN := terraform.Output(t, terraformOptions, "reporter_error_alarm_arn")
 	dlqAlarmARN := terraform.Output(t, terraformOptions, "dlq_alarm_arn")
 
 	require.NotEmpty(t, schedulerErrorAlarmARN, "Scheduler error alarm ARN should not be empty")
 	require.NotEmpty(t, purchaserErrorAlarmARN, "Purchaser error alarm ARN should not be empty")
+	require.NotEmpty(t, reporterErrorAlarmARN, "Reporter error alarm ARN should not be empty")
 	require.NotEmpty(t, dlqAlarmARN, "DLQ alarm ARN should not be empty")
 
 	t.Log("✓ CloudWatch alarms validated")

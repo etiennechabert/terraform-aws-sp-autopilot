@@ -148,6 +148,11 @@ output "purchaser_error_alarm_arn" {
   value       = var.enable_lambda_error_alarm ? aws_cloudwatch_metric_alarm.purchaser_error_alarm[0].arn : null
 }
 
+output "reporter_error_alarm_arn" {
+  description = "ARN of the Reporter Lambda error alarm"
+  value       = var.enable_lambda_error_alarm ? aws_cloudwatch_metric_alarm.reporter_error_alarm[0].arn : null
+}
+
 output "dlq_alarm_arn" {
   description = "ARN of the DLQ depth alarm"
   value       = var.enable_dlq_alarm ? aws_cloudwatch_metric_alarm.dlq_alarm[0].arn : null
