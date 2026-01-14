@@ -38,7 +38,7 @@ def test_get_assumed_role_session_with_valid_arn():
         assert session is not None
         mock_sts.assume_role.assert_called_once_with(
             RoleArn='arn:aws:iam::123456789012:role/TestRole',
-            RoleSessionName='sp-autopilot-purchaser'
+            RoleSessionName='sp-autopilot-session'
         )
 
 
@@ -80,7 +80,7 @@ def test_get_clients_with_role_arn():
     """Test that CE/SP clients use assumed credentials when role ARN is provided."""
     config = {'management_account_role_arn': 'arn:aws:iam::123456789012:role/TestRole'}
 
-    with patch('handler.get_assumed_role_session') as mock_assume, \
+    with patch('shared.aws_utils.get_assumed_role_session') as mock_assume, \
          patch('shared.aws_utils.boto3.client') as mock_boto3_client:
 
         # Mock session from assumed role
@@ -96,18 +96,19 @@ def test_get_clients_with_role_arn():
         # Call function
         clients = handler.get_clients(config)
 
-        # Verify assume role was called
-        mock_assume.assert_called_once_with('arn:aws:iam::123456789012:role/TestRole')
+        # Verify assume role was called with default session name
+        mock_assume.assert_called_once_with('arn:aws:iam::123456789012:role/TestRole', 'sp-autopilot-session')
 
         # Verify CE and Savings Plans clients use session
         assert mock_session.client.call_count == 2
         mock_session.client.assert_any_call('ce')
         mock_session.client.assert_any_call('savingsplans')
 
-        # Verify SNS and SQS clients use local credentials (boto3.client directly)
-        assert mock_boto3_client.call_count == 2
+        # Verify SNS, SQS, and S3 clients use local credentials (boto3.client directly)
+        assert mock_boto3_client.call_count == 3
         mock_boto3_client.assert_any_call('sns')
         mock_boto3_client.assert_any_call('sqs')
+        mock_boto3_client.assert_any_call('s3')
 
 
 def test_get_clients_without_role_arn():
@@ -120,12 +121,13 @@ def test_get_clients_without_role_arn():
         # Call function
         clients = handler.get_clients(config)
 
-        # Verify all 4 clients use boto3.client directly (no assume role)
-        assert mock_boto3_client.call_count == 4
+        # Verify all 5 clients use boto3.client directly (no assume role)
+        assert mock_boto3_client.call_count == 5
         mock_boto3_client.assert_any_call('ce')
         mock_boto3_client.assert_any_call('savingsplans')
         mock_boto3_client.assert_any_call('sns')
         mock_boto3_client.assert_any_call('sqs')
+        mock_boto3_client.assert_any_call('s3')
 
 
 def test_handler_assume_role_error_handling(monkeypatch):

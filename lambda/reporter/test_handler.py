@@ -48,25 +48,27 @@ def test_get_assumed_role_session_with_valid_arn():
             }
         }
 
-        # Call function
-        session = handler.get_assumed_role_session('arn:aws:iam::123456789012:role/TestRole')
+        # Call function - now uses shared aws_utils default session name
+        from shared.aws_utils import get_assumed_role_session
+        session = get_assumed_role_session('arn:aws:iam::123456789012:role/TestRole')
 
-        # Verify AssumeRole was called with correct parameters
+        # Verify AssumeRole was called with correct parameters (default session name)
         assert session is not None
         mock_sts.assume_role.assert_called_once_with(
             RoleArn='arn:aws:iam::123456789012:role/TestRole',
-            RoleSessionName='sp-autopilot-reporter'
+            RoleSessionName='sp-autopilot-session'
         )
 
 
 def test_get_assumed_role_session_without_arn():
     """Test that None is returned when ARN is not provided."""
+    from shared.aws_utils import get_assumed_role_session
     # Test with None
-    result = handler.get_assumed_role_session(None)
+    result = get_assumed_role_session(None)
     assert result is None
 
     # Test with empty string
-    result = handler.get_assumed_role_session('')
+    result = get_assumed_role_session('')
     assert result is None
 
 
@@ -86,8 +88,9 @@ def test_get_assumed_role_session_access_denied():
         mock_sts.assume_role.side_effect = ClientError(error_response, 'AssumeRole')
 
         # Verify ClientError is raised
+        from shared.aws_utils import get_assumed_role_session
         with pytest.raises(ClientError) as exc_info:
-            handler.get_assumed_role_session('arn:aws:iam::123456789012:role/TestRole')
+            get_assumed_role_session('arn:aws:iam::123456789012:role/TestRole')
 
         # Verify error code
         assert exc_info.value.response['Error']['Code'] == 'AccessDenied'
@@ -97,7 +100,7 @@ def test_get_clients_with_role_arn():
     """Test that CE/SP clients use assumed credentials when role ARN is provided."""
     config = {'management_account_role_arn': 'arn:aws:iam::123456789012:role/TestRole'}
 
-    with patch('handler.get_assumed_role_session') as mock_assume, \
+    with patch('shared.aws_utils.get_assumed_role_session') as mock_assume, \
          patch('shared.aws_utils.boto3.client') as mock_boto3_client:
 
         # Mock session from assumed role
@@ -110,20 +113,22 @@ def test_get_clients_with_role_arn():
         # Mock boto3.client() calls (for SNS/S3)
         mock_boto3_client.return_value = MagicMock()
 
-        # Call function
-        clients = handler.get_clients(config)
+        # Call function with session_name parameter
+        from shared.aws_utils import get_clients
+        clients = get_clients(config, session_name='sp-autopilot-reporter')
 
-        # Verify assume role was called
-        mock_assume.assert_called_once_with('arn:aws:iam::123456789012:role/TestRole')
+        # Verify assume role was called with session_name
+        mock_assume.assert_called_once_with('arn:aws:iam::123456789012:role/TestRole', 'sp-autopilot-reporter')
 
         # Verify CE and Savings Plans clients use session
         assert mock_session.client.call_count == 2
         mock_session.client.assert_any_call('ce')
         mock_session.client.assert_any_call('savingsplans')
 
-        # Verify SNS and S3 clients use local credentials (boto3.client directly)
-        assert mock_boto3_client.call_count == 2
+        # Verify SNS, SQS, and S3 clients use local credentials (boto3.client directly)
+        assert mock_boto3_client.call_count == 3
         mock_boto3_client.assert_any_call('sns')
+        mock_boto3_client.assert_any_call('sqs')
         mock_boto3_client.assert_any_call('s3')
 
 
@@ -135,13 +140,15 @@ def test_get_clients_without_role_arn():
         mock_boto3_client.return_value = MagicMock()
 
         # Call function
-        clients = handler.get_clients(config)
+        from shared.aws_utils import get_clients
+        clients = get_clients(config)
 
-        # Verify all 4 clients use boto3.client directly (no assume role)
-        assert mock_boto3_client.call_count == 4
+        # Verify all 5 clients use boto3.client directly (no assume role)
+        assert mock_boto3_client.call_count == 5
         mock_boto3_client.assert_any_call('ce')
         mock_boto3_client.assert_any_call('savingsplans')
         mock_boto3_client.assert_any_call('sns')
+        mock_boto3_client.assert_any_call('sqs')
         mock_boto3_client.assert_any_call('s3')
 
 
@@ -912,9 +919,10 @@ def test_handler_assume_role_error(mock_env_vars, monkeypatch):
         with pytest.raises(ClientError):
             handler.handler({}, None)
 
-        # Verify error email was sent with role ARN in message
+        # Verify error email was sent with role ARN in message (check first call)
         assert mock_send_error.called
-        error_msg = mock_send_error.call_args[0][1]
+        # Handler calls send_error_email twice - first with role ARN, then from outer exception handler
+        error_msg = mock_send_error.call_args_list[0][0][1]
         assert 'arn:aws:iam::123456789012:role/TestRole' in error_msg
 
 
