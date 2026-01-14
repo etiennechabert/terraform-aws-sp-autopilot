@@ -4,9 +4,9 @@ Comprehensive unit tests for Slack notification formatting with color-coded seve
 Tests cover format_slack_message() with all severity levels and edge cases.
 """
 
-import pytest
-import sys
 import os
+import sys
+
 
 # Add parent directory to path
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))

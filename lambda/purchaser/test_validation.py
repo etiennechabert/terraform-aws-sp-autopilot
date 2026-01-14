@@ -2,14 +2,16 @@
 Unit tests for validation module - Purchase Intent schema validation.
 """
 
-import pytest
-import sys
 import os
+import sys
+
+import pytest
+
 
 # Add parent directory to path
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from validation import validate_purchase_intent, VALID_SP_TYPES, VALID_PAYMENT_OPTIONS, REQUIRED_FIELDS
+from validation import VALID_PAYMENT_OPTIONS, VALID_SP_TYPES, validate_purchase_intent
 
 
 def test_valid_purchase_intent_passes():

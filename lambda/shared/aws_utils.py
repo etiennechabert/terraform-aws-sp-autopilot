@@ -7,10 +7,11 @@ Provides reusable utilities for:
 """
 
 import logging
-from typing import Dict, Any, Optional
+from typing import Any, Dict, Optional
 
 import boto3
 from botocore.exceptions import ClientError
+
 
 # Configure logging
 logger = logging.getLogger()
@@ -84,11 +85,10 @@ def get_clients(config: Dict[str, Any], session_name: str = 'sp-autopilot-sessio
             'sqs': boto3.client('sqs'),
             's3': boto3.client('s3'),
         }
-    else:
-        return {
-            'ce': boto3.client('ce'),
-            'savingsplans': boto3.client('savingsplans'),
-            'sns': boto3.client('sns'),
-            'sqs': boto3.client('sqs'),
-            's3': boto3.client('s3'),
-        }
+    return {
+        'ce': boto3.client('ce'),
+        'savingsplans': boto3.client('savingsplans'),
+        'sns': boto3.client('sns'),
+        'sqs': boto3.client('sqs'),
+        's3': boto3.client('s3'),
+    }

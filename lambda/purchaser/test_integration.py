@@ -16,8 +16,14 @@ to verify all required behaviors:
 import json
 import os
 import sys
-from unittest.mock import Mock, MagicMock, patch
-from datetime import datetime, timezone, timedelta
+from unittest.mock import patch
+
+# Set mock AWS credentials before importing handler (required for boto3.client() calls)
+os.environ['AWS_ACCESS_KEY_ID'] = 'testing'
+os.environ['AWS_SECRET_ACCESS_KEY'] = 'testing'
+os.environ['AWS_SECURITY_TOKEN'] = 'testing'
+os.environ['AWS_SESSION_TOKEN'] = 'testing'
+os.environ['AWS_DEFAULT_REGION'] = 'us-east-1'
 
 # Add lambda directory to path
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
@@ -57,7 +63,17 @@ def test_empty_queue():
     scenario.log("Testing empty queue behavior...")
 
     with patch.object(handler, 'sqs_client') as mock_sqs, \
-         patch.object(handler, 'sns_client') as mock_sns:
+         patch.object(handler, 'sns_client') as mock_sns, \
+         patch('shared.aws_utils.get_clients') as mock_get_clients:
+
+        # Mock get_clients to return the existing mocked clients
+        mock_get_clients.return_value = {
+            'ce': handler.ce_client,
+            'savingsplans': handler.savingsplans_client,
+            'sqs': mock_sqs,
+            'sns': mock_sns,
+            's3': None
+        }
 
         # Mock empty queue
         mock_sqs.receive_message.return_value = {'Messages': []}
@@ -97,7 +113,17 @@ def test_valid_purchase_execution():
     with patch.object(handler, 'sqs_client') as mock_sqs, \
          patch.object(handler, 'sns_client') as mock_sns, \
          patch.object(handler, 'ce_client') as mock_ce, \
-         patch.object(handler, 'savingsplans_client') as mock_sp:
+         patch.object(handler, 'savingsplans_client') as mock_sp, \
+         patch('shared.aws_utils.get_clients') as mock_get_clients:
+
+        # Mock get_clients to return the mocked clients
+        mock_get_clients.return_value = {
+            'ce': mock_ce,
+            'savingsplans': mock_sp,
+            'sqs': mock_sqs,
+            'sns': mock_sns,
+            's3': None
+        }
 
         # Mock SQS message with valid purchase intent
         purchase_intent = {
@@ -204,7 +230,17 @@ def test_cap_enforcement():
     with patch.object(handler, 'sqs_client') as mock_sqs, \
          patch.object(handler, 'sns_client') as mock_sns, \
          patch.object(handler, 'ce_client') as mock_ce, \
-         patch.object(handler, 'savingsplans_client') as mock_sp:
+         patch.object(handler, 'savingsplans_client') as mock_sp, \
+         patch('shared.aws_utils.get_clients') as mock_get_clients:
+
+        # Mock get_clients to return the mocked clients
+        mock_get_clients.return_value = {
+            'ce': mock_ce,
+            'savingsplans': mock_sp,
+            'sqs': mock_sqs,
+            'sns': mock_sns,
+            's3': None
+        }
 
         # Mock SQS message with purchase that would exceed cap
         purchase_intent = {
@@ -295,7 +331,17 @@ def test_multiple_messages():
     with patch.object(handler, 'sqs_client') as mock_sqs, \
          patch.object(handler, 'sns_client') as mock_sns, \
          patch.object(handler, 'ce_client') as mock_ce, \
-         patch.object(handler, 'savingsplans_client') as mock_sp:
+         patch.object(handler, 'savingsplans_client') as mock_sp, \
+         patch('shared.aws_utils.get_clients') as mock_get_clients:
+
+        # Mock get_clients to return the mocked clients
+        mock_get_clients.return_value = {
+            'ce': mock_ce,
+            'savingsplans': mock_sp,
+            'sqs': mock_sqs,
+            'sns': mock_sns,
+            's3': None
+        }
 
         # Mock SQS with multiple messages
         purchase_intent_1 = {
@@ -416,7 +462,17 @@ def test_api_error():
 
     with patch.object(handler, 'sqs_client') as mock_sqs, \
          patch.object(handler, 'sns_client') as mock_sns, \
-         patch.object(handler, 'ce_client') as mock_ce:
+         patch.object(handler, 'ce_client') as mock_ce, \
+         patch('shared.aws_utils.get_clients') as mock_get_clients:
+
+        # Mock get_clients to return the mocked clients
+        mock_get_clients.return_value = {
+            'ce': mock_ce,
+            'savingsplans': handler.savingsplans_client,
+            'sqs': mock_sqs,
+            'sns': mock_sns,
+            's3': None
+        }
 
         # Mock SQS message
         purchase_intent = {
@@ -496,7 +552,17 @@ def test_database_sp_purchase():
     with patch.object(handler, 'sqs_client') as mock_sqs, \
          patch.object(handler, 'sns_client') as mock_sns, \
          patch.object(handler, 'ce_client') as mock_ce, \
-         patch.object(handler, 'savingsplans_client') as mock_sp:
+         patch.object(handler, 'savingsplans_client') as mock_sp, \
+         patch('shared.aws_utils.get_clients') as mock_get_clients:
+
+        # Mock get_clients to return the mocked clients
+        mock_get_clients.return_value = {
+            'ce': mock_ce,
+            'savingsplans': mock_sp,
+            'sqs': mock_sqs,
+            'sns': mock_sns,
+            's3': None
+        }
 
         # Mock SQS message with Database SP purchase intent
         purchase_intent = {
@@ -607,7 +673,17 @@ def test_database_sp_cap_enforcement():
     with patch.object(handler, 'sqs_client') as mock_sqs, \
          patch.object(handler, 'sns_client') as mock_sns, \
          patch.object(handler, 'ce_client') as mock_ce, \
-         patch.object(handler, 'savingsplans_client') as mock_sp:
+         patch.object(handler, 'savingsplans_client') as mock_sp, \
+         patch('shared.aws_utils.get_clients') as mock_get_clients:
+
+        # Mock get_clients to return the mocked clients
+        mock_get_clients.return_value = {
+            'ce': mock_ce,
+            'savingsplans': mock_sp,
+            'sqs': mock_sqs,
+            'sns': mock_sns,
+            's3': None
+        }
 
         # Mock SQS message with Database SP purchase that would exceed cap
         purchase_intent = {
@@ -702,7 +778,17 @@ def test_mixed_compute_and_database_sp():
     with patch.object(handler, 'sqs_client') as mock_sqs, \
          patch.object(handler, 'sns_client') as mock_sns, \
          patch.object(handler, 'ce_client') as mock_ce, \
-         patch.object(handler, 'savingsplans_client') as mock_sp:
+         patch.object(handler, 'savingsplans_client') as mock_sp, \
+         patch('shared.aws_utils.get_clients') as mock_get_clients:
+
+        # Mock get_clients to return the mocked clients
+        mock_get_clients.return_value = {
+            'ce': mock_ce,
+            'savingsplans': mock_sp,
+            'sqs': mock_sqs,
+            'sns': mock_sns,
+            's3': None
+        }
 
         # Mock SQS with mixed Compute and Database SP messages
         compute_intent = {
@@ -841,7 +927,17 @@ def test_malformed_message():
     scenario.log("Testing malformed message with missing required fields...")
 
     with patch.object(handler, 'sqs_client') as mock_sqs, \
-         patch.object(handler, 'sns_client') as mock_sns:
+         patch.object(handler, 'sns_client') as mock_sns, \
+         patch('shared.aws_utils.get_clients') as mock_get_clients:
+
+        # Mock get_clients to return the mocked clients
+        mock_get_clients.return_value = {
+            'ce': handler.ce_client,
+            'savingsplans': handler.savingsplans_client,
+            'sqs': mock_sqs,
+            'sns': mock_sns,
+            's3': None
+        }
 
         # Mock SQS message with missing required fields (no client_token, no offering_id)
         malformed_intent = {
@@ -906,7 +1002,17 @@ def test_invalid_sp_type():
     scenario.log("Testing invalid sp_type value...")
 
     with patch.object(handler, 'sqs_client') as mock_sqs, \
-         patch.object(handler, 'sns_client') as mock_sns:
+         patch.object(handler, 'sns_client') as mock_sns, \
+         patch('shared.aws_utils.get_clients') as mock_get_clients:
+
+        # Mock get_clients to return the mocked clients
+        mock_get_clients.return_value = {
+            'ce': handler.ce_client,
+            'savingsplans': handler.savingsplans_client,
+            'sqs': mock_sqs,
+            'sns': mock_sns,
+            's3': None
+        }
 
         # Mock SQS message with invalid sp_type
         invalid_sp_type_intent = {
@@ -1009,9 +1115,8 @@ def main():
     if passed == total:
         print("\n🎉 All integration tests PASSED!")
         return 0
-    else:
-        print(f"\n⚠️  {total - passed} test(s) FAILED")
-        return 1
+    print(f"\n⚠️  {total - passed} test(s) FAILED")
+    return 1
 
 
 if __name__ == '__main__':

@@ -2,12 +2,14 @@
 Unit tests for Purchaser Lambda handler - Assume Role functionality.
 """
 
-import pytest
-from unittest.mock import Mock, patch, MagicMock
-from datetime import datetime, timezone
-from botocore.exceptions import ClientError
-import sys
 import os
+import sys
+from datetime import datetime, timezone
+from unittest.mock import MagicMock, patch
+
+import pytest
+from botocore.exceptions import ClientError
+
 
 # Add parent directory to path
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))

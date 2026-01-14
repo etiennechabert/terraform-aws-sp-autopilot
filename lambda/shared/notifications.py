@@ -44,9 +44,10 @@ Example Usage:
 
 import json
 import logging
-from typing import Dict, List, Any, Optional
+from typing import Any, Dict, List
+from urllib.error import HTTPError, URLError
 from urllib.request import Request, urlopen
-from urllib.error import URLError, HTTPError
+
 
 # Configure logging
 logger = logging.getLogger()
@@ -201,18 +202,17 @@ def send_slack_notification(webhook_url: str, message_data: Dict[str, Any]) -> b
             if response.status == 200:
                 logger.info("Slack notification sent successfully")
                 return True
-            else:
-                logger.error(f"Slack notification failed with status {response.status}")
-                return False
+            logger.error(f"Slack notification failed with status {response.status}")
+            return False
 
     except HTTPError as e:
         logger.error(f"Slack webhook HTTP error: {e.code} - {e.reason}")
         return False
     except URLError as e:
-        logger.error(f"Slack webhook URL error: {str(e.reason)}")
+        logger.error(f"Slack webhook URL error: {e.reason!s}")
         return False
     except Exception as e:
-        logger.error(f"Slack notification failed: {str(e)}")
+        logger.error(f"Slack notification failed: {e!s}")
         return False
 
 
@@ -245,16 +245,15 @@ def send_teams_notification(webhook_url: str, message_data: Dict[str, Any]) -> b
             if response.status == 200:
                 logger.info("Teams notification sent successfully")
                 return True
-            else:
-                logger.error(f"Teams notification failed with status {response.status}")
-                return False
+            logger.error(f"Teams notification failed with status {response.status}")
+            return False
 
     except HTTPError as e:
         logger.error(f"Teams webhook HTTP error: {e.code} - {e.reason}")
         return False
     except URLError as e:
-        logger.error(f"Teams webhook URL error: {str(e.reason)}")
+        logger.error(f"Teams webhook URL error: {e.reason!s}")
         return False
     except Exception as e:
-        logger.error(f"Teams notification failed: {str(e)}")
+        logger.error(f"Teams notification failed: {e!s}")
         return False

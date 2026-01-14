@@ -9,4 +9,5 @@ __version__ = "1.0.0"
 
 from . import notifications
 
+
 __all__ = ["notifications"]
