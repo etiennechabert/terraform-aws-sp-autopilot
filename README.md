@@ -379,155 +379,70 @@ To cancel a scheduled purchase before it executes:
 
 ### Slack Webhooks
 
-**Setup:**
 1. Go to `https://[workspace].slack.com/apps` → "Incoming Webhooks" → "Add to Slack"
-2. Select channel (`#finops`, `#aws-alerts`, `#savings-plans`)
-3. Copy webhook URL: `https://hooks.slack.com/services/T.../B.../XXX...`
-4. Configure in Terraform:
-   ```hcl
-   module "savings_plans" {
-     source            = "etiennechabert/sp-autopilot/aws"
-     slack_webhook_url = "https://hooks.slack.com/services/..."
-   }
-   ```
+2. Select channel and copy webhook URL
+3. Configure: `slack_webhook_url = "https://hooks.slack.com/services/..."`
 
 **Security:** Store webhook URLs in AWS Secrets Manager — never commit to version control.
-
-**Message Format:** Color-coded severity (✅ Success, ⚠️ Warning, ❌ Error, ℹ️ Info) with coverage status, purchase details, and actionable error messages
 
 ### Microsoft Teams Webhooks
 
-**Setup:**
-1. Navigate to Teams channel → **•••** → **Connectors** → "Incoming Webhook" → **Configure**
-2. Provide name, upload icon (optional), click **Create**
-3. Copy webhook URL: `https://[org].webhook.office.com/webhookb2/...` (copy immediately — won't show again)
-4. Configure in Terraform:
-   ```hcl
-   module "savings_plans" {
-     source            = "etiennechabert/sp-autopilot/aws"
-     teams_webhook_url = "https://[org].webhook.office.com/webhookb2/..."
-   }
-   ```
+1. Teams channel → **•••** → **Connectors** → "Incoming Webhook" → **Configure**
+2. Copy webhook URL (only shown once)
+3. Configure: `teams_webhook_url = "https://[org].webhook.office.com/webhookb2/..."`
 
 **Security:** Store webhook URLs in AWS Secrets Manager — never commit to version control.
 
-**Message Format:** MessageCard format with Microsoft blue theme (`#0078D4`), includes coverage status, purchase details, and error alerts
-
 ## Cross-Account Setup for AWS Organizations
 
-When using AWS Organizations, Savings Plans purchases must be made from the **management account** (formerly master account), but you may want to deploy this module in a **secondary account** for security or organizational reasons.
-
-The module supports cross-account operation by allowing Lambda functions to assume an IAM role in the management account before making Cost Explorer and Savings Plans API calls.
+When using AWS Organizations, Savings Plans must be purchased from the **management account**. Deploy this module in a secondary account and configure cross-account access.
 
 ### Configuration
 
-Set the `management_account_role_arn` variable to the ARN of a role in your management account:
-
 ```hcl
 module "savings_plans" {
-  source = "etiennechabert/sp-autopilot/aws"
+  source  = "etiennechabert/sp-autopilot/aws"
   version = "~> 1.0"
 
-  # Cross-account role assumption
   management_account_role_arn = "arn:aws:iam::123456789012:role/SavingsPlansAutomationRole"
-
   # ... other configuration
 }
 ```
 
 ### IAM Role Setup in Management Account
 
-Create an IAM role in your **management account** with the following configuration:
-
-#### 1. Trust Policy
-
-The role must trust the Lambda execution roles from your secondary account:
+Create role with trust policy allowing Lambda execution roles from secondary account:
 
 ```json
 {
   "Version": "2012-10-17",
-  "Statement": [
-    {
-      "Effect": "Allow",
-      "Principal": {
-        "AWS": "arn:aws:iam::SECONDARY_ACCOUNT_ID:role/sp-autopilot-scheduler"
-      },
-      "Action": "sts:AssumeRole"
-    },
-    {
-      "Effect": "Allow",
-      "Principal": {
-        "AWS": "arn:aws:iam::SECONDARY_ACCOUNT_ID:role/sp-autopilot-purchaser"
-      },
-      "Action": "sts:AssumeRole"
-    }
-  ]
+  "Statement": [{
+    "Effect": "Allow",
+    "Principal": {"AWS": "arn:aws:iam::SECONDARY_ACCOUNT_ID:root"},
+    "Action": "sts:AssumeRole"
+  }]
 }
 ```
 
-Replace `SECONDARY_ACCOUNT_ID` with your secondary account ID where the Lambda functions are deployed.
-
-#### 2. Required Permissions
-
-Attach a policy to the role with the following permissions:
+Attach permissions policy:
 
 ```json
 {
   "Version": "2012-10-17",
-  "Statement": [
-    {
-      "Effect": "Allow",
-      "Action": [
-        "ce:GetSavingsPlansPurchaseRecommendation",
-        "ce:GetSavingsPlansUtilization",
-        "ce:GetSavingsPlansCoverage",
-        "ce:GetCostAndUsage"
-      ],
-      "Resource": "*"
-    },
-    {
-      "Effect": "Allow",
-      "Action": [
-        "savingsplans:DescribeSavingsPlans",
-        "savingsplans:DescribeSavingsPlansOfferingRates",
-        "savingsplans:DescribeSavingsPlansOfferings",
-        "savingsplans:CreateSavingsPlan"
-      ],
-      "Resource": "*"
-    }
-  ]
+  "Statement": [{
+    "Effect": "Allow",
+    "Action": [
+      "ce:GetSavingsPlansPurchaseRecommendation",
+      "ce:GetSavingsPlansCoverage",
+      "savingsplans:CreateSavingsPlan",
+      "savingsplans:DescribeSavingsPlans"
+    ],
+    "Resource": "*"
+  }]
 }
 ```
 
-### How It Works
-
-When `management_account_role_arn` is configured:
-
-1. **Scheduler Lambda** assumes the role before calling Cost Explorer APIs
-2. **Purchaser Lambda** assumes the role before calling Savings Plans APIs
-3. All Savings Plans operations execute with management account credentials
-4. SQS and SNS operations continue using the Lambda execution role (local account)
-
-### Verification
-
-Test the cross-account setup:
-
-```bash
-aws lambda invoke --function-name sp-autopilot-scheduler output.json
-```
-
-Check CloudWatch Logs (`/aws/lambda/sp-autopilot-scheduler`) for successful role assumption and API calls.
-
-### Troubleshooting
-
-| Error | Cause | Solution |
-|-------|-------|----------|
-| `AccessDenied` during AssumeRole | Trust policy missing or incorrect | Verify trust policy includes Lambda execution role ARNs |
-| `AccessDenied` during API calls | Insufficient permissions on assumed role | Add missing permissions to role policy |
-| `InvalidClientTokenId` | Role ARN is invalid | Verify role ARN format and that role exists |
-| No role assumption in logs | Variable not set correctly | Check `management_account_role_arn` in Terraform state |
-
-For a comprehensive list of error codes and troubleshooting steps, see [ERROR_REFERENCE.md](ERROR_REFERENCE.md).
+See [Organizations example](examples/organizations/README.md) for detailed setup instructions.
 
 ## Requirements
 

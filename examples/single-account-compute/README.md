@@ -1,68 +1,23 @@
 # Single Account - Compute Savings Plans Only
 
-This example demonstrates the simplest deployment scenario for AWS Savings Plans automation:
-
-- **Single AWS account** (no Organizations integration)
-- **Compute Savings Plans only** (EC2, Lambda, Fargate)
-- **Conservative coverage targets** (80% target, 90% cap)
-- **Dry-run mode enabled** for safe initial deployment
+Simplest deployment scenario: single AWS account, Compute Savings Plans only (EC2, Lambda, Fargate), conservative targets, dry-run mode enabled.
 
 ## Features
 
-✅ Automated Compute Savings Plans purchasing
-✅ Conservative 5% monthly spend limit
-✅ 3-day human review window
-✅ Email notifications
-✅ CloudWatch alarms for monitoring
-✅ Starts in dry-run mode for safety
+- ✅ Automated Compute Savings Plans purchasing
+- ✅ Conservative 5% monthly spend limit
+- ✅ 3-day human review window
+- ✅ Email notifications and CloudWatch alarms
+- ✅ Starts in dry-run mode for safety
 
-## Architecture
+## Deployment
 
-This configuration deploys:
+### 1. Configure
 
-- **Scheduler Lambda** — Analyzes EC2/Lambda/Fargate usage monthly
-- **Purchaser Lambda** — Executes approved purchases after review window
-- **SQS Queue** — Holds purchase intents (review = 3 days)
-- **SNS Topic** — Sends email notifications
-- **CloudWatch Alarms** — Monitors Lambda errors and DLQ depth
-
-## Prerequisites
-
-1. **AWS Account** with appropriate permissions
-2. **Terraform** >= 1.0
-3. **AWS Provider** >= 5.0
-4. **Email address** for SNS notifications
-
-## Required IAM Permissions
-
-The deploying user/role needs permissions to create:
-
-- Lambda functions and execution roles
-- SQS queues
-- SNS topics and subscriptions
-- EventBridge rules
-- CloudWatch log groups and alarms
-- IAM roles and policies
-
-The Lambda execution role (created by the module) will have permissions for:
-
-- `ce:GetSavingsPlansPurchaseRecommendation`
-- `savingsplans:CreateSavingsPlan`
-- `savingsplans:DescribeSavingsPlans`
-- `sqs:SendMessage`, `sqs:ReceiveMessage`, `sqs:DeleteMessage`, `sqs:PurgeQueue`
-- `sns:Publish`
-- `logs:CreateLogGroup`, `logs:CreateLogStream`, `logs:PutLogEvents`
-
-## Deployment Steps
-
-### 1. Configure Variables
-
-Update the `notification_emails` list in `main.tf`:
+Update `notification_emails` in `main.tf`:
 
 ```hcl
-notification_emails = [
-  "your-email@example.com"  # Replace with your email
-]
+notification_emails = ["your-email@example.com"]
 ```
 
 ### 2. Deploy
@@ -75,239 +30,110 @@ terraform apply
 
 ### 3. Confirm SNS Subscription
 
-After deployment:
+Check email for SNS confirmation and click the link.
 
-1. Check your email for SNS subscription confirmation
-2. Click the confirmation link
-3. You'll receive notifications when the scheduler runs
-
-## Testing the Deployment
+## Testing
 
 ### Dry-Run Mode (Default)
 
-The module starts with `dry_run = true`:
-
-- Scheduler runs monthly (1st at 8:00 AM UTC by default)
-- Analyzes usage and calculates recommendations
-- **Sends email with recommendations**
+Module starts with `dry_run = true`:
+- Scheduler analyzes usage monthly
+- Sends email with recommendations
 - **Does NOT queue purchases**
 - No actual Savings Plans purchased
 
-### Manual Test Trigger
-
-To test immediately without waiting for the schedule:
+### Manual Test
 
 ```bash
-# Get the scheduler Lambda function name
-terraform output scheduler_lambda_name
-
-# Invoke the Lambda function manually
 aws lambda invoke \
   --function-name $(terraform output -raw scheduler_lambda_name) \
   --payload '{}' \
   response.json
-
-# Check the response
-cat response.json
 ```
 
-You should receive an email with:
-- Current Compute SP coverage percentage
-- Recommended purchase amount
-- Breakdown by term (1-year vs 3-year)
-- "DRY RUN" notice
+Expected email includes current coverage, recommended purchases, and "DRY RUN" notice.
 
 ## Enabling Real Purchases
-
-Once you've validated the recommendations in dry-run mode:
 
 ### 1. Update Configuration
 
 Edit `main.tf`:
 
 ```hcl
-dry_run = false  # Enable actual purchases
+dry_run = false
 ```
 
-### 2. Apply Changes
+### 2. Apply and Monitor
 
 ```bash
 terraform apply
 ```
 
-### 3. Monitor First Cycle
-
-After enabling purchases:
-
+After enabling:
 1. Wait for next scheduler run (1st of month)
 2. Review email with purchase recommendations
-3. Check SQS queue for queued purchases:
-   ```bash
-   aws sqs get-queue-attributes \
-     --queue-url $(terraform output -raw queue_url) \
-     --attribute-names ApproximateNumberOfMessages
-   ```
-4. To cancel a purchase, delete the message from the queue before the purchaser runs (4th of month)
-5. Purchaser executes approved purchases on the 4th
+3. Check SQS queue for queued purchases
+4. To cancel, delete messages from queue before purchaser runs (4th of month)
 
-## Configuration Options
+## Configuration Examples
 
-### Coverage Targets
-
-Adjust risk tolerance by modifying coverage percentages:
+### Adjust Coverage Targets
 
 ```hcl
 coverage_target_percent = 80  # Lower = more conservative
 max_coverage_cap        = 90  # Hard ceiling
 ```
 
-### Purchase Limits
-
-Control spending velocity:
+### Control Spending Velocity
 
 ```hcl
 max_purchase_percent = 5  # Lower = slower commitment growth
 ```
 
-### Term Mix
-
-Balance discount vs flexibility:
+### Balance Discount vs Flexibility
 
 ```hcl
 compute_sp_term_mix = {
   three_year = 0.70  # Higher = more discount, less flexibility
-  one_year   = 0.30  # Higher = less discount, more flexibility
+  one_year   = 0.30
 }
 ```
 
-### Review Window
-
-Adjust time between scheduling and purchasing:
+### Adjust Review Window
 
 ```hcl
 scheduler_schedule = "cron(0 8 1 * ? *)"   # 1st of month
-purchaser_schedule = "cron(0 8 10 * ? *)"  # 10th of month (9-day window)
-```
-
-### Payment Options
-
-Choose payment strategy:
-
-```hcl
-compute_sp_payment_option = "ALL_UPFRONT"      # Maximum savings
-# compute_sp_payment_option = "PARTIAL_UPFRONT" # Moderate savings
-# compute_sp_payment_option = "NO_UPFRONT"      # Minimum savings, better cash flow
+purchaser_schedule = "cron(0 8 10 * ? *)"  # 10th = 9-day window
 ```
 
 ## Monitoring
 
 ### CloudWatch Logs
 
-View Lambda execution logs:
-
 ```bash
-# Scheduler logs
 aws logs tail /aws/lambda/$(terraform output -raw scheduler_lambda_name) --follow
-
-# Purchaser logs
-aws logs tail /aws/lambda/$(terraform output -raw purchaser_lambda_name) --follow
 ```
 
-### CloudWatch Alarms
-
-The module creates alarms for:
-
-- **Lambda Errors** — Triggers on any Lambda function error
-- **Dead Letter Queue** — Triggers when messages fail processing
-
-Alarms publish to the same SNS topic used for notifications.
-
-### SQS Queue Monitoring
-
-Check queued purchases:
+### SQS Queue
 
 ```bash
-# Number of messages in queue
 aws sqs get-queue-attributes \
   --queue-url $(terraform output -raw queue_url) \
   --attribute-names ApproximateNumberOfMessages
-
-# View messages (without deleting)
-aws sqs receive-message \
-  --queue-url $(terraform output -raw queue_url) \
-  --max-number-of-messages 10
 ```
 
-## Canceling Purchases
-
-To cancel a scheduled purchase before execution:
-
-1. Navigate to AWS Console → SQS
-2. Open queue: `sp-autopilot-purchase-intents`
-3. Select "Send and receive messages"
-4. Poll for messages
-5. Delete unwanted purchase messages
-6. Purchaser will skip deleted messages
-
-## Cost Estimate
-
-### Infrastructure Costs
-
-Monthly AWS infrastructure costs (approximate):
-
-- **Lambda** — ~$0.20 (2 executions/month, minimal runtime)
-- **SQS** — ~$0.01 (minimal message volume)
-- **SNS** — $0.00 (free tier covers usage)
-- **CloudWatch Logs** — ~$0.50 (log retention)
-- **CloudWatch Alarms** — ~$0.20 (2 alarms)
-
-**Total infrastructure: ~$1/month**
-
-### Savings Plans Costs
-
-Actual Savings Plans purchases depend on your usage and configuration:
-
-- `max_purchase_percent = 5` limits purchases to 5% of monthly on-demand spend
-- Example: $10,000/month on-demand → max $500/month in new SP commitments
-- Savings range: 10-66% depending on service and term
-
-## Troubleshooting
-
-**No Email Received:** Confirm SNS subscription in email, check spam folder, verify `notification_emails` list.
-
-**Scheduler Not Running:** Check EventBridge rule is enabled, review CloudWatch logs, verify Lambda execution role permissions.
-
-**Purchases Not Executing:** Verify `dry_run = false`, ensure purchaser schedule is after scheduler schedule, check SQS queue has messages, review Lambda logs.
-
-**Coverage Cap Exceeded:** Adjust `max_coverage_cap` if appropriate, review current coverage and expiring plans.
-
 ## Cleanup
-
-To remove all resources:
 
 ```bash
 terraform destroy
 ```
 
-**Note:** This does NOT cancel existing Savings Plans commitments. Active Savings Plans will continue until their term expires.
+**Note:** Does NOT cancel existing Savings Plans. Active plans continue until term expires.
 
 ## Next Steps
 
-After validating this basic setup, consider:
+- Add Database SP: `enable_database_sp = true`
+- AWS Organizations: Set `management_account_role_arn`
+- Increase targets as confidence grows
 
-- **Add Database SP** — Enable `enable_database_sp = true` for RDS/DynamoDB coverage
-- **AWS Organizations** — Set `management_account_role_arn` for org-wide SPs
-- **Increase Targets** — Raise `coverage_target_percent` as confidence grows
-- **Adjust Term Mix** — Optimize `compute_sp_term_mix` based on workload stability
-
-## Support
-
-For issues or questions:
-
-- Review CloudWatch logs for detailed error messages
-- Check the [main module README](../../README.md) for detailed documentation
-- Open an issue on the GitHub repository
-
----
-
-**⚠️ Important:** Always start with `dry_run = true` and validate recommendations before enabling actual purchases.
+See [main README](../../README.md) for complete documentation.
