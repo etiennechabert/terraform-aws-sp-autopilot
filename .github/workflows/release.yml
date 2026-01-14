@@ -1,73 +1,141 @@
-name: Release Please
+name: Release
 
 on:
   push:
-    branches:
-      - main
-  workflow_dispatch:
+    tags:
+      - 'v[0-9]+.[0-9]+.[0-9]+'
 
 permissions:
   contents: write
-  pull-requests: write
 
 jobs:
-  release-please:
-    name: Create Release PR and Tag
+  release:
+    name: Create Release
     runs-on: ubuntu-latest
 
-    outputs:
-      release_created: ${{ steps.release.outputs.release_created }}
-      tag_name: ${{ steps.release.outputs.tag_name }}
-
     steps:
-      - name: Run Release Please
-        id: release
-        uses: google-github-actions/release-please-action@v4
-        with:
-          release-type: terraform-module
-          token: ${{ secrets.GITHUB_TOKEN }}
-
       - name: Checkout code
-        if: ${{ steps.release.outputs.release_created }}
         uses: actions/checkout@v4
-
-      - name: Tag major and minor versions
-        if: ${{ steps.release.outputs.release_created }}
-        run: |
-          git config user.name github-actions[bot]
-          git config user.email 41898282+github-actions[bot]@users.noreply.github.com
-
-          TAG=${{ steps.release.outputs.tag_name }}
-          VERSION=${TAG#v}
-          MAJOR="${VERSION%%.*}"
-          MINOR="${VERSION%.*}"
-
-          # Tag major version (e.g., v1)
-          git tag -f "v${MAJOR}" $TAG
-          git push origin "v${MAJOR}" --force
-
-          # Tag minor version (e.g., v1.2)
-          git tag -f "v${MINOR}" $TAG
-          git push origin "v${MINOR}" --force
-
-      - name: Comment on Release
-        if: ${{ steps.release.outputs.release_created }}
-        uses: actions/github-script@v7
         with:
-          github-token: ${{ secrets.GITHUB_TOKEN }}
-          script: |
-            const output = `### Release Published! 🎉
+          fetch-depth: 0
 
-            **Version:** \`${{ steps.release.outputs.tag_name }}\`
-            **Release Notes:** [View Release](${{ steps.release.outputs.html_url }})
+      - name: Set up Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: '~> 1.0'
 
-            This release was automatically created from conventional commits.
+      - name: Validate Terraform configuration
+        run: |
+          terraform init -backend=false
+          terraform validate
+          terraform fmt -check -recursive
 
-            *Action: \`${{ github.event_name }}\`, Triggered by: @${{ github.actor }}*`;
+      - name: Extract version from tag
+        id: version
+        run: echo "version=${GITHUB_REF#refs/tags/}" >> $GITHUB_OUTPUT
 
-            github.rest.repos.createCommitComment({
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              commit_sha: context.sha,
-              body: output
-            });
+      - name: Generate changelog
+        id: changelog
+        uses: mikepenz/release-changelog-builder-action@v4
+        with:
+          configuration: |
+            {
+              "categories": [
+                {
+                  "title": "## 🚀 Features",
+                  "labels": ["feature", "enhancement"]
+                },
+                {
+                  "title": "## 🐛 Bug Fixes",
+                  "labels": ["bug", "fix"]
+                },
+                {
+                  "title": "## 📚 Documentation",
+                  "labels": ["documentation", "docs"]
+                },
+                {
+                  "title": "## 🔧 Maintenance",
+                  "labels": ["maintenance", "chore"]
+                },
+                {
+                  "title": "## 📦 Dependencies",
+                  "labels": ["dependencies"]
+                }
+              ],
+              "ignore_labels": [
+                "ignore"
+              ],
+              "sort": "ASC",
+              "template": "#{{CHANGELOG}}\n\n**Full Changelog**: #{{RELEASE_DIFF}}",
+              "pr_template": "- #{{TITLE}} ##{{NUMBER}}",
+              "empty_template": "- No changes in this release",
+              "label_extractor": [
+                {
+                  "pattern": "^(build|chore|ci|docs|feat|fix|perf|refactor|revert|style|test)(\\(.+\\))?!?: (.+)",
+                  "target": "$1"
+                }
+              ],
+              "transformers": [
+                {
+                  "pattern": "^(feat|feature)(\\(.+\\))?!?: (.+)",
+                  "target": "feature"
+                },
+                {
+                  "pattern": "^(fix|bug)(\\(.+\\))?!?: (.+)",
+                  "target": "bug"
+                },
+                {
+                  "pattern": "^(docs|documentation)(\\(.+\\))?!?: (.+)",
+                  "target": "documentation"
+                },
+                {
+                  "pattern": "^(chore|maintenance)(\\(.+\\))?!?: (.+)",
+                  "target": "maintenance"
+                }
+              ]
+            }
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Create GitHub Release
+        if: github.event_name == 'push'
+        uses: ncipollo/create-release@v1
+        with:
+          tag: ${{ steps.version.outputs.version }}
+          name: Release ${{ steps.version.outputs.version }}
+          body: |
+            # AWS Savings Plans Autopilot ${{ steps.version.outputs.version }}
+
+            ## Installation
+
+            ### Terraform Registry
+            ```hcl
+            module "savings_plans" {
+              source  = "etiennechabert/sp-autopilot/aws"
+              version = "${{ steps.version.outputs.version }}"
+
+              # Your configuration here
+            }
+            ```
+
+            ### GitHub Source
+            ```hcl
+            module "savings_plans" {
+              source = "github.com/etiennechabert/terraform-aws-sp-autopilot?ref=${{ steps.version.outputs.version }}"
+
+              # Your configuration here
+            }
+            ```
+
+            ## What's Changed
+
+            ${{ steps.changelog.outputs.changelog }}
+
+            ---
+
+            **Note:** This release will automatically sync to the [Terraform Registry](https://registry.terraform.io/modules/etiennechabert/sp-autopilot/aws) within a few minutes.
+          draft: false
+          prerelease: false
+          generateReleaseNotes: false
+          makeLatest: true
+          token: ${{ secrets.GITHUB_TOKEN }}

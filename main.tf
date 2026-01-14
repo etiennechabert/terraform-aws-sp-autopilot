@@ -2,17 +2,6 @@
 # Version: 1.0
 # Purpose: Automates AWS Savings Plans purchases based on usage analysis
 
-terraform {
-  required_version = ">= 1.0"
-
-  required_providers {
-    aws = {
-      source  = "hashicorp/aws"
-      version = ">= 5.0"
-    }
-  }
-}
-
 # ============================================================================
 # Local Variables
 # ============================================================================
