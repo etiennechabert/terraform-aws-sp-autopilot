@@ -13,7 +13,7 @@
 # - Build confidence before enabling purchases
 
 terraform {
-  required_version = ">= 1.2"
+  required_version = ">= 1.4"
 
   required_providers {
     aws = {
