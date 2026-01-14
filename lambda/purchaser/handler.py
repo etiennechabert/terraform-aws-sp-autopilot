@@ -23,6 +23,14 @@ from botocore.exceptions import ClientError
 
 from shared.aws_utils import get_assumed_role_session, get_clients
 from shared import notifications
+from shared.email_templates import (
+    build_header,
+    build_key_value_section,
+    build_list_section,
+    build_footer,
+    format_currency,
+    format_percentage
+)
 from validation import validate_purchase_intent
 
 # Configure logging
@@ -635,27 +643,34 @@ def send_summary_email(
     total_purchases = results['successful_count'] + results['skipped_count'] + results['failed_count']
     subject = f"AWS Savings Plans Purchase Complete - {results['successful_count']} Executed, {results['skipped_count']} Skipped, {results['failed_count']} Failed"
 
-    # Build email body
-    body_lines = [
-        "AWS Savings Plans Purchaser - Execution Summary",
-        "=" * 60,
-        f"Execution Time: {execution_time}",
-        f"Total Purchase Intents Processed: {total_purchases}",
-        f"Successful Purchases: {results['successful_count']}",
-        f"Skipped Purchases: {results['skipped_count']}",
-        f"Failed Purchases: {results['failed_count']}",
-        "",
-        "Current Coverage After Execution:",
-        f"  Compute Savings Plans: {coverage.get('compute', 0):.2f}%",
-        f"  Database Savings Plans: {coverage.get('database', 0):.2f}%",
-        f"  SageMaker Savings Plans: {coverage.get('sagemaker', 0):.2f}%",
-        "",
-    ]
+    # Build email body using email_templates helpers
+    body_lines = []
+
+    # Header
+    body_lines.extend(build_header("AWS Savings Plans Purchaser - Execution Summary", width=60))
+
+    # Summary section
+    body_lines.extend(build_key_value_section({
+        'Execution Time': execution_time,
+        'Total Purchase Intents Processed': total_purchases,
+        'Successful Purchases': results['successful_count'],
+        'Skipped Purchases': results['skipped_count'],
+        'Failed Purchases': results['failed_count']
+    }, format_numbers=False))
+    body_lines.append("")
+
+    # Coverage section
+    body_lines.append("Current Coverage After Execution:")
+    body_lines.extend(build_key_value_section({
+        'Compute Savings Plans': format_percentage(coverage.get('compute', 0)),
+        'Database Savings Plans': format_percentage(coverage.get('database', 0)),
+        'SageMaker Savings Plans': format_percentage(coverage.get('sagemaker', 0))
+    }, indent='  ', format_numbers=False))
+    body_lines.append("")
 
     # Add successful purchases section
     if results['successful']:
-        body_lines.append("SUCCESSFUL PURCHASES:")
-        body_lines.append("-" * 60)
+        successful_items = []
         for i, purchase in enumerate(results['successful'], 1):
             intent = purchase['intent']
             sp_id = purchase['sp_id']
@@ -667,27 +682,29 @@ def send_summary_email(
             # Format SP type (remove "SavingsPlans" suffix for readability)
             sp_type_display = intent['sp_type'].replace('SavingsPlans', ' SP')
 
-            body_lines.extend([
+            item_lines = [
                 f"{i}. {sp_type_display}",
                 f"   Savings Plan ID: {sp_id}",
-                f"   Commitment: ${intent['commitment']}/hour",
+                f"   Commitment: {format_currency(float(intent['commitment']), hourly=True)}",
                 f"   Term: {term_str}",
                 f"   Payment Option: {intent['payment_option']}",
-            ])
+            ]
 
             # Add upfront amount if applicable
             if intent.get('upfront_amount') and float(intent['upfront_amount']) > 0:
-                body_lines.append(f"   Upfront Payment: ${float(intent['upfront_amount']):,.2f}")
+                item_lines.append(f"   Upfront Payment: {format_currency(float(intent['upfront_amount']))}")
 
-            body_lines.append("")
+            successful_items.extend(item_lines)
+            successful_items.append("")
+
+        body_lines.extend(build_list_section("SUCCESSFUL PURCHASES:", successful_items, width=60))
     else:
-        body_lines.append("No successful purchases.")
+        body_lines.extend(build_list_section("SUCCESSFUL PURCHASES:", ["No successful purchases."], width=60))
         body_lines.append("")
 
     # Add skipped purchases section
     if results['skipped']:
-        body_lines.append("SKIPPED PURCHASES:")
-        body_lines.append("-" * 60)
+        skipped_items = []
         for i, skip in enumerate(results['skipped'], 1):
             intent = skip['intent']
             reason = skip['reason']
@@ -699,21 +716,22 @@ def send_summary_email(
             # Format SP type
             sp_type_display = intent['sp_type'].replace('SavingsPlans', ' SP')
 
-            body_lines.extend([
+            skipped_items.extend([
                 f"{i}. {sp_type_display}",
-                f"   Commitment: ${intent['commitment']}/hour",
+                f"   Commitment: {format_currency(float(intent['commitment']), hourly=True)}",
                 f"   Term: {term_str}",
                 f"   Reason: {reason}",
                 "",
             ])
+
+        body_lines.extend(build_list_section("SKIPPED PURCHASES:", skipped_items, width=60))
     else:
-        body_lines.append("No skipped purchases.")
+        body_lines.extend(build_list_section("SKIPPED PURCHASES:", ["No skipped purchases."], width=60))
         body_lines.append("")
 
     # Add failed purchases section
     if results['failed']:
-        body_lines.append("FAILED PURCHASES:")
-        body_lines.append("-" * 60)
+        failed_items = []
         for i, failure in enumerate(results['failed'], 1):
             error = failure.get('error', 'Unknown error')
             intent = failure.get('intent', {})
@@ -722,26 +740,25 @@ def send_summary_email(
             if intent:
                 sp_type = intent.get('sp_type', 'Unknown')
                 commitment = intent.get('commitment', 'Unknown')
-                body_lines.extend([
+                failed_items.extend([
                     f"{i}. Error: {error}",
                     f"   SP Type: {sp_type}",
-                    f"   Commitment: ${commitment}/hour",
+                    f"   Commitment: {format_currency(float(commitment), hourly=True) if commitment != 'Unknown' else 'Unknown'}",
                     "",
                 ])
             else:
-                body_lines.extend([
+                failed_items.extend([
                     f"{i}. Error: {error}",
                     "",
                 ])
+
+        body_lines.extend(build_list_section("FAILED PURCHASES:", failed_items, width=60))
     else:
-        body_lines.append("No failed purchases.")
+        body_lines.extend(build_list_section("FAILED PURCHASES:", ["No failed purchases."], width=60))
         body_lines.append("")
 
     # Add footer
-    body_lines.extend([
-        "-" * 60,
-        "This is an automated message from AWS Savings Plans Automation.",
-    ])
+    body_lines.extend(build_footer(width=60))
 
     # Publish to SNS
     message_body = "\n".join(body_lines)
@@ -782,32 +799,44 @@ def send_error_email(error_message: str) -> None:
     subject = "AWS Savings Plans Purchaser - ERROR"
 
     # Build email body
-    body_lines = [
-        "AWS Savings Plans Purchaser - ERROR NOTIFICATION",
-        "=" * 60,
-        f"Execution Time: {execution_time}",
-        "",
-        "ERROR DETAILS:",
-        "-" * 60,
-        error_message,
-        "",
-        "INVESTIGATION:",
-        "-" * 60,
+    body_lines = []
+
+    # Header
+    body_lines.extend(build_header("AWS Savings Plans Purchaser - ERROR NOTIFICATION", width=60))
+    body_lines.extend(build_key_value_section({"Execution Time": execution_time}))
+    body_lines.append("")
+
+    # Error details section
+    error_details_items = [error_message]
+    body_lines.extend(build_list_section("ERROR DETAILS:", error_details_items, width=60))
+    body_lines.append("")
+
+    # Investigation section
+    investigation_items = [
         "Review the SQS queue for pending purchase intents:",
         f"Queue URL: {queue_url}",
         "",
         "Messages in the queue were NOT processed due to this error.",
         "The Lambda will retry on the next scheduled execution.",
-        "",
-        "NEXT STEPS:",
+    ]
+    body_lines.extend(build_list_section("INVESTIGATION:", investigation_items, width=60))
+    body_lines.append("")
+
+    # Next steps section
+    next_steps_items = [
         "1. Check CloudWatch Logs for detailed error context",
         "2. Verify queue messages are still valid",
         "3. Review Lambda execution role permissions",
         "4. Contact your AWS administrator if the issue persists",
-        "",
-        "-" * 60,
-        "This is an automated error notification from AWS Savings Plans Automation.",
     ]
+    body_lines.extend(build_list_section("NEXT STEPS:", next_steps_items, width=60))
+    body_lines.append("")
+
+    # Footer
+    body_lines.extend(build_footer(
+        custom_message="This is an automated error notification from AWS Savings Plans Automation.",
+        width=60
+    ))
 
     # Publish to SNS
     message_body = "\n".join(body_lines)

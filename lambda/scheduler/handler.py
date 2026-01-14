@@ -26,6 +26,7 @@ from botocore.exceptions import ClientError
 
 from shared.aws_utils import get_assumed_role_session, get_clients
 from shared import notifications
+from shared import email_templates
 
 # Configure logging
 logger = logging.getLogger()
@@ -938,25 +939,36 @@ def send_scheduled_email(
     """
     logger.info("Sending scheduled purchases email")
 
-    # Format email body
-    email_lines = [
-        "Savings Plans Scheduled for Purchase",
-        "=" * 50,
-        "",
-        f"Total Plans Queued: {len(purchase_plans)}",
-        "",
-        "Current Coverage:",
-        f"  Compute SP:  {coverage.get('compute', 0):.2f}%",
-        f"  Database SP: {coverage.get('database', 0):.2f}%",
-        f"  SageMaker SP: {coverage.get('sagemaker', 0):.2f}%",
-        "",
-        f"Target Coverage: {config.get('coverage_target_percent', 90):.2f}%",
-        "",
-        "Scheduled Purchase Plans:",
-        "-" * 50,
-    ]
+    # Build email using email_templates helpers
+    lines = []
 
-    # Add details for each purchase plan
+    # Header
+    lines.extend(email_templates.build_header("Savings Plans Scheduled for Purchase"))
+    lines.append("")
+
+    # Summary section
+    lines.extend(email_templates.build_key_value_section({
+        'Total Plans Queued': len(purchase_plans)
+    }))
+    lines.append("")
+
+    # Coverage section
+    lines.append("Current Coverage:")
+    lines.extend(email_templates.build_key_value_section({
+        'Compute SP': email_templates.format_percentage(coverage.get('compute', 0)),
+        'Database SP': email_templates.format_percentage(coverage.get('database', 0)),
+        'SageMaker SP': email_templates.format_percentage(coverage.get('sagemaker', 0))
+    }, indent='  ', format_numbers=False))
+    lines.append("")
+
+    # Target coverage
+    lines.extend(email_templates.build_key_value_section({
+        'Target Coverage': email_templates.format_percentage(config.get('coverage_target_percent', 90))
+    }, format_numbers=False))
+    lines.append("")
+
+    # Purchase plans section
+    purchase_items = []
     total_annual_cost = 0.0
     for i, plan in enumerate(purchase_plans, 1):
         sp_type = plan.get('sp_type', 'unknown')
@@ -968,31 +980,42 @@ def send_scheduled_email(
         annual_cost = hourly_commitment * 8760
         total_annual_cost += annual_cost
 
-        email_lines.extend([
+        purchase_items.extend([
             f"{i}. {sp_type.upper()} Savings Plan",
-            f"   Hourly Commitment: ${hourly_commitment:.4f}/hour",
+            f"   Hourly Commitment: {email_templates.format_currency(hourly_commitment, hourly=True)}",
             f"   Term: {term}",
             f"   Payment Option: {payment_option}",
-            f"   Estimated Annual Cost: ${annual_cost:,.2f}",
+            f"   Estimated Annual Cost: {email_templates.format_currency(annual_cost)}",
             ""
         ])
 
-    email_lines.extend([
-        "-" * 50,
-        f"Total Estimated Annual Cost: ${total_annual_cost:,.2f}",
-        "",
-        "CANCELLATION INSTRUCTIONS:",
-        "To cancel these purchases before they execute:",
-        "1. Purge the SQS queue to remove all pending purchase intents",
-        f"2. Queue URL: {config.get('queue_url', 'N/A')}",
-        "3. AWS CLI command:",
-        f"   aws sqs purge-queue --queue-url {config.get('queue_url', 'QUEUE_URL')}",
-        "",
-        "These purchases will be executed by the Purchaser Lambda.",
-        "Monitor CloudWatch Logs and SNS notifications for execution results.",
-    ])
+    lines.extend(email_templates.build_list_section(
+        "Scheduled Purchase Plans:",
+        purchase_items
+    ))
 
-    message = "\n".join(email_lines)
+    # Total cost
+    lines.extend(email_templates.build_separator())
+    lines.append(f"Total Estimated Annual Cost: {email_templates.format_currency(total_annual_cost)}")
+    lines.append("")
+
+    # Cancellation instructions
+    lines.extend(email_templates.build_list_section(
+        "CANCELLATION INSTRUCTIONS:",
+        [
+            "To cancel these purchases before they execute:",
+            "1. Purge the SQS queue to remove all pending purchase intents",
+            f"2. Queue URL: {config.get('queue_url', 'N/A')}",
+            "3. AWS CLI command:",
+            f"   aws sqs purge-queue --queue-url {config.get('queue_url', 'QUEUE_URL')}",
+            "",
+            "These purchases will be executed by the Purchaser Lambda.",
+            "Monitor CloudWatch Logs and SNS notifications for execution results."
+        ],
+        include_separator=False
+    ))
+
+    message = "\n".join(lines)
 
     # Publish to SNS
     try:
@@ -1022,27 +1045,40 @@ def send_dry_run_email(
     """
     logger.info("Sending dry run email")
 
-    # Format email body
-    email_lines = [
-        "***** DRY RUN MODE ***** Savings Plans Analysis",
-        "=" * 50,
-        "",
-        "*** NO PURCHASES WERE SCHEDULED ***",
-        "",
-        f"Total Plans Analyzed: {len(purchase_plans)}",
-        "",
-        "Current Coverage:",
-        f"  Compute SP:  {coverage.get('compute', 0):.2f}%",
-        f"  Database SP: {coverage.get('database', 0):.2f}%",
-        f"  SageMaker SP: {coverage.get('sagemaker', 0):.2f}%",
-        "",
-        f"Target Coverage: {config.get('coverage_target_percent', 90):.2f}%",
-        "",
-        "Purchase Plans (WOULD BE SCHEDULED if dry_run=false):",
-        "-" * 50,
-    ]
+    # Build email using email_templates helpers
+    lines = []
 
-    # Add details for each purchase plan
+    # Header
+    lines.extend(email_templates.build_header("***** DRY RUN MODE ***** Savings Plans Analysis"))
+    lines.append("")
+
+    # Warning notice
+    lines.append("*** NO PURCHASES WERE SCHEDULED ***")
+    lines.append("")
+
+    # Summary section
+    lines.extend(email_templates.build_key_value_section({
+        'Total Plans Analyzed': len(purchase_plans)
+    }))
+    lines.append("")
+
+    # Coverage section
+    lines.append("Current Coverage:")
+    lines.extend(email_templates.build_key_value_section({
+        'Compute SP': email_templates.format_percentage(coverage.get('compute', 0)),
+        'Database SP': email_templates.format_percentage(coverage.get('database', 0)),
+        'SageMaker SP': email_templates.format_percentage(coverage.get('sagemaker', 0))
+    }, indent='  ', format_numbers=False))
+    lines.append("")
+
+    # Target coverage
+    lines.extend(email_templates.build_key_value_section({
+        'Target Coverage': email_templates.format_percentage(config.get('coverage_target_percent', 90))
+    }, format_numbers=False))
+    lines.append("")
+
+    # Purchase plans section
+    purchase_items = []
     total_annual_cost = 0.0
     for i, plan in enumerate(purchase_plans, 1):
         sp_type = plan.get('sp_type', 'unknown')
@@ -1054,34 +1090,45 @@ def send_dry_run_email(
         annual_cost = hourly_commitment * 8760
         total_annual_cost += annual_cost
 
-        email_lines.extend([
+        purchase_items.extend([
             f"{i}. {sp_type.upper()} Savings Plan",
-            f"   Hourly Commitment: ${hourly_commitment:.4f}/hour",
+            f"   Hourly Commitment: {email_templates.format_currency(hourly_commitment, hourly=True)}",
             f"   Term: {term}",
             f"   Payment Option: {payment_option}",
-            f"   Estimated Annual Cost: ${annual_cost:,.2f}",
+            f"   Estimated Annual Cost: {email_templates.format_currency(annual_cost)}",
             ""
         ])
 
-    email_lines.extend([
-        "-" * 50,
-        f"Total Estimated Annual Cost: ${total_annual_cost:,.2f}",
-        "",
-        "TO ENABLE ACTUAL PURCHASES:",
-        "1. Set the DRY_RUN environment variable to 'false'",
-        "2. Update the Lambda configuration:",
-        "   aws lambda update-function-configuration \\",
-        "     --function-name <scheduler-lambda-name> \\",
-        "     --environment Variables={DRY_RUN=false,...}",
-        "",
-        "3. Or via Terraform:",
-        "   Set dry_run = false in your terraform.tfvars",
-        "",
-        "Once disabled, the Scheduler will queue purchase intents to SQS,",
-        "and the Purchaser Lambda will execute the actual purchases.",
-    ])
+    lines.extend(email_templates.build_list_section(
+        "Purchase Plans (WOULD BE SCHEDULED if dry_run=false):",
+        purchase_items
+    ))
 
-    message = "\n".join(email_lines)
+    # Total cost
+    lines.extend(email_templates.build_separator())
+    lines.append(f"Total Estimated Annual Cost: {email_templates.format_currency(total_annual_cost)}")
+    lines.append("")
+
+    # Instructions for enabling purchases
+    lines.extend(email_templates.build_list_section(
+        "TO ENABLE ACTUAL PURCHASES:",
+        [
+            "1. Set the DRY_RUN environment variable to 'false'",
+            "2. Update the Lambda configuration:",
+            "   aws lambda update-function-configuration \\",
+            "     --function-name <scheduler-lambda-name> \\",
+            "     --environment Variables={DRY_RUN=false,...}",
+            "",
+            "3. Or via Terraform:",
+            "   Set dry_run = false in your terraform.tfvars",
+            "",
+            "Once disabled, the Scheduler will queue purchase intents to SQS,",
+            "and the Purchaser Lambda will execute the actual purchases."
+        ],
+        include_separator=False
+    ))
+
+    message = "\n".join(lines)
 
     # Publish to SNS
     try:
@@ -1105,29 +1152,47 @@ def send_error_email(error_message: str) -> None:
     """
     logger.error("Sending error notification email")
 
-    # Format email body
-    email_lines = [
-        "Savings Plans Scheduler ERROR",
-        "=" * 50,
-        "",
-        "The Scheduler Lambda encountered an error and failed to complete.",
-        "",
-        "Error Details:",
-        "-" * 50,
-        error_message,
-        "-" * 50,
-        "",
-        "Action Required:",
-        "1. Check CloudWatch Logs for detailed error information",
-        "2. Review the Scheduler Lambda configuration",
-        "3. Investigate and resolve the issue",
-        "4. The scheduler will retry on the next scheduled run",
-        "",
-        "CloudWatch Logs:",
-        "Check the /aws/lambda/scheduler-function log group for full details.",
-    ]
+    # Build email using email_templates helpers
+    lines = []
 
-    message = "\n".join(email_lines)
+    # Header
+    lines.extend(email_templates.build_header("Savings Plans Scheduler ERROR"))
+    lines.append("")
+
+    # Error notice
+    lines.append("The Scheduler Lambda encountered an error and failed to complete.")
+    lines.append("")
+
+    # Error details section
+    lines.extend(email_templates.build_list_section(
+        "Error Details:",
+        [error_message]
+    ))
+    lines.append("")
+
+    # Action required section
+    lines.extend(email_templates.build_list_section(
+        "Action Required:",
+        [
+            "1. Check CloudWatch Logs for detailed error information",
+            "2. Review the Scheduler Lambda configuration",
+            "3. Investigate and resolve the issue",
+            "4. The scheduler will retry on the next scheduled run"
+        ],
+        include_separator=False
+    ))
+    lines.append("")
+
+    # CloudWatch Logs section
+    lines.extend(email_templates.build_list_section(
+        "CloudWatch Logs:",
+        [
+            "Check the /aws/lambda/scheduler-function log group for full details."
+        ],
+        include_separator=False
+    ))
+
+    message = "\n".join(lines)
 
     # Get SNS topic ARN from environment (error may occur before config is loaded)
     sns_topic_arn = os.environ.get('SNS_TOPIC_ARN')

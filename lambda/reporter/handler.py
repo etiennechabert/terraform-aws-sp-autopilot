@@ -21,6 +21,15 @@ from botocore.exceptions import ClientError
 
 from shared import notifications
 from shared.aws_utils import get_assumed_role_session, get_clients
+from shared.email_templates import (
+    build_header,
+    build_key_value_section,
+    build_list_section,
+    build_separator,
+    build_footer,
+    format_currency,
+    format_percentage
+)
 
 # Configure logging
 logger = logging.getLogger()
@@ -1098,54 +1107,79 @@ def send_report_email(
     # Build email subject
     subject = f"Savings Plans Report - {current_coverage:.1f}% Coverage, ${net_savings:,.0f}/mo Actual Savings"
 
-    # Build email body
-    body_lines = [
-        "AWS Savings Plans - Coverage & Savings Report",
-        "=" * 60,
-        f"Report Generated: {execution_time}",
-        f"Reporting Period: {coverage_days} days",
-        "",
-        "COVERAGE SUMMARY:",
-        "-" * 60,
-        f"Current Coverage: {current_coverage:.2f}%",
-        f"Average Coverage ({coverage_days} days): {avg_coverage:.2f}%",
-        f"Trend: {trend_direction}",
-        "",
-        "SAVINGS SUMMARY:",
-        "-" * 60,
-        f"Active Savings Plans: {active_plans}",
-        f"Total Hourly Commitment: ${total_commitment:.4f}/hour (${total_commitment * 730:,.2f}/month)",
-        f"Average Utilization (7 days): {average_utilization:.2f}%",
-        f"Estimated Monthly Savings: ${estimated_monthly_savings:,.2f}",
-        "",
-        "ACTUAL SAVINGS SUMMARY (30 days):",
-        "-" * 60,
-        f"On-Demand Equivalent Cost: ${on_demand_equivalent_cost:,.2f}",
-        f"Actual Savings Plans Cost: ${actual_sp_cost:,.2f}",
-        f"Net Savings: ${net_savings:,.2f}",
-        f"Savings Percentage: {savings_percentage:.2f}%",
-    ]
+    # Build email body using email_templates helpers
+    body_lines = []
+
+    # Header
+    body_lines.extend(build_header("AWS Savings Plans - Coverage & Savings Report", width=60))
+    body_lines.append("")
+
+    # Report metadata
+    body_lines.extend(build_key_value_section({
+        'Report Generated': execution_time,
+        'Reporting Period': f"{coverage_days} days"
+    }, format_numbers=False))
+    body_lines.append("")
+
+    # Coverage summary section
+    body_lines.append("COVERAGE SUMMARY:")
+    body_lines.extend(build_separator(width=60))
+    body_lines.extend(build_key_value_section({
+        'Current Coverage': format_percentage(current_coverage),
+        f'Average Coverage ({coverage_days} days)': format_percentage(avg_coverage),
+        'Trend': trend_direction
+    }, format_numbers=False))
+    body_lines.append("")
+
+    # Savings summary section
+    body_lines.append("SAVINGS SUMMARY:")
+    body_lines.extend(build_separator(width=60))
+    monthly_commitment = total_commitment * 730
+    body_lines.extend(build_key_value_section({
+        'Active Savings Plans': active_plans,
+        'Total Hourly Commitment': f"{format_currency(total_commitment, hourly=True)} ({format_currency(monthly_commitment, monthly=True)})",
+        'Average Utilization (7 days)': format_percentage(average_utilization),
+        'Estimated Monthly Savings': format_currency(estimated_monthly_savings)
+    }, format_numbers=False))
+    body_lines.append("")
+
+    # Actual savings summary section
+    body_lines.append("ACTUAL SAVINGS SUMMARY (30 days):")
+    body_lines.extend(build_separator(width=60))
+    body_lines.extend(build_key_value_section({
+        'On-Demand Equivalent Cost': format_currency(on_demand_equivalent_cost),
+        'Actual Savings Plans Cost': format_currency(actual_sp_cost),
+        'Net Savings': format_currency(net_savings),
+        'Savings Percentage': format_percentage(savings_percentage)
+    }, format_numbers=False))
 
     # Add breakdown by type if available
     if breakdown_by_type:
         body_lines.append("")
         body_lines.append("Breakdown by Plan Type:")
+        breakdown_items = {}
         for plan_type, breakdown in breakdown_by_type.items():
             plans_count = breakdown.get('plans_count', 0)
             total_commitment_type = breakdown.get('total_commitment', 0.0)
-            body_lines.append(f"  {plan_type}: {plans_count} plan(s), ${total_commitment_type:.4f}/hr")
+            breakdown_items[plan_type] = f"{plans_count} plan(s), {format_currency(total_commitment_type, hourly=True)}"
+        body_lines.extend(build_key_value_section(breakdown_items, indent='  ', format_numbers=False))
 
-    body_lines.extend([
-        "",
-        "REPORT ACCESS:",
-        "-" * 60,
-        f"S3 Location: s3://{bucket_name}/{s3_object_key}",
-        f"Direct Link: {s3_url}",
-        f"Console Link: {s3_console_url}",
-        "",
-        "-" * 60,
-        "This is an automated report from AWS Savings Plans Automation.",
-    ]
+    body_lines.append("")
+
+    # Report access section
+    body_lines.append("REPORT ACCESS:")
+    body_lines.extend(build_separator(width=60))
+    body_lines.extend(build_key_value_section({
+        'S3 Location': f"s3://{bucket_name}/{s3_object_key}",
+        'Direct Link': s3_url,
+        'Console Link': s3_console_url
+    }, format_numbers=False))
+
+    # Footer
+    body_lines.extend(build_footer(
+        custom_message="This is an automated report from AWS Savings Plans Automation.",
+        width=60
+    ))
 
     # Publish to SNS
     message_body = "\n".join(body_lines)
@@ -1198,21 +1232,58 @@ def send_error_email(config: Dict[str, Any], error_message: str) -> None:
         error_message: Error message to send
     """
     try:
+        # Format execution timestamp
+        execution_time = datetime.now(timezone.utc).isoformat()
+
+        # Build email subject
         subject = "[SP Autopilot] Reporter Lambda Failed"
-        message = f"""
-Savings Plans Autopilot - Reporter Lambda Error
 
-ERROR: {error_message}
+        # Build email body using email_templates helpers
+        body_lines = []
 
-Time: {datetime.now(timezone.utc).isoformat()}
+        # Header
+        body_lines.extend(build_header("AWS Savings Plans Reporter - ERROR NOTIFICATION", width=60))
+        body_lines.extend(build_key_value_section({"Execution Time": execution_time}, format_numbers=False))
+        body_lines.append("")
 
-Please check CloudWatch Logs for full details.
-"""
+        # Error details section
+        error_details_items = [error_message]
+        body_lines.extend(build_list_section("ERROR DETAILS:", error_details_items, width=60))
+        body_lines.append("")
+
+        # Investigation section
+        investigation_items = [
+            "The Reporter Lambda failed while generating the coverage and savings report.",
+            "This may affect periodic reporting of Savings Plans coverage trends.",
+            "",
+            "Please check CloudWatch Logs for full details."
+        ]
+        body_lines.extend(build_list_section("INVESTIGATION:", investigation_items, width=60))
+        body_lines.append("")
+
+        # Next steps section
+        next_steps_items = [
+            "1. Check CloudWatch Logs for detailed error context",
+            "2. Verify Cost Explorer API permissions",
+            "3. Verify S3 bucket access permissions",
+            "4. Contact your AWS administrator if the issue persists"
+        ]
+        body_lines.extend(build_list_section("NEXT STEPS:", next_steps_items, width=60))
+        body_lines.append("")
+
+        # Footer
+        body_lines.extend(build_footer(
+            custom_message="This is an automated error notification from AWS Savings Plans Automation.",
+            width=60
+        ))
+
+        # Publish to SNS
+        message_body = "\n".join(body_lines)
 
         sns_client.publish(
             TopicArn=config['sns_topic_arn'],
             Subject=subject,
-            Message=message
+            Message=message_body
         )
 
         logger.info("Error notification sent via SNS")
@@ -1220,15 +1291,6 @@ Please check CloudWatch Logs for full details.
         # Send Slack notification
         slack_webhook_url = config.get('slack_webhook_url')
         if slack_webhook_url:
-            body_lines = [
-                "Savings Plans Autopilot - Reporter Lambda Error",
-                "",
-                f"ERROR: {error_message}",
-                "",
-                f"Time: {datetime.now(timezone.utc).isoformat()}",
-                "",
-                "Please check CloudWatch Logs for full details."
-            ]
             slack_message = notifications.format_slack_message(
                 subject,
                 body_lines,
@@ -1242,15 +1304,6 @@ Please check CloudWatch Logs for full details.
         # Send Teams notification
         teams_webhook_url = config.get('teams_webhook_url')
         if teams_webhook_url:
-            body_lines = [
-                "Savings Plans Autopilot - Reporter Lambda Error",
-                "",
-                f"ERROR: {error_message}",
-                "",
-                f"Time: {datetime.now(timezone.utc).isoformat()}",
-                "",
-                "Please check CloudWatch Logs for full details."
-            ]
             teams_message = notifications.format_teams_message(
                 subject,
                 body_lines
