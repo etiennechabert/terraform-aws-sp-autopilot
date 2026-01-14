@@ -220,6 +220,118 @@ def get_coverage_history(lookback_days: int = 30) -> List[Dict[str, Any]]:
         raise
 
 
+def get_actual_cost_data(lookback_days: int = 30) -> Dict[str, Any]:
+    """
+    Get actual Savings Plans and On-Demand costs from Cost Explorer.
+
+    Args:
+        lookback_days: Number of days to look back for cost data
+
+    Returns:
+        dict: Cost data including Savings Plans spend and On-Demand spend by day
+
+    Raises:
+        ClientError: If Cost Explorer API call fails
+    """
+    logger.info(f"Fetching actual cost data for last {lookback_days} days")
+
+    try:
+        # Calculate date range
+        end_date = datetime.now(timezone.utc).date()
+        start_date = end_date - timedelta(days=lookback_days)
+
+        logger.info(f"Querying costs from {start_date} to {end_date}")
+
+        # Get cost data from Cost Explorer
+        # Group by purchase option to separate Savings Plans from On-Demand
+        response = ce_client.get_cost_and_usage(
+            TimePeriod={
+                'Start': start_date.isoformat(),
+                'End': end_date.isoformat()
+            },
+            Granularity='DAILY',
+            Metrics=['UnblendedCost'],
+            GroupBy=[
+                {
+                    'Type': 'DIMENSION',
+                    'Key': 'PURCHASE_OPTION'
+                }
+            ]
+        )
+
+        results_by_time = response.get('ResultsByTime', [])
+
+        if not results_by_time:
+            logger.warning("No cost data available from Cost Explorer")
+            return {
+                'cost_by_day': [],
+                'total_savings_plans_cost': 0.0,
+                'total_on_demand_cost': 0.0,
+                'total_cost': 0.0
+            }
+
+        # Parse cost data by day
+        cost_by_day = []
+        total_savings_plans_cost = 0.0
+        total_on_demand_cost = 0.0
+
+        for result_item in results_by_time:
+            time_period = result_item.get('TimePeriod', {})
+            groups = result_item.get('Groups', [])
+
+            daily_savings_plans_cost = 0.0
+            daily_on_demand_cost = 0.0
+
+            # Process each purchase option group
+            for group in groups:
+                keys = group.get('Keys', [])
+                metrics = group.get('Metrics', {})
+
+                # Extract purchase option (e.g., 'Savings Plans', 'On Demand')
+                purchase_option = keys[0] if keys else 'Unknown'
+
+                # Extract cost amount
+                unblended_cost = metrics.get('UnblendedCost', {})
+                cost_amount = float(unblended_cost.get('Amount', '0'))
+
+                # Categorize by purchase option
+                if 'Savings Plans' in purchase_option or 'SavingsPlan' in purchase_option:
+                    daily_savings_plans_cost += cost_amount
+                    total_savings_plans_cost += cost_amount
+                elif 'On Demand' in purchase_option or 'OnDemand' in purchase_option:
+                    daily_on_demand_cost += cost_amount
+                    total_on_demand_cost += cost_amount
+
+            daily_total_cost = daily_savings_plans_cost + daily_on_demand_cost
+
+            cost_by_day.append({
+                'date': time_period.get('Start'),
+                'savings_plans_cost': daily_savings_plans_cost,
+                'on_demand_cost': daily_on_demand_cost,
+                'total_cost': daily_total_cost
+            })
+
+        total_cost = total_savings_plans_cost + total_on_demand_cost
+
+        logger.info(f"Retrieved {len(cost_by_day)} cost data points")
+        logger.info(f"Total Savings Plans cost: ${total_savings_plans_cost:.2f}")
+        logger.info(f"Total On-Demand cost: ${total_on_demand_cost:.2f}")
+        logger.info(f"Total cost: ${total_cost:.2f}")
+
+        return {
+            'cost_by_day': cost_by_day,
+            'total_savings_plans_cost': total_savings_plans_cost,
+            'total_on_demand_cost': total_on_demand_cost,
+            'total_cost': total_cost
+        }
+
+    except ClientError as e:
+        error_code = e.response.get('Error', {}).get('Code', 'Unknown')
+        error_message = e.response.get('Error', {}).get('Message', str(e))
+        logger.error(f"Failed to get actual cost data - Code: {error_code}, Message: {error_message}")
+        raise
+
+
 def get_savings_data() -> Dict[str, Any]:
     """
     Get savings data from active Savings Plans.
@@ -252,7 +364,14 @@ def get_savings_data() -> Dict[str, Any]:
                 'plans_count': 0,
                 'plans': [],
                 'estimated_monthly_savings': 0.0,
-                'average_utilization': 0.0
+                'average_utilization': 0.0,
+                'actual_savings': {
+                    'actual_sp_cost': 0.0,
+                    'on_demand_equivalent_cost': 0.0,
+                    'net_savings': 0.0,
+                    'savings_percentage': 0.0,
+                    'breakdown_by_type': {}
+                }
             }
 
         # Calculate total commitment and collect plan details
@@ -282,10 +401,10 @@ def get_savings_data() -> Dict[str, Any]:
 
         logger.info(f"Total hourly commitment: ${total_hourly_commitment:.2f}/hour")
 
-        # Get utilization data from Cost Explorer
+        # Get utilization and actual savings data from Cost Explorer
         try:
             end_date = datetime.now(timezone.utc).date()
-            start_date = end_date - timedelta(days=7)  # Last 7 days for utilization
+            start_date = end_date - timedelta(days=30)  # Last 30 days for actual savings
 
             utilization_response = ce_client.get_savings_plans_utilization(
                 TimePeriod={
@@ -298,11 +417,15 @@ def get_savings_data() -> Dict[str, Any]:
             utilizations = utilization_response.get('SavingsPlansUtilizationsByTime', [])
 
             if utilizations:
-                # Calculate average utilization
+                # Calculate average utilization and actual savings
                 total_utilization = 0.0
                 count = 0
+                total_net_savings = 0.0
+                total_on_demand_equivalent = 0.0
+                total_amortized_commitment = 0.0
 
                 for util_item in utilizations:
+                    # Extract utilization percentage
                     utilization = util_item.get('Utilization', {})
                     utilization_percentage = utilization.get('UtilizationPercentage')
 
@@ -310,30 +433,71 @@ def get_savings_data() -> Dict[str, Any]:
                         total_utilization += float(utilization_percentage)
                         count += 1
 
+                    # Extract actual savings data
+                    savings = util_item.get('Savings', {})
+                    net_savings = savings.get('NetSavings', '0')
+                    on_demand_equivalent = savings.get('OnDemandCostEquivalent', '0')
+
+                    # Extract amortized commitment
+                    amortized = util_item.get('AmortizedCommitment', {})
+                    amortized_commitment = amortized.get('TotalAmortizedCommitment', '0')
+
+                    # Accumulate totals
+                    total_net_savings += float(net_savings)
+                    total_on_demand_equivalent += float(on_demand_equivalent)
+                    total_amortized_commitment += float(amortized_commitment)
+
                 average_utilization = total_utilization / count if count > 0 else 0.0
-                logger.info(f"Average utilization over last 7 days: {average_utilization:.2f}%")
+                logger.info(f"Average utilization over last 30 days: {average_utilization:.2f}%")
+                logger.info(f"Actual net savings over last 30 days: ${total_net_savings:.2f}")
+                logger.info(f"On-demand equivalent cost: ${total_on_demand_equivalent:.2f}")
+                logger.info(f"Amortized SP commitment: ${total_amortized_commitment:.2f}")
             else:
                 average_utilization = 0.0
+                total_net_savings = 0.0
+                total_on_demand_equivalent = 0.0
+                total_amortized_commitment = 0.0
                 logger.warning("No utilization data available")
 
         except ClientError as e:
             logger.warning(f"Failed to get utilization data: {str(e)}")
             average_utilization = 0.0
+            total_net_savings = 0.0
+            total_on_demand_equivalent = 0.0
+            total_amortized_commitment = 0.0
 
-        # Estimate monthly savings
-        # Rough estimate: commitment * hours per month * (1 - discount rate)
-        # Assume typical savings rate of 25% vs On-Demand
-        monthly_hours = 730  # Average hours per month
-        estimated_monthly_savings = total_hourly_commitment * monthly_hours * 0.25
+        # Calculate actual savings percentage
+        savings_percentage = 0.0
+        if total_on_demand_equivalent > 0:
+            savings_percentage = (total_net_savings / total_on_demand_equivalent) * 100.0
 
-        logger.info(f"Estimated monthly savings: ${estimated_monthly_savings:.2f}")
+        # Calculate breakdown by plan type
+        breakdown_by_type = {}
+        for plan in plans_data:
+            plan_type = plan['plan_type']
+            if plan_type not in breakdown_by_type:
+                breakdown_by_type[plan_type] = {
+                    'plans_count': 0,
+                    'total_commitment': 0.0
+                }
+            breakdown_by_type[plan_type]['plans_count'] += 1
+            breakdown_by_type[plan_type]['total_commitment'] += plan['hourly_commitment']
+
+        logger.info(f"Actual monthly savings: ${total_net_savings:.2f} ({savings_percentage:.2f}%)")
 
         return {
             'total_commitment': total_hourly_commitment,
             'plans_count': len(savings_plans),
             'plans': plans_data,
-            'estimated_monthly_savings': estimated_monthly_savings,
-            'average_utilization': average_utilization
+            'estimated_monthly_savings': total_net_savings,  # Now using actual savings
+            'average_utilization': average_utilization,
+            'actual_savings': {
+                'actual_sp_cost': total_amortized_commitment,
+                'on_demand_equivalent_cost': total_on_demand_equivalent,
+                'net_savings': total_net_savings,
+                'savings_percentage': savings_percentage,
+                'breakdown_by_type': breakdown_by_type
+            }
         }
 
     except ClientError as e:
@@ -521,8 +685,12 @@ def generate_html_report(
                 <div class="value">{savings_data.get('plans_count', 0)}</div>
             </div>
             <div class="summary-card">
-                <h3>Est. Monthly Savings</h3>
-                <div class="value">${savings_data.get('estimated_monthly_savings', 0):,.0f}</div>
+                <h3>Actual Net Savings (30 days)</h3>
+                <div class="value">${savings_data.get('actual_savings', {}).get('net_savings', 0):,.0f}</div>
+            </div>
+            <div class="summary-card green">
+                <h3>Savings Percentage</h3>
+                <div class="value">{savings_data.get('actual_savings', {}).get('savings_percentage', 0):.1f}%</div>
             </div>
         </div>
 
@@ -639,6 +807,83 @@ def generate_html_report(
             <div class="no-data">No active Savings Plans found</div>
 """)
 
+    # Actual Savings Summary Section
+    actual_savings = savings_data.get('actual_savings', {})
+    net_savings = actual_savings.get('net_savings', 0.0)
+    on_demand_equivalent = actual_savings.get('on_demand_equivalent_cost', 0.0)
+    actual_sp_cost = actual_savings.get('actual_sp_cost', 0.0)
+    savings_pct = actual_savings.get('savings_percentage', 0.0)
+    breakdown_by_type = actual_savings.get('breakdown_by_type', {})
+
+    html_parts.append("""
+        </div>
+
+        <div class="section">
+            <h2>Actual Savings Summary (Last 30 Days)</h2>
+""")
+
+    html_parts.append(f"""
+            <p>
+                <strong>Net Savings:</strong> <span style="color: #28a745; font-size: 1.2em; font-weight: bold;">${net_savings:,.2f}</span>
+                <span style="color: #6c757d; margin-left: 10px;">({savings_pct:.2f}% savings)</span>
+            </p>
+            <p>
+                <strong>On-Demand Equivalent Cost:</strong> ${on_demand_equivalent:,.2f}
+                <br>
+                <strong>Actual Savings Plans Cost:</strong> ${actual_sp_cost:,.2f}
+                <br>
+                <strong>Net Savings:</strong> ${net_savings:,.2f}
+            </p>
+""")
+
+    # Breakdown by Plan Type
+    if breakdown_by_type:
+        html_parts.append("""
+            <h3 style="margin-top: 20px; color: #232f3e;">Savings Plans Breakdown by Type</h3>
+            <table>
+                <thead>
+                    <tr>
+                        <th>Plan Type</th>
+                        <th>Active Plans</th>
+                        <th>Total Hourly Commitment</th>
+                        <th>Monthly Commitment</th>
+                    </tr>
+                </thead>
+                <tbody>
+""")
+
+        for plan_type, type_data in breakdown_by_type.items():
+            plans_count = type_data.get('plans_count', 0)
+            total_commitment = type_data.get('total_commitment', 0.0)
+            monthly_commitment = total_commitment * 730
+
+            # Map plan types to readable names
+            plan_type_display = plan_type
+            if 'Compute' in plan_type:
+                plan_type_display = 'Compute Savings Plans'
+            elif 'SageMaker' in plan_type:
+                plan_type_display = 'SageMaker Savings Plans'
+            elif 'EC2Instance' in plan_type:
+                plan_type_display = 'EC2 Instance Savings Plans'
+
+            html_parts.append(f"""
+                    <tr>
+                        <td><strong>{plan_type_display}</strong></td>
+                        <td>{plans_count}</td>
+                        <td class="metric">${total_commitment:.4f}/hr</td>
+                        <td class="metric">${monthly_commitment:,.2f}/mo</td>
+                    </tr>
+""")
+
+        html_parts.append("""
+                </tbody>
+            </table>
+""")
+    else:
+        html_parts.append("""
+            <p style="color: #6c757d; font-style: italic;">No savings plan type breakdown available</p>
+""")
+
     html_parts.append(f"""
         </div>
 
@@ -695,6 +940,24 @@ def generate_json_report(
         elif trend_value < 0:
             trend_direction = 'decreasing'
 
+    # Extract actual savings data
+    actual_savings = savings_data.get('actual_savings', {})
+    actual_sp_cost = actual_savings.get('actual_sp_cost', 0.0)
+    on_demand_equivalent_cost = actual_savings.get('on_demand_equivalent_cost', 0.0)
+    net_savings = actual_savings.get('net_savings', 0.0)
+    savings_percentage = actual_savings.get('savings_percentage', 0.0)
+    breakdown_by_type = actual_savings.get('breakdown_by_type', {})
+
+    # Format breakdown as array of objects
+    breakdown_array = []
+    for plan_type, type_data in breakdown_by_type.items():
+        breakdown_array.append({
+            'type': plan_type,
+            'plans_count': type_data.get('plans_count', 0),
+            'total_hourly_commitment': round(type_data.get('total_commitment', 0.0), 4),
+            'total_monthly_commitment': round(type_data.get('total_commitment', 0.0) * 730, 2)
+        })
+
     # Build JSON report structure
     report = {
         'report_metadata': {
@@ -717,6 +980,14 @@ def generate_json_report(
             'total_monthly_commitment': round(savings_data.get('total_commitment', 0.0) * 730, 2),
             'estimated_monthly_savings': round(savings_data.get('estimated_monthly_savings', 0.0), 2),
             'average_utilization_percentage': round(savings_data.get('average_utilization', 0.0), 2)
+        },
+        'actual_savings': {
+            'sp_cost': round(actual_sp_cost, 2),
+            'on_demand_cost': round(on_demand_equivalent_cost, 2),
+            'net_savings': round(net_savings, 2),
+            'savings_percentage': round(savings_percentage, 2),
+            'breakdown': breakdown_array,
+            'historical_trend': []  # Placeholder for future enhancement
         },
         'active_savings_plans': savings_data.get('plans', [])
     }
@@ -816,8 +1087,16 @@ def send_report_email(
     estimated_monthly_savings = savings_summary.get('estimated_monthly_savings', 0.0)
     average_utilization = savings_summary.get('average_utilization', 0.0)
 
+    # Extract actual savings data
+    actual_savings = savings_summary.get('actual_savings', {})
+    actual_sp_cost = actual_savings.get('actual_sp_cost', 0.0)
+    on_demand_equivalent_cost = actual_savings.get('on_demand_equivalent_cost', 0.0)
+    net_savings = actual_savings.get('net_savings', 0.0)
+    savings_percentage = actual_savings.get('savings_percentage', 0.0)
+    breakdown_by_type = actual_savings.get('breakdown_by_type', {})
+
     # Build email subject
-    subject = f"Savings Plans Report - {current_coverage:.1f}% Coverage, ${estimated_monthly_savings:,.0f}/mo Est. Savings"
+    subject = f"Savings Plans Report - {current_coverage:.1f}% Coverage, ${net_savings:,.0f}/mo Actual Savings"
 
     # Build email body
     body_lines = [
@@ -838,6 +1117,25 @@ def send_report_email(
         f"Total Hourly Commitment: ${total_commitment:.4f}/hour (${total_commitment * 730:,.2f}/month)",
         f"Average Utilization (7 days): {average_utilization:.2f}%",
         f"Estimated Monthly Savings: ${estimated_monthly_savings:,.2f}",
+        "",
+        "ACTUAL SAVINGS SUMMARY (30 days):",
+        "-" * 60,
+        f"On-Demand Equivalent Cost: ${on_demand_equivalent_cost:,.2f}",
+        f"Actual Savings Plans Cost: ${actual_sp_cost:,.2f}",
+        f"Net Savings: ${net_savings:,.2f}",
+        f"Savings Percentage: {savings_percentage:.2f}%",
+    ]
+
+    # Add breakdown by type if available
+    if breakdown_by_type:
+        body_lines.append("")
+        body_lines.append("Breakdown by Plan Type:")
+        for plan_type, breakdown in breakdown_by_type.items():
+            plans_count = breakdown.get('plans_count', 0)
+            total_commitment_type = breakdown.get('total_commitment', 0.0)
+            body_lines.append(f"  {plan_type}: {plans_count} plan(s), ${total_commitment_type:.4f}/hr")
+
+    body_lines.extend([
         "",
         "REPORT ACCESS:",
         "-" * 60,

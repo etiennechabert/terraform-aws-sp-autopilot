@@ -259,6 +259,460 @@ def test_get_coverage_history_client_error():
 
 
 # ============================================================================
+# Actual Cost Data Tests
+# ============================================================================
+
+def test_get_actual_cost_data_success():
+    """Test successful retrieval of actual cost data with mixed purchase options."""
+    with patch.object(handler.ce_client, 'get_cost_and_usage') as mock_get_cost:
+        mock_get_cost.return_value = {
+            'ResultsByTime': [
+                {
+                    'TimePeriod': {'Start': '2026-01-10', 'End': '2026-01-11'},
+                    'Groups': [
+                        {
+                            'Keys': ['Savings Plans'],
+                            'Metrics': {
+                                'UnblendedCost': {
+                                    'Amount': '50.25',
+                                    'Unit': 'USD'
+                                }
+                            }
+                        },
+                        {
+                            'Keys': ['On Demand'],
+                            'Metrics': {
+                                'UnblendedCost': {
+                                    'Amount': '100.75',
+                                    'Unit': 'USD'
+                                }
+                            }
+                        }
+                    ]
+                },
+                {
+                    'TimePeriod': {'Start': '2026-01-11', 'End': '2026-01-12'},
+                    'Groups': [
+                        {
+                            'Keys': ['Savings Plans'],
+                            'Metrics': {
+                                'UnblendedCost': {
+                                    'Amount': '52.00',
+                                    'Unit': 'USD'
+                                }
+                            }
+                        },
+                        {
+                            'Keys': ['On Demand'],
+                            'Metrics': {
+                                'UnblendedCost': {
+                                    'Amount': '95.50',
+                                    'Unit': 'USD'
+                                }
+                            }
+                        }
+                    ]
+                }
+            ]
+        }
+
+        result = handler.get_actual_cost_data(lookback_days=2)
+
+        # Verify structure
+        assert 'cost_by_day' in result
+        assert 'total_savings_plans_cost' in result
+        assert 'total_on_demand_cost' in result
+        assert 'total_cost' in result
+
+        # Verify daily data
+        assert len(result['cost_by_day']) == 2
+
+        # Day 1
+        assert result['cost_by_day'][0]['date'] == '2026-01-10'
+        assert result['cost_by_day'][0]['savings_plans_cost'] == 50.25
+        assert result['cost_by_day'][0]['on_demand_cost'] == 100.75
+        assert result['cost_by_day'][0]['total_cost'] == 151.00
+
+        # Day 2
+        assert result['cost_by_day'][1]['date'] == '2026-01-11'
+        assert result['cost_by_day'][1]['savings_plans_cost'] == 52.00
+        assert result['cost_by_day'][1]['on_demand_cost'] == 95.50
+        assert result['cost_by_day'][1]['total_cost'] == 147.50
+
+        # Verify totals
+        assert result['total_savings_plans_cost'] == 102.25
+        assert result['total_on_demand_cost'] == 196.25
+        assert result['total_cost'] == 298.50
+
+
+def test_get_actual_cost_data_empty():
+    """Test handling of no cost data available."""
+    with patch.object(handler.ce_client, 'get_cost_and_usage') as mock_get_cost:
+        mock_get_cost.return_value = {
+            'ResultsByTime': []
+        }
+
+        result = handler.get_actual_cost_data(lookback_days=30)
+
+        # Verify empty data structure
+        assert result['cost_by_day'] == []
+        assert result['total_savings_plans_cost'] == 0.0
+        assert result['total_on_demand_cost'] == 0.0
+        assert result['total_cost'] == 0.0
+
+
+def test_get_actual_cost_data_only_savings_plans():
+    """Test retrieval with only Savings Plans costs (no On-Demand)."""
+    with patch.object(handler.ce_client, 'get_cost_and_usage') as mock_get_cost:
+        mock_get_cost.return_value = {
+            'ResultsByTime': [
+                {
+                    'TimePeriod': {'Start': '2026-01-10', 'End': '2026-01-11'},
+                    'Groups': [
+                        {
+                            'Keys': ['Savings Plans'],
+                            'Metrics': {
+                                'UnblendedCost': {
+                                    'Amount': '75.50',
+                                    'Unit': 'USD'
+                                }
+                            }
+                        }
+                    ]
+                }
+            ]
+        }
+
+        result = handler.get_actual_cost_data(lookback_days=1)
+
+        # Verify only Savings Plans cost is recorded
+        assert result['cost_by_day'][0]['savings_plans_cost'] == 75.50
+        assert result['cost_by_day'][0]['on_demand_cost'] == 0.0
+        assert result['cost_by_day'][0]['total_cost'] == 75.50
+        assert result['total_savings_plans_cost'] == 75.50
+        assert result['total_on_demand_cost'] == 0.0
+
+
+def test_get_actual_cost_data_only_on_demand():
+    """Test retrieval with only On-Demand costs (no Savings Plans)."""
+    with patch.object(handler.ce_client, 'get_cost_and_usage') as mock_get_cost:
+        mock_get_cost.return_value = {
+            'ResultsByTime': [
+                {
+                    'TimePeriod': {'Start': '2026-01-10', 'End': '2026-01-11'},
+                    'Groups': [
+                        {
+                            'Keys': ['On Demand'],
+                            'Metrics': {
+                                'UnblendedCost': {
+                                    'Amount': '150.25',
+                                    'Unit': 'USD'
+                                }
+                            }
+                        }
+                    ]
+                }
+            ]
+        }
+
+        result = handler.get_actual_cost_data(lookback_days=1)
+
+        # Verify only On-Demand cost is recorded
+        assert result['cost_by_day'][0]['savings_plans_cost'] == 0.0
+        assert result['cost_by_day'][0]['on_demand_cost'] == 150.25
+        assert result['cost_by_day'][0]['total_cost'] == 150.25
+        assert result['total_savings_plans_cost'] == 0.0
+        assert result['total_on_demand_cost'] == 150.25
+
+
+def test_get_actual_cost_data_alternative_purchase_option_names():
+    """Test handling of alternative purchase option naming variations."""
+    with patch.object(handler.ce_client, 'get_cost_and_usage') as mock_get_cost:
+        mock_get_cost.return_value = {
+            'ResultsByTime': [
+                {
+                    'TimePeriod': {'Start': '2026-01-10', 'End': '2026-01-11'},
+                    'Groups': [
+                        {
+                            'Keys': ['SavingsPlan'],  # Alternative naming
+                            'Metrics': {
+                                'UnblendedCost': {
+                                    'Amount': '30.00',
+                                    'Unit': 'USD'
+                                }
+                            }
+                        },
+                        {
+                            'Keys': ['OnDemand'],  # Alternative naming
+                            'Metrics': {
+                                'UnblendedCost': {
+                                    'Amount': '70.00',
+                                    'Unit': 'USD'
+                                }
+                            }
+                        }
+                    ]
+                }
+            ]
+        }
+
+        result = handler.get_actual_cost_data(lookback_days=1)
+
+        # Verify alternative naming is correctly categorized
+        assert result['cost_by_day'][0]['savings_plans_cost'] == 30.00
+        assert result['cost_by_day'][0]['on_demand_cost'] == 70.00
+        assert result['total_savings_plans_cost'] == 30.00
+        assert result['total_on_demand_cost'] == 70.00
+
+
+def test_get_actual_cost_data_zero_costs():
+    """Test handling of zero cost amounts."""
+    with patch.object(handler.ce_client, 'get_cost_and_usage') as mock_get_cost:
+        mock_get_cost.return_value = {
+            'ResultsByTime': [
+                {
+                    'TimePeriod': {'Start': '2026-01-10', 'End': '2026-01-11'},
+                    'Groups': [
+                        {
+                            'Keys': ['Savings Plans'],
+                            'Metrics': {
+                                'UnblendedCost': {
+                                    'Amount': '0',
+                                    'Unit': 'USD'
+                                }
+                            }
+                        },
+                        {
+                            'Keys': ['On Demand'],
+                            'Metrics': {
+                                'UnblendedCost': {
+                                    'Amount': '0',
+                                    'Unit': 'USD'
+                                }
+                            }
+                        }
+                    ]
+                }
+            ]
+        }
+
+        result = handler.get_actual_cost_data(lookback_days=1)
+
+        # Verify zero costs are handled correctly
+        assert result['cost_by_day'][0]['savings_plans_cost'] == 0.0
+        assert result['cost_by_day'][0]['on_demand_cost'] == 0.0
+        assert result['cost_by_day'][0]['total_cost'] == 0.0
+        assert result['total_cost'] == 0.0
+
+
+def test_get_actual_cost_data_missing_cost_fields():
+    """Test handling of missing cost amount fields."""
+    with patch.object(handler.ce_client, 'get_cost_and_usage') as mock_get_cost:
+        mock_get_cost.return_value = {
+            'ResultsByTime': [
+                {
+                    'TimePeriod': {'Start': '2026-01-10', 'End': '2026-01-11'},
+                    'Groups': [
+                        {
+                            'Keys': ['Savings Plans'],
+                            'Metrics': {
+                                'UnblendedCost': {}  # Missing Amount
+                            }
+                        },
+                        {
+                            'Keys': ['On Demand'],
+                            'Metrics': {}  # Missing UnblendedCost
+                        }
+                    ]
+                }
+            ]
+        }
+
+        result = handler.get_actual_cost_data(lookback_days=1)
+
+        # Verify missing fields default to 0.0
+        assert result['cost_by_day'][0]['savings_plans_cost'] == 0.0
+        assert result['cost_by_day'][0]['on_demand_cost'] == 0.0
+        assert result['total_cost'] == 0.0
+
+
+def test_get_actual_cost_data_no_groups():
+    """Test handling of days with no purchase option groups."""
+    with patch.object(handler.ce_client, 'get_cost_and_usage') as mock_get_cost:
+        mock_get_cost.return_value = {
+            'ResultsByTime': [
+                {
+                    'TimePeriod': {'Start': '2026-01-10', 'End': '2026-01-11'},
+                    'Groups': []  # No groups for this day
+                }
+            ]
+        }
+
+        result = handler.get_actual_cost_data(lookback_days=1)
+
+        # Verify empty groups result in zero costs
+        assert len(result['cost_by_day']) == 1
+        assert result['cost_by_day'][0]['savings_plans_cost'] == 0.0
+        assert result['cost_by_day'][0]['on_demand_cost'] == 0.0
+        assert result['cost_by_day'][0]['total_cost'] == 0.0
+
+
+def test_get_actual_cost_data_unknown_purchase_option():
+    """Test handling of unknown purchase option types (should be ignored)."""
+    with patch.object(handler.ce_client, 'get_cost_and_usage') as mock_get_cost:
+        mock_get_cost.return_value = {
+            'ResultsByTime': [
+                {
+                    'TimePeriod': {'Start': '2026-01-10', 'End': '2026-01-11'},
+                    'Groups': [
+                        {
+                            'Keys': ['Savings Plans'],
+                            'Metrics': {
+                                'UnblendedCost': {
+                                    'Amount': '50.00',
+                                    'Unit': 'USD'
+                                }
+                            }
+                        },
+                        {
+                            'Keys': ['Reserved Instances'],  # Unknown/ignored type
+                            'Metrics': {
+                                'UnblendedCost': {
+                                    'Amount': '25.00',
+                                    'Unit': 'USD'
+                                }
+                            }
+                        }
+                    ]
+                }
+            ]
+        }
+
+        result = handler.get_actual_cost_data(lookback_days=1)
+
+        # Verify only recognized purchase options are counted
+        # Reserved Instances should be ignored (not SP or On-Demand)
+        assert result['cost_by_day'][0]['savings_plans_cost'] == 50.00
+        assert result['cost_by_day'][0]['on_demand_cost'] == 0.0
+        assert result['cost_by_day'][0]['total_cost'] == 50.00
+
+
+def test_get_actual_cost_data_client_error():
+    """Test that ClientError is raised on API failure."""
+    with patch.object(handler.ce_client, 'get_cost_and_usage') as mock_get_cost:
+        error_response = {
+            'Error': {
+                'Code': 'AccessDenied',
+                'Message': 'Not authorized to access Cost Explorer'
+            }
+        }
+        mock_get_cost.side_effect = ClientError(error_response, 'get_cost_and_usage')
+
+        with pytest.raises(ClientError):
+            handler.get_actual_cost_data(lookback_days=30)
+
+
+def test_get_actual_cost_data_throttling_error():
+    """Test that throttling error is raised properly."""
+    with patch.object(handler.ce_client, 'get_cost_and_usage') as mock_get_cost:
+        error_response = {
+            'Error': {
+                'Code': 'ThrottlingException',
+                'Message': 'Rate exceeded'
+            }
+        }
+        mock_get_cost.side_effect = ClientError(error_response, 'get_cost_and_usage')
+
+        with pytest.raises(ClientError) as exc_info:
+            handler.get_actual_cost_data(lookback_days=30)
+
+        assert exc_info.value.response['Error']['Code'] == 'ThrottlingException'
+
+
+def test_get_actual_cost_data_multiple_days_aggregation():
+    """Test correct aggregation of costs across multiple days."""
+    with patch.object(handler.ce_client, 'get_cost_and_usage') as mock_get_cost:
+        mock_get_cost.return_value = {
+            'ResultsByTime': [
+                {
+                    'TimePeriod': {'Start': '2026-01-10', 'End': '2026-01-11'},
+                    'Groups': [
+                        {
+                            'Keys': ['Savings Plans'],
+                            'Metrics': {'UnblendedCost': {'Amount': '10.00'}}
+                        },
+                        {
+                            'Keys': ['On Demand'],
+                            'Metrics': {'UnblendedCost': {'Amount': '20.00'}}
+                        }
+                    ]
+                },
+                {
+                    'TimePeriod': {'Start': '2026-01-11', 'End': '2026-01-12'},
+                    'Groups': [
+                        {
+                            'Keys': ['Savings Plans'],
+                            'Metrics': {'UnblendedCost': {'Amount': '15.00'}}
+                        },
+                        {
+                            'Keys': ['On Demand'],
+                            'Metrics': {'UnblendedCost': {'Amount': '25.00'}}
+                        }
+                    ]
+                },
+                {
+                    'TimePeriod': {'Start': '2026-01-12', 'End': '2026-01-13'},
+                    'Groups': [
+                        {
+                            'Keys': ['Savings Plans'],
+                            'Metrics': {'UnblendedCost': {'Amount': '12.50'}}
+                        },
+                        {
+                            'Keys': ['On Demand'],
+                            'Metrics': {'UnblendedCost': {'Amount': '22.50'}}
+                        }
+                    ]
+                }
+            ]
+        }
+
+        result = handler.get_actual_cost_data(lookback_days=3)
+
+        # Verify correct aggregation across 3 days
+        assert len(result['cost_by_day']) == 3
+        assert result['total_savings_plans_cost'] == 37.50  # 10 + 15 + 12.5
+        assert result['total_on_demand_cost'] == 67.50  # 20 + 25 + 22.5
+        assert result['total_cost'] == 105.00  # 37.5 + 67.5
+
+
+def test_get_actual_cost_data_empty_keys_list():
+    """Test handling of groups with empty Keys list."""
+    with patch.object(handler.ce_client, 'get_cost_and_usage') as mock_get_cost:
+        mock_get_cost.return_value = {
+            'ResultsByTime': [
+                {
+                    'TimePeriod': {'Start': '2026-01-10', 'End': '2026-01-11'},
+                    'Groups': [
+                        {
+                            'Keys': [],  # Empty keys list
+                            'Metrics': {
+                                'UnblendedCost': {'Amount': '50.00'}
+                            }
+                        }
+                    ]
+                }
+            ]
+        }
+
+        result = handler.get_actual_cost_data(lookback_days=1)
+
+        # Verify graceful handling - should be categorized as unknown and ignored
+        assert result['cost_by_day'][0]['savings_plans_cost'] == 0.0
+        assert result['cost_by_day'][0]['on_demand_cost'] == 0.0
+        assert result['total_cost'] == 0.0
+
+
+# ============================================================================
 # Savings Data Tests
 # ============================================================================
 
@@ -294,11 +748,25 @@ def test_get_savings_data_with_active_plans():
             'SavingsPlansUtilizationsByTime': [
                 {
                     'TimePeriod': {'Start': '2026-01-10', 'End': '2026-01-11'},
-                    'Utilization': {'UtilizationPercentage': '95.0'}
+                    'Utilization': {'UtilizationPercentage': '95.0'},
+                    'Savings': {
+                        'NetSavings': '100.50',
+                        'OnDemandCostEquivalent': '500.00'
+                    },
+                    'AmortizedCommitment': {
+                        'TotalAmortizedCommitment': '399.50'
+                    }
                 },
                 {
                     'TimePeriod': {'Start': '2026-01-11', 'End': '2026-01-12'},
-                    'Utilization': {'UtilizationPercentage': '97.0'}
+                    'Utilization': {'UtilizationPercentage': '97.0'},
+                    'Savings': {
+                        'NetSavings': '150.75',
+                        'OnDemandCostEquivalent': '600.00'
+                    },
+                    'AmortizedCommitment': {
+                        'TotalAmortizedCommitment': '449.25'
+                    }
                 }
             ]
         }
@@ -308,11 +776,20 @@ def test_get_savings_data_with_active_plans():
         assert result['plans_count'] == 2
         assert result['total_commitment'] == 3.5
         assert result['average_utilization'] == 96.0
-        assert result['estimated_monthly_savings'] == 3.5 * 730 * 0.25
+        assert result['estimated_monthly_savings'] == 251.25  # Sum of NetSavings
         assert len(result['plans']) == 2
         assert result['plans'][0]['plan_id'] == 'sp-12345678'
         assert result['plans'][0]['term_years'] == 1
         assert result['plans'][1]['term_years'] == 3
+
+        # Verify actual_savings structure
+        assert 'actual_savings' in result
+        assert result['actual_savings']['net_savings'] == 251.25
+        assert result['actual_savings']['on_demand_equivalent_cost'] == 1100.00
+        assert result['actual_savings']['actual_sp_cost'] == 848.75
+        assert abs(result['actual_savings']['savings_percentage'] - 22.84) < 0.1
+        assert 'ComputeSavingsPlans' in result['actual_savings']['breakdown_by_type']
+        assert result['actual_savings']['breakdown_by_type']['ComputeSavingsPlans']['plans_count'] == 2
 
 
 def test_get_savings_data_no_active_plans():
@@ -329,6 +806,8 @@ def test_get_savings_data_no_active_plans():
         assert result['plans'] == []
         assert result['estimated_monthly_savings'] == 0.0
         assert result['average_utilization'] == 0.0
+        assert 'actual_savings' in result
+        assert result['actual_savings']['net_savings'] == 0.0
 
 
 def test_get_savings_data_utilization_error():
@@ -360,9 +839,12 @@ def test_get_savings_data_utilization_error():
 
         result = handler.get_savings_data()
 
-        # Should still return data, just with zero utilization
+        # Should still return data, just with zero utilization and savings
         assert result['plans_count'] == 1
         assert result['average_utilization'] == 0.0
+        assert 'actual_savings' in result
+        assert result['actual_savings']['net_savings'] == 0.0
+        assert result['actual_savings']['on_demand_equivalent_cost'] == 0.0
 
 
 def test_get_savings_data_describe_error():
@@ -418,7 +900,23 @@ def test_generate_html_report_with_data():
             }
         ],
         'estimated_monthly_savings': 639.25,
-        'average_utilization': 96.0
+        'average_utilization': 96.0,
+        'actual_savings': {
+            'actual_sp_cost': 1200.50,
+            'on_demand_equivalent_cost': 1839.75,
+            'net_savings': 639.25,
+            'savings_percentage': 34.75,
+            'breakdown_by_type': {
+                'ComputeSavingsPlans': {
+                    'plans_count': 1,
+                    'total_commitment': 2.0
+                },
+                'SageMakerSavingsPlans': {
+                    'plans_count': 1,
+                    'total_commitment': 1.5
+                }
+            }
+        }
     }
 
     result = handler.generate_html_report(coverage_history, savings_data)
@@ -429,8 +927,13 @@ def test_generate_html_report_with_data():
     assert '2 days' in result
     assert '2026-01-10' in result
     assert 'ComputeSavingsPlans' in result
-    assert '639' in result  # Estimated monthly savings
+    assert '639' in result  # Actual net savings
     assert 'sp-12345678901234567' in result  # Truncated plan ID
+
+    # Validate actual savings calculations appear in HTML
+    assert '34.75%' in result or '34.8%' in result  # Savings percentage
+    assert 'ComputeSavingsPlans' in result  # Plan type in breakdown
+    assert 'SageMakerSavingsPlans' in result  # Plan type in breakdown
 
 
 def test_generate_html_report_empty_coverage():
@@ -441,7 +944,14 @@ def test_generate_html_report_empty_coverage():
         'plans_count': 0,
         'plans': [],
         'estimated_monthly_savings': 0.0,
-        'average_utilization': 0.0
+        'average_utilization': 0.0,
+        'actual_savings': {
+            'actual_sp_cost': 0.0,
+            'on_demand_equivalent_cost': 0.0,
+            'net_savings': 0.0,
+            'savings_percentage': 0.0,
+            'breakdown_by_type': {}
+        }
     }
 
     result = handler.generate_html_report(coverage_history, savings_data)
@@ -459,7 +969,20 @@ def test_generate_html_report_trend_up():
         {'date': '2026-01-11', 'coverage_percentage': 80.0, 'covered_hours': 320.0, 'on_demand_hours': 80.0, 'total_hours': 400.0}
     ]
 
-    savings_data = {'total_commitment': 0.0, 'plans_count': 0, 'plans': [], 'estimated_monthly_savings': 0.0, 'average_utilization': 0.0}
+    savings_data = {
+        'total_commitment': 0.0,
+        'plans_count': 0,
+        'plans': [],
+        'estimated_monthly_savings': 0.0,
+        'average_utilization': 0.0,
+        'actual_savings': {
+            'actual_sp_cost': 0.0,
+            'on_demand_equivalent_cost': 0.0,
+            'net_savings': 0.0,
+            'savings_percentage': 0.0,
+            'breakdown_by_type': {}
+        }
+    }
 
     result = handler.generate_html_report(coverage_history, savings_data)
 
@@ -473,7 +996,20 @@ def test_generate_html_report_trend_down():
         {'date': '2026-01-11', 'coverage_percentage': 70.0, 'covered_hours': 280.0, 'on_demand_hours': 120.0, 'total_hours': 400.0}
     ]
 
-    savings_data = {'total_commitment': 0.0, 'plans_count': 0, 'plans': [], 'estimated_monthly_savings': 0.0, 'average_utilization': 0.0}
+    savings_data = {
+        'total_commitment': 0.0,
+        'plans_count': 0,
+        'plans': [],
+        'estimated_monthly_savings': 0.0,
+        'average_utilization': 0.0,
+        'actual_savings': {
+            'actual_sp_cost': 0.0,
+            'on_demand_equivalent_cost': 0.0,
+            'net_savings': 0.0,
+            'savings_percentage': 0.0,
+            'breakdown_by_type': {}
+        }
+    }
 
     result = handler.generate_html_report(coverage_history, savings_data)
 
@@ -520,7 +1056,23 @@ def test_generate_json_report_with_data():
             }
         ],
         'estimated_monthly_savings': 639.25,
-        'average_utilization': 96.0
+        'average_utilization': 96.0,
+        'actual_savings': {
+            'actual_sp_cost': 1200.50,
+            'on_demand_equivalent_cost': 1839.75,
+            'net_savings': 639.25,
+            'savings_percentage': 34.75,
+            'breakdown_by_type': {
+                'ComputeSavingsPlans': {
+                    'plans_count': 1,
+                    'total_commitment': 2.0
+                },
+                'SageMakerSavingsPlans': {
+                    'plans_count': 1,
+                    'total_commitment': 1.5
+                }
+            }
+        }
     }
 
     result = handler.generate_json_report(coverage_history, savings_data)
@@ -561,6 +1113,20 @@ def test_generate_json_report_with_data():
     assert len(report['active_savings_plans']) == 1
     assert report['active_savings_plans'][0]['plan_id'] == 'sp-12345678901234567890'
 
+    # Validate actual savings calculations are included in JSON report
+    assert 'actual_savings' in report
+    assert report['actual_savings']['sp_cost'] == 1200.50
+    assert report['actual_savings']['on_demand_cost'] == 1839.75
+    assert report['actual_savings']['net_savings'] == 639.25
+    assert report['actual_savings']['savings_percentage'] == 34.75
+    assert 'breakdown_by_type' in report['actual_savings']
+    assert len(report['actual_savings']['breakdown_by_type']) == 2
+
+    # Verify breakdown by type
+    breakdown = report['actual_savings']['breakdown_by_type']
+    assert any(item['plan_type'] == 'ComputeSavingsPlans' for item in breakdown)
+    assert any(item['plan_type'] == 'SageMakerSavingsPlans' for item in breakdown)
+
 
 def test_generate_json_report_empty_coverage():
     """Test JSON report generation with no coverage data."""
@@ -572,7 +1138,14 @@ def test_generate_json_report_empty_coverage():
         'plans_count': 0,
         'plans': [],
         'estimated_monthly_savings': 0.0,
-        'average_utilization': 0.0
+        'average_utilization': 0.0,
+        'actual_savings': {
+            'actual_sp_cost': 0.0,
+            'on_demand_equivalent_cost': 0.0,
+            'net_savings': 0.0,
+            'savings_percentage': 0.0,
+            'breakdown_by_type': {}
+        }
     }
 
     result = handler.generate_json_report(coverage_history, savings_data)
@@ -590,6 +1163,13 @@ def test_generate_json_report_empty_coverage():
     assert len(report['coverage_history']) == 0
     assert len(report['active_savings_plans']) == 0
 
+    # Verify actual savings are zero
+    assert 'actual_savings' in report
+    assert report['actual_savings']['net_savings'] == 0.0
+    assert report['actual_savings']['sp_cost'] == 0.0
+    assert report['actual_savings']['on_demand_cost'] == 0.0
+    assert report['actual_savings']['savings_percentage'] == 0.0
+
 
 def test_generate_json_report_trend_increasing():
     """Test JSON report shows increasing trend."""
@@ -600,7 +1180,20 @@ def test_generate_json_report_trend_increasing():
         {'date': '2026-01-11', 'coverage_percentage': 80.0, 'covered_hours': 320.0, 'on_demand_hours': 80.0, 'total_hours': 400.0}
     ]
 
-    savings_data = {'total_commitment': 0.0, 'plans_count': 0, 'plans': [], 'estimated_monthly_savings': 0.0, 'average_utilization': 0.0}
+    savings_data = {
+        'total_commitment': 0.0,
+        'plans_count': 0,
+        'plans': [],
+        'estimated_monthly_savings': 0.0,
+        'average_utilization': 0.0,
+        'actual_savings': {
+            'actual_sp_cost': 0.0,
+            'on_demand_equivalent_cost': 0.0,
+            'net_savings': 0.0,
+            'savings_percentage': 0.0,
+            'breakdown_by_type': {}
+        }
+    }
 
     result = handler.generate_json_report(coverage_history, savings_data)
     report = json.loads(result)
@@ -618,7 +1211,20 @@ def test_generate_json_report_trend_decreasing():
         {'date': '2026-01-11', 'coverage_percentage': 70.0, 'covered_hours': 280.0, 'on_demand_hours': 120.0, 'total_hours': 400.0}
     ]
 
-    savings_data = {'total_commitment': 0.0, 'plans_count': 0, 'plans': [], 'estimated_monthly_savings': 0.0, 'average_utilization': 0.0}
+    savings_data = {
+        'total_commitment': 0.0,
+        'plans_count': 0,
+        'plans': [],
+        'estimated_monthly_savings': 0.0,
+        'average_utilization': 0.0,
+        'actual_savings': {
+            'actual_sp_cost': 0.0,
+            'on_demand_equivalent_cost': 0.0,
+            'net_savings': 0.0,
+            'savings_percentage': 0.0,
+            'breakdown_by_type': {}
+        }
+    }
 
     result = handler.generate_json_report(coverage_history, savings_data)
     report = json.loads(result)
@@ -636,7 +1242,20 @@ def test_generate_json_report_trend_stable():
         {'date': '2026-01-11', 'coverage_percentage': 75.0, 'covered_hours': 300.0, 'on_demand_hours': 100.0, 'total_hours': 400.0}
     ]
 
-    savings_data = {'total_commitment': 0.0, 'plans_count': 0, 'plans': [], 'estimated_monthly_savings': 0.0, 'average_utilization': 0.0}
+    savings_data = {
+        'total_commitment': 0.0,
+        'plans_count': 0,
+        'plans': [],
+        'estimated_monthly_savings': 0.0,
+        'average_utilization': 0.0,
+        'actual_savings': {
+            'actual_sp_cost': 0.0,
+            'on_demand_equivalent_cost': 0.0,
+            'net_savings': 0.0,
+            'savings_percentage': 0.0,
+            'breakdown_by_type': {}
+        }
+    }
 
     result = handler.generate_json_report(coverage_history, savings_data)
     report = json.loads(result)
@@ -727,7 +1346,23 @@ def test_send_report_email_success(mock_env_vars):
         'plans_count': 2,
         'total_commitment': 3.5,
         'estimated_monthly_savings': 639.25,
-        'average_utilization': 96.0
+        'average_utilization': 96.0,
+        'actual_savings': {
+            'actual_sp_cost': 1200.50,
+            'on_demand_equivalent_cost': 1839.75,
+            'net_savings': 639.25,
+            'savings_percentage': 34.75,
+            'breakdown_by_type': {
+                'ComputeSavingsPlans': {
+                    'plans_count': 1,
+                    'total_commitment': 2.0
+                },
+                'SageMakerSavingsPlans': {
+                    'plans_count': 1,
+                    'total_commitment': 1.5
+                }
+            }
+        }
     }
 
     with patch.object(handler.sns_client, 'publish') as mock_publish:
@@ -745,7 +1380,14 @@ def test_send_report_email_success(mock_env_vars):
         assert call_args['TopicArn'] == 'arn:aws:sns:us-east-1:123456789012:test-topic'
         assert '80.0%' in call_args['Subject']
         assert '$639' in call_args['Subject']
+        assert 'Actual Savings' in call_args['Subject']
         assert 's3://test-reports-bucket/' in call_args['Message']
+        assert 'ACTUAL SAVINGS SUMMARY' in call_args['Message']
+        assert 'Net Savings: $639.25' in call_args['Message']
+        assert 'Savings Percentage: 34.75%' in call_args['Message']
+        assert 'Breakdown by Plan Type:' in call_args['Message']
+        assert 'ComputeSavingsPlans' in call_args['Message']
+        assert 'SageMakerSavingsPlans' in call_args['Message']
 
 
 def test_send_report_email_error(mock_env_vars):
@@ -753,7 +1395,19 @@ def test_send_report_email_error(mock_env_vars):
     config = handler.load_configuration()
 
     coverage_summary = {'current_coverage': 80.0, 'avg_coverage': 77.5, 'coverage_days': 30, 'trend_direction': '↑'}
-    savings_summary = {'plans_count': 2, 'total_commitment': 3.5, 'estimated_monthly_savings': 639.25, 'average_utilization': 96.0}
+    savings_summary = {
+        'plans_count': 2,
+        'total_commitment': 3.5,
+        'estimated_monthly_savings': 639.25,
+        'average_utilization': 96.0,
+        'actual_savings': {
+            'actual_sp_cost': 1200.50,
+            'on_demand_equivalent_cost': 1839.75,
+            'net_savings': 639.25,
+            'savings_percentage': 34.75,
+            'breakdown_by_type': {}
+        }
+    }
 
     with patch.object(handler.sns_client, 'publish') as mock_publish:
         error_response = {
@@ -839,7 +1493,14 @@ def test_handler_success_with_email(mock_env_vars):
             'plans_count': 2,
             'total_commitment': 3.5,
             'estimated_monthly_savings': 639.25,
-            'average_utilization': 96.0
+            'average_utilization': 96.0,
+            'actual_savings': {
+                'actual_sp_cost': 1200.50,
+                'on_demand_equivalent_cost': 1839.75,
+                'net_savings': 639.25,
+                'savings_percentage': 34.75,
+                'breakdown_by_type': {}
+            }
         }
 
         mock_generate_html.return_value = '<html>Test Report</html>'
@@ -881,7 +1542,19 @@ def test_handler_success_without_email(mock_env_vars, monkeypatch):
         }
 
         mock_get_coverage.return_value = []
-        mock_get_savings.return_value = {'plans_count': 0, 'total_commitment': 0.0, 'estimated_monthly_savings': 0.0, 'average_utilization': 0.0}
+        mock_get_savings.return_value = {
+            'plans_count': 0,
+            'total_commitment': 0.0,
+            'estimated_monthly_savings': 0.0,
+            'average_utilization': 0.0,
+            'actual_savings': {
+                'actual_sp_cost': 0.0,
+                'on_demand_equivalent_cost': 0.0,
+                'net_savings': 0.0,
+                'savings_percentage': 0.0,
+                'breakdown_by_type': {}
+            }
+        }
         mock_generate_html.return_value = '<html>Test Report</html>'
         mock_upload.return_value = 'savings-plans-report_2026-01-14_12-00-00.html'
 
@@ -979,7 +1652,14 @@ def test_send_report_email_with_slack_notification(mock_env_vars, monkeypatch):
         'plans_count': 2,
         'total_commitment': 3.5,
         'estimated_monthly_savings': 639.25,
-        'average_utilization': 96.0
+        'average_utilization': 96.0,
+        'actual_savings': {
+            'actual_sp_cost': 1200.50,
+            'on_demand_equivalent_cost': 1839.75,
+            'net_savings': 639.25,
+            'savings_percentage': 34.75,
+            'breakdown_by_type': {}
+        }
     }
 
     with patch.object(handler.sns_client, 'publish') as mock_publish, \
@@ -1029,7 +1709,14 @@ def test_send_report_email_with_teams_notification(mock_env_vars, monkeypatch):
         'plans_count': 2,
         'total_commitment': 3.5,
         'estimated_monthly_savings': 639.25,
-        'average_utilization': 96.0
+        'average_utilization': 96.0,
+        'actual_savings': {
+            'actual_sp_cost': 1200.50,
+            'on_demand_equivalent_cost': 1839.75,
+            'net_savings': 639.25,
+            'savings_percentage': 34.75,
+            'breakdown_by_type': {}
+        }
     }
 
     with patch.object(handler.sns_client, 'publish') as mock_publish, \
@@ -1076,7 +1763,14 @@ def test_send_report_email_without_notifications(mock_env_vars):
         'plans_count': 2,
         'total_commitment': 3.5,
         'estimated_monthly_savings': 639.25,
-        'average_utilization': 96.0
+        'average_utilization': 96.0,
+        'actual_savings': {
+            'actual_sp_cost': 1200.50,
+            'on_demand_equivalent_cost': 1839.75,
+            'net_savings': 639.25,
+            'savings_percentage': 34.75,
+            'breakdown_by_type': {}
+        }
     }
 
     with patch.object(handler.sns_client, 'publish') as mock_publish, \
@@ -1117,7 +1811,14 @@ def test_send_report_email_slack_notification_failure(mock_env_vars, monkeypatch
         'plans_count': 2,
         'total_commitment': 3.5,
         'estimated_monthly_savings': 639.25,
-        'average_utilization': 96.0
+        'average_utilization': 96.0,
+        'actual_savings': {
+            'actual_sp_cost': 1200.50,
+            'on_demand_equivalent_cost': 1839.75,
+            'net_savings': 639.25,
+            'savings_percentage': 34.75,
+            'breakdown_by_type': {}
+        }
     }
 
     with patch.object(handler.sns_client, 'publish') as mock_publish, \
@@ -1157,7 +1858,14 @@ def test_send_report_email_teams_notification_failure(mock_env_vars, monkeypatch
         'plans_count': 2,
         'total_commitment': 3.5,
         'estimated_monthly_savings': 639.25,
-        'average_utilization': 96.0
+        'average_utilization': 96.0,
+        'actual_savings': {
+            'actual_sp_cost': 1200.50,
+            'on_demand_equivalent_cost': 1839.75,
+            'net_savings': 639.25,
+            'savings_percentage': 34.75,
+            'breakdown_by_type': {}
+        }
     }
 
     with patch.object(handler.sns_client, 'publish') as mock_publish, \
