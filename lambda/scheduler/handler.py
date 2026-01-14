@@ -19,13 +19,13 @@ import logging
 import os
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from datetime import datetime, timezone
-from typing import Dict, List, Any, Optional
+from typing import Any, Dict, List, Optional
 
 import boto3
 from botocore.exceptions import ClientError
 
-from shared.aws_utils import get_assumed_role_session, get_clients
-from shared import notifications
+from shared.aws_utils import get_clients
+
 
 # Configure logging
 logger = logging.getLogger()
@@ -66,9 +66,9 @@ def handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
             ce_client = clients['ce']
             savingsplans_client = clients['savingsplans']
         except ClientError as e:
-            error_msg = f"Failed to initialize AWS clients: {str(e)}"
+            error_msg = f"Failed to initialize AWS clients: {e!s}"
             if config.get('management_account_role_arn'):
-                error_msg = f"Failed to assume role {config['management_account_role_arn']}: {str(e)}"
+                error_msg = f"Failed to assume role {config['management_account_role_arn']}: {e!s}"
             logger.error(error_msg, exc_info=True)
             send_error_email(error_msg)
             raise
@@ -115,7 +115,7 @@ def handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
         }
 
     except Exception as e:
-        logger.error(f"Scheduler Lambda failed: {str(e)}", exc_info=True)
+        logger.error(f"Scheduler Lambda failed: {e!s}", exc_info=True)
         send_error_email(str(e))
         raise  # Re-raise to ensure Lambda fails visibly
 
@@ -206,7 +206,7 @@ def calculate_current_coverage(config: Dict[str, Any]) -> Dict[str, float]:
         logger.info(f"Valid plans after filtering: {len(valid_plan_ids)}")
 
     except ClientError as e:
-        logger.error(f"Failed to describe Savings Plans: {str(e)}")
+        logger.error(f"Failed to describe Savings Plans: {e!s}")
         raise
 
     # Get coverage from Cost Explorer
@@ -254,7 +254,7 @@ def calculate_current_coverage(config: Dict[str, Any]) -> Dict[str, float]:
         }
 
     except ClientError as e:
-        logger.error(f"Failed to get coverage from Cost Explorer: {str(e)}")
+        logger.error(f"Failed to get coverage from Cost Explorer: {e!s}")
         raise
 
     logger.info(f"Coverage calculated: {coverage}")
@@ -322,12 +322,11 @@ def _fetch_compute_sp_recommendation(config: Dict[str, Any], lookback_period: st
                 'GenerationTimestamp': generation_timestamp,
                 'Details': best_recommendation
             }
-        else:
-            logger.info("No Compute SP recommendations available from AWS")
-            return None
+        logger.info("No Compute SP recommendations available from AWS")
+        return None
 
     except ClientError as e:
-        logger.error(f"Failed to get Compute SP recommendations: {str(e)}")
+        logger.error(f"Failed to get Compute SP recommendations: {e!s}")
         raise
 
 
@@ -394,12 +393,11 @@ def _fetch_database_sp_recommendation(config: Dict[str, Any], lookback_period: s
                 'GenerationTimestamp': generation_timestamp,
                 'Details': best_recommendation
             }
-        else:
-            logger.info("No Database SP recommendations available from AWS")
-            return None
+        logger.info("No Database SP recommendations available from AWS")
+        return None
 
     except ClientError as e:
-        logger.error(f"Failed to get Database SP recommendations: {str(e)}")
+        logger.error(f"Failed to get Database SP recommendations: {e!s}")
         raise
 
 
@@ -475,7 +473,7 @@ def get_aws_recommendations(config: Dict[str, Any]) -> Dict[str, Any]:
                     result = future.result()
                     recommendations[key] = result
                 except Exception as e:
-                    logger.error(f"Failed to fetch {key} recommendation: {str(e)}")
+                    logger.error(f"Failed to fetch {key} recommendation: {e!s}")
                     raise
 
     logger.info(f"Recommendations retrieved: {recommendations}")
@@ -767,7 +765,7 @@ def queue_purchase_intents(
             queued_count += 1
 
         except ClientError as e:
-            logger.error(f"Failed to queue purchase intent: {str(e)}")
+            logger.error(f"Failed to queue purchase intent: {e!s}")
             raise
 
     logger.info(f"All {queued_count} purchase intents queued successfully")
@@ -852,7 +850,7 @@ def send_scheduled_email(
         )
         logger.info(f"Email sent successfully to {config['sns_topic_arn']}")
     except ClientError as e:
-        logger.error(f"Failed to send email: {str(e)}")
+        logger.error(f"Failed to send email: {e!s}")
         raise
 
 
@@ -940,7 +938,7 @@ def send_dry_run_email(
         )
         logger.info(f"Dry run email sent successfully to {config['sns_topic_arn']}")
     except ClientError as e:
-        logger.error(f"Failed to send dry run email: {str(e)}")
+        logger.error(f"Failed to send dry run email: {e!s}")
         raise
 
 
@@ -994,4 +992,4 @@ def send_error_email(error_message: str) -> None:
         logger.info(f"Error email sent successfully to {sns_topic_arn}")
     except Exception as e:
         # Don't raise - we're already in error handling
-        logger.error(f"Failed to send error email: {str(e)}")
+        logger.error(f"Failed to send error email: {e!s}")

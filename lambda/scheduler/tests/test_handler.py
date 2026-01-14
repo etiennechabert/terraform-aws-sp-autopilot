@@ -4,12 +4,14 @@ Comprehensive unit tests for Scheduler Lambda handler.
 Tests cover all 12 functions with edge cases to achieve >= 80% coverage.
 """
 
-import pytest
-from unittest.mock import Mock, patch, MagicMock, call
-from datetime import datetime, timezone, timedelta
 import json
-import sys
 import os
+import sys
+from datetime import datetime, timedelta, timezone
+from unittest.mock import MagicMock, patch
+
+import pytest
+
 
 # Add parent directory to path
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
@@ -515,7 +517,7 @@ def test_get_aws_recommendations_parallel_execution_both_enabled(monkeypatch):
         def api_side_effect(*args, **kwargs):
             if kwargs.get('SavingsPlansType') == 'COMPUTE_SP':
                 return compute_side_effect(*args, **kwargs)
-            elif kwargs.get('SavingsPlansType') == 'DATABASE_SP':
+            if kwargs.get('SavingsPlansType') == 'DATABASE_SP':
                 return database_side_effect(*args, **kwargs)
 
         mock_rec.side_effect = api_side_effect
@@ -572,7 +574,6 @@ def test_get_aws_recommendations_parallel_execution_uses_threadpool(monkeypatch)
         }
 
         # Patch ThreadPoolExecutor to verify it's used correctly
-        from concurrent.futures import ThreadPoolExecutor
         with patch('handler.ThreadPoolExecutor') as mock_executor_class:
             mock_executor = MagicMock()
             mock_executor_class.return_value.__enter__.return_value = mock_executor
@@ -637,7 +638,7 @@ def test_get_aws_recommendations_parallel_execution_error_handling(monkeypatch):
                         ]
                     }
                 }
-            elif kwargs.get('SavingsPlansType') == 'DATABASE_SP':
+            if kwargs.get('SavingsPlansType') == 'DATABASE_SP':
                 raise ClientError(error_response, 'get_savings_plans_purchase_recommendation')
 
         mock_rec.side_effect = api_side_effect

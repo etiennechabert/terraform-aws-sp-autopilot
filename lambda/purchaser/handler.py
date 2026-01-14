@@ -15,15 +15,15 @@ This Lambda:
 import json
 import logging
 import os
-from datetime import datetime, timezone, timedelta, date
-from typing import Dict, List, Any, Optional
+from datetime import date, datetime, timedelta, timezone
+from typing import Any, Dict, List
 
 import boto3
 from botocore.exceptions import ClientError
-
-from shared.aws_utils import get_assumed_role_session, get_clients
-from shared import notifications
 from validation import validate_purchase_intent
+
+from shared.aws_utils import get_clients
+
 
 # Configure logging
 logger = logging.getLogger()
@@ -64,9 +64,9 @@ def handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
             ce_client = clients['ce']
             savingsplans_client = clients['savingsplans']
         except ClientError as e:
-            error_msg = f"Failed to initialize AWS clients: {str(e)}"
+            error_msg = f"Failed to initialize AWS clients: {e!s}"
             if config.get('management_account_role_arn'):
-                error_msg = f"Failed to assume role {config['management_account_role_arn']}: {str(e)}"
+                error_msg = f"Failed to assume role {config['management_account_role_arn']}: {e!s}"
             logger.error(error_msg, exc_info=True)
             send_error_email(error_msg)
             raise
@@ -109,7 +109,7 @@ def handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
         }
 
     except Exception as e:
-        logger.error(f"Purchaser Lambda failed: {str(e)}", exc_info=True)
+        logger.error(f"Purchaser Lambda failed: {e!s}", exc_info=True)
         send_error_email(str(e))
         raise  # Re-raise to ensure Lambda fails visibly
 
@@ -151,7 +151,7 @@ def receive_messages(queue_url: str, max_messages: int = 10) -> List[Dict[str, A
         return messages
 
     except ClientError as e:
-        logger.error(f"Failed to receive messages: {str(e)}")
+        logger.error(f"Failed to receive messages: {e!s}")
         raise
 
 
@@ -190,7 +190,7 @@ def get_current_coverage(config: Dict[str, Any]) -> Dict[str, float]:
         return adjusted_coverage
 
     except ClientError as e:
-        logger.error(f"Failed to calculate coverage: {str(e)}")
+        logger.error(f"Failed to calculate coverage: {e!s}")
         raise
 
 
@@ -244,7 +244,7 @@ def get_ce_coverage(start_date: date, end_date: date, config: Dict[str, Any]) ->
         return coverage
 
     except ClientError as e:
-        logger.error(f"Failed to get Cost Explorer coverage: {str(e)}")
+        logger.error(f"Failed to get Cost Explorer coverage: {e!s}")
         raise
 
 
@@ -287,7 +287,7 @@ def get_expiring_plans(config: Dict[str, Any]) -> List[Dict[str, Any]]:
         return expiring_plans
 
     except ClientError as e:
-        logger.error(f"Failed to get Savings Plans: {str(e)}")
+        logger.error(f"Failed to get Savings Plans: {e!s}")
         raise
 
 
@@ -369,10 +369,10 @@ def process_purchase_messages(
             try:
                 validate_purchase_intent(purchase_intent)
             except ValueError as e:
-                logger.error(f"Message validation failed: {str(e)}")
+                logger.error(f"Message validation failed: {e!s}")
                 results['failed'].append({
                     'intent': purchase_intent,
-                    'error': f"Validation error: {str(e)}"
+                    'error': f"Validation error: {e!s}"
                 })
                 results['failed_count'] += 1
                 # Message stays in queue for retry - do not delete
@@ -408,7 +408,7 @@ def process_purchase_messages(
                 delete_message(config['queue_url'], message['ReceiptHandle'])
 
         except ClientError as e:
-            logger.error(f"Failed to process purchase: {str(e)}")
+            logger.error(f"Failed to process purchase: {e!s}")
             results['failed'].append({
                 'intent': purchase_intent if 'purchase_intent' in locals() else {},
                 'error': str(e)
@@ -417,7 +417,7 @@ def process_purchase_messages(
             # Message stays in queue for retry
 
         except Exception as e:
-            logger.error(f"Unexpected error processing message: {str(e)}")
+            logger.error(f"Unexpected error processing message: {e!s}")
             results['failed'].append({
                 'error': str(e)
             })
@@ -592,7 +592,7 @@ def delete_message(queue_url: str, receipt_handle: str) -> None:
         )
         logger.info("Message deleted from queue")
     except ClientError as e:
-        logger.error(f"Failed to delete message: {str(e)}")
+        logger.error(f"Failed to delete message: {e!s}")
         raise
 
 
@@ -736,7 +736,7 @@ def send_summary_email(
         )
         logger.info("Summary email sent successfully")
     except ClientError as e:
-        logger.error(f"Failed to send summary email: {str(e)}")
+        logger.error(f"Failed to send summary email: {e!s}")
         raise
 
 
@@ -802,5 +802,5 @@ def send_error_email(error_message: str) -> None:
         )
         logger.info("Error notification email sent successfully")
     except ClientError as e:
-        logger.error(f"Failed to send error notification email: {str(e)}")
+        logger.error(f"Failed to send error notification email: {e!s}")
         # Don't raise - we're already in error handling, don't want to mask the original error

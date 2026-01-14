@@ -4,12 +4,14 @@ Comprehensive unit tests for Reporter Lambda handler.
 Tests cover all functions with edge cases to achieve >= 80% coverage.
 """
 
-import pytest
-from unittest.mock import Mock, patch, MagicMock
-from datetime import datetime, timezone, timedelta
-from botocore.exceptions import ClientError
-import sys
 import os
+import sys
+from datetime import datetime, timezone
+from unittest.mock import MagicMock, patch
+
+import pytest
+from botocore.exceptions import ClientError
+
 
 # Add parent directory to path
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))

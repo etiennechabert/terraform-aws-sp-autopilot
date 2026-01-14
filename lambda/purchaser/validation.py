@@ -5,7 +5,7 @@ This module provides schema validation and type enforcement for purchase intent
 messages to ensure data integrity before attempting to purchase Savings Plans.
 """
 
-from typing import Dict, Any
+from typing import Any, Dict
 
 
 # Valid values for sp_type field
