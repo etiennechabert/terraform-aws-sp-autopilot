@@ -1,0 +1,228 @@
+name: PR Checks
+
+on:
+  pull_request:
+    branches:
+      - main
+      - develop
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pull-requests: write
+  security-events: write
+
+jobs:
+  terraform-validation:
+    name: Terraform Format and Validate
+    runs-on: ubuntu-latest
+    if: |
+      github.event_name == 'workflow_dispatch' ||
+      contains(github.event.pull_request.changed_files.*.filename, '.tf') ||
+      contains(github.event.pull_request.changed_files.*.filename, '.tfvars')
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: ~1.0
+
+      - name: Terraform Format Check
+        id: fmt
+        run: terraform fmt -check -recursive
+        continue-on-error: false
+
+      - name: Terraform Init
+        id: init
+        run: terraform init -backend=false
+        continue-on-error: false
+
+      - name: Terraform Validate
+        id: validate
+        run: terraform validate
+        continue-on-error: false
+
+      - name: Comment PR with Results
+        if: github.event_name == 'pull_request' && failure()
+        uses: actions/github-script@v7
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            const output = `#### Terraform Validation Failed ❌
+
+            **Format Check:** \`${{ steps.fmt.outcome }}\`
+            **Initialization:** \`${{ steps.init.outcome }}\`
+            **Validation:** \`${{ steps.validate.outcome }}\`
+
+            *Pushed by: @${{ github.actor }}, Action: \`${{ github.event_name }}\`*`;
+
+            github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: output
+            });
+
+  tfsec-scan:
+    name: tfsec Security Scan
+    runs-on: ubuntu-latest
+    if: |
+      github.event_name == 'workflow_dispatch' ||
+      contains(github.event.pull_request.changed_files.*.filename, '.tf') ||
+      contains(github.event.pull_request.changed_files.*.filename, '.tfvars')
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Run tfsec
+        uses: aquasecurity/tfsec-action@v1.0.3
+        with:
+          soft_fail: false
+          format: default
+          additional_args: --minimum-severity HIGH
+
+      - name: Run tfsec with SARIF output
+        if: always()
+        uses: aquasecurity/tfsec-action@v1.0.3
+        with:
+          soft_fail: true
+          format: sarif
+          output: tfsec-results.sarif
+
+      - name: Upload SARIF file
+        if: always()
+        uses: github/codeql-action/upload-sarif@v3
+        with:
+          sarif_file: tfsec-results.sarif
+          category: tfsec
+
+      - name: Comment PR with Security Issues
+        if: github.event_name == 'pull_request' && failure()
+        uses: actions/github-script@v7
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            const output = `#### Security Scan Failed ❌
+
+            **tfsec found HIGH or CRITICAL security issues in your Terraform code.**
+
+            Please review the security findings above and address them before merging.
+
+            Common fixes:
+            - Enable encryption for resources
+            - Restrict security group rules
+            - Enable logging and monitoring
+            - Use secure default configurations
+
+            *Pushed by: @${{ github.actor }}, Action: \`${{ github.event_name }}\`*`;
+
+            github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: output
+            });
+
+  scheduler-tests:
+    name: Scheduler Lambda Tests
+    runs-on: ubuntu-latest
+    if: |
+      github.event_name == 'workflow_dispatch' ||
+      contains(github.event.pull_request.changed_files.*.filename, 'lambda/scheduler/')
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: 'pip'
+          cache-dependency-path: 'lambda/scheduler/requirements.txt'
+
+      - name: Install dependencies
+        working-directory: lambda/scheduler
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: Run pytest with coverage
+        working-directory: lambda/scheduler
+        run: |
+          pytest -v --cov=. --cov-report=term-missing --cov-fail-under=80
+
+      - name: Comment PR with Test Results
+        if: github.event_name == 'pull_request' && failure()
+        uses: actions/github-script@v7
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            const output = `#### Scheduler Lambda Tests Failed ❌
+
+            **Pytest execution failed or coverage is below 80%.**
+
+            Please review the test results above and fix any failing tests or improve test coverage.
+
+            *Pushed by: @${{ github.actor }}, Action: \`${{ github.event_name }}\`*`;
+
+            github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: output
+            });
+
+  purchaser-tests:
+    name: Purchaser Lambda Tests
+    runs-on: ubuntu-latest
+    if: |
+      github.event_name == 'workflow_dispatch' ||
+      contains(github.event.pull_request.changed_files.*.filename, 'lambda/purchaser/')
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: 'pip'
+          cache-dependency-path: 'lambda/purchaser/requirements.txt'
+
+      - name: Install dependencies
+        working-directory: lambda/purchaser
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: Run integration tests
+        working-directory: lambda/purchaser
+        run: |
+          python test_integration.py
+
+      - name: Comment PR with Test Results
+        if: github.event_name == 'pull_request' && failure()
+        uses: actions/github-script@v7
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            const output = `#### Purchaser Lambda Tests Failed ❌
+
+            **Integration test execution failed.**
+
+            Please review the test results above and fix any failing tests.
+
+            *Pushed by: @${{ github.actor }}, Action: \`${{ github.event_name }}\`*`;
+
+            github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: output
+            });
