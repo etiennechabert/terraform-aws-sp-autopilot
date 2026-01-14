@@ -151,6 +151,44 @@ module "savings_plans" {
 ```
 </details>
 
+<details>
+<summary><b>With Slack and Teams Webhook Notifications</b></summary>
+
+```hcl
+# Store webhook URLs in variables and mark as sensitive
+variable "slack_webhook_url" {
+  type      = string
+  sensitive = true
+  description = "Slack webhook URL for notifications"
+}
+
+variable "teams_webhook_url" {
+  type      = string
+  sensitive = true
+  description = "Microsoft Teams webhook URL for notifications"
+}
+
+module "savings_plans" {
+  source  = "etiennechabert/sp-autopilot/aws"
+  version = "~> 1.0"
+
+  coverage_target_percent = 90
+  max_coverage_cap        = 95
+  max_purchase_percent    = 10
+
+  # Notification configuration
+  notification_emails = ["devops@example.com"]
+  slack_webhook_url   = var.slack_webhook_url
+  teams_webhook_url   = var.teams_webhook_url
+
+  dry_run = true
+}
+```
+
+> **🔒 Security Note:** Webhook URLs contain sensitive credentials. Always mark webhook URL variables as `sensitive = true` to prevent them from appearing in Terraform logs and output. Store webhook URLs in AWS Secrets Manager, HashiCorp Vault, or environment variables — never commit them directly to version control.
+
+</details>
+
 ## Configuration Variables
 
 ### Savings Plan Types
@@ -222,6 +260,8 @@ module "savings_plans" {
 | Variable | Type | Default | Description |
 |----------|------|---------|-------------|
 | `notification_emails` | `list(string)` | `[]` | Email addresses for SNS notifications (must confirm subscription) |
+| `slack_webhook_url` | `string` | `null` | Slack webhook URL for posting notifications to a Slack channel |
+| `teams_webhook_url` | `string` | `null` | Microsoft Teams webhook URL for posting notifications to a Teams channel |
 
 ### Monitoring
 
@@ -328,6 +368,319 @@ To cancel a scheduled purchase before it executes:
 4. Purchaser Lambda will skip deleted messages
 
 **Note:** This must be done between scheduler run and purchaser run (during review window).
+
+## Notification Setup
+
+### Slack Webhooks
+
+The module can send notifications to Slack channels using Incoming Webhooks. This provides real-time visibility into Savings Plans scheduling and purchasing activities directly in your team's Slack workspace.
+
+#### Creating a Slack Incoming Webhook
+
+1. **Navigate to Slack App Directory**
+   - Go to your workspace: `https://[your-workspace].slack.com/apps`
+   - Search for "Incoming Webhooks" and select it
+   - Click "Add to Slack"
+
+2. **Select a Channel**
+   - Choose the channel where notifications should be posted
+   - **Recommended channels:**
+     - `#finops` — For FinOps teams monitoring cost optimization
+     - `#aws-alerts` — For general AWS operational notifications
+     - `#savings-plans` — Dedicated channel for Savings Plans automation
+   - Click "Add Incoming Webhooks integration"
+
+3. **Copy the Webhook URL**
+   - After creation, Slack displays a webhook URL in the format:
+     ```
+     https://hooks.slack.com/services/T00000000/B00000000/XXXXXXXXXXXXXXXXXXXXXXXX
+     ```
+   - Copy this URL — you'll need it for the Terraform configuration
+
+4. **Configure in Terraform**
+   ```hcl
+   module "savings_plans" {
+     source  = "etiennechabert/sp-autopilot/aws"
+     version = "~> 1.0"
+
+     slack_webhook_url = "https://hooks.slack.com/services/T00000000/B00000000/XXXXXXXXXXXXXXXXXXXXXXXX"
+
+     # ... other configuration
+   }
+   ```
+
+#### Required Permissions
+
+**Workspace Permissions:**
+- Any workspace member can create Incoming Webhooks
+- No special Slack admin permissions required
+
+**Channel Permissions:**
+- You must have access to the target channel
+- For private channels, you must be a member
+- For public channels, any workspace member can add webhooks
+
+**Security Recommendations:**
+- ✅ Store webhook URL in AWS Secrets Manager or similar (not directly in code)
+- ✅ Use private channels for sensitive financial notifications
+- ✅ Restrict channel membership to authorized personnel
+- ✅ Rotate webhook URLs if compromised (delete old webhook, create new one)
+
+#### Channel Selection Guidance
+
+Choose your notification channel based on team structure and notification volume:
+
+| Channel Type | Best For | Considerations |
+|--------------|----------|----------------|
+| **Dedicated `#savings-plans`** | Organizations with active Savings Plans strategy | Clear separation of concerns, easier to track history |
+| **Shared `#finops` or `#aws-costs`** | Teams managing multiple cost optimization tools | Centralized cost notifications, may be noisy |
+| **Service-specific channels** | Large organizations with separate teams per service | Route Database SP to `#database-team`, Compute SP to `#infrastructure-team` (requires separate module instances) |
+
+**Notification Frequency:**
+- Scheduler Lambda: Once per schedule (default: 1st of month)
+- Purchaser Lambda: Once per schedule (default: 4th of month)
+- Error notifications: As failures occur
+
+#### Slack Message Format and Severity Levels
+
+Slack notifications use color-coded severity levels for visual distinction. Each message appears with a colored vertical bar on the left side and an emoji indicator prepended to the subject line for quick visual scanning.
+
+**Supported Severity Levels:**
+
+| Severity | Color Code | Emoji | Use Case |
+|----------|-----------|-------|----------|
+| `success` | Green (`#36a64f`) | ✅ | Successful operations, completions, confirmations |
+| `warning` | Orange (`#ff9900`) | ⚠️ | Warnings, potential issues requiring attention, threshold alerts |
+| `error` | Red (`#ff0000`) | ❌ | Errors, failures, critical issues requiring immediate action |
+| `info` | Blue (`#0078D4`) | ℹ️ | Informational messages, status updates (default) |
+
+**Message Structure:**
+
+Each Slack notification includes:
+- **Header Block:** Subject line with severity emoji (e.g., "✅ Savings Plan Purchase Complete")
+- **Section Block:** Message body with details formatted in markdown
+- **Color Bar:** Left-side vertical bar matching the severity color
+- **Attachments:** Structured using Slack's Block Kit format for rich formatting
+
+**Example Messages:**
+
+<details>
+<summary><b>Success Notification</b></summary>
+
+```
+✅ Savings Plan Purchase Complete
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+Account: 123456789012
+Amount: $5,000/month commitment
+Term: 1 year
+Savings: $1,234.56/month
+```
+**Appearance:** Green left border, ✅ emoji
+
+**When Used:**
+- Successful Savings Plan purchases
+- Purchase confirmations with plan IDs
+- Successful coverage target achievements
+</details>
+
+<details>
+<summary><b>Warning Notification</b></summary>
+
+```
+⚠️ Low Utilization Detected
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+Current utilization: 45%
+Expected threshold: 70%
+Account: 123456789012
+Recommendation: Review workload patterns
+```
+**Appearance:** Orange left border, ⚠️ emoji
+
+**When Used:**
+- Low Savings Plan utilization alerts
+- Coverage below target threshold
+- Approaching purchase limits
+- Expiring Savings Plans in renewal window
+</details>
+
+<details>
+<summary><b>Error Notification</b></summary>
+
+```
+❌ Purchase Failed
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+Error: Insufficient IAM permissions
+Account: 123456789012
+Required action: Grant savingsplans:CreateSavingsPlan permission
+```
+**Appearance:** Red left border, ❌ emoji
+
+**When Used:**
+- Failed Savings Plan purchases
+- API errors or permission issues
+- Lambda function failures
+- Critical validation errors (e.g., exceeding max_coverage_cap)
+</details>
+
+<details>
+<summary><b>Info Notification (Default)</b></summary>
+
+```
+ℹ️ Savings Plan Analysis Running
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+Processing 5 accounts
+Estimated completion: 10 minutes
+Next purchase window: 4th of month
+```
+**Appearance:** Blue left border, ℹ️ emoji
+
+**When Used:**
+- Scheduler Lambda start/completion
+- Coverage analysis results
+- Dry-run mode notifications
+- General status updates
+</details>
+
+**Message Content:**
+
+Slack notifications include:
+- Coverage status (current vs. target)
+- Recommended purchases with commitment amounts
+- Dry-run indicators
+- Purchase confirmations with plan IDs
+- Error alerts with actionable details
+
+**Notification Frequency:**
+- Scheduler Lambda: Once per schedule (default: 1st of month)
+- Purchaser Lambda: Once per schedule (default: 4th of month)
+- Error notifications: As failures occur
+
+### Microsoft Teams Webhooks
+
+The module can send notifications to Microsoft Teams channels using Incoming Webhooks. This provides real-time visibility into Savings Plans scheduling and purchasing activities directly in your team's Teams workspace.
+
+#### Creating an Incoming Webhook in Teams
+
+1. **Navigate to Your Teams Channel**
+   - Open Microsoft Teams and navigate to the channel where you want notifications posted
+   - Click the **•••** (More options) button next to the channel name
+   - Select **Connectors** (or **Manage channel** → **Connectors** in newer Teams versions)
+
+2. **Configure Incoming Webhook**
+   - In the Connectors dialog, search for "Incoming Webhook"
+   - Click **Add** (or **Configure** if already added)
+   - Provide a name for the webhook (e.g., "AWS Savings Plans Autopilot")
+   - Optionally upload a custom icon to identify notifications
+   - Click **Create**
+
+3. **Copy the Webhook URL**
+   - After creation, Teams displays a webhook URL in the format:
+     ```
+     https://[your-org].webhook.office.com/webhookb2/[tenant-id]@[directory-id]/IncomingWebhook/[channel-id]/[connector-id]
+     ```
+   - **Important:** Copy this URL immediately — it won't be shown again
+   - Click **Done** to complete the setup
+
+4. **Configure in Terraform**
+   ```hcl
+   module "savings_plans" {
+     source  = "etiennechabert/sp-autopilot/aws"
+     version = "~> 1.0"
+
+     teams_webhook_url = "https://[your-org].webhook.office.com/webhookb2/..."
+
+     # ... other configuration
+   }
+   ```
+
+#### Required Permissions
+
+**Teams Permissions:**
+- You must be a **channel member** to add connectors
+- **Team owners** can restrict who can add connectors in Team Settings
+- No Microsoft 365 admin permissions required for standard channels
+
+**Channel Access:**
+- You must be a member of the channel (public or private)
+- For private channels, only members can add connectors
+- For standard channels, any team member can add connectors (unless restricted by team owner)
+
+**Security Recommendations:**
+- ✅ Store webhook URL in AWS Secrets Manager or similar (not directly in code)
+- ✅ Use private channels for sensitive financial notifications
+- ✅ Restrict channel membership to authorized personnel
+- ✅ Rotate webhook URLs if compromised (remove old webhook, create new one)
+- ✅ Monitor webhook activity through Teams channel message history
+
+#### Channel Selection Guidance
+
+Choose your notification channel based on team structure and notification volume:
+
+| Channel Type | Best For | Considerations |
+|--------------|----------|----------------|
+| **Dedicated "Savings Plans" channel** | Organizations with active Savings Plans strategy | Clear separation of concerns, easier to track history |
+| **Shared "FinOps" or "AWS Costs" channel** | Teams managing multiple cost optimization tools | Centralized cost notifications, may be noisy |
+| **Service-specific channels** | Large organizations with separate teams per service | Route Database SP to "Database Team" channel, Compute SP to "Infrastructure Team" channel (requires separate module instances) |
+
+**Notification Frequency:**
+- Scheduler Lambda: Once per schedule (default: 1st of month)
+- Purchaser Lambda: Once per schedule (default: 4th of month)
+- Error notifications: As failures occur
+
+#### Teams Message Format
+
+Microsoft Teams notifications use the **MessageCard format** (part of Office 365 Connectors) to deliver structured, formatted messages to Teams channels.
+
+**MessageCard Structure:**
+
+Teams messages are formatted using the MessageCard schema, which provides a consistent visual presentation across all notifications:
+
+| Field | Value | Purpose |
+|-------|-------|---------|
+| `@type` | `"MessageCard"` | Identifies the message as a MessageCard |
+| `@context` | `"https://schema.org/extensions"` | Schema context for MessageCard format |
+| `summary` | Message subject | Brief summary shown in notifications |
+| `themeColor` | `"0078D4"` | Microsoft blue — consistent branding across all notifications |
+| `title` | Message subject | Bold header displayed at top of card |
+| `text` | Message body | HTML-formatted content with `<br>` line breaks |
+
+**Theme Color:**
+
+All Teams notifications use a consistent **Microsoft blue** theme color (`#0078D4`). Unlike Slack's color-coded severity levels, Teams messages maintain a uniform appearance with the same blue accent bar for all notification types.
+
+**Example Message Structure:**
+
+```json
+{
+  "@type": "MessageCard",
+  "@context": "https://schema.org/extensions",
+  "summary": "Savings Plan Purchase Complete",
+  "themeColor": "0078D4",
+  "title": "Savings Plan Purchase Complete",
+  "text": "Account: 123456789012<br>Amount: $5,000/month commitment<br>Term: 1 year<br>Savings: $1,234.56/month"
+}
+```
+
+**Visual Appearance in Teams:**
+
+When displayed in Microsoft Teams, MessageCard notifications appear as:
+- **Blue accent bar** on the left side (color: `#0078D4`)
+- **Bold title** at the top of the card
+- **Body content** with HTML line breaks for readability
+- **Compact card format** that fits cleanly in the Teams channel feed
+
+**Message Content:**
+
+Teams notifications include:
+- Coverage status (current vs. target)
+- Recommended purchases with commitment amounts
+- Dry-run indicators
+- Purchase confirmations with plan IDs
+- Error alerts with actionable details
+
+**HTML Formatting:**
+
+Body content uses HTML `<br>` tags for line breaks, ensuring proper formatting in Teams' rendering engine. Each line in the message body is separated by `<br>` to maintain readability.
 
 ## Cross-Account Setup for AWS Organizations
 
