@@ -10,7 +10,7 @@
 [![Security Scan](https://github.com/etiennechabert/terraform-aws-sp-autopilot/actions/workflows/security-scan.yml/badge.svg)](https://github.com/etiennechabert/terraform-aws-sp-autopilot/actions/workflows/security-scan.yml)
 
 ![Code Coverage](https://img.shields.io/badge/Coverage-97%25-brightgreen.svg?logo=pytest)
-![Code Quality](https://img.shields.io/badge/Code%20Quality-A-brightgreen.svg)
+![Code Style](https://img.shields.io/badge/Code%20Style-Ruff-black.svg?logo=ruff)
 ![Maintained](https://img.shields.io/badge/Maintained-Yes-brightgreen.svg)
 
 An open-source Terraform module that automates AWS Savings Plans purchases based on usage analysis. The module maintains consistent coverage while limiting financial exposure through incremental, spread-out commitments.
