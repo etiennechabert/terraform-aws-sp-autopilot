@@ -2,6 +2,24 @@
 
 An open-source Terraform module that automates AWS Savings Plans purchases based on usage analysis. The module maintains consistent coverage while limiting financial exposure through incremental, spread-out commitments.
 
+## Table of Contents
+
+- [Features](#features)
+- [Supported Savings Plan Types](#supported-savings-plan-types)
+- [Architecture](#architecture)
+- [Quick Start](#quick-start)
+- [Configuration Variables](#configuration-variables)
+- [Supported Services](#supported-services)
+- [Coverage Tracking](#coverage-tracking)
+- [Outputs](#outputs)
+- [Advanced Usage](#advanced-usage)
+- [Cross-Account Setup for AWS Organizations](#cross-account-setup-for-aws-organizations)
+- [Requirements](#requirements)
+- [Error Reference](ERROR_REFERENCE.md)
+- [License](#license)
+- [Contributing](#contributing)
+- [Support](#support)
+
 ## Features
 
 - **Automated Savings Plans purchasing** — Maintains target coverage levels without manual intervention
@@ -795,6 +813,8 @@ Check CloudWatch Logs (`/aws/lambda/sp-autopilot-scheduler`) for successful role
 | `AccessDenied` during API calls | Insufficient permissions on assumed role | Add missing permissions to role policy |
 | `InvalidClientTokenId` | Role ARN is invalid | Verify role ARN format and that role exists |
 | No role assumption in logs | Variable not set correctly | Check `management_account_role_arn` in Terraform state |
+
+For a comprehensive list of error codes and troubleshooting steps, see [ERROR_REFERENCE.md](ERROR_REFERENCE.md).
 
 ## Requirements
 
