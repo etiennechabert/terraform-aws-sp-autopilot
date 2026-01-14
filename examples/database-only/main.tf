@@ -8,7 +8,7 @@
 # - Starts in dry-run mode for safety
 
 terraform {
-  required_version = ">= 1.0"
+  required_version = ">= 1.2"
 
   required_providers {
     aws = {

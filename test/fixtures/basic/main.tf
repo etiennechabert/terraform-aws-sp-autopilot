@@ -2,7 +2,7 @@
 # Purpose: Minimal configuration for integration testing
 
 terraform {
-  required_version = ">= 1.0"
+  required_version = ">= 1.2"
 
   required_providers {
     aws = {
