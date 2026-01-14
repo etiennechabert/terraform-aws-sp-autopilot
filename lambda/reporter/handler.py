@@ -19,6 +19,8 @@ from typing import Dict, List, Any, Optional
 import boto3
 from botocore.exceptions import ClientError
 
+import notifications
+
 # Configure logging
 logger = logging.getLogger()
 logger.setLevel(logging.INFO)
@@ -215,6 +217,8 @@ def load_configuration() -> Dict[str, Any]:
         'email_reports': os.environ.get('EMAIL_REPORTS', 'false').lower() == 'true',
         'management_account_role_arn': os.environ.get('MANAGEMENT_ACCOUNT_ROLE_ARN'),
         'tags': json.loads(os.environ.get('TAGS', '{}')),
+        'slack_webhook_url': os.environ.get('SLACK_WEBHOOK_URL'),
+        'teams_webhook_url': os.environ.get('TEAMS_WEBHOOK_URL'),
     }
 
 
@@ -931,6 +935,33 @@ def send_report_email(
         logger.error(f"Failed to send report email: {str(e)}")
         raise
 
+    # Notifications after SNS (errors should not break email sending)
+    try:
+        slack_webhook_url = config.get('slack_webhook_url')
+        if slack_webhook_url:
+            slack_message = notifications.format_slack_message(
+                subject,
+                body_lines,
+                severity='info'
+            )
+            if notifications.send_slack_notification(slack_webhook_url, slack_message):
+                logger.info("Slack notification sent successfully")
+            else:
+                logger.warning("Slack notification failed")
+    except Exception as e:
+        logger.warning(f"Slack notification error (non-fatal): {str(e)}")
+
+    try:
+        teams_webhook_url = config.get('teams_webhook_url')
+        if teams_webhook_url:
+            teams_message = notifications.format_teams_message(subject, body_lines)
+            if notifications.send_teams_notification(teams_webhook_url, teams_message):
+                logger.info("Teams notification sent successfully")
+            else:
+                logger.warning("Teams notification failed")
+    except Exception as e:
+        logger.warning(f"Teams notification error (non-fatal): {str(e)}")
+
 
 def send_error_email(config: Dict[str, Any], error_message: str) -> None:
     """
@@ -959,6 +990,49 @@ Please check CloudWatch Logs for full details.
         )
 
         logger.info("Error notification sent via SNS")
+
+        # Send Slack notification
+        slack_webhook_url = config.get('slack_webhook_url')
+        if slack_webhook_url:
+            body_lines = [
+                "Savings Plans Autopilot - Reporter Lambda Error",
+                "",
+                f"ERROR: {error_message}",
+                "",
+                f"Time: {datetime.now(timezone.utc).isoformat()}",
+                "",
+                "Please check CloudWatch Logs for full details."
+            ]
+            slack_message = notifications.format_slack_message(
+                subject,
+                body_lines,
+                severity='error'
+            )
+            if notifications.send_slack_notification(slack_webhook_url, slack_message):
+                logger.info("Slack error notification sent successfully")
+            else:
+                logger.warning("Slack error notification failed")
+
+        # Send Teams notification
+        teams_webhook_url = config.get('teams_webhook_url')
+        if teams_webhook_url:
+            body_lines = [
+                "Savings Plans Autopilot - Reporter Lambda Error",
+                "",
+                f"ERROR: {error_message}",
+                "",
+                f"Time: {datetime.now(timezone.utc).isoformat()}",
+                "",
+                "Please check CloudWatch Logs for full details."
+            ]
+            teams_message = notifications.format_teams_message(
+                subject,
+                body_lines
+            )
+            if notifications.send_teams_notification(teams_webhook_url, teams_message):
+                logger.info("Teams error notification sent successfully")
+            else:
+                logger.warning("Teams error notification failed")
 
     except Exception as e:
         logger.error(f"Failed to send error notification: {str(e)}")

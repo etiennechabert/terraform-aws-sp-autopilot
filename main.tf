@@ -306,6 +306,8 @@ resource "aws_lambda_function" "reporter" {
       SNS_TOPIC_ARN               = aws_sns_topic.notifications.arn
       REPORT_FORMAT               = var.report_format
       EMAIL_REPORTS               = tostring(var.email_reports)
+      SLACK_WEBHOOK_URL           = var.slack_webhook_url
+      TEAMS_WEBHOOK_URL           = var.teams_webhook_url
       MANAGEMENT_ACCOUNT_ROLE_ARN = var.management_account_role_arn
       TAGS                        = jsonencode(local.common_tags)
     }

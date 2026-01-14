@@ -948,3 +948,349 @@ def test_handler_general_error(mock_env_vars):
 
         # Verify error email was sent
         assert mock_send_error.called
+
+
+# ============================================================================
+# Slack/Teams Notification Tests
+# ============================================================================
+
+def test_send_report_email_with_slack_notification(mock_env_vars, monkeypatch):
+    """Test report email sends Slack notification when webhook URL configured."""
+    monkeypatch.setenv('SLACK_WEBHOOK_URL', 'https://hooks.slack.com/services/TEST/WEBHOOK/URL')
+
+    config = handler.load_configuration()
+
+    coverage_summary = {
+        'current_coverage': 80.0,
+        'avg_coverage': 77.5,
+        'coverage_days': 30,
+        'trend_direction': '↑'
+    }
+
+    savings_summary = {
+        'plans_count': 2,
+        'total_commitment': 3.5,
+        'estimated_monthly_savings': 639.25,
+        'average_utilization': 96.0
+    }
+
+    with patch.object(handler.sns_client, 'publish') as mock_publish, \
+         patch('handler.notifications.send_slack_notification') as mock_slack, \
+         patch('handler.notifications.format_slack_message') as mock_format_slack:
+
+        mock_publish.return_value = {}
+        mock_slack.return_value = True
+        mock_format_slack.return_value = {'text': 'Test message'}
+
+        handler.send_report_email(
+            config,
+            'savings-plans-report_2026-01-14_12-00-00.html',
+            coverage_summary,
+            savings_summary
+        )
+
+        # Verify SNS was called
+        mock_publish.assert_called_once()
+
+        # Verify Slack notification was called with correct parameters
+        mock_format_slack.assert_called_once()
+        call_args = mock_format_slack.call_args
+        assert 'Coverage' in call_args[0][0]  # Subject contains 'Coverage'
+        assert call_args[1]['severity'] == 'info'
+
+        mock_slack.assert_called_once_with(
+            'https://hooks.slack.com/services/TEST/WEBHOOK/URL',
+            {'text': 'Test message'}
+        )
+
+
+def test_send_report_email_with_teams_notification(mock_env_vars, monkeypatch):
+    """Test report email sends Teams notification when webhook URL configured."""
+    monkeypatch.setenv('TEAMS_WEBHOOK_URL', 'https://outlook.office.com/webhook/TEST')
+
+    config = handler.load_configuration()
+
+    coverage_summary = {
+        'current_coverage': 80.0,
+        'avg_coverage': 77.5,
+        'coverage_days': 30,
+        'trend_direction': '↑'
+    }
+
+    savings_summary = {
+        'plans_count': 2,
+        'total_commitment': 3.5,
+        'estimated_monthly_savings': 639.25,
+        'average_utilization': 96.0
+    }
+
+    with patch.object(handler.sns_client, 'publish') as mock_publish, \
+         patch('handler.notifications.send_teams_notification') as mock_teams, \
+         patch('handler.notifications.format_teams_message') as mock_format_teams:
+
+        mock_publish.return_value = {}
+        mock_teams.return_value = True
+        mock_format_teams.return_value = {'title': 'Test message'}
+
+        handler.send_report_email(
+            config,
+            'savings-plans-report_2026-01-14_12-00-00.html',
+            coverage_summary,
+            savings_summary
+        )
+
+        # Verify SNS was called
+        mock_publish.assert_called_once()
+
+        # Verify Teams notification was called with correct parameters
+        mock_format_teams.assert_called_once()
+        call_args = mock_format_teams.call_args
+        assert 'Coverage' in call_args[0][0]  # Subject contains 'Coverage'
+
+        mock_teams.assert_called_once_with(
+            'https://outlook.office.com/webhook/TEST',
+            {'title': 'Test message'}
+        )
+
+
+def test_send_report_email_without_notifications(mock_env_vars):
+    """Test report email without Slack/Teams notifications when not configured."""
+    config = handler.load_configuration()
+
+    coverage_summary = {
+        'current_coverage': 80.0,
+        'avg_coverage': 77.5,
+        'coverage_days': 30,
+        'trend_direction': '↑'
+    }
+
+    savings_summary = {
+        'plans_count': 2,
+        'total_commitment': 3.5,
+        'estimated_monthly_savings': 639.25,
+        'average_utilization': 96.0
+    }
+
+    with patch.object(handler.sns_client, 'publish') as mock_publish, \
+         patch('handler.notifications.send_slack_notification') as mock_slack, \
+         patch('handler.notifications.send_teams_notification') as mock_teams:
+
+        mock_publish.return_value = {}
+
+        handler.send_report_email(
+            config,
+            'savings-plans-report_2026-01-14_12-00-00.html',
+            coverage_summary,
+            savings_summary
+        )
+
+        # Verify SNS was called
+        mock_publish.assert_called_once()
+
+        # Verify Slack/Teams notifications were NOT called (no webhook URLs)
+        assert not mock_slack.called
+        assert not mock_teams.called
+
+
+def test_send_report_email_slack_notification_failure(mock_env_vars, monkeypatch):
+    """Test that report email continues even if Slack notification fails."""
+    monkeypatch.setenv('SLACK_WEBHOOK_URL', 'https://hooks.slack.com/services/TEST/WEBHOOK/URL')
+
+    config = handler.load_configuration()
+
+    coverage_summary = {
+        'current_coverage': 80.0,
+        'avg_coverage': 77.5,
+        'coverage_days': 30,
+        'trend_direction': '↑'
+    }
+
+    savings_summary = {
+        'plans_count': 2,
+        'total_commitment': 3.5,
+        'estimated_monthly_savings': 639.25,
+        'average_utilization': 96.0
+    }
+
+    with patch.object(handler.sns_client, 'publish') as mock_publish, \
+         patch('handler.notifications.send_slack_notification') as mock_slack, \
+         patch('handler.notifications.format_slack_message') as mock_format_slack:
+
+        mock_publish.return_value = {}
+        mock_slack.side_effect = Exception('Slack webhook failed')
+        mock_format_slack.return_value = {'text': 'Test message'}
+
+        # Should not raise - notification failures should be non-fatal
+        handler.send_report_email(
+            config,
+            'savings-plans-report_2026-01-14_12-00-00.html',
+            coverage_summary,
+            savings_summary
+        )
+
+        # Verify SNS was still called
+        mock_publish.assert_called_once()
+
+
+def test_send_report_email_teams_notification_failure(mock_env_vars, monkeypatch):
+    """Test that report email continues even if Teams notification fails."""
+    monkeypatch.setenv('TEAMS_WEBHOOK_URL', 'https://outlook.office.com/webhook/TEST')
+
+    config = handler.load_configuration()
+
+    coverage_summary = {
+        'current_coverage': 80.0,
+        'avg_coverage': 77.5,
+        'coverage_days': 30,
+        'trend_direction': '↑'
+    }
+
+    savings_summary = {
+        'plans_count': 2,
+        'total_commitment': 3.5,
+        'estimated_monthly_savings': 639.25,
+        'average_utilization': 96.0
+    }
+
+    with patch.object(handler.sns_client, 'publish') as mock_publish, \
+         patch('handler.notifications.send_teams_notification') as mock_teams, \
+         patch('handler.notifications.format_teams_message') as mock_format_teams:
+
+        mock_publish.return_value = {}
+        mock_teams.side_effect = Exception('Teams webhook failed')
+        mock_format_teams.return_value = {'title': 'Test message'}
+
+        # Should not raise - notification failures should be non-fatal
+        handler.send_report_email(
+            config,
+            'savings-plans-report_2026-01-14_12-00-00.html',
+            coverage_summary,
+            savings_summary
+        )
+
+        # Verify SNS was still called
+        mock_publish.assert_called_once()
+
+
+def test_send_error_email_with_slack_notification(mock_env_vars, monkeypatch):
+    """Test error email sends Slack notification when webhook URL configured."""
+    monkeypatch.setenv('SLACK_WEBHOOK_URL', 'https://hooks.slack.com/services/TEST/WEBHOOK/URL')
+
+    config = handler.load_configuration()
+
+    with patch.object(handler.sns_client, 'publish') as mock_publish, \
+         patch('handler.notifications.send_slack_notification') as mock_slack, \
+         patch('handler.notifications.format_slack_message') as mock_format_slack:
+
+        mock_publish.return_value = {}
+        mock_slack.return_value = True
+        mock_format_slack.return_value = {'text': 'Error message'}
+
+        handler.send_error_email(config, 'Test error message')
+
+        # Verify SNS was called
+        mock_publish.assert_called_once()
+
+        # Verify Slack notification was called with error severity
+        mock_format_slack.assert_called_once()
+        call_args = mock_format_slack.call_args
+        assert 'Failed' in call_args[0][0]  # Subject contains 'Failed'
+        assert call_args[1]['severity'] == 'error'
+
+        mock_slack.assert_called_once_with(
+            'https://hooks.slack.com/services/TEST/WEBHOOK/URL',
+            {'text': 'Error message'}
+        )
+
+
+def test_send_error_email_with_teams_notification(mock_env_vars, monkeypatch):
+    """Test error email sends Teams notification when webhook URL configured."""
+    monkeypatch.setenv('TEAMS_WEBHOOK_URL', 'https://outlook.office.com/webhook/TEST')
+
+    config = handler.load_configuration()
+
+    with patch.object(handler.sns_client, 'publish') as mock_publish, \
+         patch('handler.notifications.send_teams_notification') as mock_teams, \
+         patch('handler.notifications.format_teams_message') as mock_format_teams:
+
+        mock_publish.return_value = {}
+        mock_teams.return_value = True
+        mock_format_teams.return_value = {'title': 'Error message'}
+
+        handler.send_error_email(config, 'Test error message')
+
+        # Verify SNS was called
+        mock_publish.assert_called_once()
+
+        # Verify Teams notification was called
+        mock_format_teams.assert_called_once()
+        call_args = mock_format_teams.call_args
+        assert 'Failed' in call_args[0][0]  # Subject contains 'Failed'
+
+        mock_teams.assert_called_once_with(
+            'https://outlook.office.com/webhook/TEST',
+            {'title': 'Error message'}
+        )
+
+
+def test_send_error_email_slack_notification_failure(mock_env_vars, monkeypatch):
+    """Test that error email continues even if Slack notification fails."""
+    monkeypatch.setenv('SLACK_WEBHOOK_URL', 'https://hooks.slack.com/services/TEST/WEBHOOK/URL')
+
+    config = handler.load_configuration()
+
+    with patch.object(handler.sns_client, 'publish') as mock_publish, \
+         patch('handler.notifications.send_slack_notification') as mock_slack, \
+         patch('handler.notifications.format_slack_message') as mock_format_slack:
+
+        mock_publish.return_value = {}
+        mock_slack.side_effect = Exception('Slack webhook failed')
+        mock_format_slack.return_value = {'text': 'Error message'}
+
+        # Should not raise - error notification failures should be silent
+        handler.send_error_email(config, 'Test error message')
+
+        # Verify SNS was still called
+        mock_publish.assert_called_once()
+
+
+def test_send_error_email_teams_notification_failure(mock_env_vars, monkeypatch):
+    """Test that error email continues even if Teams notification fails."""
+    monkeypatch.setenv('TEAMS_WEBHOOK_URL', 'https://outlook.office.com/webhook/TEST')
+
+    config = handler.load_configuration()
+
+    with patch.object(handler.sns_client, 'publish') as mock_publish, \
+         patch('handler.notifications.send_teams_notification') as mock_teams, \
+         patch('handler.notifications.format_teams_message') as mock_format_teams:
+
+        mock_publish.return_value = {}
+        mock_teams.side_effect = Exception('Teams webhook failed')
+        mock_format_teams.return_value = {'title': 'Error message'}
+
+        # Should not raise - error notification failures should be silent
+        handler.send_error_email(config, 'Test error message')
+
+        # Verify SNS was still called
+        mock_publish.assert_called_once()
+
+
+def test_load_configuration_with_webhook_urls(monkeypatch):
+    """Test that load_configuration includes webhook URLs."""
+    monkeypatch.setenv('REPORTS_BUCKET', 'test-bucket')
+    monkeypatch.setenv('SNS_TOPIC_ARN', 'test-sns-arn')
+    monkeypatch.setenv('SLACK_WEBHOOK_URL', 'https://hooks.slack.com/services/TEST')
+    monkeypatch.setenv('TEAMS_WEBHOOK_URL', 'https://outlook.office.com/webhook/TEST')
+
+    config = handler.load_configuration()
+
+    assert config['slack_webhook_url'] == 'https://hooks.slack.com/services/TEST'
+    assert config['teams_webhook_url'] == 'https://outlook.office.com/webhook/TEST'
+
+
+def test_load_configuration_without_webhook_urls(mock_env_vars):
+    """Test that load_configuration handles missing webhook URLs."""
+    config = handler.load_configuration()
+
+    assert config['slack_webhook_url'] is None
+    assert config['teams_webhook_url'] is None
