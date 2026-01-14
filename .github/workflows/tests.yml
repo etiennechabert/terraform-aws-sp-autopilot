@@ -105,9 +105,10 @@ jobs:
         run: |
           pytest -v --cov=. --cov-report=term-missing --cov-report=xml --cov-fail-under=80
 
-      - name: Upload coverage to Codecov
-        uses: codecov/codecov-action@v4
+      - name: Upload coverage reports to Codecov
+        uses: codecov/codecov-action@v5
         with:
+          token: ${{ secrets.CODECOV_TOKEN }}
           files: ./lambda/scheduler/coverage.xml
           flags: scheduler
           name: scheduler-coverage
