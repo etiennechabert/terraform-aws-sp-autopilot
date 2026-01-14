@@ -49,6 +49,14 @@ This project follows a standard code of conduct. Please be respectful and constr
    cd ../purchaser
    pip install -r requirements.txt
    ```
+5. **Install pre-commit hooks**:
+   ```bash
+   # Install pre-commit (if not already installed)
+   pip install pre-commit
+
+   # Install the git hooks
+   pre-commit install
+   ```
 
 ## Development Workflow
 
@@ -85,6 +93,11 @@ terraform validate
 
 # Security scanning
 docker run --rm -v $(pwd):/src aquasec/tfsec:latest /src --minimum-severity HIGH
+
+# Python linting and formatting
+ruff check .                    # Check for linting issues
+ruff format --check .           # Check formatting without making changes
+ruff format .                   # Auto-format Python code
 
 # Python tests (scheduler)
 cd lambda/scheduler
@@ -312,7 +325,10 @@ When adding new functionality:
 
 ### Python Standards
 
-- **Style**: Follow PEP 8
+- **Style**: Follow PEP 8 (enforced by ruff)
+- **Linting**: Use `ruff check .` to identify code quality issues
+- **Formatting**: Use `ruff format .` to auto-format code
+- **Pre-commit hooks**: Run `pre-commit install` to automatically check code before commits
 - **Docstrings**: Required for all functions
 - **Type hints**: Encouraged for function signatures
 - **Error handling**: Use try/except with specific exception types
