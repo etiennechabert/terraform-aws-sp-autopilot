@@ -264,6 +264,12 @@ variable "teams_webhook_url" {
   sensitive   = true
 }
 
+variable "enable_sns_kms_encryption" {
+  description = "Enable KMS encryption for SNS topic"
+  type        = bool
+  default     = true
+}
+
 # ============================================================================
 # 7.9 Monitoring
 # ============================================================================
