@@ -290,6 +290,60 @@ variable "report_retention_days" {
   }
 }
 
+variable "s3_lifecycle_transition_ia_days" {
+  description = "Days before transitioning reports to STANDARD_IA storage class"
+  type        = number
+  default     = 90
+
+  validation {
+    condition     = var.s3_lifecycle_transition_ia_days >= 1
+    error_message = "s3_lifecycle_transition_ia_days must be at least 1."
+  }
+}
+
+variable "s3_lifecycle_transition_glacier_days" {
+  description = "Days before transitioning reports to GLACIER storage class"
+  type        = number
+  default     = 180
+
+  validation {
+    condition     = var.s3_lifecycle_transition_glacier_days >= 1
+    error_message = "s3_lifecycle_transition_glacier_days must be at least 1."
+  }
+
+  validation {
+    condition     = var.s3_lifecycle_transition_glacier_days > var.s3_lifecycle_transition_ia_days
+    error_message = "s3_lifecycle_transition_glacier_days must be greater than s3_lifecycle_transition_ia_days."
+  }
+}
+
+variable "s3_lifecycle_expiration_days" {
+  description = "Days before expiring report objects"
+  type        = number
+  default     = 365
+
+  validation {
+    condition     = var.s3_lifecycle_expiration_days >= 1
+    error_message = "s3_lifecycle_expiration_days must be at least 1."
+  }
+
+  validation {
+    condition     = var.s3_lifecycle_expiration_days >= var.s3_lifecycle_transition_glacier_days
+    error_message = "s3_lifecycle_expiration_days must be greater than or equal to s3_lifecycle_transition_glacier_days."
+  }
+}
+
+variable "s3_lifecycle_noncurrent_expiration_days" {
+  description = "Days before expiring noncurrent report versions"
+  type        = number
+  default     = 90
+
+  validation {
+    condition     = var.s3_lifecycle_noncurrent_expiration_days >= 1
+    error_message = "s3_lifecycle_noncurrent_expiration_days must be at least 1."
+  }
+}
+
 variable "report_format" {
   description = "Format for generated reports"
   type        = string

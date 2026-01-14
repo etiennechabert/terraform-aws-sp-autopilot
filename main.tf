@@ -195,26 +195,26 @@ resource "aws_s3_bucket_lifecycle_configuration" "reports" {
     id     = "cleanup-old-reports"
     status = "Enabled"
 
-    # Transition to cheaper storage after 90 days
+    # Transition to cheaper storage after configured days
     transition {
-      days          = 90
+      days          = var.s3_lifecycle_transition_ia_days
       storage_class = "STANDARD_IA"
     }
 
-    # Transition to Glacier after 180 days
+    # Transition to Glacier after configured days
     transition {
-      days          = 180
+      days          = var.s3_lifecycle_transition_glacier_days
       storage_class = "GLACIER"
     }
 
-    # Delete reports after 365 days
+    # Delete reports after configured days
     expiration {
-      days = 365
+      days = var.s3_lifecycle_expiration_days
     }
 
     # Clean up old versions
     noncurrent_version_expiration {
-      noncurrent_days = 90
+      noncurrent_days = var.s3_lifecycle_noncurrent_expiration_days
     }
   }
 }
