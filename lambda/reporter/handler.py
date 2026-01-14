@@ -449,8 +449,9 @@ def generate_html_report(
         trend_symbol = '→'
         trend_color = '#6c757d'
 
-    # Build HTML content
-    html = f"""<!DOCTYPE html>
+    # Build HTML content using string builder pattern
+    html_parts = []
+    html_parts.append(f"""<!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
@@ -595,11 +596,11 @@ def generate_html_report(
 
         <div class="section">
             <h2>Coverage Trends <span class="trend" style="color: {trend_color};">{trend_symbol}</span></h2>
-"""
+""")
 
     # Coverage history table
     if coverage_history:
-        html += """
+        html_parts.append("""
             <table>
                 <thead>
                     <tr>
@@ -611,7 +612,7 @@ def generate_html_report(
                     </tr>
                 </thead>
                 <tbody>
-"""
+""")
         for item in coverage_history:
             date = item.get('date', 'Unknown')
             coverage_pct = item.get('coverage_percentage', 0.0)
@@ -619,7 +620,7 @@ def generate_html_report(
             on_demand_hours = item.get('on_demand_hours', 0.0)
             total_hours = item.get('total_hours', 0.0)
 
-            html += f"""
+            html_parts.append(f"""
                     <tr>
                         <td>{date}</td>
                         <td class="metric">{coverage_pct:.2f}%</td>
@@ -627,22 +628,22 @@ def generate_html_report(
                         <td>{on_demand_hours:,.0f}</td>
                         <td>{total_hours:,.0f}</td>
                     </tr>
-"""
-        html += """
+""")
+        html_parts.append("""
                 </tbody>
             </table>
-"""
+""")
     else:
-        html += """
+        html_parts.append("""
             <div class="no-data">No coverage data available</div>
-"""
+""")
 
-    html += """
+    html_parts.append("""
         </div>
 
         <div class="section">
             <h2>Active Savings Plans</h2>
-"""
+""")
 
     # Savings Plans table
     plans = savings_data.get('plans', [])
@@ -650,7 +651,7 @@ def generate_html_report(
         total_commitment = savings_data.get('total_commitment', 0.0)
         avg_utilization = savings_data.get('average_utilization', 0.0)
 
-        html += f"""
+        html_parts.append(f"""
             <p>
                 <strong>Total Hourly Commitment:</strong> ${total_commitment:.4f}/hour
                 (${total_commitment * 730:,.2f}/month)
@@ -670,7 +671,7 @@ def generate_html_report(
                     </tr>
                 </thead>
                 <tbody>
-"""
+""")
         for plan in plans:
             plan_id = plan.get('plan_id', 'Unknown')
             plan_type = plan.get('plan_type', 'Unknown')
@@ -686,7 +687,7 @@ def generate_html_report(
             if 'T' in end_date:
                 end_date = end_date.split('T')[0]
 
-            html += f"""
+            html_parts.append(f"""
                     <tr>
                         <td style="font-family: monospace; font-size: 0.85em;">{plan_id[:20]}...</td>
                         <td>{plan_type}</td>
@@ -696,17 +697,17 @@ def generate_html_report(
                         <td>{start_date}</td>
                         <td>{end_date}</td>
                     </tr>
-"""
-        html += """
+""")
+        html_parts.append("""
                 </tbody>
             </table>
-"""
+""")
     else:
-        html += """
+        html_parts.append("""
             <div class="no-data">No active Savings Plans found</div>
-"""
+""")
 
-    html += f"""
+    html_parts.append(f"""
         </div>
 
         <div class="footer">
@@ -716,8 +717,9 @@ def generate_html_report(
     </div>
 </body>
 </html>
-"""
+""")
 
+    html = "".join(html_parts)
     logger.info(f"HTML report generated ({len(html)} bytes)")
     return html
 
