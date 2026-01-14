@@ -1,5 +1,12 @@
 # AWS Savings Plans Automation Module
 
+[![Terraform](https://img.shields.io/badge/Terraform-%3E%3D1.0-623CE4?logo=terraform)](https://www.terraform.io)
+[![AWS](https://img.shields.io/badge/AWS-Savings%20Plans-FF9900?logo=amazonaws)](https://aws.amazon.com/savingsplans/)
+[![License](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](LICENSE)
+[![Terraform Validation](https://github.com/etiennechabert/terraform-aws-sp-autopilot/actions/workflows/terraform-validation.yml/badge.svg)](https://github.com/etiennechabert/terraform-aws-sp-autopilot/actions/workflows/terraform-validation.yml)
+[![Security Scan](https://github.com/etiennechabert/terraform-aws-sp-autopilot/actions/workflows/security-scan.yml/badge.svg)](https://github.com/etiennechabert/terraform-aws-sp-autopilot/actions/workflows/security-scan.yml)
+[![Tests](https://github.com/etiennechabert/terraform-aws-sp-autopilot/actions/workflows/tests.yml/badge.svg)](https://github.com/etiennechabert/terraform-aws-sp-autopilot/actions/workflows/tests.yml)
+
 An open-source Terraform module that automates AWS Savings Plans purchases based on usage analysis. The module maintains consistent coverage while limiting financial exposure through incremental, spread-out commitments.
 
 ## Features
