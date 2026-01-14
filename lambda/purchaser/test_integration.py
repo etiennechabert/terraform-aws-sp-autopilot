@@ -18,6 +18,7 @@ import os
 import sys
 from unittest.mock import patch
 
+
 # Set mock AWS credentials before importing handler (required for boto3.client() calls)
 os.environ['AWS_ACCESS_KEY_ID'] = 'testing'
 os.environ['AWS_SECRET_ACCESS_KEY'] = 'testing'

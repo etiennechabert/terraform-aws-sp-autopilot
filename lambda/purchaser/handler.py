@@ -14,13 +14,14 @@ This Lambda:
 
 import json
 import logging
-from datetime import datetime, timezone, timedelta, date
-from typing import Dict, List, Any, Optional
+from datetime import date, datetime, timedelta, timezone
+from typing import Any, Dict, List
 
 from botocore.exceptions import ClientError
-
-from shared import handler_utils, notifications
 from validation import validate_purchase_intent
+
+from shared import handler_utils
+
 
 # Configure logging
 logger = logging.getLogger()
@@ -199,7 +200,7 @@ def receive_messages(sqs_client: Any, queue_url: str, max_messages: int = 10) ->
         return messages
 
     except ClientError as e:
-        logger.error(f"Failed to receive messages: {str(e)}")
+        logger.error(f"Failed to receive messages: {e!s}")
         raise
 
 
@@ -239,7 +240,7 @@ def get_current_coverage(clients: Dict[str, Any], config: Dict[str, Any]) -> Dic
         return adjusted_coverage
 
     except ClientError as e:
-        logger.error(f"Failed to calculate coverage: {str(e)}")
+        logger.error(f"Failed to calculate coverage: {e!s}")
         raise
 
 
@@ -297,7 +298,7 @@ def get_ce_coverage(ce_client: Any, start_date: date, end_date: date, config: Di
         return coverage
 
     except ClientError as e:
-        logger.error(f"Failed to get Cost Explorer coverage: {str(e)}")
+        logger.error(f"Failed to get Cost Explorer coverage: {e!s}")
         raise
 
 
@@ -341,7 +342,7 @@ def get_expiring_plans(savingsplans_client: Any, config: Dict[str, Any]) -> List
         return expiring_plans
 
     except ClientError as e:
-        logger.error(f"Failed to get Savings Plans: {str(e)}")
+        logger.error(f"Failed to get Savings Plans: {e!s}")
         raise
 
 
@@ -432,10 +433,10 @@ def process_purchase_messages(
             try:
                 validate_purchase_intent(purchase_intent)
             except ValueError as e:
-                logger.error(f"Message validation failed: {str(e)}")
+                logger.error(f"Message validation failed: {e!s}")
                 results['failed'].append({
                     'intent': purchase_intent,
-                    'error': f"Validation error: {str(e)}"
+                    'error': f"Validation error: {e!s}"
                 })
                 results['failed_count'] += 1
                 # Message stays in queue for retry - do not delete
@@ -471,7 +472,7 @@ def process_purchase_messages(
                 delete_message(clients['sqs'], config['queue_url'], message['ReceiptHandle'])
 
         except ClientError as e:
-            logger.error(f"Failed to process purchase: {str(e)}")
+            logger.error(f"Failed to process purchase: {e!s}")
             results['failed'].append({
                 'intent': purchase_intent if 'purchase_intent' in locals() else {},
                 'error': str(e)
@@ -480,7 +481,7 @@ def process_purchase_messages(
             # Message stays in queue for retry
 
         except Exception as e:
-            logger.error(f"Unexpected error processing message: {str(e)}")
+            logger.error(f"Unexpected error processing message: {e!s}")
             results['failed'].append({
                 'error': str(e)
             })
@@ -665,7 +666,7 @@ def delete_message(sqs_client: Any, queue_url: str, receipt_handle: str) -> None
         )
         logger.info("Message deleted from queue")
     except ClientError as e:
-        logger.error(f"Failed to delete message: {str(e)}")
+        logger.error(f"Failed to delete message: {e!s}")
         raise
 
 
@@ -812,5 +813,5 @@ def send_summary_email(
         )
         logger.info("Summary email sent successfully")
     except ClientError as e:
-        logger.error(f"Failed to send summary email: {str(e)}")
+        logger.error(f"Failed to send summary email: {e!s}")
         raise

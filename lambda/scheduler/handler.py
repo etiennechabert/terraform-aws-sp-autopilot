@@ -16,20 +16,19 @@ This Lambda:
 
 import json
 import logging
-import os
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from datetime import datetime, timezone
-from typing import Dict, List, Any, Optional
+from typing import Any, Dict, List, Optional
 
 from botocore.exceptions import ClientError
 
-from shared import notifications
 from shared.handler_utils import (
-    load_config_from_env,
     initialize_clients,
     lambda_handler_wrapper,
-    send_error_notification
+    load_config_from_env,
+    send_error_notification,
 )
+
 
 # Configure logging
 logger = logging.getLogger()
@@ -314,7 +313,7 @@ def calculate_current_coverage(savingsplans_client: Any, ce_client: Any, config:
         logger.info(f"Valid plans after filtering: {len(valid_plan_ids)}")
 
     except ClientError as e:
-        logger.error(f"Failed to describe Savings Plans: {str(e)}")
+        logger.error(f"Failed to describe Savings Plans: {e!s}")
         raise
 
     # Get coverage from Cost Explorer
@@ -364,7 +363,7 @@ def calculate_current_coverage(savingsplans_client: Any, ce_client: Any, config:
         }
 
     except ClientError as e:
-        logger.error(f"Failed to get coverage from Cost Explorer: {str(e)}")
+        logger.error(f"Failed to get coverage from Cost Explorer: {e!s}")
         raise
 
     logger.info(f"Coverage calculated: {coverage}")
@@ -433,12 +432,11 @@ def _fetch_compute_sp_recommendation(ce_client: Any, config: Dict[str, Any], loo
                 'GenerationTimestamp': generation_timestamp,
                 'Details': best_recommendation
             }
-        else:
-            logger.info("No Compute SP recommendations available from AWS")
-            return None
+        logger.info("No Compute SP recommendations available from AWS")
+        return None
 
     except ClientError as e:
-        logger.error(f"Failed to get Compute SP recommendations: {str(e)}")
+        logger.error(f"Failed to get Compute SP recommendations: {e!s}")
         raise
 
 
@@ -506,12 +504,11 @@ def _fetch_database_sp_recommendation(ce_client: Any, config: Dict[str, Any], lo
                 'GenerationTimestamp': generation_timestamp,
                 'Details': best_recommendation
             }
-        else:
-            logger.info("No Database SP recommendations available from AWS")
-            return None
+        logger.info("No Database SP recommendations available from AWS")
+        return None
 
     except ClientError as e:
-        logger.error(f"Failed to get Database SP recommendations: {str(e)}")
+        logger.error(f"Failed to get Database SP recommendations: {e!s}")
         raise
 
 
@@ -578,12 +575,11 @@ def _fetch_sagemaker_sp_recommendation(ce_client: Any, config: Dict[str, Any], l
                 'GenerationTimestamp': generation_timestamp,
                 'Details': best_recommendation
             }
-        else:
-            logger.info("No SageMaker SP recommendations available from AWS")
-            return None
+        logger.info("No SageMaker SP recommendations available from AWS")
+        return None
 
     except ClientError as e:
-        logger.error(f"Failed to get SageMaker SP recommendations: {str(e)}")
+        logger.error(f"Failed to get SageMaker SP recommendations: {e!s}")
         raise
 
 
@@ -663,7 +659,7 @@ def get_aws_recommendations(ce_client: Any, config: Dict[str, Any]) -> Dict[str,
                     result = future.result()
                     recommendations[key] = result
                 except Exception as e:
-                    logger.error(f"Failed to fetch {key} recommendation: {str(e)}")
+                    logger.error(f"Failed to fetch {key} recommendation: {e!s}")
                     raise
 
     logger.info(f"Recommendations retrieved: {recommendations}")
@@ -1028,7 +1024,7 @@ def queue_purchase_intents(
             queued_count += 1
 
         except ClientError as e:
-            logger.error(f"Failed to queue purchase intent: {str(e)}")
+            logger.error(f"Failed to queue purchase intent: {e!s}")
             raise
 
     logger.info(f"All {queued_count} purchase intents queued successfully")
@@ -1116,7 +1112,7 @@ def send_scheduled_email(
         )
         logger.info(f"Email sent successfully to {config['sns_topic_arn']}")
     except ClientError as e:
-        logger.error(f"Failed to send email: {str(e)}")
+        logger.error(f"Failed to send email: {e!s}")
         raise
 
 
@@ -1207,5 +1203,5 @@ def send_dry_run_email(
         )
         logger.info(f"Dry run email sent successfully to {config['sns_topic_arn']}")
     except ClientError as e:
-        logger.error(f"Failed to send dry run email: {str(e)}")
+        logger.error(f"Failed to send dry run email: {e!s}")
         raise
