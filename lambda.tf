@@ -14,6 +14,10 @@ resource "aws_lambda_function" "scheduler" {
   handler       = "handler.handler"
   runtime       = "python3.11"
 
+  # Performance configuration
+  memory_size = var.lambda_scheduler_memory_size
+  timeout     = var.lambda_scheduler_timeout
+
   # Deploy actual Lambda code from lambda/scheduler directory
   filename         = data.archive_file.scheduler.output_path
   source_code_hash = data.archive_file.scheduler.output_base64sha256
@@ -54,6 +58,10 @@ resource "aws_lambda_function" "purchaser" {
   handler       = "handler.handler"
   runtime       = "python3.11"
 
+  # Performance configuration
+  memory_size = var.lambda_purchaser_memory_size
+  timeout     = var.lambda_purchaser_timeout
+
   # Deploy actual Lambda code from lambda/purchaser directory
   filename         = data.archive_file.purchaser.output_path
   source_code_hash = data.archive_file.purchaser.output_base64sha256
@@ -80,6 +88,10 @@ resource "aws_lambda_function" "reporter" {
   role          = aws_iam_role.reporter.arn
   handler       = "handler.handler"
   runtime       = "python3.11"
+
+  # Performance configuration
+  memory_size = var.lambda_reporter_memory_size
+  timeout     = var.lambda_reporter_timeout
 
   # Deploy actual Lambda code from lambda/reporter directory
   filename         = data.archive_file.reporter.output_path

@@ -403,3 +403,73 @@ variable "email_reports" {
   type        = bool
   default     = false
 }
+
+# ============================================================================
+# 7.13 Lambda Configuration
+# ============================================================================
+
+variable "lambda_scheduler_memory_size" {
+  description = "Memory size in MB for scheduler Lambda function"
+  type        = number
+  default     = 128
+
+  validation {
+    condition     = var.lambda_scheduler_memory_size >= 128 && var.lambda_scheduler_memory_size <= 10240
+    error_message = "lambda_scheduler_memory_size must be between 128 and 10240."
+  }
+}
+
+variable "lambda_scheduler_timeout" {
+  description = "Timeout in seconds for scheduler Lambda function"
+  type        = number
+  default     = 300
+
+  validation {
+    condition     = var.lambda_scheduler_timeout >= 1 && var.lambda_scheduler_timeout <= 900
+    error_message = "lambda_scheduler_timeout must be between 1 and 900."
+  }
+}
+
+variable "lambda_purchaser_memory_size" {
+  description = "Memory size in MB for purchaser Lambda function"
+  type        = number
+  default     = 128
+
+  validation {
+    condition     = var.lambda_purchaser_memory_size >= 128 && var.lambda_purchaser_memory_size <= 10240
+    error_message = "lambda_purchaser_memory_size must be between 128 and 10240."
+  }
+}
+
+variable "lambda_purchaser_timeout" {
+  description = "Timeout in seconds for purchaser Lambda function"
+  type        = number
+  default     = 300
+
+  validation {
+    condition     = var.lambda_purchaser_timeout >= 1 && var.lambda_purchaser_timeout <= 900
+    error_message = "lambda_purchaser_timeout must be between 1 and 900."
+  }
+}
+
+variable "lambda_reporter_memory_size" {
+  description = "Memory size in MB for reporter Lambda function"
+  type        = number
+  default     = 128
+
+  validation {
+    condition     = var.lambda_reporter_memory_size >= 128 && var.lambda_reporter_memory_size <= 10240
+    error_message = "lambda_reporter_memory_size must be between 128 and 10240."
+  }
+}
+
+variable "lambda_reporter_timeout" {
+  description = "Timeout in seconds for reporter Lambda function"
+  type        = number
+  default     = 300
+
+  validation {
+    condition     = var.lambda_reporter_timeout >= 1 && var.lambda_reporter_timeout <= 900
+    error_message = "lambda_reporter_timeout must be between 1 and 900."
+  }
+}

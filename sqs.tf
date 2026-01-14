@@ -25,7 +25,7 @@ resource "aws_sqs_queue" "purchase_intents_dlq" {
 
 resource "aws_sqs_queue" "purchase_intents" {
   name                       = "${local.module_name}-purchase-intents"
-  visibility_timeout_seconds = 300 # 5 minutes (matching Lambda timeout)
+  visibility_timeout_seconds = 300 # must be >= purchaser Lambda timeout (default: 300s)
 
   redrive_policy = jsonencode({
     deadLetterTargetArn = aws_sqs_queue.purchase_intents_dlq.arn
