@@ -2,6 +2,11 @@
 
 An open-source Terraform module that automates AWS Savings Plans purchases based on usage analysis. The module maintains consistent coverage while limiting financial exposure through incremental, spread-out commitments.
 
+[![Terraform Validation](https://github.com/your-org/terraform-aws-sp-autopilot/actions/workflows/terraform-validation.yml/badge.svg)](https://github.com/your-org/terraform-aws-sp-autopilot/actions/workflows/terraform-validation.yml)
+[![Python Tests](https://github.com/your-org/terraform-aws-sp-autopilot/actions/workflows/python-tests.yml/badge.svg)](https://github.com/your-org/terraform-aws-sp-autopilot/actions/workflows/python-tests.yml)
+[![Security Scan](https://github.com/your-org/terraform-aws-sp-autopilot/actions/workflows/security-scan.yml/badge.svg)](https://github.com/your-org/terraform-aws-sp-autopilot/actions/workflows/security-scan.yml)
+[![PR Checks](https://github.com/your-org/terraform-aws-sp-autopilot/actions/workflows/pr-checks.yml/badge.svg)](https://github.com/your-org/terraform-aws-sp-autopilot/actions/workflows/pr-checks.yml)
+
 ## Features
 
 - **Automated Savings Plans purchasing** — Maintains target coverage levels without manual intervention
@@ -464,6 +469,164 @@ To cancel a scheduled purchase before it executes:
   - SQS (SendMessage, ReceiveMessage, DeleteMessage, PurgeQueue)
   - SNS (Publish)
   - CloudWatch Logs (for Lambda logging)
+
+## CI/CD Pipeline
+
+This module uses GitHub Actions for continuous integration and deployment, ensuring code quality, security, and reliability.
+
+### Automated Workflows
+
+#### 🔍 PR Checks (`pr-checks.yml`)
+
+Comprehensive validation for all pull requests:
+
+- **Terraform Validation** — Runs `terraform fmt -check` and `terraform validate` on all `.tf` and `.tfvars` files
+- **Security Scanning** — Executes tfsec to identify HIGH and CRITICAL security issues
+- **Lambda Testing** — Runs pytest with 80% code coverage requirement for scheduler Lambda and integration tests for purchaser Lambda
+- **Smart Triggers** — Only runs relevant jobs based on changed files (Terraform changes trigger validation/security, Python changes trigger tests)
+- **PR Comments** — Automatically comments on PRs with detailed failure information
+
+**Triggers:** All pull requests to `main` or `develop` branches
+
+#### ✅ Terraform Validation (`terraform-validation.yml`)
+
+Validates Terraform configuration integrity:
+
+- **Format Check** — Ensures consistent code formatting across all Terraform files
+- **Initialization** — Validates module can be initialized (backend-less mode for CI)
+- **Validation** — Checks syntax, references, and configuration validity
+- **PR Feedback** — Comments on pull requests with validation results
+
+**Triggers:** Push/PR on `.tf` or `.tfvars` files, manual workflow dispatch
+
+#### 🧪 Python Tests (`python-tests.yml`)
+
+Comprehensive testing for Lambda functions:
+
+- **Scheduler Lambda Tests** — Runs pytest with coverage analysis (minimum 80% coverage required)
+- **Purchaser Lambda Tests** — Executes integration tests for purchase workflow validation
+- **Dependency Caching** — Uses pip cache for faster test execution
+- **Coverage Reporting** — Displays line-by-line coverage with `--cov-report=term-missing`
+- **PR Feedback** — Comments on PRs when tests fail or coverage drops below threshold
+
+**Triggers:** Push/PR on `lambda/**/*.py` files, manual workflow dispatch
+
+#### 🔒 Security Scan (`security-scan.yml`)
+
+Automated security analysis with tfsec:
+
+- **tfsec Analysis** — Scans Terraform code for security vulnerabilities and misconfigurations
+- **Severity Filtering** — Enforces minimum severity of HIGH (fails on HIGH or CRITICAL issues)
+- **SARIF Integration** — Uploads results to GitHub Security tab for tracking
+- **Security Recommendations** — Provides actionable fixes in PR comments (encryption, security groups, logging)
+- **Always Reports** — Uploads SARIF results even on failures for comprehensive security tracking
+
+**Triggers:** Push/PR on `.tf` or `.tfvars` files, manual workflow dispatch
+
+#### 🚀 Release Management (`release.yml`)
+
+Automated semantic versioning and release creation:
+
+- **Release Please** — Uses Google's release-please-action for automated releases
+- **Conventional Commits** — Parses commit messages to determine version bumps and generate changelogs
+- **Version Tagging** — Creates semantic version tags (e.g., `v1.2.3`) plus major (`v1`) and minor (`v1.2`) tags for flexible module pinning
+- **Release Notes** — Auto-generates comprehensive release notes from commit history
+- **Terraform Module Type** — Configured specifically for Terraform module release patterns
+
+**Triggers:** Push to `main` branch (after PR merge), manual workflow dispatch
+
+**Version Tag Strategy:**
+- Full version: `v1.2.3` (exact version)
+- Minor version: `v1.2` (latest patch for minor version) — **Recommended for production**
+- Major version: `v1` (latest minor/patch for major version) — Use with caution
+
+### Workflow Integration
+
+The CI/CD pipeline follows this flow:
+
+```
+Pull Request Created
+       │
+       ├─► PR Checks (all validations)
+       │   ├─► Terraform validation
+       │   ├─► Security scanning (tfsec)
+       │   └─► Lambda tests (if Python changed)
+       │
+       ├─► Individual workflow triggers
+       │   ├─► Terraform Validation (on .tf changes)
+       │   ├─► Security Scan (on .tf changes)
+       │   └─► Python Tests (on .py changes)
+       │
+       ▼
+   All Checks Pass ✅
+       │
+       ▼
+   PR Merged to main
+       │
+       ▼
+   Release Please Workflow
+       │
+       ├─► Analyzes commits
+       ├─► Creates/Updates Release PR
+       │   (if unreleased changes exist)
+       │
+       └─► On Release PR Merge:
+           ├─► Creates GitHub Release
+           ├─► Tags version (v1.2.3, v1.2, v1)
+           └─► Generates changelog
+```
+
+### Quality Gates
+
+All PRs must pass these gates before merging:
+
+| Check | Requirement | Enforced By |
+|-------|-------------|-------------|
+| **Terraform Format** | All `.tf` files must be formatted with `terraform fmt` | `terraform-validation.yml` |
+| **Terraform Validation** | Module must pass `terraform validate` | `terraform-validation.yml` |
+| **Security Scan** | No HIGH or CRITICAL security issues | `security-scan.yml` |
+| **Scheduler Tests** | All tests pass with ≥80% code coverage | `python-tests.yml` |
+| **Purchaser Tests** | All integration tests pass | `python-tests.yml` |
+
+### Running Workflows Manually
+
+All workflows support manual triggering via `workflow_dispatch`:
+
+```bash
+# Via GitHub UI
+Actions → Select Workflow → Run workflow
+
+# Via GitHub CLI
+gh workflow run terraform-validation.yml
+gh workflow run python-tests.yml
+gh workflow run security-scan.yml
+gh workflow run pr-checks.yml
+gh workflow run release.yml
+```
+
+### Local Development Validation
+
+Run these commands locally before pushing to avoid CI failures:
+
+```bash
+# Terraform validation
+terraform fmt -recursive
+terraform init -backend=false
+terraform validate
+
+# Security scanning
+docker run --rm -v $(pwd):/src aquasec/tfsec:latest /src --minimum-severity HIGH
+
+# Python tests (scheduler)
+cd lambda/scheduler
+pip install -r requirements.txt
+pytest -v --cov=. --cov-report=term-missing --cov-fail-under=80
+
+# Python tests (purchaser)
+cd lambda/purchaser
+pip install -r requirements.txt
+python test_integration.py
+```
 
 ## License
 
