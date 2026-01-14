@@ -82,26 +82,7 @@ An open-source Terraform module that automates AWS Savings Plans purchases based
 
 The module consists of two Lambda functions with an SQS queue between them:
 
-```
-EventBridge Schedule (1st of month)
-        │
-        ▼
-┌─────────────────┐
-│ Scheduler Lambda │ ──► Analyzes usage, calculates needed purchases
-└────────┬────────┘
-         │
-         ▼
-┌─────────────────┐
-│    SQS Queue    │ ◄── Human review window (delete messages to cancel)
-└────────┬────────┘
-         │
-EventBridge Schedule (4th of month)
-         │
-         ▼
-┌─────────────────┐
-│ Purchaser Lambda │ ──► Executes queued purchases, validates coverage cap
-└─────────────────┘
-```
+![Architecture Diagram](docs/architecture.svg)
 
 **Workflow:**
 
