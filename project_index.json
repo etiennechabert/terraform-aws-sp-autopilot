@@ -1,0 +1,39 @@
+{
+  "project_type": "single",
+  "description": "Terraform AWS module that automates AWS Savings Plans purchases",
+  "services": {
+    "terraform": {
+      "path": ".",
+      "tech_stack": ["terraform", "hcl"],
+      "test_command": "terraform validate"
+    },
+    "lambda_scheduler": {
+      "path": "lambda/scheduler",
+      "tech_stack": ["python", "boto3"],
+      "runtime": "python3.11",
+      "test_command": "pytest"
+    },
+    "lambda_purchaser": {
+      "path": "lambda/purchaser",
+      "tech_stack": ["python", "boto3"],
+      "runtime": "python3.11",
+      "test_command": "pytest"
+    },
+    "lambda_reporter": {
+      "path": "lambda/reporter",
+      "tech_stack": ["python", "boto3"],
+      "runtime": "python3.11",
+      "test_command": "pytest"
+    }
+  },
+  "infrastructure": {
+    "docker": false,
+    "cloud": "aws",
+    "services_used": ["lambda", "sqs", "sns", "s3", "cost_explorer", "savings_plans", "eventbridge"]
+  },
+  "conventions": {
+    "linter": null,
+    "formatter": null,
+    "testing": "pytest"
+  }
+}
