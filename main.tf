@@ -170,12 +170,9 @@ resource "aws_lambda_function" "scheduler" {
     variables = {
       QUEUE_URL                     = aws_sqs_queue.purchase_intents.url
       SNS_TOPIC_ARN                 = aws_sns_topic.notifications.arn
-      SLACK_WEBHOOK_URL             = var.slack_webhook_url
-      TEAMS_WEBHOOK_URL             = var.teams_webhook_url
       DRY_RUN                       = tostring(var.dry_run)
       ENABLE_COMPUTE_SP             = tostring(var.enable_compute_sp)
       ENABLE_DATABASE_SP            = tostring(var.enable_database_sp)
-      ENABLE_COST_FORECASTING       = tostring(var.enable_cost_forecasting)
       COVERAGE_TARGET_PERCENT       = tostring(var.coverage_target_percent)
       MAX_PURCHASE_PERCENT          = tostring(var.max_purchase_percent)
       RENEWAL_WINDOW_DAYS           = tostring(var.renewal_window_days)
@@ -210,8 +207,6 @@ resource "aws_lambda_function" "purchaser" {
     variables = {
       QUEUE_URL                   = aws_sqs_queue.purchase_intents.url
       SNS_TOPIC_ARN               = aws_sns_topic.notifications.arn
-      SLACK_WEBHOOK_URL           = var.slack_webhook_url
-      TEAMS_WEBHOOK_URL           = var.teams_webhook_url
       MAX_COVERAGE_CAP            = tostring(var.max_coverage_cap)
       RENEWAL_WINDOW_DAYS         = tostring(var.renewal_window_days)
       MANAGEMENT_ACCOUNT_ROLE_ARN = var.management_account_role_arn
@@ -343,6 +338,23 @@ resource "aws_iam_role_policy" "scheduler_savingsplans" {
   })
 }
 
+# Scheduler Lambda Policy - Assume Role (conditional)
+resource "aws_iam_role_policy" "scheduler_assume_role" {
+  count = var.management_account_role_arn != null ? 1 : 0
+
+  name = "assume-role"
+  role = aws_iam_role.scheduler.id
+
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [{
+      Effect   = "Allow"
+      Action   = "sts:AssumeRole"
+      Resource = var.management_account_role_arn
+    }]
+  })
+}
+
 # Purchaser Lambda IAM Role
 resource "aws_iam_role" "purchaser" {
   name        = "${local.module_name}-purchaser"
@@ -457,6 +469,23 @@ resource "aws_iam_role_policy" "purchaser_savingsplans" {
         "savingsplans:CreateSavingsPlan"
       ]
       Resource = "*"
+    }]
+  })
+}
+
+# Purchaser Lambda Policy - Assume Role (conditional)
+resource "aws_iam_role_policy" "purchaser_assume_role" {
+  count = var.management_account_role_arn != null ? 1 : 0
+
+  name = "assume-role"
+  role = aws_iam_role.purchaser.id
+
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [{
+      Effect   = "Allow"
+      Action   = "sts:AssumeRole"
+      Resource = var.management_account_role_arn
     }]
   })
 }

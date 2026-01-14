@@ -23,23 +23,88 @@ from typing import Dict, List, Any, Optional
 import boto3
 from botocore.exceptions import ClientError
 
-# Import notification functions
-from notifications import (
-    format_slack_message,
-    format_teams_message,
-    send_slack_notification,
-    send_teams_notification
-)
-
 # Configure logging
 logger = logging.getLogger()
 logger.setLevel(logging.INFO)
 
-# AWS clients
+# AWS clients (initialized as globals, reassigned in handler if using assume role)
 ce_client = boto3.client('ce')
 sqs_client = boto3.client('sqs')
 sns_client = boto3.client('sns')
 savingsplans_client = boto3.client('savingsplans')
+
+
+def get_assumed_role_session(role_arn: str) -> Optional[boto3.Session]:
+    """
+    Assume a cross-account role and return a session with temporary credentials.
+
+    Args:
+        role_arn: ARN of the IAM role to assume
+
+    Returns:
+        boto3.Session with assumed credentials, or None if role_arn is empty
+
+    Raises:
+        ClientError: If assume role fails
+    """
+    if not role_arn:
+        return None
+
+    logger.info(f"Assuming role: {role_arn}")
+
+    try:
+        sts_client = boto3.client('sts')
+        response = sts_client.assume_role(
+            RoleArn=role_arn,
+            RoleSessionName='sp-autopilot-scheduler'
+        )
+
+        credentials = response['Credentials']
+
+        session = boto3.Session(
+            aws_access_key_id=credentials['AccessKeyId'],
+            aws_secret_access_key=credentials['SecretAccessKey'],
+            aws_session_token=credentials['SessionToken']
+        )
+
+        logger.info(f"Successfully assumed role, session expires: {credentials['Expiration']}")
+        return session
+
+    except ClientError as e:
+        error_code = e.response.get('Error', {}).get('Code', 'Unknown')
+        error_message = e.response.get('Error', {}).get('Message', str(e))
+        logger.error(f"Failed to assume role {role_arn} - Code: {error_code}, Message: {error_message}")
+        raise
+
+
+def get_clients(config: Dict[str, Any]) -> Dict[str, Any]:
+    """
+    Get AWS clients, using assumed role if configured.
+
+    Args:
+        config: Configuration dictionary with management_account_role_arn
+
+    Returns:
+        Dictionary of boto3 clients
+    """
+    role_arn = config.get('management_account_role_arn')
+
+    if role_arn:
+        session = get_assumed_role_session(role_arn)
+        return {
+            'ce': session.client('ce'),
+            'savingsplans': session.client('savingsplans'),
+            # Keep SNS/SQS using local credentials
+            'sns': boto3.client('sns'),
+            'sqs': boto3.client('sqs'),
+        }
+    else:
+        return {
+            'ce': boto3.client('ce'),
+            'savingsplans': boto3.client('savingsplans'),
+            'sns': boto3.client('sns'),
+            'sqs': boto3.client('sqs'),
+        }
 
 
 def handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
@@ -56,11 +121,27 @@ def handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
     Raises:
         Exception: All errors are raised (no silent failures)
     """
+    global ce_client, savingsplans_client
+
     try:
         logger.info("Starting Scheduler Lambda execution")
 
         # Load configuration from environment
         config = load_configuration()
+
+        # Initialize clients (with assume role if configured)
+        try:
+            clients = get_clients(config)
+            ce_client = clients['ce']
+            savingsplans_client = clients['savingsplans']
+        except ClientError as e:
+            error_msg = f"Failed to initialize AWS clients: {str(e)}"
+            if config.get('management_account_role_arn'):
+                error_msg = f"Failed to assume role {config['management_account_role_arn']}: {str(e)}"
+            logger.error(error_msg, exc_info=True)
+            send_error_email(error_msg)
+            raise
+
         logger.info(f"Configuration loaded: dry_run={config['dry_run']}")
 
         # Step 1: Purge existing queue
@@ -82,41 +163,14 @@ def handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
         # Step 6: Split by term (for Compute SP)
         purchase_plans = split_by_term(config, purchase_plans)
 
-        # Step 6.5: Get cost forecasts if enabled
-        forecast_data = None
-        if config['enable_cost_forecasting']:
-            logger.info("Cost forecasting enabled - calculating ROI and break-even analysis")
-            try:
-                # Get baseline cost forecast from Cost Explorer
-                forecasts = get_cost_forecasts(config)
-
-                # Calculate projected savings from purchase plans
-                savings_data = calculate_projected_savings(forecasts, purchase_plans)
-
-                # Calculate break-even timeline
-                breakeven_data = calculate_break_even(savings_data, purchase_plans, config)
-
-                # Combine all forecast data
-                forecast_data = {
-                    'forecasts': forecasts,
-                    'savings': savings_data,
-                    'breakeven': breakeven_data
-                }
-                logger.info(f"Forecast analysis complete - projected monthly savings: ${savings_data.get('monthly_savings', 0):,.2f}")
-            except Exception as e:
-                logger.warning(f"Failed to generate cost forecasts: {str(e)} - continuing without forecast data")
-                forecast_data = None
-        else:
-            logger.info("Cost forecasting disabled - skipping forecast analysis")
-
         # Step 7: Queue or notify
         if config['dry_run']:
             logger.info("Dry run mode - sending email only, NOT queuing messages")
-            send_dry_run_email(config, purchase_plans, coverage, forecast_data)
+            send_dry_run_email(config, purchase_plans, coverage)
         else:
             logger.info("Queuing purchase intents to SQS")
             queue_purchase_intents(config, purchase_plans)
-            send_scheduled_email(config, purchase_plans, coverage, forecast_data)
+            send_scheduled_email(config, purchase_plans, coverage)
 
         logger.info("Scheduler Lambda completed successfully")
 
@@ -140,12 +194,9 @@ def load_configuration() -> Dict[str, Any]:
     return {
         'queue_url': os.environ['QUEUE_URL'],
         'sns_topic_arn': os.environ['SNS_TOPIC_ARN'],
-        'slack_webhook_url': os.environ.get('SLACK_WEBHOOK_URL'),
-        'teams_webhook_url': os.environ.get('TEAMS_WEBHOOK_URL'),
         'dry_run': os.environ.get('DRY_RUN', 'true').lower() == 'true',
         'enable_compute_sp': os.environ.get('ENABLE_COMPUTE_SP', 'true').lower() == 'true',
         'enable_database_sp': os.environ.get('ENABLE_DATABASE_SP', 'false').lower() == 'true',
-        'enable_cost_forecasting': os.environ.get('ENABLE_COST_FORECASTING', 'true').lower() == 'true',
         'coverage_target_percent': float(os.environ.get('COVERAGE_TARGET_PERCENT', '90')),
         'max_purchase_percent': float(os.environ.get('MAX_PURCHASE_PERCENT', '10')),
         'renewal_window_days': int(os.environ.get('RENEWAL_WINDOW_DAYS', '7')),
@@ -417,239 +468,6 @@ def get_aws_recommendations(config: Dict[str, Any]) -> Dict[str, Any]:
 
     logger.info(f"Recommendations retrieved: {recommendations}")
     return recommendations
-
-
-def get_cost_forecasts(config: Dict[str, Any]) -> Dict[str, Any]:
-    """
-    Get cost forecasts from AWS Cost Explorer.
-
-    Fetches a 30-day cost forecast to help calculate ROI and break-even analysis
-    for proposed Savings Plans purchases.
-
-    Args:
-        config: Configuration dictionary
-
-    Returns:
-        dict: Forecast data with baseline costs (without new SPs)
-    """
-    logger.info("Getting cost forecasts from Cost Explorer")
-
-    # Calculate 30-day forecast period
-    from datetime import timedelta
-    now = datetime.now(timezone.utc)
-    start_date = now.date()
-    end_date = start_date + timedelta(days=30)
-
-    logger.info(f"Fetching forecast from {start_date} to {end_date}")
-
-    try:
-        response = ce_client.get_cost_forecast(
-            TimePeriod={
-                'Start': start_date.strftime('%Y-%m-%d'),
-                'End': end_date.strftime('%Y-%m-%d')
-            },
-            Metric='UNBLENDED_COST',
-            Granularity='DAILY',
-            PredictionIntervalLevel=95
-        )
-
-        # Extract forecast data
-        total_cost = response.get('Total', {}).get('Amount', '0')
-        forecast_results = response.get('ForecastResultsByTime', [])
-
-        logger.info(
-            f"Cost forecast retrieved: ${total_cost} total over 30 days "
-            f"({len(forecast_results)} daily data points, 95% confidence interval)"
-        )
-
-        forecast_data = {
-            'total_cost': total_cost,
-            'forecast_period_days': 30,
-            'start_date': start_date.strftime('%Y-%m-%d'),
-            'end_date': end_date.strftime('%Y-%m-%d'),
-            'prediction_interval': 95,
-            'forecast_results': forecast_results
-        }
-
-        return forecast_data
-
-    except ClientError as e:
-        logger.error(f"Failed to get cost forecasts: {str(e)}")
-        raise
-
-
-def calculate_projected_savings(
-    forecast_data: Dict[str, Any],
-    purchase_plans: List[Dict[str, Any]]
-) -> Dict[str, Any]:
-    """
-    Calculate projected savings from planned Savings Plans purchases.
-
-    Uses forecast baseline and applies expected discount rate to estimate
-    total savings and break-even timeline.
-
-    Args:
-        forecast_data: Cost forecast data from get_cost_forecasts()
-        purchase_plans: List of purchase plans to execute
-
-    Returns:
-        dict: Projected savings analysis with baseline, projected cost, and savings
-    """
-    logger.info("Calculating projected savings from purchase plans")
-
-    # Extract baseline cost from forecast
-    baseline_cost = float(forecast_data.get('total_cost', '0'))
-    forecast_days = forecast_data.get('forecast_period_days', 30)
-
-    logger.info(f"Baseline forecast: ${baseline_cost:,.2f} over {forecast_days} days")
-
-    # Calculate total hourly commitment across all purchase plans
-    total_hourly_commitment = 0.0
-    for plan in purchase_plans:
-        hourly_commitment = plan.get('hourly_commitment', 0.0)
-        total_hourly_commitment += hourly_commitment
-        logger.debug(f"Plan {plan.get('sp_type')}: ${hourly_commitment}/hour commitment")
-
-    if total_hourly_commitment == 0:
-        logger.info("No purchase plans with commitment - zero projected savings")
-        return {
-            'baseline_cost': baseline_cost,
-            'projected_cost': baseline_cost,
-            'total_savings': 0.0,
-            'monthly_savings': 0.0,
-            'forecast_period_days': forecast_days
-        }
-
-    # Calculate expected savings
-    # Assume 15% average discount rate for Savings Plans
-    discount_rate = 0.15
-    hours_in_period = forecast_days * 24
-
-    # Expected savings = commitment * hours * discount_rate
-    total_commitment_cost = total_hourly_commitment * hours_in_period
-    total_savings = total_commitment_cost * discount_rate
-
-    # Calculate monthly savings (normalize to 30 days)
-    monthly_savings = (total_savings / forecast_days) * 30
-
-    # Projected cost with new Savings Plans
-    projected_cost = baseline_cost - total_savings
-
-    logger.info(
-        f"Projected savings calculated: ${total_savings:,.2f} total "
-        f"(${monthly_savings:,.2f}/month) from ${total_hourly_commitment:.4f}/hour commitment"
-    )
-    logger.info(
-        f"Cost projection: Baseline ${baseline_cost:,.2f} → "
-        f"Projected ${projected_cost:,.2f} with new SPs"
-    )
-
-    return {
-        'baseline_cost': baseline_cost,
-        'projected_cost': projected_cost,
-        'total_savings': total_savings,
-        'monthly_savings': monthly_savings,
-        'forecast_period_days': forecast_days,
-        'total_hourly_commitment': total_hourly_commitment,
-        'discount_rate': discount_rate
-    }
-
-
-def calculate_break_even(
-    savings_data: Dict[str, Any],
-    purchase_plans: List[Dict[str, Any]],
-    config: Dict[str, Any]
-) -> Dict[str, Any]:
-    """
-    Calculate break-even timeline for Savings Plans purchases.
-
-    Calculates payback period based on upfront costs and expected monthly savings.
-    Different payment options have different upfront costs:
-    - ALL_UPFRONT: Full annual commitment paid upfront
-    - PARTIAL_UPFRONT: Percentage of annual commitment paid upfront
-    - NO_UPFRONT: No upfront cost, immediate positive ROI
-
-    Args:
-        savings_data: Projected savings data from calculate_projected_savings()
-        purchase_plans: List of purchase plans to execute
-        config: Configuration dictionary
-
-    Returns:
-        dict: Break-even analysis with months, upfront cost, and payback date
-    """
-    logger.info("Calculating break-even timeline")
-
-    monthly_savings = savings_data.get('monthly_savings', 0.0)
-
-    if monthly_savings == 0:
-        logger.info("No monthly savings - cannot calculate break-even")
-        return {
-            'break_even_months': None,
-            'upfront_cost': 0.0,
-            'payback_date': 'N/A - no savings projected'
-        }
-
-    # Calculate total upfront cost across all purchase plans
-    total_upfront_cost = 0.0
-    partial_upfront_percent = config.get('partial_upfront_percent', 50)
-
-    for plan in purchase_plans:
-        hourly_commitment = plan.get('hourly_commitment', 0.0)
-        payment_option = plan.get('payment_option', 'ALL_UPFRONT')
-        term = plan.get('term', '1_year')  # Default to 1 year if not specified
-
-        # Calculate annual commitment
-        hours_per_year = 365 * 24
-        annual_commitment = hourly_commitment * hours_per_year
-
-        # Calculate upfront cost based on payment option
-        if payment_option == 'ALL_UPFRONT':
-            upfront_cost = annual_commitment
-            logger.debug(
-                f"Plan {plan.get('sp_type')} (ALL_UPFRONT): "
-                f"${upfront_cost:,.2f} upfront (${hourly_commitment:.4f}/hour)"
-            )
-        elif payment_option == 'PARTIAL_UPFRONT':
-            upfront_cost = annual_commitment * (partial_upfront_percent / 100)
-            logger.debug(
-                f"Plan {plan.get('sp_type')} (PARTIAL_UPFRONT {partial_upfront_percent}%): "
-                f"${upfront_cost:,.2f} upfront (${hourly_commitment:.4f}/hour)"
-            )
-        else:  # NO_UPFRONT
-            upfront_cost = 0.0
-            logger.debug(
-                f"Plan {plan.get('sp_type')} (NO_UPFRONT): "
-                f"$0 upfront (${hourly_commitment:.4f}/hour)"
-            )
-
-        total_upfront_cost += upfront_cost
-
-    # Calculate break-even months
-    if total_upfront_cost == 0:
-        break_even_months = 0.0
-        payback_date = 'Immediate (no upfront cost)'
-        logger.info("NO_UPFRONT payment option - immediate positive ROI")
-    else:
-        break_even_months = total_upfront_cost / monthly_savings
-
-        # Calculate payback date
-        from datetime import timedelta
-        now = datetime.now(timezone.utc)
-        days_to_payback = int(break_even_months * 30)  # Approximate months as 30 days
-        payback_date_dt = now + timedelta(days=days_to_payback)
-        payback_date = payback_date_dt.strftime('%Y-%m-%d')
-
-        logger.info(
-            f"Break-even calculated: {break_even_months:.1f} months "
-            f"(${total_upfront_cost:,.2f} upfront / ${monthly_savings:,.2f} monthly savings)"
-        )
-        logger.info(f"Estimated payback date: {payback_date}")
-
-    return {
-        'break_even_months': break_even_months,
-        'upfront_cost': total_upfront_cost,
-        'payback_date': payback_date
-    }
 
 
 def calculate_purchase_need(
@@ -946,8 +764,7 @@ def queue_purchase_intents(
 def send_scheduled_email(
     config: Dict[str, Any],
     purchase_plans: List[Dict[str, Any]],
-    coverage: Dict[str, float],
-    forecast_data: Optional[Dict[str, Any]] = None
+    coverage: Dict[str, float]
 ) -> None:
     """
     Send email notification for scheduled purchases.
@@ -972,46 +789,9 @@ def send_scheduled_email(
         "",
         f"Target Coverage: {config.get('coverage_target_percent', 90):.2f}%",
         "",
-    ]
-
-    # Add cost forecast and ROI analysis if available
-    if forecast_data:
-        forecasts = forecast_data.get('forecasts', {})
-        savings = forecast_data.get('savings', {})
-        breakeven = forecast_data.get('breakeven', {})
-
-        baseline_cost = float(forecasts.get('total_cost', '0'))
-        projected_cost = savings.get('projected_cost', 0)
-        total_savings = savings.get('total_savings', 0)
-        monthly_savings = savings.get('monthly_savings', 0)
-        break_even_months = breakeven.get('break_even_months')
-        upfront_cost = breakeven.get('upfront_cost', 0)
-
-        email_lines.extend([
-            "COST FORECAST & ROI ANALYSIS:",
-            "-" * 50,
-            f"Baseline 30-day Forecast (without new SPs): ${baseline_cost:,.2f}",
-            f"Projected 30-day Cost (with new SPs):       ${projected_cost:,.2f}",
-            f"Total Projected Savings (30 days):          ${total_savings:,.2f}",
-            f"Monthly Savings:                             ${monthly_savings:,.2f}",
-            "",
-            f"Upfront Cost:                                ${upfront_cost:,.2f}",
-        ])
-
-        if break_even_months is not None:
-            email_lines.append(f"Break-even Timeline:                         {break_even_months:.1f} months")
-        else:
-            email_lines.append("Break-even Timeline:                         Immediate (no upfront cost)")
-
-        email_lines.extend([
-            f"Forecast Confidence Level:                   95%",
-            "",
-        ])
-
-    email_lines.extend([
         "Scheduled Purchase Plans:",
         "-" * 50,
-    ])
+    ]
 
     # Add details for each purchase plan
     total_annual_cost = 0.0
@@ -1050,13 +830,12 @@ def send_scheduled_email(
     ])
 
     message = "\n".join(email_lines)
-    subject = 'Savings Plans Scheduled for Purchase'
 
     # Publish to SNS
     try:
         sns_client.publish(
             TopicArn=config['sns_topic_arn'],
-            Subject=subject,
+            Subject='Savings Plans Scheduled for Purchase',
             Message=message
         )
         logger.info(f"Email sent successfully to {config['sns_topic_arn']}")
@@ -1064,23 +843,11 @@ def send_scheduled_email(
         logger.error(f"Failed to send email: {str(e)}")
         raise
 
-    # Send webhook notifications
-    slack_webhook_url = config.get('slack_webhook_url')
-    if slack_webhook_url:
-        slack_message = format_slack_message(subject, email_lines)
-        send_slack_notification(slack_webhook_url, slack_message)
-
-    teams_webhook_url = config.get('teams_webhook_url')
-    if teams_webhook_url:
-        teams_message = format_teams_message(subject, email_lines)
-        send_teams_notification(teams_webhook_url, teams_message)
-
 
 def send_dry_run_email(
     config: Dict[str, Any],
     purchase_plans: List[Dict[str, Any]],
-    coverage: Dict[str, float],
-    forecast_data: Optional[Dict[str, Any]] = None
+    coverage: Dict[str, float]
 ) -> None:
     """
     Send email notification for dry run analysis.
@@ -1089,7 +856,6 @@ def send_dry_run_email(
         config: Configuration dictionary
         purchase_plans: List of what would be purchased
         coverage: Current coverage
-        forecast_data: Optional cost forecast and ROI analysis data
     """
     logger.info("Sending dry run email")
 
@@ -1108,46 +874,9 @@ def send_dry_run_email(
         "",
         f"Target Coverage: {config.get('coverage_target_percent', 90):.2f}%",
         "",
-    ]
-
-    # Add cost forecast and ROI analysis if available
-    if forecast_data:
-        forecasts = forecast_data.get('forecasts', {})
-        savings = forecast_data.get('savings', {})
-        breakeven = forecast_data.get('breakeven', {})
-
-        baseline_cost = float(forecasts.get('total_cost', '0'))
-        projected_cost = savings.get('projected_cost', 0)
-        total_savings = savings.get('total_savings', 0)
-        monthly_savings = savings.get('monthly_savings', 0)
-        break_even_months = breakeven.get('break_even_months')
-        upfront_cost = breakeven.get('upfront_cost', 0)
-
-        email_lines.extend([
-            "COST FORECAST & ROI ANALYSIS:",
-            "-" * 50,
-            f"Baseline 30-day Forecast (without new SPs): ${baseline_cost:,.2f}",
-            f"Projected 30-day Cost (with new SPs):       ${projected_cost:,.2f}",
-            f"Total Projected Savings (30 days):          ${total_savings:,.2f}",
-            f"Monthly Savings:                             ${monthly_savings:,.2f}",
-            "",
-            f"Upfront Cost:                                ${upfront_cost:,.2f}",
-        ])
-
-        if break_even_months is not None:
-            email_lines.append(f"Break-even Timeline:                         {break_even_months:.1f} months")
-        else:
-            email_lines.append("Break-even Timeline:                         Immediate (no upfront cost)")
-
-        email_lines.extend([
-            f"Forecast Confidence Level:                   95%",
-            "",
-        ])
-
-    email_lines.extend([
         "Purchase Plans (WOULD BE SCHEDULED if dry_run=false):",
         "-" * 50,
-    ])
+    ]
 
     # Add details for each purchase plan
     total_annual_cost = 0.0
@@ -1189,30 +918,18 @@ def send_dry_run_email(
     ])
 
     message = "\n".join(email_lines)
-    subject = '[DRY RUN] Savings Plans Analysis - No Purchases Scheduled'
 
     # Publish to SNS
     try:
         sns_client.publish(
             TopicArn=config['sns_topic_arn'],
-            Subject=subject,
+            Subject='[DRY RUN] Savings Plans Analysis - No Purchases Scheduled',
             Message=message
         )
         logger.info(f"Dry run email sent successfully to {config['sns_topic_arn']}")
     except ClientError as e:
         logger.error(f"Failed to send dry run email: {str(e)}")
         raise
-
-    # Send webhook notifications
-    slack_webhook_url = config.get('slack_webhook_url')
-    if slack_webhook_url:
-        slack_message = format_slack_message(subject, email_lines)
-        send_slack_notification(slack_webhook_url, slack_message)
-
-    teams_webhook_url = config.get('teams_webhook_url')
-    if teams_webhook_url:
-        teams_message = format_teams_message(subject, email_lines)
-        send_teams_notification(teams_webhook_url, teams_message)
 
 
 def send_error_email(error_message: str) -> None:
@@ -1256,25 +973,13 @@ def send_error_email(error_message: str) -> None:
         return
 
     # Publish to SNS
-    subject = 'ERROR: Savings Plans Scheduler Failed'
     try:
         sns_client.publish(
             TopicArn=sns_topic_arn,
-            Subject=subject,
+            Subject='ERROR: Savings Plans Scheduler Failed',
             Message=message
         )
         logger.info(f"Error email sent successfully to {sns_topic_arn}")
     except Exception as e:
         # Don't raise - we're already in error handling
         logger.error(f"Failed to send error email: {str(e)}")
-
-    # Send webhook notifications
-    slack_webhook_url = os.environ.get('SLACK_WEBHOOK_URL')
-    if slack_webhook_url:
-        slack_message = format_slack_message(subject, email_lines)
-        send_slack_notification(slack_webhook_url, slack_message)
-
-    teams_webhook_url = os.environ.get('TEAMS_WEBHOOK_URL')
-    if teams_webhook_url:
-        teams_message = format_teams_message(subject, email_lines)
-        send_teams_notification(teams_webhook_url, teams_message)

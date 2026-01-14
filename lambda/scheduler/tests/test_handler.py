@@ -1102,237 +1102,142 @@ def test_handler_error_raises_exception(mock_env_vars):
 
 
 # ============================================================================
-# COST FORECASTING TESTS
+# Assume Role Tests
 # ============================================================================
 
+def test_get_assumed_role_session_with_valid_arn():
+    """Test that AssumeRole is called when ARN is provided."""
+    with patch('handler.boto3.client') as mock_boto3_client:
+        mock_sts = MagicMock()
+        mock_boto3_client.return_value = mock_sts
 
-def test_get_cost_forecasts_success():
-    """Test successful cost forecast retrieval from Cost Explorer."""
-    config = {}
+        # Mock STS AssumeRole response
+        mock_sts.assume_role.return_value = {
+            'Credentials': {
+                'AccessKeyId': 'AKIAIOSFODNN7EXAMPLE',
+                'SecretAccessKey': 'wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY',
+                'SessionToken': 'FwoGZXIvYXdzEBYaDBexampletoken',
+                'Expiration': datetime.now(timezone.utc)
+            }
+        }
 
-    mock_response = {
-        'Total': {'Amount': '1234.56'},
-        'ForecastResultsByTime': [
-            {'TimePeriod': {'Start': '2026-01-15', 'End': '2026-01-16'}, 'MeanValue': '41.15'}
-        ]
-    }
+        # Call function
+        session = handler.get_assumed_role_session('arn:aws:iam::123456789012:role/TestRole')
 
-    with patch.object(handler.ce_client, 'get_cost_forecast') as mock_forecast:
-        mock_forecast.return_value = mock_response
-
-        result = handler.get_cost_forecasts(config)
-
-        assert result['total_cost'] == '1234.56'
-        assert result['forecast_period_days'] == 30
-        assert result['prediction_interval'] == 95
-        assert len(result['forecast_results']) == 1
-        mock_forecast.assert_called_once()
+        # Verify AssumeRole was called with correct parameters
+        assert session is not None
+        mock_sts.assume_role.assert_called_once_with(
+            RoleArn='arn:aws:iam::123456789012:role/TestRole',
+            RoleSessionName='sp-autopilot-scheduler'  # Different session name for scheduler
+        )
 
 
-def test_get_cost_forecasts_api_error():
-    """Test Cost Explorer API error handling."""
-    from botocore.exceptions import ClientError
+def test_get_assumed_role_session_without_arn():
+    """Test that None is returned when ARN is not provided (backward compatibility)."""
+    # Test with None
+    result = handler.get_assumed_role_session(None)
+    assert result is None
 
-    config = {}
+    # Test with empty string
+    result = handler.get_assumed_role_session('')
+    assert result is None
 
-    with patch.object(handler.ce_client, 'get_cost_forecast') as mock_forecast:
-        error_response = {'Error': {'Code': 'AccessDeniedException', 'Message': 'Not authorized'}}
-        mock_forecast.side_effect = ClientError(error_response, 'get_cost_forecast')
 
+def test_get_assumed_role_session_access_denied():
+    """Test that AccessDenied error is raised with clear message."""
+    with patch('handler.boto3.client') as mock_boto3_client:
+        mock_sts = MagicMock()
+        mock_boto3_client.return_value = mock_sts
+
+        # Mock AccessDenied error
+        error_response = {
+            'Error': {
+                'Code': 'AccessDenied',
+                'Message': 'User is not authorized to perform: sts:AssumeRole'
+            }
+        }
+        mock_sts.assume_role.side_effect = ClientError(error_response, 'AssumeRole')
+
+        # Verify ClientError is raised
+        with pytest.raises(ClientError) as exc_info:
+            handler.get_assumed_role_session('arn:aws:iam::123456789012:role/TestRole')
+
+        # Verify error code
+        assert exc_info.value.response['Error']['Code'] == 'AccessDenied'
+
+
+def test_get_clients_with_role_arn():
+    """Test that CE/SP clients use assumed credentials when role ARN is provided."""
+    config = {'management_account_role_arn': 'arn:aws:iam::123456789012:role/TestRole'}
+
+    with patch('handler.get_assumed_role_session') as mock_assume, \
+         patch('handler.boto3.client') as mock_boto3_client:
+
+        # Mock session from assumed role
+        mock_session = MagicMock()
+        mock_assume.return_value = mock_session
+
+        # Mock session.client() calls
+        mock_session.client.return_value = MagicMock()
+
+        # Mock boto3.client() calls (for SNS/SQS)
+        mock_boto3_client.return_value = MagicMock()
+
+        # Call function
+        clients = handler.get_clients(config)
+
+        # Verify assume role was called
+        mock_assume.assert_called_once_with('arn:aws:iam::123456789012:role/TestRole')
+
+        # Verify CE and Savings Plans clients use session
+        assert mock_session.client.call_count == 2
+        mock_session.client.assert_any_call('ce')
+        mock_session.client.assert_any_call('savingsplans')
+
+        # Verify SNS and SQS clients use local credentials (boto3.client directly)
+        assert mock_boto3_client.call_count == 2
+        mock_boto3_client.assert_any_call('sns')
+        mock_boto3_client.assert_any_call('sqs')
+
+
+def test_get_clients_without_role_arn():
+    """Test that all clients use default credentials when no role ARN provided (backward compatibility)."""
+    config = {'management_account_role_arn': None}
+
+    with patch('handler.boto3.client') as mock_boto3_client:
+        mock_boto3_client.return_value = MagicMock()
+
+        # Call function
+        clients = handler.get_clients(config)
+
+        # Verify all 4 clients use boto3.client directly (no assume role)
+        assert mock_boto3_client.call_count == 4
+        mock_boto3_client.assert_any_call('ce')
+        mock_boto3_client.assert_any_call('savingsplans')
+        mock_boto3_client.assert_any_call('sns')
+        mock_boto3_client.assert_any_call('sqs')
+
+
+def test_handler_assume_role_error_handling(mock_env_vars, monkeypatch):
+    """Test that handler error message includes role ARN when assume role fails."""
+    # Add MANAGEMENT_ACCOUNT_ROLE_ARN to environment
+    monkeypatch.setenv('MANAGEMENT_ACCOUNT_ROLE_ARN', 'arn:aws:iam::123456789012:role/TestRole')
+
+    with patch('handler.get_clients') as mock_get_clients, \
+         patch('handler.send_error_email') as mock_send_error, \
+         patch('handler.purge_queue') as mock_purge:
+
+        # Mock assume role failure
+        error_response = {'Error': {'Code': 'AccessDenied', 'Message': 'Not authorized'}}
+        mock_get_clients.side_effect = ClientError(error_response, 'AssumeRole')
+
+        # Call handler - should raise exception
         with pytest.raises(ClientError):
-            handler.get_cost_forecasts(config)
+            handler.handler({}, None)
 
+        # Verify error email was sent
+        assert mock_send_error.call_count == 1
 
-def test_calculate_projected_savings_with_plans():
-    """Test projected savings calculation with purchase plans."""
-    forecast_data = {
-        'total_cost': '10000.00',
-        'forecast_period_days': 30
-    }
-
-    purchase_plans = [
-        {'hourly_commitment': 5.0, 'sp_type': 'compute'},
-        {'hourly_commitment': 2.0, 'sp_type': 'compute'}
-    ]
-
-    result = handler.calculate_projected_savings(forecast_data, purchase_plans)
-
-    assert result['baseline_cost'] == 10000.0
-    # total_commitment = 7.0/hour * 720 hours = 5040
-    # savings = 5040 * 0.15 = 756
-    assert result['total_savings'] == pytest.approx(756.0, rel=0.01)
-    assert result['projected_cost'] == pytest.approx(9244.0, rel=0.01)
-    assert result['monthly_savings'] == pytest.approx(756.0, rel=0.01)
-    assert result['total_hourly_commitment'] == 7.0
-
-
-def test_calculate_projected_savings_empty_plans():
-    """Test projected savings with no purchase plans."""
-    forecast_data = {
-        'total_cost': '10000.00',
-        'forecast_period_days': 30
-    }
-
-    result = handler.calculate_projected_savings(forecast_data, [])
-
-    assert result['baseline_cost'] == 10000.0
-    assert result['total_savings'] == 0.0
-    assert result['projected_cost'] == 10000.0
-    assert result['monthly_savings'] == 0.0
-
-
-def test_calculate_break_even_all_upfront():
-    """Test break-even calculation for ALL_UPFRONT payment option."""
-    savings_data = {'monthly_savings': 100.0}
-
-    purchase_plans = [
-        {
-            'hourly_commitment': 1.0,
-            'payment_option': 'ALL_UPFRONT',
-            'term': '1_year',
-            'sp_type': 'compute'
-        }
-    ]
-
-    config = {'partial_upfront_percent': 50}
-
-    result = handler.calculate_break_even(savings_data, purchase_plans, config)
-
-    # Upfront = 1.0/hour * 8760 hours = 8760
-    # Break-even = 8760 / 100 = 87.6 months
-    assert result['upfront_cost'] == pytest.approx(8760.0, rel=0.01)
-    assert result['break_even_months'] == pytest.approx(87.6, rel=0.01)
-    assert 'payback_date' in result
-
-
-def test_calculate_break_even_partial_upfront():
-    """Test break-even calculation for PARTIAL_UPFRONT payment option."""
-    savings_data = {'monthly_savings': 200.0}
-
-    purchase_plans = [
-        {
-            'hourly_commitment': 2.0,
-            'payment_option': 'PARTIAL_UPFRONT',
-            'term': '1_year',
-            'sp_type': 'compute'
-        }
-    ]
-
-    config = {'partial_upfront_percent': 50}
-
-    result = handler.calculate_break_even(savings_data, purchase_plans, config)
-
-    # Annual = 2.0/hour * 8760 hours = 17520
-    # Upfront = 17520 * 0.5 = 8760
-    # Break-even = 8760 / 200 = 43.8 months
-    assert result['upfront_cost'] == pytest.approx(8760.0, rel=0.01)
-    assert result['break_even_months'] == pytest.approx(43.8, rel=0.01)
-
-
-def test_calculate_break_even_no_upfront():
-    """Test break-even calculation for NO_UPFRONT payment option."""
-    savings_data = {'monthly_savings': 150.0}
-
-    purchase_plans = [
-        {
-            'hourly_commitment': 1.5,
-            'payment_option': 'NO_UPFRONT',
-            'term': '1_year',
-            'sp_type': 'compute'
-        }
-    ]
-
-    config = {'partial_upfront_percent': 50}
-
-    result = handler.calculate_break_even(savings_data, purchase_plans, config)
-
-    assert result['upfront_cost'] == 0.0
-    assert result['break_even_months'] == 0.0
-    assert 'Immediate' in result['payback_date']
-
-
-def test_calculate_break_even_zero_savings():
-    """Test break-even calculation with zero savings."""
-    savings_data = {'monthly_savings': 0.0}
-
-    purchase_plans = [
-        {'hourly_commitment': 1.0, 'payment_option': 'ALL_UPFRONT', 'term': '1_year'}
-    ]
-
-    config = {'partial_upfront_percent': 50}
-
-    result = handler.calculate_break_even(savings_data, purchase_plans, config)
-
-    assert result['break_even_months'] is None
-    assert 'N/A' in result['payback_date']
-
-
-def test_load_configuration_with_forecasting_enabled(monkeypatch):
-    """Test that enable_cost_forecasting is loaded correctly when true."""
-    monkeypatch.setenv('QUEUE_URL', 'test-queue')
-    monkeypatch.setenv('SNS_TOPIC_ARN', 'test-topic')
-    monkeypatch.setenv('ENABLE_COST_FORECASTING', 'true')
-
-    config = handler.load_configuration()
-
-    assert config['enable_cost_forecasting'] is True
-
-
-def test_load_configuration_with_forecasting_disabled(monkeypatch):
-    """Test that enable_cost_forecasting is loaded correctly when false."""
-    monkeypatch.setenv('QUEUE_URL', 'test-queue')
-    monkeypatch.setenv('SNS_TOPIC_ARN', 'test-topic')
-    monkeypatch.setenv('ENABLE_COST_FORECASTING', 'false')
-
-    config = handler.load_configuration()
-
-    assert config['enable_cost_forecasting'] is False
-
-
-def test_send_scheduled_email_with_forecast_data():
-    """Test that scheduled email includes forecast data when provided."""
-    config = {
-        'sns_topic_arn': 'test-topic',
-        'coverage_target_percent': 90.0
-    }
-
-    plans = [{'sp_type': 'compute', 'term': 'THREE_YEAR', 'hourly_commitment': 1.0, 'payment_option': 'ALL_UPFRONT'}]
-    coverage = {'compute': 75.0, 'database': 0.0}
-
-    forecast_data = {
-        'forecasts': {'total_cost': '5000.00', 'forecast_period_days': 30},
-        'savings': {'projected_cost': 4500.0, 'total_savings': 500.0, 'monthly_savings': 500.0},
-        'breakeven': {'break_even_months': 10.5, 'upfront_cost': 5250.0, 'payback_date': '2026-11-15'}
-    }
-
-    with patch.object(handler.sns_client, 'publish') as mock_publish:
-        handler.send_scheduled_email(config, plans, coverage, forecast_data)
-
-        call_args = mock_publish.call_args[1]
-        message = call_args['Message']
-
-        assert 'COST FORECAST' in message
-        assert '5,000.00' in message  # baseline_cost
-        assert '4,500.00' in message  # projected_cost
-        assert '500.00' in message  # savings
-        assert '10.5 months' in message  # break-even
-        assert '95%' in message  # confidence level
-
-
-def test_send_scheduled_email_without_forecast_data():
-    """Test that scheduled email works without forecast data."""
-    config = {
-        'sns_topic_arn': 'test-topic',
-        'coverage_target_percent': 90.0
-    }
-
-    plans = [{'sp_type': 'compute', 'term': 'THREE_YEAR', 'hourly_commitment': 1.0, 'payment_option': 'ALL_UPFRONT'}]
-    coverage = {'compute': 75.0, 'database': 0.0}
-
-    with patch.object(handler.sns_client, 'publish') as mock_publish:
-        handler.send_scheduled_email(config, plans, coverage, forecast_data=None)
-
-        call_args = mock_publish.call_args[1]
-        message = call_args['Message']
-
-        assert 'COST FORECAST' not in message
+        # Verify error message includes role ARN
+        error_msg = mock_send_error.call_args[0][0]
+        assert 'arn:aws:iam::123456789012:role/TestRole' in error_msg

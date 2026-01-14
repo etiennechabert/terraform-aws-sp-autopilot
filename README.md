@@ -1,12 +1,5 @@
 # AWS Savings Plans Automation Module
 
-[![Terraform](https://img.shields.io/badge/Terraform-%3E%3D1.0-623CE4?logo=terraform)](https://www.terraform.io)
-[![AWS](https://img.shields.io/badge/AWS-Savings%20Plans-FF9900?logo=amazonaws)](https://aws.amazon.com/savingsplans/)
-[![License](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](LICENSE)
-[![Terraform Validation](https://github.com/etiennechabert/terraform-aws-sp-autopilot/actions/workflows/terraform-validation.yml/badge.svg)](https://github.com/etiennechabert/terraform-aws-sp-autopilot/actions/workflows/terraform-validation.yml)
-[![Security Scan](https://github.com/etiennechabert/terraform-aws-sp-autopilot/actions/workflows/security-scan.yml/badge.svg)](https://github.com/etiennechabert/terraform-aws-sp-autopilot/actions/workflows/security-scan.yml)
-[![Tests](https://github.com/etiennechabert/terraform-aws-sp-autopilot/actions/workflows/tests.yml/badge.svg)](https://github.com/etiennechabert/terraform-aws-sp-autopilot/actions/workflows/tests.yml)
-
 An open-source Terraform module that automates AWS Savings Plans purchases based on usage analysis. The module maintains consistent coverage while limiting financial exposure through incremental, spread-out commitments.
 
 ## Features
@@ -467,6 +460,130 @@ To cancel a scheduled purchase before it executes:
 
 **Note:** This must be done between scheduler run and purchaser run (during review window).
 
+## Cross-Account Setup for AWS Organizations
+
+When using AWS Organizations, Savings Plans purchases must be made from the **management account** (formerly master account), but you may want to deploy this module in a **secondary account** for security or organizational reasons.
+
+The module supports cross-account operation by allowing Lambda functions to assume an IAM role in the management account before making Cost Explorer and Savings Plans API calls.
+
+### Configuration
+
+Set the `management_account_role_arn` variable to the ARN of a role in your management account:
+
+```hcl
+module "savings_plans" {
+  source = "etiennechabert/sp-autopilot/aws"
+  version = "~> 1.0"
+
+  # Cross-account role assumption
+  management_account_role_arn = "arn:aws:iam::123456789012:role/SavingsPlansAutomationRole"
+
+  # ... other configuration
+}
+```
+
+### IAM Role Setup in Management Account
+
+Create an IAM role in your **management account** with the following configuration:
+
+#### 1. Trust Policy
+
+The role must trust the Lambda execution roles from your secondary account:
+
+```json
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Effect": "Allow",
+      "Principal": {
+        "AWS": "arn:aws:iam::SECONDARY_ACCOUNT_ID:role/sp-autopilot-scheduler"
+      },
+      "Action": "sts:AssumeRole"
+    },
+    {
+      "Effect": "Allow",
+      "Principal": {
+        "AWS": "arn:aws:iam::SECONDARY_ACCOUNT_ID:role/sp-autopilot-purchaser"
+      },
+      "Action": "sts:AssumeRole"
+    }
+  ]
+}
+```
+
+Replace `SECONDARY_ACCOUNT_ID` with your secondary account ID where the Lambda functions are deployed.
+
+#### 2. Required Permissions
+
+Attach a policy to the role with the following permissions:
+
+```json
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Effect": "Allow",
+      "Action": [
+        "ce:GetSavingsPlansPurchaseRecommendation",
+        "ce:GetSavingsPlansUtilization",
+        "ce:GetSavingsPlansCoverage",
+        "ce:GetCostAndUsage"
+      ],
+      "Resource": "*"
+    },
+    {
+      "Effect": "Allow",
+      "Action": [
+        "savingsplans:DescribeSavingsPlans",
+        "savingsplans:DescribeSavingsPlansOfferingRates",
+        "savingsplans:DescribeSavingsPlansOfferings",
+        "savingsplans:CreateSavingsPlan"
+      ],
+      "Resource": "*"
+    }
+  ]
+}
+```
+
+### How It Works
+
+When `management_account_role_arn` is configured:
+
+1. **Scheduler Lambda** assumes the role before calling Cost Explorer APIs
+2. **Purchaser Lambda** assumes the role before calling Savings Plans APIs
+3. All Savings Plans operations execute with management account credentials
+4. SQS and SNS operations continue using the Lambda execution role (local account)
+
+### Verification
+
+After deployment, verify the setup:
+
+1. **Check Lambda Logs** (CloudWatch Logs → `/aws/lambda/sp-autopilot-scheduler`):
+   ```
+   Assuming role: arn:aws:iam::123456789012:role/SavingsPlansAutomationRole
+   Successfully assumed role, session expires: 2024-01-15T10:30:00Z
+   ```
+
+2. **Test Scheduler** (dry run mode):
+   ```bash
+   aws lambda invoke --function-name sp-autopilot-scheduler output.json
+   ```
+   Check logs for successful role assumption and Cost Explorer API calls.
+
+3. **Verify CloudTrail** (Management Account):
+   - Look for events from assumed role identity
+   - UserIdentity should show: `arn:aws:sts::123456789012:assumed-role/SavingsPlansAutomationRole/sp-autopilot-lambda`
+
+### Troubleshooting
+
+| Error | Cause | Solution |
+|-------|-------|----------|
+| `AccessDenied` during AssumeRole | Trust policy missing or incorrect | Verify trust policy includes Lambda execution role ARNs |
+| `AccessDenied` during API calls | Insufficient permissions on assumed role | Add missing permissions to role policy |
+| `InvalidClientTokenId` | Role ARN is invalid | Verify role ARN format and that role exists |
+| No role assumption in logs | Variable not set correctly | Check `management_account_role_arn` in Terraform state |
+
 ## Requirements
 
 - **Terraform**: >= 1.0
@@ -477,119 +594,6 @@ To cancel a scheduled purchase before it executes:
   - SQS (SendMessage, ReceiveMessage, DeleteMessage, PurgeQueue)
   - SNS (Publish)
   - CloudWatch Logs (for Lambda logging)
-
-## Testing
-
-This module includes a comprehensive integration test suite using [Terratest](https://terratest.gruntwork.io/) that validates full module deployment, resource creation, and Lambda function execution in a real AWS account.
-
-### Quick Start
-
-**Recommended: Use helper scripts** (validates prerequisites automatically):
-
-```bash
-# Linux/macOS/Git Bash
-cd test
-./run-test.sh
-
-# Windows PowerShell
-cd test
-.\run-test.ps1
-```
-
-**Alternative: Direct Go execution**:
-
-```bash
-# Navigate to test directory
-cd test
-
-# Download Go dependencies
-go mod download
-
-# Run all tests (requires AWS credentials)
-go test -v -timeout 30m
-```
-
-### Test Coverage
-
-The test suite includes:
-
-| Test | Duration | Purpose |
-|------|----------|---------|
-| **TestTerraformBasicDeployment** | ~4 min | Validates all core resources deploy successfully |
-| **TestSQSQueueConfiguration** | ~3 min | Validates queue attributes and redrive policy |
-| **TestSNSTopicConfiguration** | ~3 min | Validates SNS topic and email subscriptions |
-| **TestLambdaDeployment** | ~4 min | Validates Lambda configuration (runtime, env vars, IAM) |
-| **TestSchedulerLambdaInvocation** | ~4 min | Validates Scheduler Lambda execution in dry-run mode |
-| **TestLambdaIAMPermissions** | ~3 min | Validates IAM roles follow principle of least privilege |
-| **TestEventBridgeSchedules** | ~3 min | Validates EventBridge scheduled rules |
-| **TestFullDeploymentAndCleanup** | ~7 min | End-to-end integration test of complete lifecycle |
-
-**Total Suite Duration:** ~15 minutes
-
-### Prerequisites
-
-- **Go** 1.21+
-- **Terraform** 1.6.0+
-- **AWS CLI** 2.x
-- **AWS Account** with permissions to create Lambda, SQS, SNS, IAM, EventBridge, and CloudWatch resources
-
-### Running Specific Tests
-
-```bash
-# Run only Lambda tests
-go test -v -run TestLambda -timeout 15m
-
-# Run basic deployment test
-go test -v -run TestTerraformBasicDeployment -timeout 10m
-
-# Run end-to-end test
-go test -v -run TestFullDeploymentAndCleanup -timeout 15m
-```
-
-### Performance Measurement
-
-Measure test execution time and validate performance targets (<15 minutes):
-
-```bash
-# Linux/macOS/Git Bash
-cd test
-./measure-performance.sh
-
-# Windows PowerShell
-cd test
-.\measure-performance.ps1
-```
-
-### CI/CD Integration
-
-Tests run automatically on pull requests via GitHub Actions (`.github/workflows/terratest.yml`):
-
-- ✅ Triggers on PRs to `main` or `develop`
-- ✅ Validates all resource creation
-- ✅ Tests Lambda function invocation
-- ✅ Cleans up all resources automatically
-- ✅ Posts test results as PR comments
-
-**Required GitHub Secrets:**
-- `AWS_ACCESS_KEY_ID`
-- `AWS_SECRET_ACCESS_KEY`
-
-### Detailed Documentation
-
-For comprehensive testing documentation including:
-- Setup instructions
-- AWS credentials configuration
-- Troubleshooting guide
-- Cost estimates
-- Test descriptions
-
-See **[test/README.md](test/README.md)** for complete details.
-
-### Estimated Test Costs
-
-Running the full test suite once: **~$0.01** (covered by AWS free tier)
-
-Tests clean up all resources automatically, leaving no ongoing costs.
 
 ## License
 

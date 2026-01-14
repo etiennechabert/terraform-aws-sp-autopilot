@@ -21,23 +21,88 @@ from typing import Dict, List, Any, Optional
 import boto3
 from botocore.exceptions import ClientError
 
-# Import notification functions
-from notifications import (
-    format_slack_message,
-    format_teams_message,
-    send_slack_notification,
-    send_teams_notification
-)
-
 # Configure logging
 logger = logging.getLogger()
 logger.setLevel(logging.INFO)
 
-# AWS clients
+# AWS clients (initialized as globals, reassigned in handler if using assume role)
 ce_client = boto3.client('ce')
 sqs_client = boto3.client('sqs')
 sns_client = boto3.client('sns')
 savingsplans_client = boto3.client('savingsplans')
+
+
+def get_assumed_role_session(role_arn: str) -> Optional[boto3.Session]:
+    """
+    Assume a cross-account role and return a session with temporary credentials.
+
+    Args:
+        role_arn: ARN of the IAM role to assume
+
+    Returns:
+        boto3.Session with assumed credentials, or None if role_arn is empty
+
+    Raises:
+        ClientError: If assume role fails
+    """
+    if not role_arn:
+        return None
+
+    logger.info(f"Assuming role: {role_arn}")
+
+    try:
+        sts_client = boto3.client('sts')
+        response = sts_client.assume_role(
+            RoleArn=role_arn,
+            RoleSessionName='sp-autopilot-purchaser'
+        )
+
+        credentials = response['Credentials']
+
+        session = boto3.Session(
+            aws_access_key_id=credentials['AccessKeyId'],
+            aws_secret_access_key=credentials['SecretAccessKey'],
+            aws_session_token=credentials['SessionToken']
+        )
+
+        logger.info(f"Successfully assumed role, session expires: {credentials['Expiration']}")
+        return session
+
+    except ClientError as e:
+        error_code = e.response.get('Error', {}).get('Code', 'Unknown')
+        error_message = e.response.get('Error', {}).get('Message', str(e))
+        logger.error(f"Failed to assume role {role_arn} - Code: {error_code}, Message: {error_message}")
+        raise
+
+
+def get_clients(config: Dict[str, Any]) -> Dict[str, Any]:
+    """
+    Get AWS clients, using assumed role if configured.
+
+    Args:
+        config: Configuration dictionary with management_account_role_arn
+
+    Returns:
+        Dictionary of boto3 clients
+    """
+    role_arn = config.get('management_account_role_arn')
+
+    if role_arn:
+        session = get_assumed_role_session(role_arn)
+        return {
+            'ce': session.client('ce'),
+            'savingsplans': session.client('savingsplans'),
+            # Keep SNS/SQS using local credentials
+            'sns': boto3.client('sns'),
+            'sqs': boto3.client('sqs'),
+        }
+    else:
+        return {
+            'ce': boto3.client('ce'),
+            'savingsplans': boto3.client('savingsplans'),
+            'sns': boto3.client('sns'),
+            'sqs': boto3.client('sqs'),
+        }
 
 
 def handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
@@ -54,11 +119,26 @@ def handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
     Raises:
         Exception: Raised on API errors (no silent failures)
     """
+    global ce_client, savingsplans_client
+
     try:
         logger.info("Starting Purchaser Lambda execution")
 
         # Load configuration from environment
         config = load_configuration()
+
+        # Initialize clients (with assume role if configured)
+        try:
+            clients = get_clients(config)
+            ce_client = clients['ce']
+            savingsplans_client = clients['savingsplans']
+        except ClientError as e:
+            error_msg = f"Failed to initialize AWS clients: {str(e)}"
+            if config.get('management_account_role_arn'):
+                error_msg = f"Failed to assume role {config['management_account_role_arn']}: {str(e)}"
+            logger.error(error_msg, exc_info=True)
+            send_error_email(error_msg)
+            raise
 
         # Step 1: Check queue
         messages = receive_messages(config['queue_url'])
@@ -108,8 +188,6 @@ def load_configuration() -> Dict[str, Any]:
     return {
         'queue_url': os.environ['QUEUE_URL'],
         'sns_topic_arn': os.environ['SNS_TOPIC_ARN'],
-        'slack_webhook_url': os.environ.get('SLACK_WEBHOOK_URL'),
-        'teams_webhook_url': os.environ.get('TEAMS_WEBHOOK_URL'),
         'max_coverage_cap': float(os.environ.get('MAX_COVERAGE_CAP', '95')),
         'renewal_window_days': int(os.environ.get('RENEWAL_WINDOW_DAYS', '7')),
         'management_account_role_arn': os.environ.get('MANAGEMENT_ACCOUNT_ROLE_ARN'),
@@ -689,15 +767,6 @@ def send_summary_email(
         logger.error(f"Failed to send summary email: {str(e)}")
         raise
 
-    # Send webhook notifications (best-effort, don't fail on webhook errors)
-    if config.get('slack_webhook_url'):
-        slack_message = format_slack_message(subject, body_lines)
-        send_slack_notification(config['slack_webhook_url'], slack_message)
-
-    if config.get('teams_webhook_url'):
-        teams_message = format_teams_message(subject, body_lines)
-        send_teams_notification(config['teams_webhook_url'], teams_message)
-
 
 def send_error_email(error_message: str) -> None:
     """
@@ -712,8 +781,6 @@ def send_error_email(error_message: str) -> None:
     try:
         sns_topic_arn = os.environ['SNS_TOPIC_ARN']
         queue_url = os.environ['QUEUE_URL']
-        slack_webhook_url = os.environ.get('SLACK_WEBHOOK_URL')
-        teams_webhook_url = os.environ.get('TEAMS_WEBHOOK_URL')
     except KeyError as e:
         logger.error(f"Missing required environment variable for error email: {e}")
         return  # Cannot send email without SNS topic ARN
@@ -765,12 +832,3 @@ def send_error_email(error_message: str) -> None:
     except ClientError as e:
         logger.error(f"Failed to send error notification email: {str(e)}")
         # Don't raise - we're already in error handling, don't want to mask the original error
-
-    # Send webhook notifications (best-effort, don't fail on webhook errors)
-    if slack_webhook_url:
-        slack_message = format_slack_message(subject, body_lines)
-        send_slack_notification(slack_webhook_url, slack_message)
-
-    if teams_webhook_url:
-        teams_message = format_teams_message(subject, body_lines)
-        send_teams_notification(teams_webhook_url, teams_message)
