@@ -175,6 +175,7 @@ resource "aws_lambda_function" "scheduler" {
       DRY_RUN                       = tostring(var.dry_run)
       ENABLE_COMPUTE_SP             = tostring(var.enable_compute_sp)
       ENABLE_DATABASE_SP            = tostring(var.enable_database_sp)
+      ENABLE_COST_FORECASTING       = tostring(var.enable_cost_forecasting)
       COVERAGE_TARGET_PERCENT       = tostring(var.coverage_target_percent)
       MAX_PURCHASE_PERCENT          = tostring(var.max_purchase_percent)
       RENEWAL_WINDOW_DAYS           = tostring(var.renewal_window_days)

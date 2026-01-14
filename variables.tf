@@ -195,6 +195,12 @@ variable "send_no_action_email" {
   default     = true
 }
 
+variable "enable_cost_forecasting" {
+  description = "Enable cost forecasting integration (can be disabled to reduce API costs)"
+  type        = bool
+  default     = true
+}
+
 # ============================================================================
 # 7.8 Notifications
 # ============================================================================
