@@ -1,82 +1,41 @@
 # AWS Organizations - Enterprise Deployment
 
-This example demonstrates deploying AWS Savings Plans automation across an AWS Organization:
-
-- **Organization-wide Savings Plans** — Centralized purchasing for all member accounts
-- **Both Compute and Database SPs** — Comprehensive coverage across EC2, Lambda, Fargate, RDS, DynamoDB, etc.
-- **Production-grade targets** — 85% coverage target with 95% cap
-- **Multi-stakeholder notifications** — FinOps, governance, and admin teams
-- **Extended review window** — 5 days for organization-level changes
+Organization-wide Savings Plans automation with centralized purchasing and multi-stakeholder notifications.
 
 ## Features
 
-✅ Organization-wide Compute and Database Savings Plans
-✅ Centralized purchasing from management account
-✅ 8% monthly spend limit for controlled growth
-✅ 5-day human review window
-✅ Multi-team email notifications
-✅ CloudWatch alarms for monitoring
-✅ Starts in dry-run mode for safety
-
-## Architecture
-
-This configuration deploys:
-
-- **Scheduler Lambda** — Analyzes org-wide usage monthly (Compute + Database)
-- **Purchaser Lambda** — Executes approved purchases after review window
-- **SQS Queue** — Holds purchase intents (review = 5 days)
-- **SNS Topic** — Sends email notifications to multiple stakeholders
-- **CloudWatch Alarms** — Monitors Lambda errors and DLQ depth
-- **Cross-Account Role** — Assumes role in management account for org-wide access
-
-## AWS Organizations Setup
-
-### Organization Structure
-
-This module should be deployed in one of these accounts:
-
-1. **Management Account** (recommended for smaller orgs)
-   - Direct access to organization-level Cost Explorer and Savings Plans APIs
-   - No cross-account role assumption needed (set `management_account_role_arn = null`)
-
-2. **Delegated Administrator Account** (recommended for larger orgs)
-   - Deploy infrastructure in a dedicated FinOps/governance account
-   - Use `management_account_role_arn` to assume role in management account
-   - Better separation of concerns and security
+- ✅ Organization-wide Compute and Database Savings Plans
+- ✅ Centralized purchasing from management account
+- ✅ 8% monthly spend limit, 5-day review window
+- ✅ Multi-team email notifications
+- ✅ CloudWatch alarms and cross-account role
+- ✅ Starts in dry-run mode for safety
 
 ## Prerequisites
 
 ### 1. AWS Organization
 
-- Active AWS Organization with consolidated billing enabled
+- Active AWS Organization with consolidated billing
 - At least one member account with eligible workloads
 - Management account accessible for role creation
 
 ### 2. IAM Role in Management Account
 
-Create a role in the **management account** that the Lambda functions can assume:
-
-**Role Name:** `SavingsPlansAutomationRole` (customizable)
+Create role `SavingsPlansAutomationRole` in **management account**:
 
 **Trust Policy:**
 
 ```json
 {
   "Version": "2012-10-17",
-  "Statement": [
-    {
-      "Effect": "Allow",
-      "Principal": {
-        "AWS": "arn:aws:iam::DELEGATED_ACCOUNT_ID:root"
-      },
-      "Action": "sts:AssumeRole",
-      "Condition": {
-        "StringEquals": {
-          "sts:ExternalId": "savings-plans-automation"
-        }
-      }
+  "Statement": [{
+    "Effect": "Allow",
+    "Principal": {"AWS": "arn:aws:iam::DELEGATED_ACCOUNT_ID:root"},
+    "Action": "sts:AssumeRole",
+    "Condition": {
+      "StringEquals": {"sts:ExternalId": "savings-plans-automation"}
     }
-  ]
+  }]
 }
 ```
 
@@ -85,276 +44,178 @@ Create a role in the **management account** that the Lambda functions can assume
 ```json
 {
   "Version": "2012-10-17",
-  "Statement": [
-    {
-      "Effect": "Allow",
-      "Action": [
-        "ce:GetSavingsPlansPurchaseRecommendation",
-        "ce:GetSavingsPlansCoverage"
-      ],
-      "Resource": "*"
-    },
-    {
-      "Effect": "Allow",
-      "Action": [
-        "savingsplans:CreateSavingsPlan",
-        "savingsplans:DescribeSavingsPlans"
-      ],
-      "Resource": "*"
-    }
-  ]
+  "Statement": [{
+    "Effect": "Allow",
+    "Action": [
+      "ce:GetSavingsPlansPurchaseRecommendation",
+      "ce:GetSavingsPlansCoverage",
+      "savingsplans:CreateSavingsPlan",
+      "savingsplans:DescribeSavingsPlans"
+    ],
+    "Resource": "*"
+  }]
 }
 ```
 
-### 3. Terraform Requirements
-
-- **Terraform** >= 1.0
-- **AWS Provider** >= 5.0
-- Credentials for the delegated administrator account (or management account)
-
-### 4. Email Addresses
-
-Email addresses for:
-- FinOps team
-- Cloud governance team
-- AWS administrators
-
-## Deployment Steps
-
-### 1. Create IAM Role in Management Account
-
-Using AWS CLI in the **management account**:
+**Create via AWS CLI:**
 
 ```bash
-# Create trust policy file
+# In management account
 cat > trust-policy.json <<EOF
 {
   "Version": "2012-10-17",
-  "Statement": [
-    {
-      "Effect": "Allow",
-      "Principal": {
-        "AWS": "arn:aws:iam::DELEGATED_ACCOUNT_ID:root"
-      },
-      "Action": "sts:AssumeRole",
-      "Condition": {
-        "StringEquals": {
-          "sts:ExternalId": "savings-plans-automation"
-        }
-      }
+  "Statement": [{
+    "Effect": "Allow",
+    "Principal": {"AWS": "arn:aws:iam::DELEGATED_ACCOUNT_ID:root"},
+    "Action": "sts:AssumeRole",
+    "Condition": {
+      "StringEquals": {"sts:ExternalId": "savings-plans-automation"}
     }
-  ]
+  }]
 }
 EOF
 
-# Create permissions policy file
 cat > permissions-policy.json <<EOF
 {
   "Version": "2012-10-17",
-  "Statement": [
-    {
-      "Effect": "Allow",
-      "Action": [
-        "ce:GetSavingsPlansPurchaseRecommendation",
-        "ce:GetSavingsPlansCoverage"
-      ],
-      "Resource": "*"
-    },
-    {
-      "Effect": "Allow",
-      "Action": [
-        "savingsplans:CreateSavingsPlan",
-        "savingsplans:DescribeSavingsPlans"
-      ],
-      "Resource": "*"
-    }
-  ]
+  "Statement": [{
+    "Effect": "Allow",
+    "Action": [
+      "ce:GetSavingsPlansPurchaseRecommendation",
+      "ce:GetSavingsPlansCoverage",
+      "savingsplans:CreateSavingsPlan",
+      "savingsplans:DescribeSavingsPlans"
+    ],
+    "Resource": "*"
+  }]
 }
 EOF
 
-# Create the role
 aws iam create-role \
   --role-name SavingsPlansAutomationRole \
   --assume-role-policy-document file://trust-policy.json
 
-# Attach inline policy
 aws iam put-role-policy \
   --role-name SavingsPlansAutomationRole \
   --policy-name SavingsPlansPermissions \
   --policy-document file://permissions-policy.json
 
-# Get the role ARN (you'll need this for Terraform)
+# Get role ARN for Terraform
 aws iam get-role --role-name SavingsPlansAutomationRole --query 'Role.Arn' --output text
 ```
 
-### 2. Configure Terraform Variables
+## Deployment
 
-Update `main.tf` with your organization's details:
+### 1. Configure
+
+Update `main.tf`:
 
 ```hcl
-# Update with your management account role ARN
 management_account_role_arn = "arn:aws:iam::123456789012:role/SavingsPlansAutomationRole"
 
-# Update with your notification emails
 notification_emails = [
   "finops@your-company.com",
   "cloud-governance@your-company.com",
   "aws-admins@your-company.com"
 ]
 
-# Adjust coverage targets based on your org's risk tolerance
-coverage_target_percent = 85  # Your target
-max_coverage_cap        = 95  # Your hard cap
+coverage_target_percent = 85
+max_coverage_cap        = 95
 ```
 
-### 3. Initialize Terraform
-
-From the **delegated administrator account** (or management account if deploying there):
+### 2. Deploy
 
 ```bash
 terraform init
-```
-
-### 4. Review Plan
-
-```bash
 terraform plan
-```
-
-Expected resources: ~20-25 resources including Lambda functions, SQS queues, SNS topics, IAM roles, EventBridge rules, and CloudWatch alarms.
-
-### 5. Deploy
-
-```bash
 terraform apply
 ```
 
-### 6. Confirm SNS Subscriptions
+### 3. Confirm SNS Subscriptions
 
-After deployment, each email address in `notification_emails` will receive a confirmation email:
+All email recipients receive confirmation emails. Each must click their link.
 
-1. Check inboxes for all notification recipients
-2. Click confirmation links
-3. All recipients will receive notifications when the scheduler runs
-
-## Testing the Deployment
+## Testing
 
 ### Dry-Run Mode (Default)
 
-The module starts with `dry_run = true`:
-
-- Scheduler runs monthly (1st at 8:00 AM UTC by default)
-- Analyzes org-wide usage for both Compute and Database SPs
-- Assumes role in management account to fetch recommendations
-- **Sends email with organization-wide recommendations**
-- **Does NOT queue purchases**
-- No actual Savings Plans purchased
-
-### Manual Test Trigger
-
-To test immediately without waiting for the schedule:
-
 ```bash
-# Get the scheduler Lambda function name
-terraform output scheduler_lambda_name
-
-# Invoke the Lambda function manually
 aws lambda invoke \
   --function-name $(terraform output -raw scheduler_lambda_name) \
   --payload '{}' \
   response.json
-
-# Check the response
-cat response.json
 ```
 
-You should receive an email with:
-- Current Compute SP coverage percentage (org-wide)
-- Current Database SP coverage percentage (org-wide)
-- Recommended purchase amounts for each SP type
-- Breakdown by term (1-year vs 3-year for Compute, 1-year for Database)
+Expected email:
+- Org-wide Compute SP coverage
+- Org-wide Database SP coverage
+- Recommended purchases for each type
 - "DRY RUN" notice
 
 ### Verify Cross-Account Access
 
-Check Lambda logs to confirm role assumption is working:
+Check Lambda logs for successful role assumption:
 
 ```bash
 aws logs tail /aws/lambda/$(terraform output -raw scheduler_lambda_name) --follow
 ```
 
-Look for log entries indicating successful role assumption:
-```
-Assuming role: arn:aws:iam::123456789012:role/SavingsPlansAutomationRole
-Successfully assumed role in management account
-```
+Look for: `Successfully assumed role in management account`
 
 ## Enabling Real Purchases
 
-Once you've validated the recommendations in dry-run mode and coordinated with stakeholders:
-
 ### 1. Update Configuration
 
-Edit `main.tf`:
-
 ```hcl
-dry_run = false  # Enable actual purchases
+dry_run = false
 ```
 
-### 2. Apply Changes
+### 2. Apply and Monitor
 
 ```bash
 terraform apply
 ```
 
-### 3. Monitor First Cycle
-
-After enabling purchases:
-
-1. Wait for next scheduler run (1st of month)
-2. Review email with purchase recommendations (sent to all recipients)
-3. Check SQS queue for queued purchases:
-   ```bash
-   aws sqs get-queue-attributes \
-     --queue-url $(terraform output -raw queue_url) \
-     --attribute-names ApproximateNumberOfMessages
-   ```
-4. **IMPORTANT:** During the 5-day review window, any stakeholder can delete messages from the queue to cancel purchases
-5. Purchaser executes approved purchases on the 6th
+After enabling:
+1. Wait for scheduler run (1st of month)
+2. Review email (sent to all recipients)
+3. Check SQS queue for queued purchases
+4. **IMPORTANT:** During 5-day review window, any stakeholder can delete messages to cancel purchases
+5. Purchaser executes approved purchases on 6th
 6. Verify new SPs in AWS Cost Management console
 
-## Multi-Account Considerations
+## Configuration Options
 
-- **Member accounts** — SPs automatically benefit all linked accounts
-- **Cost allocation** — SP costs appear in management account; use Cost Allocation Tags for chargeback
-- **Account isolation** — Not supported; organization-level SPs apply to all member accounts
+### Coverage Targets
+
+```hcl
+coverage_target_percent = 85  # Higher for stable orgs
+max_coverage_cap        = 95  # Hard ceiling
+```
+
+### Purchase Limits
+
+```hcl
+max_purchase_percent = 8  # % of monthly on-demand spend
+```
+
+### Review Window
+
+```hcl
+scheduler_schedule = "cron(0 8 1 * ? *)"   # 1st of month
+purchaser_schedule = "cron(0 8 10 * ? *)"  # 10th = 9-day window
+```
 
 ## Monitoring
 
 ### CloudWatch Logs
 
-View Lambda execution logs:
-
 ```bash
-# Scheduler logs (check for role assumption and API calls)
+# Check role assumption and API calls
 aws logs tail /aws/lambda/$(terraform output -raw scheduler_lambda_name) --follow
-
-# Purchaser logs (check for purchase execution)
-aws logs tail /aws/lambda/$(terraform output -raw purchaser_lambda_name) --follow
 ```
 
-### CloudWatch Alarms
-
-The module creates alarms for:
-
-- **Lambda Errors** — Triggers on any Lambda function error (including role assumption failures)
-- **Dead Letter Queue** — Triggers when messages fail processing
-
-Alarms publish to the SNS topic shared with notifications.
-
-### Organization-Wide Coverage Tracking
-
-Monitor Savings Plans coverage across the organization:
+### Organization-Wide Coverage
 
 ```bash
 # Compute SP coverage
@@ -362,158 +223,52 @@ aws ce get-savings-plans-coverage \
   --time-period Start=2024-01-01,End=2024-01-31 \
   --granularity MONTHLY \
   --filter '{"Dimensions":{"Key":"SAVINGS_PLAN_TYPE","Values":["COMPUTE_SP"]}}'
-
-# Database SP coverage
-aws ce get-savings-plans-coverage \
-  --time-period Start=2024-01-01,End=2024-01-31 \
-  --granularity MONTHLY \
-  --filter '{"Dimensions":{"Key":"SAVINGS_PLAN_TYPE","Values":["DATABASE_SP"]}}'
 ```
 
 ### Active Savings Plans
 
-List all organization-level Savings Plans:
-
 ```bash
-aws savingsplans describe-savings-plans \
-  --filters name=scope,values=organization
+aws savingsplans describe-savings-plans --filters name=scope,values=organization
 ```
 
 ## Canceling Purchases
 
-To cancel a scheduled purchase before execution:
+**Best Practice:** Establish review process where FinOps team checks queue between 1st and 6th of each month.
 
-### Via AWS Console
+**Via AWS Console:**
+1. SQS → `sp-autopilot-purchase-intents`
+2. Send and receive messages
+3. Review and delete unwanted purchases
 
-1. Navigate to AWS Console → SQS
-2. Open queue: `sp-autopilot-purchase-intents`
-3. Select "Send and receive messages"
-4. Poll for messages
-5. Review purchase details in message body
-6. Delete unwanted purchase messages
-
-### Via AWS CLI
+**Via AWS CLI:**
 
 ```bash
-# Receive messages from queue
+# View messages
 aws sqs receive-message \
   --queue-url $(terraform output -raw queue_url) \
-  --max-number-of-messages 10 \
-  --visibility-timeout 0
+  --max-number-of-messages 10
 
-# Delete specific message (use ReceiptHandle from above)
+# Delete specific message
 aws sqs delete-message \
   --queue-url $(terraform output -raw queue_url) \
-  --receipt-handle "RECEIPT_HANDLE_HERE"
+  --receipt-handle "RECEIPT_HANDLE"
 ```
 
-**Best Practice:** Establish a review process where FinOps team checks the queue between the 1st and 6th of each month.
+## Multi-Account Considerations
 
-## Configuration Options
-
-### Coverage Targets
-
-Adjust for organization size and risk tolerance:
-
-```hcl
-coverage_target_percent = 85  # Higher for stable orgs, lower for growing orgs
-max_coverage_cap        = 95  # Hard ceiling to maintain flexibility
-```
-
-### Purchase Limits
-
-Control org-wide spending velocity:
-
-```hcl
-max_purchase_percent = 8  # Percentage of monthly on-demand spend
-# Lower for cautious approach, higher for aggressive savings
-```
-
-### Review Window
-
-Adjust time between scheduling and purchasing:
-
-```hcl
-scheduler_schedule = "cron(0 8 1 * ? *)"   # 1st of month
-purchaser_schedule = "cron(0 8 10 * ? *)"  # 10th of month (9-day window)
-# Longer window for organizations with more stakeholders
-```
-
-### SP Type Mix
-
-Enable/disable SP types based on your workloads:
-
-```hcl
-enable_compute_sp  = true   # EC2, Lambda, Fargate
-enable_database_sp = true   # RDS, DynamoDB, etc.
-
-# Or disable one if not applicable:
-enable_compute_sp  = true
-enable_database_sp = false  # No database workloads in org
-```
-
-## Cost Estimate
-
-### Infrastructure Costs
-
-Monthly AWS infrastructure costs (approximate):
-
-- **Lambda** — ~$0.20 (2 executions/month, minimal runtime)
-- **SQS** — ~$0.01 (minimal message volume)
-- **SNS** — ~$0.10 (multiple subscribers, still within free tier)
-- **CloudWatch Logs** — ~$0.50 (log retention)
-- **CloudWatch Alarms** — ~$0.20 (2 alarms)
-
-**Total infrastructure: ~$1/month**
-
-### Savings Plans Costs
-
-Actual Savings Plans purchases depend on organization-wide usage:
-
-- `max_purchase_percent = 8` limits purchases to 8% of monthly org on-demand spend
-- Example: $100,000/month org-wide on-demand → max $8,000/month in new SP commitments
-- Typical savings: 10-66% depending on services and terms
-- ROI typically positive within 1-2 months
-
-## Troubleshooting
-
-### Role Assumption Failures
-
-If Lambda cannot assume the management account role:
-
-1. Verify role exists in management account:
-   ```bash
-   aws iam get-role --role-name SavingsPlansAutomationRole
-   ```
-2. Check trust policy allows delegation from your account
-3. Verify external ID matches (if configured)
-4. Review Lambda CloudWatch logs for specific error messages
-
-### No Organization-Level Recommendations
-
-If Cost Explorer doesn't return organization-level data:
-
-1. Verify consolidated billing is enabled in management account
-2. Ensure at least 14 days of usage data exists
-3. Confirm role has `ce:GetSavingsPlansPurchaseRecommendation` permission
-
-## Security Considerations
-
-- **Least privilege** — Cross-account role should only have Cost Explorer and Savings Plans permissions
-- **Audit trail** — CloudWatch logs and CloudTrail track all purchases
-- **Access control** — Restrict Terraform state access; enable MFA for management account
+- **Member accounts:** SPs automatically benefit all linked accounts
+- **Cost allocation:** SP costs appear in management account; use Cost Allocation Tags for chargeback
+- **Account isolation:** Not supported; org-level SPs apply to all member accounts
 
 ## Cleanup
-
-To remove all infrastructure:
 
 ```bash
 terraform destroy
 ```
 
-**⚠️ IMPORTANT:** This does NOT cancel existing Savings Plans commitments. Active organization-level Savings Plans will continue to apply until their terms expire.
+**⚠️ IMPORTANT:** Does NOT cancel existing Savings Plans. Active org-level Savings Plans continue until terms expire.
 
-To view active commitments after cleanup:
+View active commitments:
 
 ```bash
 aws savingsplans describe-savings-plans --filters name=scope,values=organization
@@ -521,29 +276,18 @@ aws savingsplans describe-savings-plans --filters name=scope,values=organization
 
 ## Next Steps
 
-After validating this organization-wide setup:
+- Optimize coverage targets based on usage patterns
+- Fine-tune term mix: adjust `compute_sp_term_mix`
+- Implement cost allocation tags for chargeback
+- Create dashboards for SP coverage trends
+- Formalize multi-team review procedures
 
-- **Optimize Coverage Targets** — Adjust `coverage_target_percent` based on actual usage patterns
-- **Fine-Tune Term Mix** — Analyze workload stability and adjust `compute_sp_term_mix`
-- **Implement Cost Allocation** — Set up cost allocation tags for chargeback
-- **Automate Reporting** — Create dashboards for SP coverage and savings trends
-- **Scale Review Process** — Formalize multi-team review procedures
-- **Consider RI Automation** — Evaluate adding Reserved Instance automation for EC2
-
-## Support
-
-For issues or questions:
-
-- Review CloudWatch logs for detailed error messages
-- Check AWS CloudTrail for API call history
-- Verify cross-account role permissions and trust policy
-- Check the [main module README](../../README.md) for detailed documentation
-- Open an issue on the GitHub repository
+See [main README](../../README.md) for complete documentation.
 
 ---
 
 **⚠️ Important:**
-- Always start with `dry_run = true` and validate organization-wide recommendations
-- Coordinate with FinOps, governance, and finance teams before enabling purchases
-- Establish a review process for the purchase queue during the review window
-- Organization-level SPs automatically benefit all member accounts
+- Start with `dry_run = true` and validate org-wide recommendations
+- Coordinate with FinOps, governance, and finance teams before enabling
+- Establish review process for purchase queue during review window
+- Org-level SPs automatically benefit all member accounts

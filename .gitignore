@@ -219,3 +219,6 @@ logs/security/
 
 # Claude temporary files
 tmpclaude-*-cwd
+
+# Documentation verification reports
+*_verification_report.txt
