@@ -350,8 +350,8 @@ variable "report_format" {
   default     = "html"
 
   validation {
-    condition     = contains(["html", "pdf"], var.report_format)
-    error_message = "report_format must be one of: html, pdf."
+    condition     = contains(["html", "pdf", "json"], var.report_format)
+    error_message = "report_format must be one of: html, pdf, json."
   }
 }
 

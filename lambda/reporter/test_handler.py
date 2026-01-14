@@ -474,6 +474,171 @@ def test_generate_html_report_trend_down():
 
 
 # ============================================================================
+# JSON Report Generation Tests
+# ============================================================================
+
+def test_generate_json_report_with_data():
+    """Test JSON report generation with full data."""
+    import json
+
+    coverage_history = [
+        {
+            'date': '2026-01-10',
+            'coverage_percentage': 75.0,
+            'covered_hours': 300.0,
+            'on_demand_hours': 100.0,
+            'total_hours': 400.0
+        },
+        {
+            'date': '2026-01-11',
+            'coverage_percentage': 80.0,
+            'covered_hours': 320.0,
+            'on_demand_hours': 80.0,
+            'total_hours': 400.0
+        }
+    ]
+
+    savings_data = {
+        'total_commitment': 3.5,
+        'plans_count': 2,
+        'plans': [
+            {
+                'plan_id': 'sp-12345678901234567890',
+                'plan_type': 'ComputeSavingsPlans',
+                'hourly_commitment': 1.5,
+                'start_date': '2025-01-01T00:00:00Z',
+                'end_date': '2026-01-01T00:00:00Z',
+                'payment_option': 'ALL_UPFRONT',
+                'term_years': 1
+            }
+        ],
+        'estimated_monthly_savings': 639.25,
+        'average_utilization': 96.0
+    }
+
+    result = handler.generate_json_report(coverage_history, savings_data)
+
+    # Verify it's valid JSON
+    report = json.loads(result)
+
+    # Verify metadata
+    assert 'report_metadata' in report
+    assert report['report_metadata']['report_type'] == 'savings_plans_coverage_and_savings'
+    assert report['report_metadata']['generator'] == 'sp-autopilot-reporter'
+    assert report['report_metadata']['reporting_period_days'] == 2
+
+    # Verify coverage summary
+    assert 'coverage_summary' in report
+    assert report['coverage_summary']['current_coverage_percentage'] == 80.0
+    assert report['coverage_summary']['average_coverage_percentage'] == 77.5
+    assert report['coverage_summary']['trend_direction'] == 'increasing'
+    assert report['coverage_summary']['trend_value'] == 5.0
+    assert report['coverage_summary']['data_points'] == 2
+
+    # Verify coverage history is included
+    assert 'coverage_history' in report
+    assert len(report['coverage_history']) == 2
+    assert report['coverage_history'][0]['date'] == '2026-01-10'
+    assert report['coverage_history'][1]['coverage_percentage'] == 80.0
+
+    # Verify savings summary
+    assert 'savings_summary' in report
+    assert report['savings_summary']['active_plans_count'] == 2
+    assert report['savings_summary']['total_hourly_commitment'] == 3.5
+    assert report['savings_summary']['total_monthly_commitment'] == 3.5 * 730
+    assert report['savings_summary']['estimated_monthly_savings'] == 639.25
+    assert report['savings_summary']['average_utilization_percentage'] == 96.0
+
+    # Verify active savings plans are included
+    assert 'active_savings_plans' in report
+    assert len(report['active_savings_plans']) == 1
+    assert report['active_savings_plans'][0]['plan_id'] == 'sp-12345678901234567890'
+
+
+def test_generate_json_report_empty_coverage():
+    """Test JSON report generation with no coverage data."""
+    import json
+
+    coverage_history = []
+    savings_data = {
+        'total_commitment': 0.0,
+        'plans_count': 0,
+        'plans': [],
+        'estimated_monthly_savings': 0.0,
+        'average_utilization': 0.0
+    }
+
+    result = handler.generate_json_report(coverage_history, savings_data)
+
+    # Verify it's valid JSON
+    report = json.loads(result)
+
+    # Verify zeros/empty values
+    assert report['coverage_summary']['current_coverage_percentage'] == 0.0
+    assert report['coverage_summary']['average_coverage_percentage'] == 0.0
+    assert report['coverage_summary']['trend_direction'] == 'stable'
+    assert report['coverage_summary']['data_points'] == 0
+    assert report['savings_summary']['active_plans_count'] == 0
+    assert report['savings_summary']['total_hourly_commitment'] == 0.0
+    assert len(report['coverage_history']) == 0
+    assert len(report['active_savings_plans']) == 0
+
+
+def test_generate_json_report_trend_increasing():
+    """Test JSON report shows increasing trend."""
+    import json
+
+    coverage_history = [
+        {'date': '2026-01-10', 'coverage_percentage': 70.0, 'covered_hours': 280.0, 'on_demand_hours': 120.0, 'total_hours': 400.0},
+        {'date': '2026-01-11', 'coverage_percentage': 80.0, 'covered_hours': 320.0, 'on_demand_hours': 80.0, 'total_hours': 400.0}
+    ]
+
+    savings_data = {'total_commitment': 0.0, 'plans_count': 0, 'plans': [], 'estimated_monthly_savings': 0.0, 'average_utilization': 0.0}
+
+    result = handler.generate_json_report(coverage_history, savings_data)
+    report = json.loads(result)
+
+    assert report['coverage_summary']['trend_direction'] == 'increasing'
+    assert report['coverage_summary']['trend_value'] == 10.0
+
+
+def test_generate_json_report_trend_decreasing():
+    """Test JSON report shows decreasing trend."""
+    import json
+
+    coverage_history = [
+        {'date': '2026-01-10', 'coverage_percentage': 80.0, 'covered_hours': 320.0, 'on_demand_hours': 80.0, 'total_hours': 400.0},
+        {'date': '2026-01-11', 'coverage_percentage': 70.0, 'covered_hours': 280.0, 'on_demand_hours': 120.0, 'total_hours': 400.0}
+    ]
+
+    savings_data = {'total_commitment': 0.0, 'plans_count': 0, 'plans': [], 'estimated_monthly_savings': 0.0, 'average_utilization': 0.0}
+
+    result = handler.generate_json_report(coverage_history, savings_data)
+    report = json.loads(result)
+
+    assert report['coverage_summary']['trend_direction'] == 'decreasing'
+    assert report['coverage_summary']['trend_value'] == -10.0
+
+
+def test_generate_json_report_trend_stable():
+    """Test JSON report shows stable trend."""
+    import json
+
+    coverage_history = [
+        {'date': '2026-01-10', 'coverage_percentage': 75.0, 'covered_hours': 300.0, 'on_demand_hours': 100.0, 'total_hours': 400.0},
+        {'date': '2026-01-11', 'coverage_percentage': 75.0, 'covered_hours': 300.0, 'on_demand_hours': 100.0, 'total_hours': 400.0}
+    ]
+
+    savings_data = {'total_commitment': 0.0, 'plans_count': 0, 'plans': [], 'estimated_monthly_savings': 0.0, 'average_utilization': 0.0}
+
+    result = handler.generate_json_report(coverage_history, savings_data)
+    report = json.loads(result)
+
+    assert report['coverage_summary']['trend_direction'] == 'stable'
+    assert report['coverage_summary']['trend_value'] == 0.0
+
+
+# ============================================================================
 # S3 Upload Tests
 # ============================================================================
 
@@ -495,6 +660,27 @@ def test_upload_report_to_s3_success(mock_env_vars):
         call_args = mock_put_object.call_args[1]
         assert call_args['Bucket'] == 'test-reports-bucket'
         assert call_args['ContentType'] == 'text/html'
+        assert call_args['ServerSideEncryption'] == 'AES256'
+
+
+def test_upload_report_to_s3_json_format(mock_env_vars):
+    """Test S3 upload with JSON format."""
+    config = handler.load_configuration()
+
+    with patch.object(handler.s3_client, 'put_object') as mock_put_object:
+        mock_put_object.return_value = {}
+
+        report_content = '{"test": "report"}'
+        result = handler.upload_report_to_s3(config, report_content, 'json')
+
+        assert result.startswith('savings-plans-report_')
+        assert result.endswith('.json')
+
+        # Verify put_object was called with correct parameters
+        mock_put_object.assert_called_once()
+        call_args = mock_put_object.call_args[1]
+        assert call_args['Bucket'] == 'test-reports-bucket'
+        assert call_args['ContentType'] == 'application/json'
         assert call_args['ServerSideEncryption'] == 'AES256'
 
 

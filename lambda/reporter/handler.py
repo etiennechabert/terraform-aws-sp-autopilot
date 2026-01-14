@@ -147,8 +147,11 @@ def handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
         savings_data = get_savings_data()
         logger.info(f"Savings data collected: {savings_data.get('plans_count', 0)} active plans")
 
-        # Step 3: Generate HTML report
-        report_content = generate_html_report(coverage_history, savings_data)
+        # Step 3: Generate report based on format
+        if config['report_format'] == 'json':
+            report_content = generate_json_report(coverage_history, savings_data)
+        else:
+            report_content = generate_html_report(coverage_history, savings_data)
 
         # Step 4: Upload report to S3
         s3_object_key = upload_report_to_s3(config, report_content, config['report_format'])
@@ -719,6 +722,78 @@ def generate_html_report(
     return html
 
 
+def generate_json_report(
+    coverage_history: List[Dict[str, Any]],
+    savings_data: Dict[str, Any]
+) -> str:
+    """
+    Generate JSON report with coverage trends and savings metrics.
+
+    Args:
+        coverage_history: List of coverage data points by day
+        savings_data: Savings Plans data including commitment and estimated savings
+
+    Returns:
+        str: JSON report content
+    """
+    logger.info("Generating JSON report")
+
+    # Calculate report timestamp
+    report_timestamp = datetime.now(timezone.utc).isoformat()
+
+    # Calculate coverage summary
+    avg_coverage = 0.0
+    if coverage_history:
+        total_coverage = sum(item.get('coverage_percentage', 0.0) for item in coverage_history)
+        avg_coverage = total_coverage / len(coverage_history)
+
+    current_coverage = coverage_history[-1].get('coverage_percentage', 0.0) if coverage_history else 0.0
+
+    # Calculate trend direction
+    trend_direction = 'stable'
+    trend_value = 0.0
+    if len(coverage_history) >= 2:
+        first_coverage = coverage_history[0].get('coverage_percentage', 0.0)
+        last_coverage = coverage_history[-1].get('coverage_percentage', 0.0)
+        trend_value = last_coverage - first_coverage
+        if trend_value > 0:
+            trend_direction = 'increasing'
+        elif trend_value < 0:
+            trend_direction = 'decreasing'
+
+    # Build JSON report structure
+    report = {
+        'report_metadata': {
+            'generated_at': report_timestamp,
+            'report_type': 'savings_plans_coverage_and_savings',
+            'generator': 'sp-autopilot-reporter',
+            'reporting_period_days': len(coverage_history)
+        },
+        'coverage_summary': {
+            'current_coverage_percentage': round(current_coverage, 2),
+            'average_coverage_percentage': round(avg_coverage, 2),
+            'trend_direction': trend_direction,
+            'trend_value': round(trend_value, 2),
+            'data_points': len(coverage_history)
+        },
+        'coverage_history': coverage_history,
+        'savings_summary': {
+            'active_plans_count': savings_data.get('plans_count', 0),
+            'total_hourly_commitment': round(savings_data.get('total_commitment', 0.0), 4),
+            'total_monthly_commitment': round(savings_data.get('total_commitment', 0.0) * 730, 2),
+            'estimated_monthly_savings': round(savings_data.get('estimated_monthly_savings', 0.0), 2),
+            'average_utilization_percentage': round(savings_data.get('average_utilization', 0.0), 2)
+        },
+        'active_savings_plans': savings_data.get('plans', [])
+    }
+
+    # Convert to JSON string with pretty formatting
+    json_content = json.dumps(report, indent=2, default=str)
+
+    logger.info(f"JSON report generated ({len(json_content)} bytes)")
+    return json_content
+
+
 def upload_report_to_s3(
     config: Dict[str, Any],
     report_content: str,
@@ -750,7 +825,7 @@ def upload_report_to_s3(
             Bucket=bucket_name,
             Key=object_key,
             Body=report_content.encode('utf-8'),
-            ContentType='text/html' if report_format == 'html' else 'text/plain',
+            ContentType='application/json' if report_format == 'json' else 'text/html',
             ServerSideEncryption='AES256',
             Metadata={
                 'generated-at': datetime.now(timezone.utc).isoformat(),
