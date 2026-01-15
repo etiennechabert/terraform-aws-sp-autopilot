@@ -61,6 +61,8 @@ select = [
 # Ignore specific rules that may conflict with existing code patterns
 ignore = [
     "E501",     # Line too long (handled by formatter)
+    "UP035",    # typing.Dict/List deprecated (codebase uses typing style)
+    "UP006",    # Use dict instead of Dict (codebase uses typing style)
     "PLR0913",  # Too many arguments to function call
     "PLR2004",  # Magic value used in comparison
     "PLR0912",  # Too many branches (complexity metric)
