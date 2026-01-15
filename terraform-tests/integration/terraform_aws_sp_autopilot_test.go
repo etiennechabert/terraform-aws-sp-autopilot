@@ -228,8 +228,8 @@ func TestFullDeploymentAndCleanup(t *testing.T) {
 	moduleConfig := terraform.OutputMap(t, terraformOptions, "module_configuration")
 	require.NotEmpty(t, moduleConfig, "Module configuration should not be empty")
 
-	assert.Equal(t, "true", moduleConfig["enable_compute_sp"], "Compute SP should be enabled")
-	assert.Equal(t, "true", moduleConfig["enable_database_sp"], "Database SP should be enabled")
+	assert.Equal(t, "true", moduleConfig["compute_sp_enabled"], "Compute SP should be enabled")
+	assert.Equal(t, "true", moduleConfig["database_sp_enabled"], "Database SP should be enabled")
 	assert.Equal(t, "true", moduleConfig["dry_run"], "Dry run should be enabled")
 
 	t.Log("✓ Module configuration validated")
