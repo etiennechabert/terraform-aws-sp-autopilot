@@ -107,7 +107,9 @@ def _ensure_savingsplans_client():
 # These match the old function signatures and use lazily-initialized clients
 def calculate_current_coverage(config: Dict[str, Any]) -> Dict[str, float]:
     """Calculate current coverage - backward compatible wrapper."""
-    return coverage_module.calculate_current_coverage(_ensure_savingsplans_client(), _ensure_ce_client(), config)
+    return coverage_module.calculate_current_coverage(
+        _ensure_savingsplans_client(), _ensure_ce_client(), config
+    )
 
 
 def get_aws_recommendations(config: Dict[str, Any]) -> Dict[str, Any]:
@@ -129,14 +131,18 @@ def send_scheduled_email(
     config: Dict[str, Any], purchase_plans: list, coverage_data: Dict[str, float]
 ) -> None:
     """Send scheduled email - backward compatible wrapper."""
-    return email_module.send_scheduled_email(_ensure_sns_client(), config, purchase_plans, coverage_data)
+    return email_module.send_scheduled_email(
+        _ensure_sns_client(), config, purchase_plans, coverage_data
+    )
 
 
 def send_dry_run_email(
     config: Dict[str, Any], purchase_plans: list, coverage_data: Dict[str, float]
 ) -> None:
     """Send dry run email - backward compatible wrapper."""
-    return email_module.send_dry_run_email(_ensure_sns_client(), config, purchase_plans, coverage_data)
+    return email_module.send_dry_run_email(
+        _ensure_sns_client(), config, purchase_plans, coverage_data
+    )
 
 
 # Re-export these functions directly as they don't need client parameters
