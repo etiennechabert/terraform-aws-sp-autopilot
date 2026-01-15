@@ -71,10 +71,20 @@ def calculate_current_coverage(
         end_date = now.date()
         start_date = end_date - timedelta(days=1)
 
-        response = ce_client.get_savings_plans_coverage(
-            TimePeriod={"Start": start_date.isoformat(), "End": end_date.isoformat()},
-            Granularity="DAILY",
-        )
+        try:
+            response = ce_client.get_savings_plans_coverage(
+                TimePeriod={"Start": start_date.isoformat(), "End": end_date.isoformat()},
+                Granularity="DAILY",
+            )
+        except ClientError as e:
+            error_code = e.response["Error"]["Code"]
+            if error_code == "DataUnavailableException":
+                logger.warning(
+                    "Cost Explorer data not available (new account or no usage data). "
+                    "Returning 0% coverage."
+                )
+                return {"compute": 0.0, "database": 0.0, "sagemaker": 0.0}
+            raise
 
         coverage_by_time = response.get("SavingsPlansCoverages", [])
 
