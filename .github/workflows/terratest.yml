@@ -34,7 +34,7 @@ jobs:
     env:
       AWS_DEFAULT_REGION: ${{ github.event.inputs.aws_region || 'us-east-1' }}
       GO_VERSION: '1.21'
-      TERRAFORM_VERSION: '1.6.0'
+      TERRAFORM_VERSION: '1.11.0'
 
     steps:
       - name: Checkout code
