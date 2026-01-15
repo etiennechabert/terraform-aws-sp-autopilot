@@ -43,7 +43,7 @@ jobs:
       - name: Run Terraform Tests
         run: |
           echo "Running all Terraform tests..."
-          terraform test -verbose
+          terraform test -verbose -test-directory=terraform-tests/unit
           TEST_EXIT_CODE=$?
           echo "Test exit code: $TEST_EXIT_CODE"
 
@@ -57,7 +57,7 @@ jobs:
       - name: Verify No Credential Errors
         run: |
           echo "Checking for credential-related errors..."
-          terraform test 2>&1 | tee test_output.log
+          terraform test -test-directory=terraform-tests/unit 2>&1 | tee test_output.log
 
           if grep -iE "(credential|authentication|no valid credential|unable to locate credential)" test_output.log; then
             echo "❌ FAILURE: Credential-related errors detected"
@@ -75,7 +75,7 @@ jobs:
           echo "Version: $(terraform version -json | jq -r '.terraform_version')"
           echo "AWS Credentials: NOT REQUIRED ✓"
           echo "Mock Provider: ENABLED ✓"
-          echo "Test Files: $(ls -1 tests/*.tftest.hcl | wc -l)"
+          echo "Test Files: $(ls -1 terraform-tests/unit/*.tftest.hcl 2>/dev/null | wc -l)"
           echo "========================================="
 
   test-file-validation:
@@ -111,7 +111,7 @@ jobs:
       - name: Validate Mock Provider Configuration
         run: |
           echo "Checking all test files have mock_provider..."
-          for file in tests/*.tftest.hcl; do
+          for file in terraform-tests/unit/*.tftest.hcl; do
             if grep -q 'mock_provider "aws"' "$file"; then
               echo "✓ $file has mock_provider"
             else
@@ -123,7 +123,7 @@ jobs:
       - name: Validate No Apply Commands
         run: |
           echo "Ensuring no tests use 'command = apply'..."
-          if grep -r "command = apply" tests/; then
+          if grep -r "command = apply" terraform-tests/unit/; then
             echo "✗ FAILURE: Found 'command = apply' in tests (should use 'command = plan')"
             exit 1
           else
@@ -135,8 +135,8 @@ jobs:
           echo "========================================="
           echo "Test Coverage Statistics"
           echo "========================================="
-          echo "Test files: $(ls -1 tests/*.tftest.hcl | wc -l)"
-          echo "Total test runs: $(grep -r 'run "' tests/ | wc -l)"
-          echo "Total assertions: $(grep -r 'assert {' tests/ | wc -l)"
-          echo "Validation tests: $(grep -r 'expect_failures' tests/ | wc -l)"
+          echo "Test files: $(ls -1 terraform-tests/unit/*.tftest.hcl 2>/dev/null | wc -l)"
+          echo "Total test runs: $(grep -r 'run "' terraform-tests/unit/ | wc -l)"
+          echo "Total assertions: $(grep -r 'assert {' terraform-tests/unit/ | wc -l)"
+          echo "Validation tests: $(grep -r 'expect_failures' terraform-tests/unit/ | wc -l)"
           echo "========================================="

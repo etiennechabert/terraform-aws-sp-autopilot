@@ -163,7 +163,7 @@ jobs:
           PYTHONPATH: ${{ github.workspace }}/lambda
           AWS_DEFAULT_REGION: us-east-1
         run: |
-          python test_integration.py
+          python tests/test_integration.py
 
       - name: Comment PR with Test Results
         if: github.event_name == 'pull_request' && failure()
