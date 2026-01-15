@@ -8,8 +8,8 @@ on:
     paths:
       - '**.tf'
       - 'lambda/**'
-      - 'test/**'
-      - '.github/workflows/terratest.yml'
+      - 'terraform-tests/integration/**'
+      - '.github/workflows/terraform-integration-tests.yml'
   workflow_dispatch:
     inputs:
       test_filter:
@@ -65,14 +65,119 @@ jobs:
           aws sts get-caller-identity
           echo "AWS credentials configured successfully"
 
-      - name: Download Go modules
-        working-directory: test
+      - name: Clean up orphaned resources
         run: |
+          echo "=========================================="
+          echo "Cleaning up orphaned AWS resources from previous test runs..."
+          echo "=========================================="
+
+          # Note: Tests only use us-east-1 (IAM policy region restriction)
+          for region in us-east-1; do
+            echo ""
+            echo "Cleaning up resources in $region..."
+
+            # 1. Delete Lambda functions
+            echo "  - Deleting Lambda functions..."
+            for func in sp-autopilot-scheduler sp-autopilot-purchaser sp-autopilot-reporter; do
+              aws lambda delete-function --function-name $func --region $region 2>/dev/null && echo "    ✓ Deleted Lambda: $func" || true
+            done
+
+            # 2. Delete EventBridge rules (must delete targets first)
+            echo "  - Deleting EventBridge rules..."
+            for rule in sp-autopilot-scheduler sp-autopilot-purchaser; do
+              # Remove all targets from rule
+              aws events remove-targets --rule $rule --ids $(aws events list-targets-by-rule --rule $rule --region $region --query 'Targets[*].Id' --output text 2>/dev/null) --region $region 2>/dev/null || true
+              # Delete rule
+              aws events delete-rule --name $rule --region $region 2>/dev/null && echo "    ✓ Deleted EventBridge rule: $rule" || true
+            done
+
+            # 3. Delete CloudWatch alarms
+            echo "  - Deleting CloudWatch alarms..."
+            for alarm in sp-autopilot-scheduler-errors sp-autopilot-purchaser-errors sp-autopilot-reporter-errors sp-autopilot-dlq-messages; do
+              aws cloudwatch delete-alarms --alarm-names $alarm --region $region 2>/dev/null && echo "    ✓ Deleted alarm: $alarm" || true
+            done
+
+            # 4. Delete CloudWatch log groups
+            echo "  - Deleting CloudWatch log groups..."
+            aws logs describe-log-groups \
+              --log-group-name-prefix "/aws/lambda/sp-autopilot" \
+              --region $region \
+              --query 'logGroups[*].logGroupName' \
+              --output text 2>/dev/null | tr '\t' '\n' | while read -r log_group; do
+              if [ -n "$log_group" ]; then
+                aws logs delete-log-group --log-group-name "$log_group" --region $region 2>/dev/null && echo "    ✓ Deleted log group: $log_group" || true
+              fi
+            done
+
+            # 5. Delete SQS queues
+            echo "  - Deleting SQS queues..."
+            for queue_name in sp-autopilot-purchase-intents sp-autopilot-purchase-intents-dlq; do
+              queue_url=$(aws sqs get-queue-url --queue-name $queue_name --region $region --query 'QueueUrl' --output text 2>/dev/null) || true
+              if [ -n "$queue_url" ]; then
+                aws sqs delete-queue --queue-url "$queue_url" --region $region 2>/dev/null && echo "    ✓ Deleted SQS queue: $queue_name" || true
+              fi
+            done
+
+            # 6. Delete SNS topic (must delete subscriptions first)
+            echo "  - Deleting SNS topics..."
+            topic_arn=$(aws sns list-topics --region $region --query "Topics[?contains(TopicArn, 'sp-autopilot-notifications')].TopicArn" --output text 2>/dev/null) || true
+            if [ -n "$topic_arn" ]; then
+              # Delete all subscriptions
+              aws sns list-subscriptions-by-topic --topic-arn "$topic_arn" --region $region --query 'Subscriptions[*].SubscriptionArn' --output text 2>/dev/null | tr '\t' '\n' | while read -r sub_arn; do
+                if [ -n "$sub_arn" ] && [ "$sub_arn" != "None" ] && [ "$sub_arn" != "PendingConfirmation" ]; then
+                  aws sns unsubscribe --subscription-arn "$sub_arn" --region $region 2>/dev/null || true
+                fi
+              done
+              # Delete topic
+              aws sns delete-topic --topic-arn "$topic_arn" --region $region 2>/dev/null && echo "    ✓ Deleted SNS topic: sp-autopilot-notifications" || true
+            fi
+
+            # 7. Delete IAM role policies and roles (IAM is global, so only do this once)
+            if [ "$region" == "us-east-1" ]; then
+              echo "  - Deleting IAM roles and policies..."
+              for role in sp-autopilot-scheduler sp-autopilot-purchaser sp-autopilot-reporter; do
+                # Delete inline policies
+                aws iam list-role-policies --role-name $role --query 'PolicyNames[*]' --output text 2>/dev/null | tr '\t' '\n' | while read -r policy; do
+                  if [ -n "$policy" ]; then
+                    aws iam delete-role-policy --role-name $role --policy-name "$policy" 2>/dev/null || true
+                  fi
+                done
+                # Detach managed policies
+                aws iam list-attached-role-policies --role-name $role --query 'AttachedPolicies[*].PolicyArn' --output text 2>/dev/null | tr '\t' '\n' | while read -r policy_arn; do
+                  if [ -n "$policy_arn" ]; then
+                    aws iam detach-role-policy --role-name $role --policy-arn "$policy_arn" 2>/dev/null || true
+                  fi
+                done
+                # Delete role
+                aws iam delete-role --role-name $role 2>/dev/null && echo "    ✓ Deleted IAM role: $role" || true
+              done
+            fi
+          done
+
+          echo ""
+          echo "=========================================="
+          echo "Cleanup complete"
+          echo "=========================================="
+
+      - name: Download Go modules
+        working-directory: terraform-tests/integration
+        run: |
+          go mod tidy
           go mod download
           go mod verify
 
+      - name: Validate test fixtures
+        working-directory: terraform-tests/integration/fixtures/basic
+        run: |
+          echo "=========================================="
+          echo "Validating test fixture configuration"
+          echo "=========================================="
+          terraform init -backend=false
+          terraform validate
+          echo "✓ Test fixture validation passed"
+
       - name: Run Terratest
-        working-directory: test
+        working-directory: terraform-tests/integration
         env:
           TEST_FILTER: ${{ github.event.inputs.test_filter }}
         run: |
@@ -86,7 +191,7 @@ jobs:
 
       - name: Cleanup on failure
         if: failure()
-        working-directory: test
+        working-directory: terraform-tests/integration
         run: |
           echo "Attempting to clean up any orphaned resources..."
           # Try to destroy any partial deployments
