@@ -159,9 +159,11 @@ resource "null_resource" "scheduler_add_shared" {
 
   provisioner "local-exec" {
     command = <<-EOT
-      cd "${path.module}/lambda/shared"
-      zip -u "${path.module}/.terraform/scheduler.zip" *.py
+      mkdir -p "${path.module}/.terraform"
+      cd "${path.module}/lambda"
+      zip -u "${path.module}/.terraform/scheduler.zip" shared/*.py
     EOT
+    interpreter = ["bash", "-c"]
   }
 
   depends_on = [data.archive_file.scheduler]
@@ -196,9 +198,11 @@ resource "null_resource" "purchaser_add_shared" {
 
   provisioner "local-exec" {
     command = <<-EOT
-      cd "${path.module}/lambda/shared"
-      zip -u "${path.module}/.terraform/purchaser.zip" *.py
+      mkdir -p "${path.module}/.terraform"
+      cd "${path.module}/lambda"
+      zip -u "${path.module}/.terraform/purchaser.zip" shared/*.py
     EOT
+    interpreter = ["bash", "-c"]
   }
 
   depends_on = [data.archive_file.purchaser]
@@ -233,9 +237,11 @@ resource "null_resource" "reporter_add_shared" {
 
   provisioner "local-exec" {
     command = <<-EOT
-      cd "${path.module}/lambda/shared"
-      zip -u "${path.module}/.terraform/reporter.zip" *.py
+      mkdir -p "${path.module}/.terraform"
+      cd "${path.module}/lambda"
+      zip -u "${path.module}/.terraform/reporter.zip" shared/*.py
     EOT
+    interpreter = ["bash", "-c"]
   }
 
   depends_on = [data.archive_file.reporter]
