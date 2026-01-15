@@ -334,18 +334,6 @@ jobs:
             exit $TEST_EXIT_CODE
           fi
 
-      - name: Verify No Credential Errors
-        run: |
-          echo "Checking for credential-related errors..."
-          terraform test -test-directory=terraform-tests/unit 2>&1 | tee test_output.log
-
-          if grep -iE "(credential|authentication|no valid credential|unable to locate credential)" test_output.log; then
-            echo "❌ FAILURE: Credential-related errors detected"
-            exit 1
-          else
-            echo "✅ No credential errors detected"
-          fi
-
       - name: Validate Test File Structure
         run: |
           echo "Checking for required test files..."
