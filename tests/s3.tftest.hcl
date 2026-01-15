@@ -70,6 +70,7 @@ run "test_s3_encryption_configuration" {
   }
 
   override_resource {
+    override_during = plan
     target = aws_s3_bucket_server_side_encryption_configuration.reports
     values = {
       rule = [{

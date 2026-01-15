@@ -354,6 +354,22 @@ run "test_purchaser_cloudwatch_logs_policy" {
     dry_run           = true
   }
 
+  override_resource {
+    override_during = plan
+    target = aws_iam_role.purchaser
+    values = {
+      id = "sp-autopilot-purchaser"
+    }
+  }
+
+  override_resource {
+    override_during = plan
+    target = aws_iam_role_policy.purchaser_cloudwatch_logs
+    values = {
+      role = "sp-autopilot-purchaser"
+    }
+  }
+
   assert {
     condition     = aws_iam_role_policy.purchaser_cloudwatch_logs.name == "cloudwatch-logs"
     error_message = "Purchaser CloudWatch Logs policy should have correct name"

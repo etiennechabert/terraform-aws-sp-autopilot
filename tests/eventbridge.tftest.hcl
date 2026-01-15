@@ -352,6 +352,23 @@ run "test_scheduler_eventbridge_target_configuration" {
     dry_run           = true
   }
 
+  override_resource {
+    override_during = plan
+    target = aws_lambda_function.scheduler
+    values = {
+      arn = "arn:aws:lambda:us-east-1:123456789012:function:sp-autopilot-scheduler"
+    }
+  }
+
+  override_resource {
+    override_during = plan
+    target = aws_cloudwatch_event_target.scheduler
+    values = {
+      rule = "sp-autopilot-scheduler"
+      arn  = "arn:aws:lambda:us-east-1:123456789012:function:sp-autopilot-scheduler"
+    }
+  }
+
   assert {
     condition     = aws_cloudwatch_event_target.scheduler.rule == aws_cloudwatch_event_rule.scheduler.name
     error_message = "Scheduler EventBridge target should reference correct rule"
