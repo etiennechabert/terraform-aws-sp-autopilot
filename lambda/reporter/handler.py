@@ -1206,7 +1206,7 @@ def send_report_email(
         "",
         "-" * 60,
         "This is an automated report from AWS Savings Plans Automation.",
-    ]
+    ])
 
     # Publish to SNS
     message_body = "\n".join(body_lines)
