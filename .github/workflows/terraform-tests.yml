@@ -19,12 +19,12 @@ jobs:
       - name: Setup Terraform
         uses: hashicorp/setup-terraform@v3
         with:
-          terraform_version: "1.7.0"
+          terraform_version: "1.11.0"
 
       - name: Verify Terraform Version
         run: |
           terraform version
-          terraform version | grep -E "v1\.[7-9]|v1\.[1-9][0-9]|v[2-9]" || (echo "ERROR: Terraform 1.7+ required" && exit 1)
+          terraform version | grep -E "v1\.1[1-9]|v1\.[2-9][0-9]|v[2-9]" || (echo "ERROR: Terraform 1.11+ required for override_during support" && exit 1)
 
       - name: Verify AWS Credentials NOT Set
         run: |

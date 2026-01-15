@@ -685,7 +685,7 @@ run "test_s3_lifecycle_transition_glacier_days_invalid_equal_to_ia" {
   }
 
   expect_failures = [
-    var.s3_lifecycle_transition_glacier_days,
+    terraform_data.validate_s3_lifecycle_glacier_days,
   ]
 }
 
@@ -699,7 +699,7 @@ run "test_s3_lifecycle_transition_glacier_days_invalid_less_than_ia" {
   }
 
   expect_failures = [
-    var.s3_lifecycle_transition_glacier_days,
+    terraform_data.validate_s3_lifecycle_glacier_days,
   ]
 }
 
@@ -760,7 +760,7 @@ run "test_s3_lifecycle_expiration_days_invalid_less_than_glacier" {
   }
 
   expect_failures = [
-    var.s3_lifecycle_expiration_days,
+    terraform_data.validate_s3_lifecycle_expiration_days,
   ]
 }
 
@@ -921,14 +921,13 @@ run "test_multiple_validation_failures" {
   command = plan
 
   variables {
-    coverage_target_percent = 101
+    coverage_target_percent = 80
     max_coverage_cap       = 50
     min_commitment_per_plan = 0.0005
   }
 
   expect_failures = [
-    var.coverage_target_percent,
-    var.max_coverage_cap,
-    var.min_commitment_per_plan,
+    terraform_data.validate_max_coverage_cap,  # 50 < 80, cross-validation fails
+    var.min_commitment_per_plan,               # 0.0005 < 0.001, variable validation fails
   ]
 }
