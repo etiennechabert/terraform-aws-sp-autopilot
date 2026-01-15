@@ -22,6 +22,8 @@ resource "aws_lambda_function" "scheduler" {
   filename         = data.archive_file.scheduler.output_path
   source_code_hash = data.archive_file.scheduler.output_base64sha256
 
+  depends_on = [null_resource.scheduler_add_shared]
+
   environment {
     variables = {
       QUEUE_URL                   = aws_sqs_queue.purchase_intents.url
@@ -66,6 +68,8 @@ resource "aws_lambda_function" "purchaser" {
   filename         = data.archive_file.purchaser.output_path
   source_code_hash = data.archive_file.purchaser.output_base64sha256
 
+  depends_on = [null_resource.purchaser_add_shared]
+
   environment {
     variables = {
       QUEUE_URL                   = aws_sqs_queue.purchase_intents.url
@@ -97,6 +101,8 @@ resource "aws_lambda_function" "reporter" {
   filename         = data.archive_file.reporter.output_path
   source_code_hash = data.archive_file.reporter.output_base64sha256
 
+  depends_on = [null_resource.reporter_add_shared]
+
   environment {
     variables = {
       REPORTS_BUCKET              = aws_s3_bucket.reports.id
@@ -117,84 +123,122 @@ resource "aws_lambda_function" "reporter" {
 # Lambda Deployment Packages
 # ============================================================================
 
-# Scheduler Lambda deployment package (includes shared module)
+# Build Lambda deployment packages with correct directory structure
+# Run build-lambda-zips.sh before terraform apply to generate the ZIP files
+# Each ZIP contains: function code at root + shared/ subdirectory
+
+# Scheduler Lambda deployment package
 data "archive_file" "scheduler" {
-  type        = "zip"
-  source_dir  = "${path.module}/lambda"
-  output_path = "${path.module}/.terraform/scheduler.zip"
+  type             = "zip"
+  source_dir       = "${path.module}/lambda/scheduler"
+  output_path      = "${path.module}/.terraform/scheduler.zip"
+  output_file_mode = "0666"
 
+  # Include only Python files, exclude tests and docs
   excludes = [
-    "purchaser",
-    "reporter",
-    "shared/.pytest_cache",
-    "shared/__pycache__",
-    "shared/.coverage",
-    "shared/htmlcov",
-    "shared/tests",
-    "scheduler/.pytest_cache",
-    "scheduler/__pycache__",
-    "scheduler/.coverage",
-    "scheduler/htmlcov",
-    "scheduler/tests",
-    "scheduler/TESTING.md",
-    "scheduler/README.md",
-    "scheduler/pytest.ini",
-    "scheduler/requirements.txt",
-    "scheduler/test_dry_run.sh",
-    "scheduler/integration_test_dry_run.md"
+    ".pytest_cache",
+    "__pycache__",
+    ".coverage",
+    "htmlcov",
+    "tests",
+    "TESTING.md",
+    "README.md",
+    "pytest.ini",
+    "requirements.txt",
+    "test_dry_run.sh",
+    "integration_test_dry_run.md"
   ]
 }
 
-# Purchaser Lambda deployment package (includes shared module)
+# Copy shared module into scheduler package
+resource "null_resource" "scheduler_add_shared" {
+  triggers = {
+    zip_changed    = data.archive_file.scheduler.output_base64sha256
+    shared_changed = filemd5("${path.module}/lambda/shared/handler_utils.py")
+  }
+
+  provisioner "local-exec" {
+    command = <<-EOT
+      cd "${path.module}/lambda/shared"
+      zip -u "${path.module}/.terraform/scheduler.zip" *.py
+    EOT
+  }
+
+  depends_on = [data.archive_file.scheduler]
+}
+
+# Purchaser Lambda deployment package
 data "archive_file" "purchaser" {
-  type        = "zip"
-  source_dir  = "${path.module}/lambda"
-  output_path = "${path.module}/.terraform/purchaser.zip"
+  type             = "zip"
+  source_dir       = "${path.module}/lambda/purchaser"
+  output_path      = "${path.module}/.terraform/purchaser.zip"
+  output_file_mode = "0666"
 
   excludes = [
-    "scheduler",
-    "reporter",
-    "shared/.pytest_cache",
-    "shared/__pycache__",
-    "shared/.coverage",
-    "shared/htmlcov",
-    "shared/tests",
-    "purchaser/.pytest_cache",
-    "purchaser/__pycache__",
-    "purchaser/.coverage",
-    "purchaser/htmlcov",
-    "purchaser/tests",
-    "purchaser/TESTING.md",
-    "purchaser/README.md",
-    "purchaser/pytest.ini",
-    "purchaser/requirements.txt"
+    ".pytest_cache",
+    "__pycache__",
+    ".coverage",
+    "htmlcov",
+    "tests",
+    "TESTING.md",
+    "README.md",
+    "pytest.ini",
+    "requirements.txt"
   ]
 }
 
-# Reporter Lambda deployment package (includes shared module)
+# Copy shared module into purchaser package
+resource "null_resource" "purchaser_add_shared" {
+  triggers = {
+    zip_changed    = data.archive_file.purchaser.output_base64sha256
+    shared_changed = filemd5("${path.module}/lambda/shared/handler_utils.py")
+  }
+
+  provisioner "local-exec" {
+    command = <<-EOT
+      cd "${path.module}/lambda/shared"
+      zip -u "${path.module}/.terraform/purchaser.zip" *.py
+    EOT
+  }
+
+  depends_on = [data.archive_file.purchaser]
+}
+
+# Reporter Lambda deployment package
 data "archive_file" "reporter" {
-  type        = "zip"
-  source_dir  = "${path.module}/lambda"
-  output_path = "${path.module}/.terraform/reporter.zip"
+  type             = "zip"
+  source_dir       = "${path.module}/lambda/reporter"
+  output_path      = "${path.module}/.terraform/reporter.zip"
+  output_file_mode = "0666"
 
   excludes = [
-    "scheduler",
-    "purchaser",
-    "shared/.pytest_cache",
-    "shared/__pycache__",
-    "shared/.coverage",
-    "shared/htmlcov",
-    "shared/tests",
-    "reporter/.pytest_cache",
-    "reporter/__pycache__",
-    "reporter/.coverage",
-    "reporter/htmlcov",
-    "reporter/tests",
-    "reporter/TESTING.md",
-    "reporter/README.md",
-    "reporter/pytest.ini",
-    "reporter/requirements.txt"
+    ".pytest_cache",
+    "__pycache__",
+    ".coverage",
+    "htmlcov",
+    "tests",
+    "TESTING.md",
+    "README.md",
+    "pytest.ini",
+    "requirements.txt"
   ]
+}
+
+# Copy shared module into reporter package
+resource "null_resource" "reporter_add_shared" {
+  triggers = {
+    zip_changed    = data.archive_file.reporter.output_base64sha256
+    shared_changed = filemd5("${path.module}/lambda/shared/handler_utils.py")
+  }
+
+  provisioner "local-exec" {
+    command = <<-EOT
+      cd "${path.module}/lambda/shared"
+      zip -u "${path.module}/.terraform/reporter.zip" *.py
+    EOT
+  }
+
+  depends_on = [data.archive_file.reporter]
 }
 
 # Create placeholder ZIP files
