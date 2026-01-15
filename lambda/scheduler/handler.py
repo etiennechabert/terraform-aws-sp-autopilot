@@ -55,56 +55,99 @@ logger = logging.getLogger()
 logger.setLevel(logging.INFO)
 
 # Module-level boto3 clients for backward compatibility with existing tests
-# These are initialized lazily when accessed
-import boto3
+# These are initialized to None and tests can assign mock objects to them
+# The wrapper functions below will use these if set, otherwise create real clients
+ce_client = None
+sqs_client = None
+sns_client = None
+savingsplans_client = None
 
 
-ce_client = boto3.client("ce")
-sqs_client = boto3.client("sqs")
-sns_client = boto3.client("sns")
-savingsplans_client = boto3.client("savingsplans")
+def _ensure_ce_client():
+    """Get Cost Explorer client, creating it if needed."""
+    global ce_client
+    if ce_client is None:
+        import boto3
+
+        ce_client = boto3.client("ce")
+    return ce_client
+
+
+def _ensure_sqs_client():
+    """Get SQS client, creating it if needed."""
+    global sqs_client
+    if sqs_client is None:
+        import boto3
+
+        sqs_client = boto3.client("sqs")
+    return sqs_client
+
+
+def _ensure_sns_client():
+    """Get SNS client, creating it if needed."""
+    global sns_client
+    if sns_client is None:
+        import boto3
+
+        sns_client = boto3.client("sns")
+    return sns_client
+
+
+def _ensure_savingsplans_client():
+    """Get Savings Plans client, creating it if needed."""
+    global savingsplans_client
+    if savingsplans_client is None:
+        import boto3
+
+        savingsplans_client = boto3.client("savingsplans")
+    return savingsplans_client
 
 
 # Backward-compatible wrapper functions for existing tests
-# These match the old function signatures and use module-level clients
+# These match the old function signatures and use lazily-initialized clients
 def calculate_current_coverage(config: Dict[str, Any]) -> Dict[str, float]:
     """Calculate current coverage - backward compatible wrapper."""
-    return coverage_module.calculate_current_coverage(savingsplans_client, ce_client, config)
+    return coverage_module.calculate_current_coverage(_ensure_savingsplans_client(), _ensure_ce_client(), config)
 
 
 def get_aws_recommendations(config: Dict[str, Any]) -> Dict[str, Any]:
     """Get AWS recommendations - backward compatible wrapper."""
-    return recommendations_module.get_aws_recommendations(ce_client, config)
+    return recommendations_module.get_aws_recommendations(_ensure_ce_client(), config)
 
 
 def purge_queue(queue_url: str) -> None:
     """Purge queue - backward compatible wrapper."""
-    return queue_module.purge_queue(sqs_client, queue_url)
+    return queue_module.purge_queue(_ensure_sqs_client(), queue_url)
 
 
 def queue_purchase_intents(config: Dict[str, Any], purchase_plans: list) -> None:
     """Queue purchase intents - backward compatible wrapper."""
-    return queue_module.queue_purchase_intents(sqs_client, config, purchase_plans)
+    return queue_module.queue_purchase_intents(_ensure_sqs_client(), config, purchase_plans)
 
 
 def send_scheduled_email(
     config: Dict[str, Any], purchase_plans: list, coverage_data: Dict[str, float]
 ) -> None:
     """Send scheduled email - backward compatible wrapper."""
-    return email_module.send_scheduled_email(sns_client, config, purchase_plans, coverage_data)
+    return email_module.send_scheduled_email(_ensure_sns_client(), config, purchase_plans, coverage_data)
 
 
 def send_dry_run_email(
     config: Dict[str, Any], purchase_plans: list, coverage_data: Dict[str, float]
 ) -> None:
     """Send dry run email - backward compatible wrapper."""
-    return email_module.send_dry_run_email(sns_client, config, purchase_plans, coverage_data)
+    return email_module.send_dry_run_email(_ensure_sns_client(), config, purchase_plans, coverage_data)
 
 
 # Re-export these functions directly as they don't need client parameters
 calculate_purchase_need = purchase_module.calculate_purchase_need
 apply_purchase_limits = purchase_module.apply_purchase_limits
 split_by_term = purchase_module.split_by_term
+
+
+# Backward-compatible imports for configuration and AWS utils
+from config import load_configuration
+from shared.aws_utils import get_assumed_role_session, get_clients
 
 
 def send_error_email(error_msg: str, sns_topic_arn: str = None) -> None:
