@@ -398,6 +398,23 @@ run "test_purchaser_eventbridge_target_configuration" {
     dry_run           = true
   }
 
+  override_resource {
+    override_during = plan
+    target = aws_lambda_function.purchaser
+    values = {
+      arn = "arn:aws:lambda:us-east-1:123456789012:function:sp-autopilot-purchaser"
+    }
+  }
+
+  override_resource {
+    override_during = plan
+    target = aws_cloudwatch_event_target.purchaser
+    values = {
+      rule = "sp-autopilot-purchaser"
+      arn  = "arn:aws:lambda:us-east-1:123456789012:function:sp-autopilot-purchaser"
+    }
+  }
+
   assert {
     condition     = aws_cloudwatch_event_target.purchaser.rule == "sp-autopilot-purchaser"
     error_message = "Purchaser EventBridge target should reference correct rule"

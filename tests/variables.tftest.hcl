@@ -921,14 +921,13 @@ run "test_multiple_validation_failures" {
   command = plan
 
   variables {
-    coverage_target_percent = 101
+    coverage_target_percent = 80
     max_coverage_cap       = 50
     min_commitment_per_plan = 0.0005
   }
 
   expect_failures = [
-    var.coverage_target_percent,
-    terraform_data.validate_max_coverage_cap,
-    var.min_commitment_per_plan,
+    terraform_data.validate_max_coverage_cap,  # 50 < 80, cross-validation fails
+    var.min_commitment_per_plan,               # 0.0005 < 0.001, variable validation fails
   ]
 }

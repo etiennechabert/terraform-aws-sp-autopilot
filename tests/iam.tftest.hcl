@@ -358,7 +358,8 @@ run "test_purchaser_cloudwatch_logs_policy" {
     override_during = plan
     target = aws_iam_role.purchaser
     values = {
-      id = "sp-autopilot-purchaser"
+      id  = "sp-autopilot-purchaser"
+      arn = "arn:aws:iam::123456789012:role/sp-autopilot-purchaser"
     }
   }
 
