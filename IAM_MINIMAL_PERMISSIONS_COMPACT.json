@@ -1,0 +1,52 @@
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Sid": "TerraformCore",
+      "Effect": "Allow",
+      "Action": [
+        "sts:GetCallerIdentity",
+        "lambda:*",
+        "s3:*",
+        "sqs:*",
+        "sns:*",
+        "events:*",
+        "logs:*",
+        "cloudwatch:*",
+        "kms:*"
+      ],
+      "Resource": "*",
+      "Condition": {
+        "StringEquals": {
+          "aws:RequestedRegion": "us-east-1"
+        }
+      }
+    },
+    {
+      "Sid": "IAMRoles",
+      "Effect": "Allow",
+      "Action": [
+        "iam:*Role*",
+        "iam:*Policy*",
+        "iam:PassRole"
+      ],
+      "Resource": "arn:aws:iam::*:role/sp-autopilot-*"
+    },
+    {
+      "Sid": "DenyExpensive",
+      "Effect": "Deny",
+      "Action": [
+        "ec2:RunInstances",
+        "ec2:StartInstances",
+        "rds:Create*",
+        "redshift:Create*",
+        "elasticache:Create*",
+        "es:Create*",
+        "elasticmapreduce:RunJobFlow",
+        "sagemaker:Create*",
+        "glue:Create*"
+      ],
+      "Resource": "*"
+    }
+  ]
+}

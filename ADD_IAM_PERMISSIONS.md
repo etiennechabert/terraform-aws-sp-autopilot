@@ -1,5 +1,13 @@
 # How to Add IAM Permissions for Integration Tests
 
+⚠️ **IMPORTANT**: AWS has a **2048 character limit** for inline IAM policies!
+
+**Use**: `IAM_MINIMAL_PERMISSIONS_COMPACT.json` (1,095 characters) ✅
+
+For detailed options and alternatives, see: `IAM_SETUP_OPTIONS.md`
+
+---
+
 ## Step-by-Step Instructions
 
 ### 1. Go to IAM Console
@@ -13,16 +21,16 @@
 2. Click **"Add permissions"** → **"Create inline policy"**
 3. Click the **"JSON"** tab
 4. Delete the example JSON
-5. Copy the entire contents of `IAM_MINIMAL_PERMISSIONS.json` (in this directory)
+5. Copy the entire contents of `IAM_MINIMAL_PERMISSIONS_COMPACT.json` (in this directory)
 6. Paste it into the JSON editor
 7. Click **"Next"**
-8. Policy name: `TerraformIntegrationTestPermissions`
+8. Policy name: `TerraformTestPermissions`
 9. Click **"Create policy"**
 
 ### 3. Verify Permissions Added
 
 You should now see:
-- Policy name: `TerraformIntegrationTestPermissions`
+- Policy name: `TerraformTestPermissions`
 - Type: Inline policy
 - Attached to: `sp-autopilot-ci`
 
@@ -71,26 +79,22 @@ You should now see:
 
 After adding permissions:
 
-1. **Merge PR #26** (directory refactoring) to main
-   - This updates the workflow paths
-   - Without this, tests will fail with "directory not found"
-
-2. **Trigger Integration Tests** manually:
+1. **Trigger Integration Tests** manually:
    ```bash
    gh workflow run "Terraform Integration Tests"
    ```
 
-3. **Watch the test run**:
+2. **Watch the test run**:
    ```bash
    gh run watch --exit-status
    ```
 
-4. **If tests fail with permission errors**:
+3. **If tests fail with permission errors**:
    - Check the logs for "AccessDenied" or "UnauthorizedOperation"
    - Add ONLY the specific permission that failed
    - Principle of least privilege - add incrementally
 
-5. **After tests complete successfully**:
+4. **After tests complete successfully**:
    - Verify cleanup worked (check AWS Console)
    - Check AWS Billing Dashboard
    - Should show < $0.01 in charges
@@ -100,10 +104,6 @@ After adding permissions:
 **"AccessDenied" errors during test**:
 - Add the specific permission to the policy
 - Re-run the workflow
-
-**"Directory not found" error**:
-- PR #26 needs to be merged first
-- Or run workflow from `refactor-directory-structure` branch
 
 **Tests pass but resources not cleaned up**:
 - Check test logs for `terraform destroy` errors
@@ -150,10 +150,9 @@ aws iam list-roles --query 'Roles[?starts_with(RoleName, `sp-autopilot`)].RoleNa
 | Step | Action | Status |
 |------|--------|--------|
 | 1 | Add IAM permissions policy | ⏳ |
-| 2 | Merge PR #26 to main | ⏳ |
-| 3 | Trigger integration test workflow | ⏳ |
-| 4 | Monitor test execution | ⏳ |
-| 5 | Verify resource cleanup | ⏳ |
-| 6 | Check AWS billing (< $0.01 expected) | ⏳ |
+| 2 | Trigger integration test workflow | ⏳ |
+| 3 | Monitor test execution | ⏳ |
+| 4 | Verify resource cleanup | ⏳ |
+| 5 | Check AWS billing (< $0.01 expected) | ⏳ |
 
 Once all steps complete successfully, integration tests are ready for ongoing use! 🎉
