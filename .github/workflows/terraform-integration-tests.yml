@@ -65,6 +65,22 @@ jobs:
           aws sts get-caller-identity
           echo "AWS credentials configured successfully"
 
+      - name: Clean up orphaned resources
+        run: |
+          echo "Cleaning up orphaned CloudWatch log groups from previous test runs..."
+          # Delete CloudWatch log groups that may have been left behind
+          aws logs describe-log-groups \
+            --log-group-name-prefix "/aws/lambda/sp-autopilot" \
+            --region ${{ env.AWS_DEFAULT_REGION }} \
+            --query 'logGroups[*].logGroupName' \
+            --output text | tr '\t' '\n' | while read -r log_group; do
+            if [ -n "$log_group" ]; then
+              echo "Deleting log group: $log_group"
+              aws logs delete-log-group --log-group-name "$log_group" --region ${{ env.AWS_DEFAULT_REGION }} || true
+            fi
+          done
+          echo "Cleanup complete"
+
       - name: Download Go modules
         working-directory: terraform-tests/integration
         run: |
