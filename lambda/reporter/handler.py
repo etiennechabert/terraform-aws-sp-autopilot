@@ -32,6 +32,14 @@ logger = logging.getLogger()
 logger.setLevel(logging.INFO)
 
 
+# Module-level clients (initialized for backward compatibility with tests)
+# These can be patched by tests using patch.object(handler.ce_client, ...)
+ce_client = boto3.client("ce")
+savingsplans_client = boto3.client("savingsplans")
+s3_client = boto3.client("s3")
+sns_client = boto3.client("sns")
+
+
 @lambda_handler_wrapper("Reporter")
 def handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
     """

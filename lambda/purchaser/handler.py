@@ -786,3 +786,7 @@ def send_summary_email(
     except ClientError as e:
         logger.error(f"Failed to send summary email: {e!s}")
         raise
+
+
+# Backward-compatible imports for AWS utils (required by existing tests)
+from shared.aws_utils import get_assumed_role_session, get_clients
