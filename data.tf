@@ -37,6 +37,16 @@ resource "terraform_data" "validate_sp_types" {
   }
 }
 
+# Ensure max_coverage_cap is greater than coverage_target_percent
+resource "terraform_data" "validate_max_coverage_cap" {
+  lifecycle {
+    precondition {
+      condition     = var.max_coverage_cap > var.coverage_target_percent
+      error_message = "Max coverage cap must be greater than coverage target percent."
+    }
+  }
+}
+
 # ============================================================================
 # Data Sources
 # ============================================================================
