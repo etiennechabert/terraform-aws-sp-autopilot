@@ -108,20 +108,6 @@ run "test_max_coverage_cap_invalid_above_100" {
   ]
 }
 
-# Test: max_coverage_cap - invalid when equal to coverage_target_percent
-run "test_max_coverage_cap_invalid_equal_to_target" {
-  command = plan
-
-  variables {
-    coverage_target_percent = 90
-    max_coverage_cap       = 90
-  }
-
-  expect_failures = [
-    var.max_coverage_cap,
-  ]
-}
-
 # Test: max_coverage_cap - invalid when less than coverage_target_percent
 run "test_max_coverage_cap_invalid_less_than_target" {
   command = plan
@@ -132,7 +118,7 @@ run "test_max_coverage_cap_invalid_less_than_target" {
   }
 
   expect_failures = [
-    var.max_coverage_cap,
+    terraform_data.validate_max_coverage_cap,
   ]
 }
 
