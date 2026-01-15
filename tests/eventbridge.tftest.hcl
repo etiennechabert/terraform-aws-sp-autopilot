@@ -353,7 +353,7 @@ run "test_scheduler_eventbridge_target_configuration" {
   }
 
   assert {
-    condition     = aws_cloudwatch_event_target.scheduler.rule == "sp-autopilot-scheduler"
+    condition     = aws_cloudwatch_event_target.scheduler.rule == aws_cloudwatch_event_rule.scheduler.name
     error_message = "Scheduler EventBridge target should reference correct rule"
   }
 

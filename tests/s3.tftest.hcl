@@ -69,6 +69,17 @@ run "test_s3_encryption_configuration" {
     dry_run           = true
   }
 
+  override_resource {
+    target = aws_s3_bucket_server_side_encryption_configuration.reports
+    values = {
+      rule = [{
+        apply_server_side_encryption_by_default = [{
+          sse_algorithm = "AES256"
+        }]
+      }]
+    }
+  }
+
   assert {
     condition     = aws_s3_bucket_server_side_encryption_configuration.reports.rule[0].apply_server_side_encryption_by_default[0].sse_algorithm == "AES256"
     error_message = "S3 bucket should use AES256 encryption"

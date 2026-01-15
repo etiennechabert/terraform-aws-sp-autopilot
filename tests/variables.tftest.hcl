@@ -685,7 +685,7 @@ run "test_s3_lifecycle_transition_glacier_days_invalid_equal_to_ia" {
   }
 
   expect_failures = [
-    var.s3_lifecycle_transition_glacier_days,
+    terraform_data.validate_s3_lifecycle_glacier_days,
   ]
 }
 
@@ -699,7 +699,7 @@ run "test_s3_lifecycle_transition_glacier_days_invalid_less_than_ia" {
   }
 
   expect_failures = [
-    var.s3_lifecycle_transition_glacier_days,
+    terraform_data.validate_s3_lifecycle_glacier_days,
   ]
 }
 
@@ -760,7 +760,7 @@ run "test_s3_lifecycle_expiration_days_invalid_less_than_glacier" {
   }
 
   expect_failures = [
-    var.s3_lifecycle_expiration_days,
+    terraform_data.validate_s3_lifecycle_expiration_days,
   ]
 }
 

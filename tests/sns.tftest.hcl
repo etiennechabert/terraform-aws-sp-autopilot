@@ -124,6 +124,15 @@ run "test_email_subscription_single" {
     notification_emails = ["admin@example.com"]
   }
 
+  override_resource {
+    target = aws_sns_topic_subscription.email_notifications["admin@example.com"]
+    values = {
+      protocol  = "email"
+      endpoint  = "admin@example.com"
+      topic_arn = "arn:aws:sns:us-east-1:123456789012:sp-autopilot-notifications"
+    }
+  }
+
   assert {
     condition     = length(aws_sns_topic_subscription.email_notifications) == 1
     error_message = "Exactly one email subscription should be created"

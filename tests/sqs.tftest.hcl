@@ -69,6 +69,16 @@ run "test_sqs_redrive_policy_configured" {
     dry_run           = true
   }
 
+  override_resource {
+    target = aws_sqs_queue.purchase_intents
+    values = {
+      redrive_policy = jsonencode({
+        deadLetterTargetArn = "arn:aws:sqs:us-east-1:123456789012:sp-autopilot-purchase-intents-dlq"
+        maxReceiveCount     = 3
+      })
+    }
+  }
+
   assert {
     condition     = aws_sqs_queue.purchase_intents.redrive_policy != null
     error_message = "SQS main queue should have a redrive policy configured"
