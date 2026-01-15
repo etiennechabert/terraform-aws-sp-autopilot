@@ -407,6 +407,7 @@ jobs:
       - name: Install Terratest Dependencies
         working-directory: terraform-tests/integration
         run: |
+          go mod tidy
           go mod download
           go mod verify
 
