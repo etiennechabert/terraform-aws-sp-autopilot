@@ -3,15 +3,11 @@ Essential integration tests for Reporter Lambda.
 Focuses on core business logic and critical paths only.
 """
 
-import json
-import os
-from datetime import datetime, timezone
-from unittest.mock import MagicMock, Mock, patch
-
-import pytest
-from botocore.exceptions import ClientError
+from unittest.mock import Mock, patch
 
 import handler
+import pytest
+from botocore.exceptions import ClientError
 
 
 @pytest.fixture
