@@ -28,8 +28,9 @@ func TestFullDeploymentAndCleanup(t *testing.T) {
 	// Note: NOT using t.Parallel() for this end-to-end integration test
 	// to ensure complete lifecycle validation
 
-	// Retrieve AWS region from environment or default to us-east-1
-	awsRegion := terratest_aws.GetRandomStableRegion(t, []string{"us-east-1", "us-west-2"}, nil)
+	// Use us-east-1 as required by IAM policy region restriction
+	// The GitHub Actions IAM policy only allows operations in us-east-1
+	awsRegion := "us-east-1"
 
 	// Configure Terraform options with comprehensive settings
 	terraformOptions := terraform.WithDefaultRetryableErrors(t, &terraform.Options{

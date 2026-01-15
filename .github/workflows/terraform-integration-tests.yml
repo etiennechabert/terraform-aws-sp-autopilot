@@ -71,8 +71,8 @@ jobs:
           echo "Cleaning up orphaned AWS resources from previous test runs..."
           echo "=========================================="
 
-          # Note: We clean up resources in both us-east-1 and us-west-2 since tests use random regions
-          for region in us-east-1 us-west-2; do
+          # Note: Tests only use us-east-1 (IAM policy region restriction)
+          for region in us-east-1; do
             echo ""
             echo "Cleaning up resources in $region..."
 
