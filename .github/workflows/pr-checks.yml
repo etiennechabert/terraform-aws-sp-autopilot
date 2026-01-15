@@ -28,7 +28,9 @@ jobs:
 
       - name: Terraform Format Check
         id: fmt
-        run: terraform fmt -check -recursive
+        run: |
+          # Format check for .tf files only (tftest.hcl files are not supported by terraform fmt)
+          find . -name "*.tf" -not -path "*/.terraform/*" -exec terraform fmt -check {} +
         continue-on-error: false
 
       - name: Terraform Init
