@@ -404,3 +404,43 @@ variable "enable_sns_kms_encryption" {
   type        = bool
   default     = false
 }
+
+# ============================================================================
+# Lambda Configuration
+# ============================================================================
+
+variable "lambda_scheduler_memory_size" {
+  description = "Memory size in MB for Scheduler Lambda function"
+  type        = number
+  default     = 256
+}
+
+variable "lambda_scheduler_timeout" {
+  description = "Timeout in seconds for Scheduler Lambda function"
+  type        = number
+  default     = 300
+}
+
+variable "lambda_purchaser_memory_size" {
+  description = "Memory size in MB for Purchaser Lambda function"
+  type        = number
+  default     = 256
+}
+
+variable "lambda_purchaser_timeout" {
+  description = "Timeout in seconds for Purchaser Lambda function"
+  type        = number
+  default     = 300
+}
+
+variable "lambda_reporter_memory_size" {
+  description = "Memory size in MB for Reporter Lambda function"
+  type        = number
+  default     = 256
+}
+
+variable "lambda_reporter_timeout" {
+  description = "Timeout in seconds for Reporter Lambda function"
+  type        = number
+  default     = 300
+}
