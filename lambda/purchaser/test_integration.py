@@ -16,7 +16,7 @@ to verify all required behaviors:
 import json
 import os
 import sys
-from unittest.mock import patch
+from unittest.mock import Mock, patch
 
 # Set mock AWS credentials before importing handler (required for boto3.client() calls)
 os.environ['AWS_ACCESS_KEY_ID'] = 'testing'
@@ -27,6 +27,7 @@ os.environ['AWS_DEFAULT_REGION'] = 'us-east-1'
 
 # Add lambda directory to path
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 import handler
 
@@ -49,9 +50,9 @@ class TestScenario:
     def complete(self):
         if not self.errors:
             self.passed = True
-            print(f"✓ {self.name} PASSED\n")
+            print(f"[PASS] {self.name}\n")
         else:
-            print(f"✗ {self.name} FAILED:")
+            print(f"[FAIL] {self.name}:")
             for error in self.errors:
                 print(f"    - {error}")
             print()
@@ -62,26 +63,29 @@ def test_empty_queue():
     scenario = TestScenario("Test 1: Empty Queue")
     scenario.log("Testing empty queue behavior...")
 
-    with patch.object(handler, 'sqs_client') as mock_sqs, \
-         patch.object(handler, 'sns_client') as mock_sns, \
-         patch('shared.aws_utils.get_clients') as mock_get_clients:
+    with patch('shared.handler_utils.initialize_clients') as mock_init_clients:
+        # Create individual mock clients
+        mock_sqs = Mock()
+        mock_sns = Mock()
+        mock_ce = Mock()
+        mock_sp = Mock()
 
-        # Mock get_clients to return the existing mocked clients
-        mock_get_clients.return_value = {
-            'ce': handler.ce_client,
-            'savingsplans': handler.savingsplans_client,
+        # Configure initialize_clients to return them
+        mock_init_clients.return_value = {
             'sqs': mock_sqs,
             'sns': mock_sns,
-            's3': None
+            'ce': mock_ce,
+            'savingsplans': mock_sp
         }
 
         # Mock empty queue
-        mock_sqs.receive_message.return_value = {'Messages': []}
+        mock_sqs.receive_message.return_value = {}
 
         # Set environment variables
         os.environ['QUEUE_URL'] = 'https://sqs.us-east-1.amazonaws.com/123456789012/test-queue'
         os.environ['SNS_TOPIC_ARN'] = 'arn:aws:sns:us-east-1:123456789012:test-topic'
         os.environ['MAX_COVERAGE_CAP'] = '95'
+        os.environ['RENEWAL_WINDOW_DAYS'] = '7'
 
         # Execute handler
         response = handler.handler({}, {})
@@ -110,19 +114,19 @@ def test_valid_purchase_execution():
     scenario = TestScenario("Test 2: Valid Purchase Execution")
     scenario.log("Testing valid purchase execution...")
 
-    with patch.object(handler, 'sqs_client') as mock_sqs, \
-         patch.object(handler, 'sns_client') as mock_sns, \
-         patch.object(handler, 'ce_client') as mock_ce, \
-         patch.object(handler, 'savingsplans_client') as mock_sp, \
-         patch('shared.aws_utils.get_clients') as mock_get_clients:
+    with patch('shared.handler_utils.initialize_clients') as mock_init_clients:
+        # Create individual mock clients
+        mock_sqs = Mock()
+        mock_sns = Mock()
+        mock_ce = Mock()
+        mock_sp = Mock()
 
-        # Mock get_clients to return the mocked clients
-        mock_get_clients.return_value = {
-            'ce': mock_ce,
-            'savingsplans': mock_sp,
+        # Configure initialize_clients to return them
+        mock_init_clients.return_value = {
             'sqs': mock_sqs,
             'sns': mock_sns,
-            's3': None
+            'ce': mock_ce,
+            'savingsplans': mock_sp
         }
 
         # Mock SQS message with valid purchase intent
@@ -227,19 +231,19 @@ def test_cap_enforcement():
     scenario = TestScenario("Test 3: Cap Enforcement")
     scenario.log("Testing coverage cap enforcement...")
 
-    with patch.object(handler, 'sqs_client') as mock_sqs, \
-         patch.object(handler, 'sns_client') as mock_sns, \
-         patch.object(handler, 'ce_client') as mock_ce, \
-         patch.object(handler, 'savingsplans_client') as mock_sp, \
-         patch('shared.aws_utils.get_clients') as mock_get_clients:
+    with patch('shared.handler_utils.initialize_clients') as mock_init_clients:
+        # Create individual mock clients
+        mock_sqs = Mock()
+        mock_sns = Mock()
+        mock_ce = Mock()
+        mock_sp = Mock()
 
-        # Mock get_clients to return the mocked clients
-        mock_get_clients.return_value = {
-            'ce': mock_ce,
-            'savingsplans': mock_sp,
+        # Configure initialize_clients to return them
+        mock_init_clients.return_value = {
             'sqs': mock_sqs,
             'sns': mock_sns,
-            's3': None
+            'ce': mock_ce,
+            'savingsplans': mock_sp
         }
 
         # Mock SQS message with purchase that would exceed cap
@@ -328,19 +332,19 @@ def test_multiple_messages():
     scenario = TestScenario("Test 4: Multiple Messages")
     scenario.log("Testing multiple message processing...")
 
-    with patch.object(handler, 'sqs_client') as mock_sqs, \
-         patch.object(handler, 'sns_client') as mock_sns, \
-         patch.object(handler, 'ce_client') as mock_ce, \
-         patch.object(handler, 'savingsplans_client') as mock_sp, \
-         patch('shared.aws_utils.get_clients') as mock_get_clients:
+    with patch('shared.handler_utils.initialize_clients') as mock_init_clients:
+        # Create individual mock clients
+        mock_sqs = Mock()
+        mock_sns = Mock()
+        mock_ce = Mock()
+        mock_sp = Mock()
 
-        # Mock get_clients to return the mocked clients
-        mock_get_clients.return_value = {
-            'ce': mock_ce,
-            'savingsplans': mock_sp,
+        # Configure initialize_clients to return them
+        mock_init_clients.return_value = {
             'sqs': mock_sqs,
             'sns': mock_sns,
-            's3': None
+            'ce': mock_ce,
+            'savingsplans': mock_sp
         }
 
         # Mock SQS with multiple messages
@@ -460,19 +464,24 @@ def test_api_error():
     scenario = TestScenario("Test 5: API Error Handling")
     scenario.log("Testing API error handling...")
 
-    with patch.object(handler, 'sqs_client') as mock_sqs, \
-         patch.object(handler, 'sns_client') as mock_sns, \
-         patch.object(handler, 'ce_client') as mock_ce, \
-         patch('shared.aws_utils.get_clients') as mock_get_clients:
+    with patch('shared.handler_utils.initialize_clients') as mock_init_clients, \
+         patch('boto3.client') as mock_boto_client:
+        # Create individual mock clients
+        mock_sqs = Mock()
+        mock_sns = Mock()
+        mock_ce = Mock()
+        mock_sp = Mock()
 
-        # Mock get_clients to return the mocked clients
-        mock_get_clients.return_value = {
-            'ce': mock_ce,
-            'savingsplans': handler.savingsplans_client,
+        # Configure initialize_clients to return them
+        mock_init_clients.return_value = {
             'sqs': mock_sqs,
             'sns': mock_sns,
-            's3': None
+            'ce': mock_ce,
+            'savingsplans': mock_sp
         }
+
+        # Also mock the boto3.client call in the error handler
+        mock_boto_client.return_value = mock_sns
 
         # Mock SQS message
         purchase_intent = {
@@ -528,16 +537,16 @@ def test_api_error():
         # Verify error email content
         email_call = mock_sns.publish.call_args
         scenario.assert_true(
-            'ERROR' in email_call[1]['Subject'],
-            "Email subject should contain 'ERROR'"
+            'Failed' in email_call[1]['Subject'],
+            "Email subject should contain 'Failed'"
         )
         scenario.assert_true(
             'Access denied' in email_call[1]['Message'],
             "Email should contain error message"
         )
         scenario.assert_true(
-            'Queue URL' in email_call[1]['Message'],
-            "Email should contain queue URL for investigation"
+            'CloudWatch Logs' in email_call[1]['Message'],
+            "Email should mention CloudWatch Logs"
         )
 
     scenario.complete()
@@ -549,19 +558,19 @@ def test_database_sp_purchase():
     scenario = TestScenario("Test 6: Database SP Purchase")
     scenario.log("Testing Database Savings Plan purchase...")
 
-    with patch.object(handler, 'sqs_client') as mock_sqs, \
-         patch.object(handler, 'sns_client') as mock_sns, \
-         patch.object(handler, 'ce_client') as mock_ce, \
-         patch.object(handler, 'savingsplans_client') as mock_sp, \
-         patch('shared.aws_utils.get_clients') as mock_get_clients:
+    with patch('shared.handler_utils.initialize_clients') as mock_init_clients:
+        # Create individual mock clients
+        mock_sqs = Mock()
+        mock_sns = Mock()
+        mock_ce = Mock()
+        mock_sp = Mock()
 
-        # Mock get_clients to return the mocked clients
-        mock_get_clients.return_value = {
-            'ce': mock_ce,
-            'savingsplans': mock_sp,
+        # Configure initialize_clients to return them
+        mock_init_clients.return_value = {
             'sqs': mock_sqs,
             'sns': mock_sns,
-            's3': None
+            'ce': mock_ce,
+            'savingsplans': mock_sp
         }
 
         # Mock SQS message with Database SP purchase intent
@@ -670,19 +679,19 @@ def test_database_sp_cap_enforcement():
     scenario = TestScenario("Test 7: Database SP Cap Enforcement")
     scenario.log("Testing Database SP coverage cap enforcement...")
 
-    with patch.object(handler, 'sqs_client') as mock_sqs, \
-         patch.object(handler, 'sns_client') as mock_sns, \
-         patch.object(handler, 'ce_client') as mock_ce, \
-         patch.object(handler, 'savingsplans_client') as mock_sp, \
-         patch('shared.aws_utils.get_clients') as mock_get_clients:
+    with patch('shared.handler_utils.initialize_clients') as mock_init_clients:
+        # Create individual mock clients
+        mock_sqs = Mock()
+        mock_sns = Mock()
+        mock_ce = Mock()
+        mock_sp = Mock()
 
-        # Mock get_clients to return the mocked clients
-        mock_get_clients.return_value = {
-            'ce': mock_ce,
-            'savingsplans': mock_sp,
+        # Configure initialize_clients to return them
+        mock_init_clients.return_value = {
             'sqs': mock_sqs,
             'sns': mock_sns,
-            's3': None
+            'ce': mock_ce,
+            'savingsplans': mock_sp
         }
 
         # Mock SQS message with Database SP purchase that would exceed cap
@@ -775,19 +784,19 @@ def test_mixed_compute_and_database_sp():
     scenario = TestScenario("Test 8: Mixed Compute and Database SP")
     scenario.log("Testing mixed Compute and Database SP purchases...")
 
-    with patch.object(handler, 'sqs_client') as mock_sqs, \
-         patch.object(handler, 'sns_client') as mock_sns, \
-         patch.object(handler, 'ce_client') as mock_ce, \
-         patch.object(handler, 'savingsplans_client') as mock_sp, \
-         patch('shared.aws_utils.get_clients') as mock_get_clients:
+    with patch('shared.handler_utils.initialize_clients') as mock_init_clients:
+        # Create individual mock clients
+        mock_sqs = Mock()
+        mock_sns = Mock()
+        mock_ce = Mock()
+        mock_sp = Mock()
 
-        # Mock get_clients to return the mocked clients
-        mock_get_clients.return_value = {
-            'ce': mock_ce,
-            'savingsplans': mock_sp,
+        # Configure initialize_clients to return them
+        mock_init_clients.return_value = {
             'sqs': mock_sqs,
             'sns': mock_sns,
-            's3': None
+            'ce': mock_ce,
+            'savingsplans': mock_sp
         }
 
         # Mock SQS with mixed Compute and Database SP messages
@@ -926,17 +935,19 @@ def test_malformed_message():
     scenario = TestScenario("Test 9: Malformed Message Validation")
     scenario.log("Testing malformed message with missing required fields...")
 
-    with patch.object(handler, 'sqs_client') as mock_sqs, \
-         patch.object(handler, 'sns_client') as mock_sns, \
-         patch('shared.aws_utils.get_clients') as mock_get_clients:
+    with patch('shared.handler_utils.initialize_clients') as mock_init_clients:
+        # Create individual mock clients
+        mock_sqs = Mock()
+        mock_sns = Mock()
+        mock_ce = Mock()
+        mock_sp = Mock()
 
-        # Mock get_clients to return the mocked clients
-        mock_get_clients.return_value = {
-            'ce': handler.ce_client,
-            'savingsplans': handler.savingsplans_client,
+        # Configure initialize_clients to return them
+        mock_init_clients.return_value = {
             'sqs': mock_sqs,
             'sns': mock_sns,
-            's3': None
+            'ce': mock_ce,
+            'savingsplans': mock_sp
         }
 
         # Mock SQS message with missing required fields (no client_token, no offering_id)
@@ -956,6 +967,23 @@ def test_malformed_message():
                 }
             ]
         }
+
+        # Mock current coverage
+        mock_ce.get_savings_plans_coverage.return_value = {
+            'SavingsPlansCoverages': [
+                {
+                    'Groups': [
+                        {
+                            'Attributes': {'SAVINGS_PLANS_TYPE': 'ComputeSavingsPlans'},
+                            'Coverage': {'CoveragePercentage': '50.0'}
+                        }
+                    ]
+                }
+            ]
+        }
+
+        # Mock no expiring plans
+        mock_sp.describe_savings_plans.return_value = {'savingsPlans': []}
 
         # Set environment variables
         os.environ['QUEUE_URL'] = 'https://sqs.us-east-1.amazonaws.com/123456789012/test-queue'
@@ -1001,17 +1029,19 @@ def test_invalid_sp_type():
     scenario = TestScenario("Test 10: Invalid SP Type Validation")
     scenario.log("Testing invalid sp_type value...")
 
-    with patch.object(handler, 'sqs_client') as mock_sqs, \
-         patch.object(handler, 'sns_client') as mock_sns, \
-         patch('shared.aws_utils.get_clients') as mock_get_clients:
+    with patch('shared.handler_utils.initialize_clients') as mock_init_clients:
+        # Create individual mock clients
+        mock_sqs = Mock()
+        mock_sns = Mock()
+        mock_ce = Mock()
+        mock_sp = Mock()
 
-        # Mock get_clients to return the mocked clients
-        mock_get_clients.return_value = {
-            'ce': handler.ce_client,
-            'savingsplans': handler.savingsplans_client,
+        # Configure initialize_clients to return them
+        mock_init_clients.return_value = {
             'sqs': mock_sqs,
             'sns': mock_sns,
-            's3': None
+            'ce': mock_ce,
+            'savingsplans': mock_sp
         }
 
         # Mock SQS message with invalid sp_type
@@ -1034,6 +1064,23 @@ def test_invalid_sp_type():
                 }
             ]
         }
+
+        # Mock current coverage
+        mock_ce.get_savings_plans_coverage.return_value = {
+            'SavingsPlansCoverages': [
+                {
+                    'Groups': [
+                        {
+                            'Attributes': {'SAVINGS_PLANS_TYPE': 'ComputeSavingsPlans'},
+                            'Coverage': {'CoveragePercentage': '50.0'}
+                        }
+                    ]
+                }
+            ]
+        }
+
+        # Mock no expiring plans
+        mock_sp.describe_savings_plans.return_value = {'savingsPlans': []}
 
         # Set environment variables
         os.environ['QUEUE_URL'] = 'https://sqs.us-east-1.amazonaws.com/123456789012/test-queue'
@@ -1106,16 +1153,16 @@ def main():
     total = len(results)
 
     for test_name, result in results.items():
-        status = "✓ PASS" if result else "✗ FAIL"
+        status = "[PASS]" if result else "[FAIL]"
         print(f"{status} - {test_name}")
 
     print()
     print(f"Total: {passed}/{total} tests passed")
 
     if passed == total:
-        print("\n🎉 All integration tests PASSED!")
+        print("\nAll integration tests PASSED!")
         return 0
-    print(f"\n⚠️  {total - passed} test(s) FAILED")
+    print(f"\n{total - passed} test(s) FAILED")
     return 1
 
 

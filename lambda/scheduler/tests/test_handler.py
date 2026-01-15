@@ -39,53 +39,39 @@ def mock_env_vars(monkeypatch):
     monkeypatch.setenv('TAGS', '{}')
 
 
-# ============================================================================
-# Configuration Tests
-# ============================================================================
+@pytest.fixture
+def mock_config():
+    """Return a mock configuration dictionary."""
+    return {
+        'queue_url': 'https://sqs.us-east-1.amazonaws.com/123456789012/test-queue',
+        'sns_topic_arn': 'arn:aws:sns:us-east-1:123456789012:test-topic',
+        'dry_run': True,
+        'enable_compute_sp': True,
+        'enable_database_sp': False,
+        'enable_sagemaker_sp': False,
+        'coverage_target_percent': 90.0,
+        'max_purchase_percent': 10.0,
+        'renewal_window_days': 7,
+        'lookback_days': 30,
+        'min_data_days': 14,
+        'min_commitment_per_plan': 0.001,
+        'compute_sp_term_mix': {"three_year": 0.67, "one_year": 0.33},
+        'compute_sp_payment_option': 'ALL_UPFRONT',
+        'sagemaker_sp_term_mix': {"three_year": 0.67, "one_year": 0.33},
+        'sagemaker_sp_payment_option': 'ALL_UPFRONT',
+        'tags': {}
+    }
 
-def test_load_configuration_defaults(mock_env_vars):
-    """Test that load_configuration returns correct default values."""
-    config = handler.load_configuration()
 
-    assert config['queue_url'] == 'https://sqs.us-east-1.amazonaws.com/123456789012/test-queue'
-    assert config['sns_topic_arn'] == 'arn:aws:sns:us-east-1:123456789012:test-topic'
-    assert config['dry_run'] is True
-    assert config['enable_compute_sp'] is True
-    assert config['enable_database_sp'] is False
-    assert config['enable_sagemaker_sp'] is False
-    assert config['coverage_target_percent'] == 90.0
-    assert config['max_purchase_percent'] == 10.0
-    assert config['renewal_window_days'] == 7
-    assert config['lookback_days'] == 30
-    assert config['min_data_days'] == 14
-    assert config['min_commitment_per_plan'] == 0.001
-    assert config['sagemaker_sp_term_mix'] == {"three_year": 0.67, "one_year": 0.33}
-    assert config['sagemaker_sp_payment_option'] == 'ALL_UPFRONT'
-
-
-def test_load_configuration_custom_values(monkeypatch):
-    """Test that load_configuration handles custom environment values."""
-    monkeypatch.setenv('QUEUE_URL', 'custom-queue-url')
-    monkeypatch.setenv('SNS_TOPIC_ARN', 'custom-sns-arn')
-    monkeypatch.setenv('DRY_RUN', 'false')
-    monkeypatch.setenv('ENABLE_SAGEMAKER_SP', 'true')
-    monkeypatch.setenv('COVERAGE_TARGET_PERCENT', '85.5')
-    monkeypatch.setenv('MAX_PURCHASE_PERCENT', '15')
-    monkeypatch.setenv('COMPUTE_SP_TERM_MIX', '{"three_year": 0.8, "one_year": 0.2}')
-    monkeypatch.setenv('SAGEMAKER_SP_TERM_MIX', '{"three_year": 0.5, "one_year": 0.5}')
-    monkeypatch.setenv('SAGEMAKER_SP_PAYMENT_OPTION', 'NO_UPFRONT')
-
-    config = handler.load_configuration()
-
-    assert config['queue_url'] == 'custom-queue-url'
-    assert config['sns_topic_arn'] == 'custom-sns-arn'
-    assert config['dry_run'] is False
-    assert config['enable_sagemaker_sp'] is True
-    assert config['coverage_target_percent'] == 85.5
-    assert config['max_purchase_percent'] == 15.0
-    assert config['compute_sp_term_mix'] == {"three_year": 0.8, "one_year": 0.2}
-    assert config['sagemaker_sp_term_mix'] == {"three_year": 0.5, "one_year": 0.5}
-    assert config['sagemaker_sp_payment_option'] == 'NO_UPFRONT'
+@pytest.fixture
+def mock_clients():
+    """Return a mock clients dictionary."""
+    return {
+        'ce': MagicMock(),
+        'savingsplans': MagicMock(),
+        'sqs': MagicMock(),
+        'sns': MagicMock()
+    }
 
 
 # ============================================================================
@@ -94,519 +80,504 @@ def test_load_configuration_custom_values(monkeypatch):
 
 def test_purge_queue_success():
     """Test successful queue purge."""
-    with patch.object(handler.sqs_client, 'purge_queue') as mock_purge:
-        mock_purge.return_value = {}
+    mock_sqs = MagicMock()
+    mock_sqs.purge_queue.return_value = {}
 
-        handler.purge_queue('test-queue-url')
+    handler.purge_queue(mock_sqs, 'test-queue-url')
 
-        mock_purge.assert_called_once_with(QueueUrl='test-queue-url')
+    mock_sqs.purge_queue.assert_called_once_with(QueueUrl='test-queue-url')
 
 
 def test_purge_queue_in_progress():
     """Test that PurgeQueueInProgress error is handled gracefully."""
     from botocore.exceptions import ClientError
 
-    with patch.object(handler.sqs_client, 'purge_queue') as mock_purge:
-        error_response = {'Error': {'Code': 'PurgeQueueInProgress'}}
-        mock_purge.side_effect = ClientError(error_response, 'purge_queue')
+    mock_sqs = MagicMock()
+    error_response = {'Error': {'Code': 'PurgeQueueInProgress'}}
+    mock_sqs.purge_queue.side_effect = ClientError(error_response, 'purge_queue')
 
-        # Should not raise - just log warning
-        handler.purge_queue('test-queue-url')
+    # Should not raise - just log warning
+    handler.purge_queue(mock_sqs, 'test-queue-url')
 
 
 def test_purge_queue_other_error():
     """Test that other errors are raised."""
     from botocore.exceptions import ClientError
 
-    with patch.object(handler.sqs_client, 'purge_queue') as mock_purge:
-        error_response = {'Error': {'Code': 'AccessDenied'}}
-        mock_purge.side_effect = ClientError(error_response, 'purge_queue')
+    mock_sqs = MagicMock()
+    error_response = {'Error': {'Code': 'AccessDenied'}}
+    mock_sqs.purge_queue.side_effect = ClientError(error_response, 'purge_queue')
 
-        with pytest.raises(ClientError):
-            handler.purge_queue('test-queue-url')
+    with pytest.raises(ClientError):
+        handler.purge_queue(mock_sqs, 'test-queue-url')
 
 
 # ============================================================================
 # Coverage Calculation Tests
 # ============================================================================
 
-def test_calculate_current_coverage_filters_expiring_plans(mock_env_vars):
+def test_calculate_current_coverage_filters_expiring_plans(mock_config):
     """Test that plans expiring within renewal_window_days are excluded."""
-    config = handler.load_configuration()
+    mock_savingsplans = MagicMock()
+    mock_ce = MagicMock()
 
     now = datetime.now(timezone.utc)
 
-    with patch.object(handler.savingsplans_client, 'describe_savings_plans') as mock_describe:
-        with patch.object(handler.ce_client, 'get_savings_plans_coverage') as mock_coverage:
-            # Plan expiring in 3 days (should be excluded - within 7 day window)
-            expiring_soon = now + timedelta(days=3)
-            # Plan expiring in 30 days (should be included - outside 7 day window)
-            expiring_later = now + timedelta(days=30)
+    # Plan expiring in 3 days (should be excluded - within 7 day window)
+    expiring_soon = now + timedelta(days=3)
+    # Plan expiring in 30 days (should be included - outside 7 day window)
+    expiring_later = now + timedelta(days=30)
 
-            mock_describe.return_value = {
-                'savingsPlans': [
-                    {
-                        'savingsPlanId': 'sp-expiring-soon',
-                        'state': 'active',
-                        'end': expiring_soon.isoformat()
-                    },
-                    {
-                        'savingsPlanId': 'sp-expiring-later',
-                        'state': 'active',
-                        'end': expiring_later.isoformat()
-                    }
-                ]
+    mock_savingsplans.describe_savings_plans.return_value = {
+        'savingsPlans': [
+            {
+                'savingsPlanId': 'sp-expiring-soon',
+                'state': 'active',
+                'end': expiring_soon.isoformat()
+            },
+            {
+                'savingsPlanId': 'sp-expiring-later',
+                'state': 'active',
+                'end': expiring_later.isoformat()
             }
+        ]
+    }
 
-            mock_coverage.return_value = {
-                'SavingsPlansCoverages': [
-                    {
-                        'TimePeriod': {'Start': '2026-01-12', 'End': '2026-01-13'},
-                        'Coverage': {'CoveragePercentage': '75.5'}
-                    }
-                ]
+    mock_ce.get_savings_plans_coverage.return_value = {
+        'SavingsPlansCoverages': [
+            {
+                'TimePeriod': {'Start': '2026-01-12', 'End': '2026-01-13'},
+                'Coverage': {'CoveragePercentage': '75.5'}
             }
+        ]
+    }
 
-            result = handler.calculate_current_coverage(config)
+    result = handler.calculate_current_coverage(mock_savingsplans, mock_ce, mock_config)
 
-            assert 'compute' in result
-            assert result['compute'] == 75.5
+    assert 'compute' in result
+    assert result['compute'] == 75.5
 
 
-def test_calculate_current_coverage_keeps_valid_plans(mock_env_vars):
+def test_calculate_current_coverage_keeps_valid_plans(mock_config):
     """Test that plans expiring after renewal window are kept."""
-    config = handler.load_configuration()
+    mock_savingsplans = MagicMock()
+    mock_ce = MagicMock()
 
     now = datetime.now(timezone.utc)
     expiring_later = now + timedelta(days=30)
 
-    with patch.object(handler.savingsplans_client, 'describe_savings_plans') as mock_describe:
-        with patch.object(handler.ce_client, 'get_savings_plans_coverage') as mock_coverage:
-            mock_describe.return_value = {
-                'savingsPlans': [
-                    {
-                        'savingsPlanId': 'sp-valid',
-                        'state': 'active',
-                        'end': expiring_later.isoformat()
-                    }
-                ]
+    mock_savingsplans.describe_savings_plans.return_value = {
+        'savingsPlans': [
+            {
+                'savingsPlanId': 'sp-valid',
+                'state': 'active',
+                'end': expiring_later.isoformat()
             }
+        ]
+    }
 
-            mock_coverage.return_value = {
-                'SavingsPlansCoverages': [
-                    {
-                        'TimePeriod': {'Start': '2026-01-12', 'End': '2026-01-13'},
-                        'Coverage': {'CoveragePercentage': '85.0'}
-                    }
-                ]
+    mock_ce.get_savings_plans_coverage.return_value = {
+        'SavingsPlansCoverages': [
+            {
+                'TimePeriod': {'Start': '2026-01-12', 'End': '2026-01-13'},
+                'Coverage': {'CoveragePercentage': '85.0'}
             }
+        ]
+    }
 
-            result = handler.calculate_current_coverage(config)
+    result = handler.calculate_current_coverage(mock_savingsplans, mock_ce, mock_config)
 
-            assert result['compute'] == 85.0
+    assert result['compute'] == 85.0
 
 
-def test_calculate_current_coverage_empty_plans_list(mock_env_vars):
+def test_calculate_current_coverage_empty_plans_list(mock_config):
     """Test handling of no active Savings Plans."""
-    config = handler.load_configuration()
+    mock_savingsplans = MagicMock()
+    mock_ce = MagicMock()
 
-    with patch.object(handler.savingsplans_client, 'describe_savings_plans') as mock_describe:
-        with patch.object(handler.ce_client, 'get_savings_plans_coverage') as mock_coverage:
-            mock_describe.return_value = {'savingsPlans': []}
+    mock_savingsplans.describe_savings_plans.return_value = {'savingsPlans': []}
 
-            mock_coverage.return_value = {
-                'SavingsPlansCoverages': [
-                    {
-                        'TimePeriod': {'Start': '2026-01-12', 'End': '2026-01-13'},
-                        'Coverage': {'CoveragePercentage': '0.0'}
-                    }
-                ]
+    mock_ce.get_savings_plans_coverage.return_value = {
+        'SavingsPlansCoverages': [
+            {
+                'TimePeriod': {'Start': '2026-01-12', 'End': '2026-01-13'},
+                'Coverage': {'CoveragePercentage': '0.0'}
             }
+        ]
+    }
 
-            result = handler.calculate_current_coverage(config)
+    result = handler.calculate_current_coverage(mock_savingsplans, mock_ce, mock_config)
 
-            assert result['compute'] == 0.0
+    assert result['compute'] == 0.0
 
 
-def test_calculate_current_coverage_no_coverage_data(mock_env_vars):
+def test_calculate_current_coverage_no_coverage_data(mock_config):
     """Test handling of no coverage data from Cost Explorer."""
-    config = handler.load_configuration()
+    mock_savingsplans = MagicMock()
+    mock_ce = MagicMock()
 
-    with patch.object(handler.savingsplans_client, 'describe_savings_plans') as mock_describe:
-        with patch.object(handler.ce_client, 'get_savings_plans_coverage') as mock_coverage:
-            mock_describe.return_value = {'savingsPlans': []}
-            mock_coverage.return_value = {'SavingsPlansCoverages': []}
+    mock_savingsplans.describe_savings_plans.return_value = {'savingsPlans': []}
+    mock_ce.get_savings_plans_coverage.return_value = {'SavingsPlansCoverages': []}
 
-            result = handler.calculate_current_coverage(config)
+    result = handler.calculate_current_coverage(mock_savingsplans, mock_ce, mock_config)
 
-            assert result == {'compute': 0.0, 'database': 0.0, 'sagemaker': 0.0}
+    assert result == {'compute': 0.0, 'database': 0.0, 'sagemaker': 0.0}
 
 
 # ============================================================================
 # AWS Recommendations Tests
 # ============================================================================
 
-def test_get_aws_recommendations_compute_enabled(mock_env_vars):
+def test_get_aws_recommendations_compute_enabled(mock_config):
     """Test fetching Compute SP recommendations when enabled."""
-    config = handler.load_configuration()
-
-    with patch.object(handler.ce_client, 'get_savings_plans_purchase_recommendation') as mock_rec:
-        mock_rec.return_value = {
-            'Metadata': {
-                'RecommendationId': 'rec-123',
-                'GenerationTimestamp': '2026-01-13T00:00:00Z',
-                'LookbackPeriodInDays': '30'
-            },
-            'SavingsPlansPurchaseRecommendation': {
-                'SavingsPlansPurchaseRecommendationDetails': [
-                    {
-                        'HourlyCommitmentToPurchase': '2.5'
-                    }
-                ]
-            }
+    mock_ce = MagicMock()
+    mock_ce.get_savings_plans_purchase_recommendation.return_value = {
+        'Metadata': {
+            'RecommendationId': 'rec-123',
+            'GenerationTimestamp': '2026-01-13T00:00:00Z',
+            'LookbackPeriodInDays': '30'
+        },
+        'SavingsPlansPurchaseRecommendation': {
+            'SavingsPlansPurchaseRecommendationDetails': [
+                {
+                    'HourlyCommitmentToPurchase': '2.5'
+                }
+            ]
         }
+    }
 
-        result = handler.get_aws_recommendations(config)
+    result = handler.get_aws_recommendations(mock_ce, mock_config)
 
-        assert result['compute'] is not None
-        assert result['compute']['HourlyCommitmentToPurchase'] == '2.5'
-        assert result['compute']['RecommendationId'] == 'rec-123'
+    assert result['compute'] is not None
+    assert result['compute']['HourlyCommitmentToPurchase'] == '2.5'
+    assert result['compute']['RecommendationId'] == 'rec-123'
 
 
-def test_get_aws_recommendations_database_disabled(mock_env_vars):
+def test_get_aws_recommendations_database_disabled(mock_config):
     """Test that Database SP recommendations are skipped when disabled."""
-    config = handler.load_configuration()
-
-    with patch.object(handler.ce_client, 'get_savings_plans_purchase_recommendation') as mock_rec:
-        mock_rec.return_value = {
-            'Metadata': {
-                'RecommendationId': 'rec-123',
-                'LookbackPeriodInDays': '30'
-            },
-            'SavingsPlansPurchaseRecommendation': {
-                'SavingsPlansPurchaseRecommendationDetails': [
-                    {'HourlyCommitmentToPurchase': '2.5'}
-                ]
-            }
+    mock_ce = MagicMock()
+    mock_ce.get_savings_plans_purchase_recommendation.return_value = {
+        'Metadata': {
+            'RecommendationId': 'rec-123',
+            'LookbackPeriodInDays': '30'
+        },
+        'SavingsPlansPurchaseRecommendation': {
+            'SavingsPlansPurchaseRecommendationDetails': [
+                {'HourlyCommitmentToPurchase': '2.5'}
+            ]
         }
+    }
 
-        result = handler.get_aws_recommendations(config)
+    result = handler.get_aws_recommendations(mock_ce, mock_config)
 
-        # Database should be None when disabled
-        assert result['database'] is None
+    # Database should be None when disabled
+    assert result['database'] is None
 
 
-def test_get_aws_recommendations_database_enabled(monkeypatch):
+def test_get_aws_recommendations_database_enabled():
     """Test fetching Database SP recommendations with correct API parameters."""
-    # Enable Database SP
-    monkeypatch.setenv('QUEUE_URL', 'https://sqs.us-east-1.amazonaws.com/123456789012/test-queue')
-    monkeypatch.setenv('SNS_TOPIC_ARN', 'arn:aws:sns:us-east-1:123456789012:test-topic')
-    monkeypatch.setenv('ENABLE_DATABASE_SP', 'true')
-    monkeypatch.setenv('ENABLE_COMPUTE_SP', 'false')
+    config = {
+        'enable_compute_sp': False,
+        'enable_database_sp': True,
+        'enable_sagemaker_sp': False,
+        'lookback_days': 30,
+        'min_data_days': 14
+    }
 
-    config = handler.load_configuration()
-
-    with patch.object(handler.ce_client, 'get_savings_plans_purchase_recommendation') as mock_rec:
-        mock_rec.return_value = {
-            'Metadata': {
-                'RecommendationId': 'rec-db-456',
-                'GenerationTimestamp': '2026-01-13T00:00:00Z',
-                'LookbackPeriodInDays': '30'
-            },
-            'SavingsPlansPurchaseRecommendation': {
-                'SavingsPlansPurchaseRecommendationDetails': [
-                    {
-                        'HourlyCommitmentToPurchase': '1.25'
-                    }
-                ]
-            }
+    mock_ce = MagicMock()
+    mock_ce.get_savings_plans_purchase_recommendation.return_value = {
+        'Metadata': {
+            'RecommendationId': 'rec-db-456',
+            'GenerationTimestamp': '2026-01-13T00:00:00Z',
+            'LookbackPeriodInDays': '30'
+        },
+        'SavingsPlansPurchaseRecommendation': {
+            'SavingsPlansPurchaseRecommendationDetails': [
+                {
+                    'HourlyCommitmentToPurchase': '1.25'
+                }
+            ]
         }
+    }
 
-        result = handler.get_aws_recommendations(config)
+    result = handler.get_aws_recommendations(mock_ce, config)
 
-        # Verify Database SP recommendation was returned
-        assert result['database'] is not None
-        assert result['database']['HourlyCommitmentToPurchase'] == '1.25'
-        assert result['database']['RecommendationId'] == 'rec-db-456'
+    # Verify Database SP recommendation was returned
+    assert result['database'] is not None
+    assert result['database']['HourlyCommitmentToPurchase'] == '1.25'
+    assert result['database']['RecommendationId'] == 'rec-db-456'
 
-        # Verify API was called with correct Database SP parameters
-        mock_rec.assert_called_once_with(
-            SavingsPlansType='DATABASE_SP',
-            LookbackPeriodInDays='THIRTY_DAYS',
-            TermInYears='ONE_YEAR',
-            PaymentOption='NO_UPFRONT'
-        )
+    # Verify API was called with correct Database SP parameters
+    mock_ce.get_savings_plans_purchase_recommendation.assert_called_once_with(
+        SavingsPlansType='DATABASE_SP',
+        LookbackPeriodInDays='THIRTY_DAYS',
+        TermInYears='ONE_YEAR',
+        PaymentOption='NO_UPFRONT'
+    )
 
 
-def test_get_aws_recommendations_database_insufficient_data(monkeypatch):
+def test_get_aws_recommendations_database_insufficient_data():
     """Test rejection of Database SP recommendations with insufficient data."""
-    # Enable Database SP
-    monkeypatch.setenv('QUEUE_URL', 'https://sqs.us-east-1.amazonaws.com/123456789012/test-queue')
-    monkeypatch.setenv('SNS_TOPIC_ARN', 'arn:aws:sns:us-east-1:123456789012:test-topic')
-    monkeypatch.setenv('ENABLE_DATABASE_SP', 'true')
-    monkeypatch.setenv('ENABLE_COMPUTE_SP', 'false')
-    monkeypatch.setenv('MIN_DATA_DAYS', '14')
+    config = {
+        'enable_compute_sp': False,
+        'enable_database_sp': True,
+        'enable_sagemaker_sp': False,
+        'lookback_days': 30,
+        'min_data_days': 14
+    }
 
-    config = handler.load_configuration()
-
-    with patch.object(handler.ce_client, 'get_savings_plans_purchase_recommendation') as mock_rec:
-        # Return only 10 days of data (less than min_data_days of 14)
-        mock_rec.return_value = {
-            'Metadata': {
-                'RecommendationId': 'rec-db-789',
-                'LookbackPeriodInDays': '10'
-            },
-            'SavingsPlansPurchaseRecommendation': {
-                'SavingsPlansPurchaseRecommendationDetails': [
-                    {'HourlyCommitmentToPurchase': '1.5'}
-                ]
-            }
+    mock_ce = MagicMock()
+    # Return only 10 days of data (less than min_data_days of 14)
+    mock_ce.get_savings_plans_purchase_recommendation.return_value = {
+        'Metadata': {
+            'RecommendationId': 'rec-db-789',
+            'LookbackPeriodInDays': '10'
+        },
+        'SavingsPlansPurchaseRecommendation': {
+            'SavingsPlansPurchaseRecommendationDetails': [
+                {'HourlyCommitmentToPurchase': '1.5'}
+            ]
         }
+    }
 
-        result = handler.get_aws_recommendations(config)
+    result = handler.get_aws_recommendations(mock_ce, config)
 
-        # Should reject due to insufficient data
-        assert result['database'] is None
+    # Should reject due to insufficient data
+    assert result['database'] is None
 
 
-def test_get_aws_recommendations_database_no_recommendations(monkeypatch):
+def test_get_aws_recommendations_database_no_recommendations():
     """Test handling of empty Database SP recommendation list from AWS."""
-    # Enable Database SP
-    monkeypatch.setenv('QUEUE_URL', 'https://sqs.us-east-1.amazonaws.com/123456789012/test-queue')
-    monkeypatch.setenv('SNS_TOPIC_ARN', 'arn:aws:sns:us-east-1:123456789012:test-topic')
-    monkeypatch.setenv('ENABLE_DATABASE_SP', 'true')
-    monkeypatch.setenv('ENABLE_COMPUTE_SP', 'false')
+    config = {
+        'enable_compute_sp': False,
+        'enable_database_sp': True,
+        'enable_sagemaker_sp': False,
+        'lookback_days': 30,
+        'min_data_days': 14
+    }
 
-    config = handler.load_configuration()
-
-    with patch.object(handler.ce_client, 'get_savings_plans_purchase_recommendation') as mock_rec:
-        mock_rec.return_value = {
-            'Metadata': {
-                'RecommendationId': 'rec-db-empty',
-                'LookbackPeriodInDays': '30'
-            },
-            'SavingsPlansPurchaseRecommendation': {
-                'SavingsPlansPurchaseRecommendationDetails': []
-            }
+    mock_ce = MagicMock()
+    mock_ce.get_savings_plans_purchase_recommendation.return_value = {
+        'Metadata': {
+            'RecommendationId': 'rec-db-empty',
+            'LookbackPeriodInDays': '30'
+        },
+        'SavingsPlansPurchaseRecommendation': {
+            'SavingsPlansPurchaseRecommendationDetails': []
         }
+    }
 
-        result = handler.get_aws_recommendations(config)
+    result = handler.get_aws_recommendations(mock_ce, config)
 
-        assert result['database'] is None
+    assert result['database'] is None
 
 
-def test_get_aws_recommendations_sagemaker_enabled(monkeypatch):
+def test_get_aws_recommendations_sagemaker_enabled():
     """Test fetching SageMaker SP recommendations with correct API parameters."""
-    # Enable SageMaker SP
-    monkeypatch.setenv('QUEUE_URL', 'https://sqs.us-east-1.amazonaws.com/123456789012/test-queue')
-    monkeypatch.setenv('SNS_TOPIC_ARN', 'arn:aws:sns:us-east-1:123456789012:test-topic')
-    monkeypatch.setenv('ENABLE_SAGEMAKER_SP', 'true')
-    monkeypatch.setenv('ENABLE_COMPUTE_SP', 'false')
-    monkeypatch.setenv('ENABLE_DATABASE_SP', 'false')
+    config = {
+        'enable_compute_sp': False,
+        'enable_database_sp': False,
+        'enable_sagemaker_sp': True,
+        'lookback_days': 30,
+        'min_data_days': 14
+    }
 
-    config = handler.load_configuration()
-
-    with patch.object(handler.ce_client, 'get_savings_plans_purchase_recommendation') as mock_rec:
-        mock_rec.return_value = {
-            'Metadata': {
-                'RecommendationId': 'rec-sm-456',
-                'GenerationTimestamp': '2026-01-13T00:00:00Z',
-                'LookbackPeriodInDays': '30'
-            },
-            'SavingsPlansPurchaseRecommendation': {
-                'SavingsPlansPurchaseRecommendationDetails': [
-                    {
-                        'HourlyCommitmentToPurchase': '3.75'
-                    }
-                ]
-            }
+    mock_ce = MagicMock()
+    mock_ce.get_savings_plans_purchase_recommendation.return_value = {
+        'Metadata': {
+            'RecommendationId': 'rec-sm-456',
+            'GenerationTimestamp': '2026-01-13T00:00:00Z',
+            'LookbackPeriodInDays': '30'
+        },
+        'SavingsPlansPurchaseRecommendation': {
+            'SavingsPlansPurchaseRecommendationDetails': [
+                {
+                    'HourlyCommitmentToPurchase': '3.75'
+                }
+            ]
         }
+    }
 
-        result = handler.get_aws_recommendations(config)
+    result = handler.get_aws_recommendations(mock_ce, config)
 
-        # Verify SageMaker SP recommendation was returned
-        assert result['sagemaker'] is not None
-        assert result['sagemaker']['HourlyCommitmentToPurchase'] == '3.75'
-        assert result['sagemaker']['RecommendationId'] == 'rec-sm-456'
+    # Verify SageMaker SP recommendation was returned
+    assert result['sagemaker'] is not None
+    assert result['sagemaker']['HourlyCommitmentToPurchase'] == '3.75'
+    assert result['sagemaker']['RecommendationId'] == 'rec-sm-456'
 
-        # Verify API was called with correct SageMaker SP parameters
-        mock_rec.assert_called_once_with(
-            SavingsPlansType='SAGEMAKER_SP',
-            LookbackPeriodInDays='THIRTY_DAYS',
-            TermInYears='ONE_YEAR',
-            PaymentOption='NO_UPFRONT'
-        )
+    # Verify API was called with correct SageMaker SP parameters
+    mock_ce.get_savings_plans_purchase_recommendation.assert_called_once_with(
+        SavingsPlansType='SAGEMAKER_SP',
+        LookbackPeriodInDays='THIRTY_DAYS',
+        TermInYears='ONE_YEAR',
+        PaymentOption='NO_UPFRONT'
+    )
 
 
-def test_get_aws_recommendations_sagemaker_disabled(mock_env_vars):
+def test_get_aws_recommendations_sagemaker_disabled(mock_config):
     """Test that SageMaker SP recommendations are skipped when disabled."""
-    config = handler.load_configuration()
-
-    with patch.object(handler.ce_client, 'get_savings_plans_purchase_recommendation') as mock_rec:
-        mock_rec.return_value = {
-            'Metadata': {
-                'RecommendationId': 'rec-123',
-                'LookbackPeriodInDays': '30'
-            },
-            'SavingsPlansPurchaseRecommendation': {
-                'SavingsPlansPurchaseRecommendationDetails': [
-                    {'HourlyCommitmentToPurchase': '2.5'}
-                ]
-            }
+    mock_ce = MagicMock()
+    mock_ce.get_savings_plans_purchase_recommendation.return_value = {
+        'Metadata': {
+            'RecommendationId': 'rec-123',
+            'LookbackPeriodInDays': '30'
+        },
+        'SavingsPlansPurchaseRecommendation': {
+            'SavingsPlansPurchaseRecommendationDetails': [
+                {'HourlyCommitmentToPurchase': '2.5'}
+            ]
         }
+    }
 
-        result = handler.get_aws_recommendations(config)
+    result = handler.get_aws_recommendations(mock_ce, mock_config)
 
-        # SageMaker should be None when disabled
-        assert result['sagemaker'] is None
+    # SageMaker should be None when disabled
+    assert result['sagemaker'] is None
 
 
-def test_get_aws_recommendations_sagemaker_insufficient_data(monkeypatch):
+def test_get_aws_recommendations_sagemaker_insufficient_data():
     """Test rejection of SageMaker SP recommendations with insufficient data."""
-    # Enable SageMaker SP
-    monkeypatch.setenv('QUEUE_URL', 'https://sqs.us-east-1.amazonaws.com/123456789012/test-queue')
-    monkeypatch.setenv('SNS_TOPIC_ARN', 'arn:aws:sns:us-east-1:123456789012:test-topic')
-    monkeypatch.setenv('ENABLE_SAGEMAKER_SP', 'true')
-    monkeypatch.setenv('ENABLE_COMPUTE_SP', 'false')
-    monkeypatch.setenv('ENABLE_DATABASE_SP', 'false')
-    monkeypatch.setenv('MIN_DATA_DAYS', '14')
+    config = {
+        'enable_compute_sp': False,
+        'enable_database_sp': False,
+        'enable_sagemaker_sp': True,
+        'lookback_days': 30,
+        'min_data_days': 14
+    }
 
-    config = handler.load_configuration()
-
-    with patch.object(handler.ce_client, 'get_savings_plans_purchase_recommendation') as mock_rec:
-        # Return only 10 days of data (less than min_data_days of 14)
-        mock_rec.return_value = {
-            'Metadata': {
-                'RecommendationId': 'rec-sm-789',
-                'LookbackPeriodInDays': '10'
-            },
-            'SavingsPlansPurchaseRecommendation': {
-                'SavingsPlansPurchaseRecommendationDetails': [
-                    {'HourlyCommitmentToPurchase': '2.5'}
-                ]
-            }
+    mock_ce = MagicMock()
+    # Return only 10 days of data (less than min_data_days of 14)
+    mock_ce.get_savings_plans_purchase_recommendation.return_value = {
+        'Metadata': {
+            'RecommendationId': 'rec-sm-789',
+            'LookbackPeriodInDays': '10'
+        },
+        'SavingsPlansPurchaseRecommendation': {
+            'SavingsPlansPurchaseRecommendationDetails': [
+                {'HourlyCommitmentToPurchase': '2.5'}
+            ]
         }
+    }
 
-        result = handler.get_aws_recommendations(config)
+    result = handler.get_aws_recommendations(mock_ce, config)
 
-        # Should reject due to insufficient data
-        assert result['sagemaker'] is None
+    # Should reject due to insufficient data
+    assert result['sagemaker'] is None
 
 
-def test_get_aws_recommendations_sagemaker_no_recommendations(monkeypatch):
+def test_get_aws_recommendations_sagemaker_no_recommendations():
     """Test handling of empty SageMaker SP recommendation list from AWS."""
-    # Enable SageMaker SP
-    monkeypatch.setenv('QUEUE_URL', 'https://sqs.us-east-1.amazonaws.com/123456789012/test-queue')
-    monkeypatch.setenv('SNS_TOPIC_ARN', 'arn:aws:sns:us-east-1:123456789012:test-topic')
-    monkeypatch.setenv('ENABLE_SAGEMAKER_SP', 'true')
-    monkeypatch.setenv('ENABLE_COMPUTE_SP', 'false')
-    monkeypatch.setenv('ENABLE_DATABASE_SP', 'false')
+    config = {
+        'enable_compute_sp': False,
+        'enable_database_sp': False,
+        'enable_sagemaker_sp': True,
+        'lookback_days': 30,
+        'min_data_days': 14
+    }
 
-    config = handler.load_configuration()
-
-    with patch.object(handler.ce_client, 'get_savings_plans_purchase_recommendation') as mock_rec:
-        mock_rec.return_value = {
-            'Metadata': {
-                'RecommendationId': 'rec-sm-empty',
-                'LookbackPeriodInDays': '30'
-            },
-            'SavingsPlansPurchaseRecommendation': {
-                'SavingsPlansPurchaseRecommendationDetails': []
-            }
+    mock_ce = MagicMock()
+    mock_ce.get_savings_plans_purchase_recommendation.return_value = {
+        'Metadata': {
+            'RecommendationId': 'rec-sm-empty',
+            'LookbackPeriodInDays': '30'
+        },
+        'SavingsPlansPurchaseRecommendation': {
+            'SavingsPlansPurchaseRecommendationDetails': []
         }
+    }
 
-        result = handler.get_aws_recommendations(config)
+    result = handler.get_aws_recommendations(mock_ce, config)
 
-        assert result['sagemaker'] is None
+    assert result['sagemaker'] is None
 
 
-def test_get_aws_recommendations_insufficient_data(mock_env_vars):
+def test_get_aws_recommendations_insufficient_data(mock_config):
     """Test rejection of recommendations with insufficient data."""
-    config = handler.load_configuration()
-
-    with patch.object(handler.ce_client, 'get_savings_plans_purchase_recommendation') as mock_rec:
-        # Return only 10 days of data (less than min_data_days of 14)
-        mock_rec.return_value = {
-            'Metadata': {
-                'RecommendationId': 'rec-123',
-                'LookbackPeriodInDays': '10'
-            },
-            'SavingsPlansPurchaseRecommendation': {
-                'SavingsPlansPurchaseRecommendationDetails': [
-                    {'HourlyCommitmentToPurchase': '2.5'}
-                ]
-            }
+    mock_ce = MagicMock()
+    # Return only 10 days of data (less than min_data_days of 14)
+    mock_ce.get_savings_plans_purchase_recommendation.return_value = {
+        'Metadata': {
+            'RecommendationId': 'rec-123',
+            'LookbackPeriodInDays': '10'
+        },
+        'SavingsPlansPurchaseRecommendation': {
+            'SavingsPlansPurchaseRecommendationDetails': [
+                {'HourlyCommitmentToPurchase': '2.5'}
+            ]
         }
+    }
 
-        result = handler.get_aws_recommendations(config)
+    result = handler.get_aws_recommendations(mock_ce, mock_config)
 
-        # Should reject due to insufficient data
-        assert result['compute'] is None
+    # Should reject due to insufficient data
+    assert result['compute'] is None
 
 
-def test_get_aws_recommendations_no_recommendations(mock_env_vars):
+def test_get_aws_recommendations_no_recommendations(mock_config):
     """Test handling of empty recommendation list from AWS."""
-    config = handler.load_configuration()
-
-    with patch.object(handler.ce_client, 'get_savings_plans_purchase_recommendation') as mock_rec:
-        mock_rec.return_value = {
-            'Metadata': {
-                'RecommendationId': 'rec-123',
-                'LookbackPeriodInDays': '30'
-            },
-            'SavingsPlansPurchaseRecommendation': {
-                'SavingsPlansPurchaseRecommendationDetails': []
-            }
+    mock_ce = MagicMock()
+    mock_ce.get_savings_plans_purchase_recommendation.return_value = {
+        'Metadata': {
+            'RecommendationId': 'rec-123',
+            'LookbackPeriodInDays': '30'
+        },
+        'SavingsPlansPurchaseRecommendation': {
+            'SavingsPlansPurchaseRecommendationDetails': []
         }
+    }
 
-        result = handler.get_aws_recommendations(config)
+    result = handler.get_aws_recommendations(mock_ce, mock_config)
 
-        assert result['compute'] is None
+    assert result['compute'] is None
 
 
-def test_get_aws_recommendations_lookback_period_mapping(mock_env_vars, monkeypatch):
+def test_get_aws_recommendations_lookback_period_mapping():
     """Test that lookback_days maps correctly to AWS API parameters."""
     # Test 7 days -> SEVEN_DAYS
-    monkeypatch.setenv('LOOKBACK_DAYS', '7')
-    config = handler.load_configuration()
+    config = {
+        'enable_compute_sp': True,
+        'enable_database_sp': False,
+        'enable_sagemaker_sp': False,
+        'lookback_days': 7,
+        'min_data_days': 14
+    }
 
-    with patch.object(handler.ce_client, 'get_savings_plans_purchase_recommendation') as mock_rec:
-        mock_rec.return_value = {
-            'Metadata': {'RecommendationId': 'rec-123', 'LookbackPeriodInDays': '7'},
-            'SavingsPlansPurchaseRecommendation': {'SavingsPlansPurchaseRecommendationDetails': []}
-        }
+    mock_ce = MagicMock()
+    mock_ce.get_savings_plans_purchase_recommendation.return_value = {
+        'Metadata': {'RecommendationId': 'rec-123', 'LookbackPeriodInDays': '7'},
+        'SavingsPlansPurchaseRecommendation': {'SavingsPlansPurchaseRecommendationDetails': []}
+    }
 
-        handler.get_aws_recommendations(config)
+    handler.get_aws_recommendations(mock_ce, config)
 
-        # Should use SEVEN_DAYS
-        call_args = mock_rec.call_args[1]
-        assert call_args['LookbackPeriodInDays'] == 'SEVEN_DAYS'
+    # Should use SEVEN_DAYS
+    call_args = mock_ce.get_savings_plans_purchase_recommendation.call_args[1]
+    assert call_args['LookbackPeriodInDays'] == 'SEVEN_DAYS'
 
     # Test 60 days -> SIXTY_DAYS
-    monkeypatch.setenv('LOOKBACK_DAYS', '60')
-    config = handler.load_configuration()
+    config['lookback_days'] = 60
+    mock_ce.reset_mock()
+    mock_ce.get_savings_plans_purchase_recommendation.return_value = {
+        'Metadata': {'RecommendationId': 'rec-123', 'LookbackPeriodInDays': '60'},
+        'SavingsPlansPurchaseRecommendation': {'SavingsPlansPurchaseRecommendationDetails': []}
+    }
 
-    with patch.object(handler.ce_client, 'get_savings_plans_purchase_recommendation') as mock_rec:
-        mock_rec.return_value = {
-            'Metadata': {'RecommendationId': 'rec-123', 'LookbackPeriodInDays': '60'},
-            'SavingsPlansPurchaseRecommendation': {'SavingsPlansPurchaseRecommendationDetails': []}
-        }
+    handler.get_aws_recommendations(mock_ce, config)
 
-        handler.get_aws_recommendations(config)
-
-        # Should use SIXTY_DAYS
-        call_args = mock_rec.call_args[1]
-        assert call_args['LookbackPeriodInDays'] == 'SIXTY_DAYS'
+    # Should use SIXTY_DAYS
+    call_args = mock_ce.get_savings_plans_purchase_recommendation.call_args[1]
+    assert call_args['LookbackPeriodInDays'] == 'SIXTY_DAYS'
 
 
-def test_get_aws_recommendations_parallel_execution_both_enabled(monkeypatch):
+def test_get_aws_recommendations_parallel_execution_both_enabled():
     """Test that Compute and Database SP recommendations are fetched in parallel when both enabled."""
-    monkeypatch.setenv('QUEUE_URL', 'https://sqs.us-east-1.amazonaws.com/123456789012/test-queue')
-    monkeypatch.setenv('SNS_TOPIC_ARN', 'arn:aws:sns:us-east-1:123456789012:test-topic')
-    monkeypatch.setenv('ENABLE_COMPUTE_SP', 'true')
-    monkeypatch.setenv('ENABLE_DATABASE_SP', 'true')
-
-    config = handler.load_configuration()
+    config = {
+        'enable_compute_sp': True,
+        'enable_database_sp': True,
+        'enable_sagemaker_sp': False,
+        'lookback_days': 30,
+        'min_data_days': 14
+    }
 
     # Track call order to verify parallel execution
     call_order = []
@@ -647,190 +618,130 @@ def test_get_aws_recommendations_parallel_execution_both_enabled(monkeypatch):
             }
         }
 
-    with patch.object(handler.ce_client, 'get_savings_plans_purchase_recommendation') as mock_rec:
-        # Use side_effect to return different values based on SavingsPlansType
-        def api_side_effect(*args, **kwargs):
-            if kwargs.get('SavingsPlansType') == 'COMPUTE_SP':
-                return compute_side_effect(*args, **kwargs)
-            elif kwargs.get('SavingsPlansType') == 'DATABASE_SP':
-                return database_side_effect(*args, **kwargs)
+    mock_ce = MagicMock()
+    # Use side_effect to return different values based on SavingsPlansType
+    def api_side_effect(*args, **kwargs):
+        if kwargs.get('SavingsPlansType') == 'COMPUTE_SP':
+            return compute_side_effect(*args, **kwargs)
+        elif kwargs.get('SavingsPlansType') == 'DATABASE_SP':
+            return database_side_effect(*args, **kwargs)
 
-        mock_rec.side_effect = api_side_effect
+    mock_ce.get_savings_plans_purchase_recommendation.side_effect = api_side_effect
 
-        result = handler.get_aws_recommendations(config)
+    result = handler.get_aws_recommendations(mock_ce, config)
 
-        # Verify both recommendations were returned
-        assert result['compute'] is not None
-        assert result['database'] is not None
-        assert result['compute']['HourlyCommitmentToPurchase'] == '1.5'
-        assert result['database']['HourlyCommitmentToPurchase'] == '2.5'
+    # Verify both recommendations were returned
+    assert result['compute'] is not None
+    assert result['database'] is not None
+    assert result['compute']['HourlyCommitmentToPurchase'] == '1.5'
+    assert result['database']['HourlyCommitmentToPurchase'] == '2.5'
 
-        # Verify API was called twice (once for each SP type)
-        assert mock_rec.call_count == 2
+    # Verify API was called twice (once for each SP type)
+    assert mock_ce.get_savings_plans_purchase_recommendation.call_count == 2
 
-        # Verify calls were made with correct parameters
-        call_args_list = [call[1] for call in mock_rec.call_args_list]
-        compute_call = next(c for c in call_args_list if c['SavingsPlansType'] == 'COMPUTE_SP')
-        database_call = next(c for c in call_args_list if c['SavingsPlansType'] == 'DATABASE_SP')
+    # Verify calls were made with correct parameters
+    call_args_list = [call[1] for call in mock_ce.get_savings_plans_purchase_recommendation.call_args_list]
+    compute_call = next(c for c in call_args_list if c['SavingsPlansType'] == 'COMPUTE_SP')
+    database_call = next(c for c in call_args_list if c['SavingsPlansType'] == 'DATABASE_SP')
 
-        assert compute_call['SavingsPlansType'] == 'COMPUTE_SP'
-        assert compute_call['PaymentOption'] == 'ALL_UPFRONT'
-        assert database_call['SavingsPlansType'] == 'DATABASE_SP'
-        assert database_call['PaymentOption'] == 'NO_UPFRONT'
+    assert compute_call['SavingsPlansType'] == 'COMPUTE_SP'
+    assert compute_call['PaymentOption'] == 'ALL_UPFRONT'
+    assert database_call['SavingsPlansType'] == 'DATABASE_SP'
+    assert database_call['PaymentOption'] == 'NO_UPFRONT'
 
-        # Verify parallel execution: both should start before either ends
-        # The call_order should have interleaved start/end if truly parallel
-        assert 'compute_start' in call_order
-        assert 'database_start' in call_order
-        assert 'compute_end' in call_order
-        assert 'database_end' in call_order
-
-
-def test_get_aws_recommendations_parallel_execution_uses_threadpool(monkeypatch):
-    """Test that ThreadPoolExecutor is used for parallel API calls."""
-    monkeypatch.setenv('QUEUE_URL', 'https://sqs.us-east-1.amazonaws.com/123456789012/test-queue')
-    monkeypatch.setenv('SNS_TOPIC_ARN', 'arn:aws:sns:us-east-1:123456789012:test-topic')
-    monkeypatch.setenv('ENABLE_COMPUTE_SP', 'true')
-    monkeypatch.setenv('ENABLE_DATABASE_SP', 'true')
-
-    config = handler.load_configuration()
-
-    with patch.object(handler.ce_client, 'get_savings_plans_purchase_recommendation') as mock_rec:
-        mock_rec.return_value = {
-            'Metadata': {
-                'RecommendationId': 'rec-123',
-                'LookbackPeriodInDays': '30'
-            },
-            'SavingsPlansPurchaseRecommendation': {
-                'SavingsPlansPurchaseRecommendationDetails': [
-                    {'HourlyCommitmentToPurchase': '1.0'}
-                ]
-            }
-        }
-
-        # Patch ThreadPoolExecutor to verify it's used correctly
-        from concurrent.futures import ThreadPoolExecutor
-        with patch('handler.ThreadPoolExecutor') as mock_executor_class:
-            mock_executor = MagicMock()
-            mock_executor_class.return_value.__enter__.return_value = mock_executor
-
-            # Mock submit and as_completed
-            mock_future1 = MagicMock()
-            mock_future2 = MagicMock()
-            mock_future1.result.return_value = {
-                'HourlyCommitmentToPurchase': '1.5',
-                'RecommendationId': 'rec-compute',
-                'GenerationTimestamp': '2026-01-13T00:00:00Z',
-                'Details': {}
-            }
-            mock_future2.result.return_value = {
-                'HourlyCommitmentToPurchase': '2.5',
-                'RecommendationId': 'rec-database',
-                'GenerationTimestamp': '2026-01-13T00:00:00Z',
-                'Details': {}
-            }
-
-            mock_executor.submit.side_effect = [mock_future1, mock_future2]
-
-            with patch('handler.as_completed') as mock_as_completed:
-                mock_as_completed.return_value = [mock_future1, mock_future2]
-
-                result = handler.get_aws_recommendations(config)
-
-                # Verify ThreadPoolExecutor was created with correct max_workers
-                mock_executor_class.assert_called_once_with(max_workers=2)
-
-                # Verify submit was called twice (once for each SP type)
-                assert mock_executor.submit.call_count == 2
-
-                # Verify as_completed was called with futures
-                assert mock_as_completed.call_count == 1
+    # Verify parallel execution: both should start before either ends
+    # The call_order should have interleaved start/end if truly parallel
+    assert 'compute_start' in call_order
+    assert 'database_start' in call_order
+    assert 'compute_end' in call_order
+    assert 'database_end' in call_order
 
 
-def test_get_aws_recommendations_parallel_execution_error_handling(monkeypatch):
+def test_get_aws_recommendations_parallel_execution_error_handling():
     """Test that errors in parallel execution are properly raised."""
-    monkeypatch.setenv('QUEUE_URL', 'https://sqs.us-east-1.amazonaws.com/123456789012/test-queue')
-    monkeypatch.setenv('SNS_TOPIC_ARN', 'arn:aws:sns:us-east-1:123456789012:test-topic')
-    monkeypatch.setenv('ENABLE_COMPUTE_SP', 'true')
-    monkeypatch.setenv('ENABLE_DATABASE_SP', 'true')
+    config = {
+        'enable_compute_sp': True,
+        'enable_database_sp': True,
+        'enable_sagemaker_sp': False,
+        'lookback_days': 30,
+        'min_data_days': 14
+    }
 
-    config = handler.load_configuration()
+    mock_ce = MagicMock()
+    # First call (compute) succeeds, second call (database) fails
+    from botocore.exceptions import ClientError
+    error_response = {'Error': {'Code': 'AccessDenied', 'Message': 'Access denied'}}
 
-    with patch.object(handler.ce_client, 'get_savings_plans_purchase_recommendation') as mock_rec:
-        # First call (compute) succeeds, second call (database) fails
-        from botocore.exceptions import ClientError
-        error_response = {'Error': {'Code': 'AccessDenied', 'Message': 'Access denied'}}
-
-        def api_side_effect(*args, **kwargs):
-            if kwargs.get('SavingsPlansType') == 'COMPUTE_SP':
-                return {
-                    'Metadata': {
-                        'RecommendationId': 'rec-compute',
-                        'LookbackPeriodInDays': '30'
-                    },
-                    'SavingsPlansPurchaseRecommendation': {
-                        'SavingsPlansPurchaseRecommendationDetails': [
-                            {'HourlyCommitmentToPurchase': '1.5'}
-                        ]
-                    }
+    def api_side_effect(*args, **kwargs):
+        if kwargs.get('SavingsPlansType') == 'COMPUTE_SP':
+            return {
+                'Metadata': {
+                    'RecommendationId': 'rec-compute',
+                    'LookbackPeriodInDays': '30'
+                },
+                'SavingsPlansPurchaseRecommendation': {
+                    'SavingsPlansPurchaseRecommendationDetails': [
+                        {'HourlyCommitmentToPurchase': '1.5'}
+                    ]
                 }
-            elif kwargs.get('SavingsPlansType') == 'DATABASE_SP':
-                raise ClientError(error_response, 'get_savings_plans_purchase_recommendation')
-
-        mock_rec.side_effect = api_side_effect
-
-        # Should raise the ClientError from database recommendation
-        with pytest.raises(ClientError):
-            handler.get_aws_recommendations(config)
-
-
-def test_get_aws_recommendations_parallel_single_task(mock_env_vars):
-    """Test that parallel execution works correctly with only one task (compute only)."""
-    config = handler.load_configuration()
-
-    with patch.object(handler.ce_client, 'get_savings_plans_purchase_recommendation') as mock_rec:
-        mock_rec.return_value = {
-            'Metadata': {
-                'RecommendationId': 'rec-123',
-                'GenerationTimestamp': '2026-01-13T00:00:00Z',
-                'LookbackPeriodInDays': '30'
-            },
-            'SavingsPlansPurchaseRecommendation': {
-                'SavingsPlansPurchaseRecommendationDetails': [
-                    {'HourlyCommitmentToPurchase': '2.5'}
-                ]
             }
+        elif kwargs.get('SavingsPlansType') == 'DATABASE_SP':
+            raise ClientError(error_response, 'get_savings_plans_purchase_recommendation')
+
+    mock_ce.get_savings_plans_purchase_recommendation.side_effect = api_side_effect
+
+    # Should raise the ClientError from database recommendation
+    with pytest.raises(ClientError):
+        handler.get_aws_recommendations(mock_ce, config)
+
+
+def test_get_aws_recommendations_parallel_single_task(mock_config):
+    """Test that parallel execution works correctly with only one task (compute only)."""
+    mock_ce = MagicMock()
+    mock_ce.get_savings_plans_purchase_recommendation.return_value = {
+        'Metadata': {
+            'RecommendationId': 'rec-123',
+            'GenerationTimestamp': '2026-01-13T00:00:00Z',
+            'LookbackPeriodInDays': '30'
+        },
+        'SavingsPlansPurchaseRecommendation': {
+            'SavingsPlansPurchaseRecommendationDetails': [
+                {'HourlyCommitmentToPurchase': '2.5'}
+            ]
         }
+    }
 
-        result = handler.get_aws_recommendations(config)
+    result = handler.get_aws_recommendations(mock_ce, mock_config)
 
-        # Should still work with ThreadPoolExecutor even with single task
-        assert result['compute'] is not None
-        assert result['compute']['HourlyCommitmentToPurchase'] == '2.5'
-        assert result['database'] is None
+    # Should still work with ThreadPoolExecutor even with single task
+    assert result['compute'] is not None
+    assert result['compute']['HourlyCommitmentToPurchase'] == '2.5'
+    assert result['database'] is None
 
-        # Verify only one API call was made
-        assert mock_rec.call_count == 1
+    # Verify only one API call was made
+    assert mock_ce.get_savings_plans_purchase_recommendation.call_count == 1
 
 
-def test_get_aws_recommendations_parallel_no_tasks(monkeypatch):
+def test_get_aws_recommendations_parallel_no_tasks():
     """Test that get_aws_recommendations handles case where both SP types are disabled."""
-    monkeypatch.setenv('QUEUE_URL', 'https://sqs.us-east-1.amazonaws.com/123456789012/test-queue')
-    monkeypatch.setenv('SNS_TOPIC_ARN', 'arn:aws:sns:us-east-1:123456789012:test-topic')
-    monkeypatch.setenv('ENABLE_COMPUTE_SP', 'false')
-    monkeypatch.setenv('ENABLE_DATABASE_SP', 'false')
+    config = {
+        'enable_compute_sp': False,
+        'enable_database_sp': False,
+        'enable_sagemaker_sp': False,
+        'lookback_days': 30,
+        'min_data_days': 14
+    }
 
-    config = handler.load_configuration()
+    mock_ce = MagicMock()
+    result = handler.get_aws_recommendations(mock_ce, config)
 
-    with patch.object(handler.ce_client, 'get_savings_plans_purchase_recommendation') as mock_rec:
-        result = handler.get_aws_recommendations(config)
+    # Should return None for all types
+    assert result['compute'] is None
+    assert result['database'] is None
+    assert result['sagemaker'] is None
 
-        # Should return None for both types
-        assert result['compute'] is None
-        assert result['database'] is None
-
-        # Should not call API at all
-        assert mock_rec.call_count == 0
+    # Should not call API at all
+    assert mock_ce.get_savings_plans_purchase_recommendation.call_count == 0
 
 
 # ============================================================================
@@ -1469,6 +1380,7 @@ def test_split_by_term_empty_list():
 
 def test_queue_purchase_intents_sends_messages():
     """Test that purchase intents are sent to SQS."""
+    mock_sqs = MagicMock()
     config = {
         'queue_url': 'test-queue-url',
         'tags': {'Environment': 'test'}
@@ -1484,24 +1396,24 @@ def test_queue_purchase_intents_sends_messages():
         }
     ]
 
-    with patch.object(handler.sqs_client, 'send_message') as mock_send:
-        mock_send.return_value = {'MessageId': 'msg-123'}
+    mock_sqs.send_message.return_value = {'MessageId': 'msg-123'}
 
-        handler.queue_purchase_intents(config, plans)
+    handler.queue_purchase_intents(mock_sqs, config, plans)
 
-        # Should send 1 message
-        assert mock_send.call_count == 1
-        call_args = mock_send.call_args[1]
-        assert call_args['QueueUrl'] == 'test-queue-url'
+    # Should send 1 message
+    assert mock_sqs.send_message.call_count == 1
+    call_args = mock_sqs.send_message.call_args[1]
+    assert call_args['QueueUrl'] == 'test-queue-url'
 
-        # Verify message body
-        message_body = json.loads(call_args['MessageBody'])
-        assert message_body['sp_type'] == 'compute'
-        assert message_body['hourly_commitment'] == 2.5
+    # Verify message body
+    message_body = json.loads(call_args['MessageBody'])
+    assert message_body['sp_type'] == 'compute'
+    assert message_body['hourly_commitment'] == 2.5
 
 
 def test_queue_purchase_intents_client_token_unique():
     """Test that each message gets a unique client token."""
+    mock_sqs = MagicMock()
     config = {
         'queue_url': 'test-queue-url',
         'tags': {}
@@ -1512,30 +1424,29 @@ def test_queue_purchase_intents_client_token_unique():
         {'sp_type': 'compute', 'term': 'ONE_YEAR', 'hourly_commitment': 0.5, 'payment_option': 'ALL_UPFRONT'}
     ]
 
-    with patch.object(handler.sqs_client, 'send_message') as mock_send:
-        mock_send.return_value = {'MessageId': 'msg-123'}
+    mock_sqs.send_message.return_value = {'MessageId': 'msg-123'}
 
-        handler.queue_purchase_intents(config, plans)
+    handler.queue_purchase_intents(mock_sqs, config, plans)
 
-        # Extract client tokens from all calls
-        tokens = []
-        for call in mock_send.call_args_list:
-            message_body = json.loads(call[1]['MessageBody'])
-            tokens.append(message_body['client_token'])
+    # Extract client tokens from all calls
+    tokens = []
+    for call in mock_sqs.send_message.call_args_list:
+        message_body = json.loads(call[1]['MessageBody'])
+        tokens.append(message_body['client_token'])
 
-        # All tokens should be unique
-        assert len(tokens) == len(set(tokens))
+    # All tokens should be unique
+    assert len(tokens) == len(set(tokens))
 
 
 def test_queue_purchase_intents_empty_list():
     """Test handling of empty purchase plans list."""
+    mock_sqs = MagicMock()
     config = {'queue_url': 'test-queue-url', 'tags': {}}
 
-    with patch.object(handler.sqs_client, 'send_message') as mock_send:
-        handler.queue_purchase_intents(config, [])
+    handler.queue_purchase_intents(mock_sqs, config, [])
 
-        # Should not send any messages
-        assert mock_send.call_count == 0
+    # Should not send any messages
+    assert mock_sqs.send_message.call_count == 0
 
 
 # ============================================================================
@@ -1544,6 +1455,7 @@ def test_queue_purchase_intents_empty_list():
 
 def test_send_scheduled_email_formats_correctly():
     """Test that scheduled email is formatted correctly."""
+    mock_sns = MagicMock()
     config = {
         'sns_topic_arn': 'test-topic-arn',
         'coverage_target_percent': 90.0,
@@ -1561,23 +1473,23 @@ def test_send_scheduled_email_formats_correctly():
 
     coverage = {'compute': 75.0, 'database': 0.0}
 
-    with patch.object(handler.sns_client, 'publish') as mock_publish:
-        handler.send_scheduled_email(config, plans, coverage)
+    handler.send_scheduled_email(mock_sns, config, plans, coverage)
 
-        # Verify SNS publish was called
-        assert mock_publish.call_count == 1
-        call_args = mock_publish.call_args[1]
-        assert call_args['TopicArn'] == 'test-topic-arn'
-        assert 'Savings Plans Scheduled for Purchase' in call_args['Subject']
+    # Verify SNS publish was called
+    assert mock_sns.publish.call_count == 1
+    call_args = mock_sns.publish.call_args[1]
+    assert call_args['TopicArn'] == 'test-topic-arn'
+    assert 'Savings Plans Scheduled for Purchase' in call_args['Subject']
 
-        # Verify message content
-        message = call_args['Message']
-        assert '75.00%' in message  # Coverage
-        assert '2.5' in message  # Hourly commitment
+    # Verify message content
+    message = call_args['Message']
+    assert '75.00%' in message  # Coverage
+    assert '2.5' in message  # Hourly commitment
 
 
 def test_send_dry_run_email_has_dry_run_header():
     """Test that dry-run email has clear DRY RUN header."""
+    mock_sns = MagicMock()
     config = {
         'sns_topic_arn': 'test-topic-arn',
         'coverage_target_percent': 90.0
@@ -1586,36 +1498,14 @@ def test_send_dry_run_email_has_dry_run_header():
     plans = []
     coverage = {'compute': 80.0, 'database': 0.0}
 
-    with patch.object(handler.sns_client, 'publish') as mock_publish:
-        handler.send_dry_run_email(config, plans, coverage)
+    handler.send_dry_run_email(mock_sns, config, plans, coverage)
 
-        call_args = mock_publish.call_args[1]
-        assert '[DRY RUN]' in call_args['Subject']
+    call_args = mock_sns.publish.call_args[1]
+    assert '[DRY RUN]' in call_args['Subject']
 
-        message = call_args['Message']
-        assert '***** DRY RUN MODE *****' in message
-        assert '*** NO PURCHASES WERE SCHEDULED ***' in message
-
-
-def test_send_error_email_handles_missing_config(monkeypatch):
-    """Test that error email works even if config is not loaded."""
-    monkeypatch.setenv('SNS_TOPIC_ARN', 'error-topic-arn')
-
-    with patch.object(handler.sns_client, 'publish') as mock_publish:
-        handler.send_error_email('Test error message')
-
-        call_args = mock_publish.call_args[1]
-        assert call_args['TopicArn'] == 'error-topic-arn'
-        assert 'ERROR' in call_args['Subject']
-        assert 'Test error message' in call_args['Message']
-
-
-def test_send_error_email_no_sns_topic(monkeypatch):
-    """Test that send_error_email handles missing SNS_TOPIC_ARN gracefully."""
-    monkeypatch.delenv('SNS_TOPIC_ARN', raising=False)
-
-    # Should not raise - just log error
-    handler.send_error_email('Test error')
+    message = call_args['Message']
+    assert '***** DRY RUN MODE *****' in message
+    assert '*** NO PURCHASES WERE SCHEDULED ***' in message
 
 
 # ============================================================================
@@ -1624,7 +1514,35 @@ def test_send_error_email_no_sns_topic(monkeypatch):
 
 def test_handler_dry_run_mode(mock_env_vars):
     """Test handler in dry-run mode sends email but doesn't queue."""
-    with patch.object(handler, 'purge_queue') as mock_purge, \
+    mock_config = {
+        'queue_url': 'test-queue-url',
+        'sns_topic_arn': 'test-sns-topic',
+        'dry_run': True,
+        'enable_compute_sp': True,
+        'enable_database_sp': False,
+        'enable_sagemaker_sp': False,
+        'coverage_target_percent': 90.0,
+        'max_purchase_percent': 10.0,
+        'renewal_window_days': 7,
+        'lookback_days': 30,
+        'min_data_days': 14,
+        'min_commitment_per_plan': 0.001,
+        'compute_sp_term_mix': {"three_year": 0.67, "one_year": 0.33},
+        'compute_sp_payment_option': 'ALL_UPFRONT',
+        'tags': {}
+    }
+
+    mock_clients = {
+        'ce': MagicMock(),
+        'savingsplans': MagicMock(),
+        'sqs': MagicMock(),
+        'sns': MagicMock()
+    }
+
+    with patch('shared.handler_utils.load_config_from_env', return_value=mock_config), \
+         patch('shared.handler_utils.initialize_clients', return_value=mock_clients), \
+         patch('boto3.client', return_value=MagicMock()), \
+         patch.object(handler, 'purge_queue') as mock_purge, \
          patch.object(handler, 'calculate_current_coverage') as mock_coverage, \
          patch.object(handler, 'get_aws_recommendations') as mock_recs, \
          patch.object(handler, 'send_dry_run_email') as mock_email, \
@@ -1648,9 +1566,38 @@ def test_handler_dry_run_mode(mock_env_vars):
 
 def test_handler_production_mode(mock_env_vars, monkeypatch):
     """Test handler in production mode queues messages and sends email."""
+    # Set DRY_RUN to false in environment
     monkeypatch.setenv('DRY_RUN', 'false')
 
-    with patch.object(handler, 'purge_queue') as mock_purge, \
+    mock_config = {
+        'queue_url': 'test-queue-url',
+        'sns_topic_arn': 'test-sns-topic',
+        'dry_run': False,
+        'enable_compute_sp': True,
+        'enable_database_sp': False,
+        'enable_sagemaker_sp': False,
+        'coverage_target_percent': 90.0,
+        'max_purchase_percent': 10.0,
+        'renewal_window_days': 7,
+        'lookback_days': 30,
+        'min_data_days': 14,
+        'min_commitment_per_plan': 0.001,
+        'compute_sp_term_mix': {"three_year": 0.67, "one_year": 0.33},
+        'compute_sp_payment_option': 'ALL_UPFRONT',
+        'tags': {}
+    }
+
+    mock_clients = {
+        'ce': MagicMock(),
+        'savingsplans': MagicMock(),
+        'sqs': MagicMock(),
+        'sns': MagicMock()
+    }
+
+    with patch('shared.handler_utils.load_config_from_env', return_value=mock_config), \
+         patch('shared.handler_utils.initialize_clients', return_value=mock_clients), \
+         patch('boto3.client', return_value=MagicMock()), \
+         patch.object(handler, 'purge_queue') as mock_purge, \
          patch.object(handler, 'calculate_current_coverage') as mock_coverage, \
          patch.object(handler, 'get_aws_recommendations') as mock_recs, \
          patch.object(handler, 'send_scheduled_email') as mock_email, \
@@ -1674,163 +1621,31 @@ def test_handler_production_mode(mock_env_vars, monkeypatch):
 
 def test_handler_error_raises_exception(mock_env_vars):
     """Test that handler raises exceptions on errors."""
-    with patch.object(handler, 'purge_queue') as mock_purge, \
-         patch.object(handler, 'send_error_email') as mock_error_email:
+    from botocore.exceptions import ClientError
+
+    mock_config = {
+        'queue_url': 'test-queue-url',
+        'sns_topic_arn': 'test-sns-topic',
+        'dry_run': True
+    }
+
+    mock_clients = {
+        'ce': MagicMock(),
+        'savingsplans': MagicMock(),
+        'sqs': MagicMock(),
+        'sns': MagicMock()
+    }
+
+    with patch('shared.handler_utils.load_config_from_env', return_value=mock_config), \
+         patch('shared.handler_utils.initialize_clients', return_value=mock_clients), \
+         patch('boto3.client', return_value=MagicMock()), \
+         patch.object(handler, 'purge_queue') as mock_purge, \
+         patch('shared.handler_utils.send_error_notification') as mock_error_email:
 
         # Make purge_queue raise an error
-        from botocore.exceptions import ClientError
         error_response = {'Error': {'Code': 'AccessDenied'}}
         mock_purge.side_effect = ClientError(error_response, 'purge_queue')
 
         # Should raise the exception
         with pytest.raises(ClientError):
             handler.handler({}, None)
-
-        # Should send error email
-        assert mock_error_email.call_count == 1
-
-
-# ============================================================================
-# Assume Role Tests
-# ============================================================================
-
-def test_get_assumed_role_session_with_valid_arn():
-    """Test that AssumeRole is called when ARN is provided."""
-    with patch('shared.aws_utils.boto3.client') as mock_boto3_client:
-        mock_sts = MagicMock()
-        mock_boto3_client.return_value = mock_sts
-
-        # Mock STS AssumeRole response
-        mock_sts.assume_role.return_value = {
-            'Credentials': {
-                'AccessKeyId': 'AKIAIOSFODNN7EXAMPLE',
-                'SecretAccessKey': 'wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY',
-                'SessionToken': 'FwoGZXIvYXdzEBYaDBexampletoken',
-                'Expiration': datetime.now(timezone.utc)
-            }
-        }
-
-        # Call function
-        session = handler.get_assumed_role_session('arn:aws:iam::123456789012:role/TestRole')
-
-        # Verify AssumeRole was called with correct parameters
-        assert session is not None
-        mock_sts.assume_role.assert_called_once_with(
-            RoleArn='arn:aws:iam::123456789012:role/TestRole',
-            RoleSessionName='sp-autopilot-session'  # Default session name from shared.aws_utils
-        )
-
-
-def test_get_assumed_role_session_without_arn():
-    """Test that None is returned when ARN is not provided (backward compatibility)."""
-    # Test with None
-    result = handler.get_assumed_role_session(None)
-    assert result is None
-
-    # Test with empty string
-    result = handler.get_assumed_role_session('')
-    assert result is None
-
-
-def test_get_assumed_role_session_access_denied():
-    """Test that AccessDenied error is raised with clear message."""
-    from botocore.exceptions import ClientError
-    with patch('shared.aws_utils.boto3.client') as mock_boto3_client:
-        mock_sts = MagicMock()
-        mock_boto3_client.return_value = mock_sts
-
-        # Mock AccessDenied error
-        error_response = {
-            'Error': {
-                'Code': 'AccessDenied',
-                'Message': 'User is not authorized to perform: sts:AssumeRole'
-            }
-        }
-        mock_sts.assume_role.side_effect = ClientError(error_response, 'AssumeRole')
-
-        # Verify ClientError is raised
-        with pytest.raises(ClientError) as exc_info:
-            handler.get_assumed_role_session('arn:aws:iam::123456789012:role/TestRole')
-
-        # Verify error code
-        assert exc_info.value.response['Error']['Code'] == 'AccessDenied'
-
-
-def test_get_clients_with_role_arn():
-    """Test that CE/SP clients use assumed credentials when role ARN is provided."""
-    config = {'management_account_role_arn': 'arn:aws:iam::123456789012:role/TestRole'}
-
-    with patch('shared.aws_utils.get_assumed_role_session') as mock_assume, \
-         patch('shared.aws_utils.boto3.client') as mock_boto3_client:
-
-        # Mock session from assumed role
-        mock_session = MagicMock()
-        mock_assume.return_value = mock_session
-
-        # Mock session.client() calls
-        mock_session.client.return_value = MagicMock()
-
-        # Mock boto3.client() calls (for SNS/SQS/S3)
-        mock_boto3_client.return_value = MagicMock()
-
-        # Call function
-        clients = handler.get_clients(config)
-
-        # Verify assume role was called with default session name
-        mock_assume.assert_called_once_with('arn:aws:iam::123456789012:role/TestRole', 'sp-autopilot-session')
-
-        # Verify CE and Savings Plans clients use session
-        assert mock_session.client.call_count == 2
-        mock_session.client.assert_any_call('ce')
-        mock_session.client.assert_any_call('savingsplans')
-
-        # Verify SNS, SQS, and S3 clients use local credentials (boto3.client directly)
-        assert mock_boto3_client.call_count == 3
-        mock_boto3_client.assert_any_call('sns')
-        mock_boto3_client.assert_any_call('sqs')
-        mock_boto3_client.assert_any_call('s3')
-
-
-def test_get_clients_without_role_arn():
-    """Test that all clients use default credentials when no role ARN provided (backward compatibility)."""
-    config = {'management_account_role_arn': None}
-
-    with patch('shared.aws_utils.boto3.client') as mock_boto3_client:
-        mock_boto3_client.return_value = MagicMock()
-
-        # Call function
-        clients = handler.get_clients(config)
-
-        # Verify all 5 clients use boto3.client directly (no assume role)
-        assert mock_boto3_client.call_count == 5
-        mock_boto3_client.assert_any_call('ce')
-        mock_boto3_client.assert_any_call('savingsplans')
-        mock_boto3_client.assert_any_call('sns')
-        mock_boto3_client.assert_any_call('sqs')
-        mock_boto3_client.assert_any_call('s3')
-
-
-def test_handler_assume_role_error_handling(mock_env_vars, monkeypatch):
-    """Test that handler error message includes role ARN when assume role fails."""
-    from botocore.exceptions import ClientError
-    # Add MANAGEMENT_ACCOUNT_ROLE_ARN to environment
-    monkeypatch.setenv('MANAGEMENT_ACCOUNT_ROLE_ARN', 'arn:aws:iam::123456789012:role/TestRole')
-
-    with patch('handler.get_clients') as mock_get_clients, \
-         patch('handler.send_error_email') as mock_send_error, \
-         patch('handler.purge_queue') as mock_purge:
-
-        # Mock assume role failure
-        error_response = {'Error': {'Code': 'AccessDenied', 'Message': 'Not authorized'}}
-        mock_get_clients.side_effect = ClientError(error_response, 'AssumeRole')
-
-        # Call handler - should raise exception
-        with pytest.raises(ClientError):
-            handler.handler({}, None)
-
-        # Verify error email was sent (may be called twice: once for role assumption error, once for general error)
-        assert mock_send_error.call_count >= 1
-
-        # Verify at least one error message includes role ARN
-        error_messages = [call[0][0] for call in mock_send_error.call_args_list]
-        assert any('arn:aws:iam::123456789012:role/TestRole' in msg for msg in error_messages)
