@@ -1,4 +1,4 @@
-name: Terraform Native Tests
+name: Terraform Unit Tests
 
 on:
   push:
@@ -90,13 +90,13 @@ jobs:
         run: |
           echo "Checking for required test files..."
           REQUIRED_FILES=(
-            "tests/s3.tftest.hcl"
-            "tests/sqs.tftest.hcl"
-            "tests/sns.tftest.hcl"
-            "tests/iam.tftest.hcl"
-            "tests/cloudwatch.tftest.hcl"
-            "tests/eventbridge.tftest.hcl"
-            "tests/variables.tftest.hcl"
+            "terraform-tests/unit/s3.tftest.hcl"
+            "terraform-tests/unit/sqs.tftest.hcl"
+            "terraform-tests/unit/sns.tftest.hcl"
+            "terraform-tests/unit/iam.tftest.hcl"
+            "terraform-tests/unit/cloudwatch.tftest.hcl"
+            "terraform-tests/unit/eventbridge.tftest.hcl"
+            "terraform-tests/unit/variables.tftest.hcl"
           )
 
           for file in "${REQUIRED_FILES[@]}"; do

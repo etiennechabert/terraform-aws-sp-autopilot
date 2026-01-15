@@ -1,0 +1,1 @@
+"""Purchaser Lambda tests."""
