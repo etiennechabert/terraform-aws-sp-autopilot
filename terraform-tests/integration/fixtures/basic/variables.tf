@@ -190,7 +190,7 @@ variable "enable_dlq_alarm" {
 variable "management_account_role_arn" {
   description = "ARN of role to assume in management account"
   type        = string
-  default     = ""
+  default     = null
 }
 
 # ============================================================================
