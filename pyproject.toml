@@ -86,6 +86,7 @@ ignore = [
     "RUF013",   # PEP 484 implicit Optional (existing pattern)
     "RUF015",   # Prefer next() over single element slice (existing pattern)
     "PLC0415",  # Import should be at top-level (test files import conditionally)
+    "PLW0603",  # Global statement used (needed for lazy client initialization)
     "B904",     # Raise from within except (nice-to-have exception chaining)
     "B017",     # Bare exception in pytest.raises (test files)
 ]

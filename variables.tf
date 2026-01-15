@@ -40,6 +40,11 @@ variable "max_coverage_cap" {
     condition     = var.max_coverage_cap <= 100
     error_message = "Max coverage cap must be less than or equal to 100."
   }
+
+  validation {
+    condition     = var.max_coverage_cap > var.coverage_target_percent
+    error_message = "Max coverage cap must be greater than coverage target percent."
+  }
 }
 
 variable "lookback_days" {
