@@ -8,8 +8,8 @@ on:
     paths:
       - '**.tf'
       - 'lambda/**'
-      - 'test/**'
-      - '.github/workflows/terratest.yml'
+      - 'terraform-tests/integration/**'
+      - '.github/workflows/terraform-integration-tests.yml'
   workflow_dispatch:
     inputs:
       test_filter:
@@ -66,13 +66,13 @@ jobs:
           echo "AWS credentials configured successfully"
 
       - name: Download Go modules
-        working-directory: test
+        working-directory: terraform-tests/integration
         run: |
           go mod download
           go mod verify
 
       - name: Run Terratest
-        working-directory: test
+        working-directory: terraform-tests/integration
         env:
           TEST_FILTER: ${{ github.event.inputs.test_filter }}
         run: |
@@ -86,7 +86,7 @@ jobs:
 
       - name: Cleanup on failure
         if: failure()
-        working-directory: test
+        working-directory: terraform-tests/integration
         run: |
           echo "Attempting to clean up any orphaned resources..."
           # Try to destroy any partial deployments
