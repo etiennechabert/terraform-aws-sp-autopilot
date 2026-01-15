@@ -1,4 +1,4 @@
-module terraform-aws-sp-autopilot/test
+module terraform-aws-sp-autopilot/terraform-tests/integration
 
 go 1.21
 
