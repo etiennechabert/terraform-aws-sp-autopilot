@@ -351,3 +351,96 @@ variable "email_reports" {
 # ============================================================================
 # SQS queues use AWS-managed encryption (alias/aws/sqs) which provides free at-rest
 # encryption without requiring customer-managed KMS keys or additional IAM permissions.
+
+# ============================================================================
+# SageMaker Savings Plans Configuration
+# ============================================================================
+
+variable "enable_sagemaker_sp" {
+  description = "Enable SageMaker Savings Plans automation"
+  type        = bool
+  default     = false
+}
+
+variable "sagemaker_sp_term_mix" {
+  description = "Split of commitment between terms for SageMaker Savings Plans"
+  type = object({
+    three_year = number
+    one_year   = number
+  })
+  default = {
+    three_year = 0.7
+    one_year   = 0.3
+  }
+
+  validation {
+    condition     = var.sagemaker_sp_term_mix.three_year >= 0 && var.sagemaker_sp_term_mix.one_year >= 0
+    error_message = "Both term mix values must be non-negative."
+  }
+
+  validation {
+    condition     = abs(var.sagemaker_sp_term_mix.three_year + var.sagemaker_sp_term_mix.one_year - 1) < 0.0001
+    error_message = "sagemaker_sp_term_mix.three_year + sagemaker_sp_term_mix.one_year must equal 1."
+  }
+}
+
+variable "sagemaker_sp_payment_option" {
+  description = "Payment option for SageMaker Savings Plans"
+  type        = string
+  default     = "ALL_UPFRONT"
+
+  validation {
+    condition     = contains(["ALL_UPFRONT", "PARTIAL_UPFRONT", "NO_UPFRONT"], var.sagemaker_sp_payment_option)
+    error_message = "sagemaker_sp_payment_option must be one of: ALL_UPFRONT, PARTIAL_UPFRONT, NO_UPFRONT."
+  }
+}
+
+# ============================================================================
+# SNS Encryption Configuration
+# ============================================================================
+
+variable "enable_sns_kms_encryption" {
+  description = "Enable KMS encryption for SNS topic (uses AWS managed key alias/aws/sns)"
+  type        = bool
+  default     = false
+}
+
+# ============================================================================
+# Lambda Configuration
+# ============================================================================
+
+variable "lambda_scheduler_memory_size" {
+  description = "Memory size in MB for Scheduler Lambda function"
+  type        = number
+  default     = 256
+}
+
+variable "lambda_scheduler_timeout" {
+  description = "Timeout in seconds for Scheduler Lambda function"
+  type        = number
+  default     = 300
+}
+
+variable "lambda_purchaser_memory_size" {
+  description = "Memory size in MB for Purchaser Lambda function"
+  type        = number
+  default     = 256
+}
+
+variable "lambda_purchaser_timeout" {
+  description = "Timeout in seconds for Purchaser Lambda function"
+  type        = number
+  default     = 300
+}
+
+variable "lambda_reporter_memory_size" {
+  description = "Memory size in MB for Reporter Lambda function"
+  type        = number
+  default     = 256
+}
+
+variable "lambda_reporter_timeout" {
+  description = "Timeout in seconds for Reporter Lambda function"
+  type        = number
+  default     = 300
+}
