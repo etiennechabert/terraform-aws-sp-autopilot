@@ -7,7 +7,7 @@ Provides reusable utilities for:
 """
 
 import logging
-from typing import Any, Dict, Optional
+from typing import Any, Optional
 
 import boto3
 from botocore.exceptions import ClientError
@@ -62,7 +62,7 @@ def get_assumed_role_session(role_arn: str, session_name: str = 'sp-autopilot-se
         raise
 
 
-def get_clients(config: Dict[str, Any], session_name: str = 'sp-autopilot-session') -> Dict[str, Any]:
+def get_clients(config: dict[str, Any], session_name: str = 'sp-autopilot-session') -> dict[str, Any]:
     """
     Get AWS clients, using assumed role if configured.
 

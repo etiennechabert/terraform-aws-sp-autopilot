@@ -18,6 +18,7 @@ import os
 import sys
 from unittest.mock import Mock, patch
 
+
 # Set mock AWS credentials before importing handler (required for boto3.client() calls)
 os.environ['AWS_ACCESS_KEY_ID'] = 'testing'
 os.environ['AWS_SECRET_ACCESS_KEY'] = 'testing'
@@ -519,7 +520,7 @@ def test_api_error():
         # Execute handler - should raise exception
         exception_raised = False
         try:
-            response = handler.handler({}, {})
+            handler.handler({}, {})
         except ClientError as e:
             exception_raised = True
             scenario.log(f"Exception raised as expected: {e}")

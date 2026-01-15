@@ -35,7 +35,7 @@ Example Usage:
 """
 
 import logging
-from typing import Any, Dict, List, Optional, Union
+from typing import Any, Optional
 
 
 # Configure logging
@@ -43,7 +43,7 @@ logger = logging.getLogger()
 logger.setLevel(logging.INFO)
 
 
-def build_header(title: str, width: int = 50) -> List[str]:
+def build_header(title: str, width: int = 50) -> list[str]:
     """
     Build an email header with title and separator line.
 
@@ -75,7 +75,7 @@ def build_header(title: str, width: int = 50) -> List[str]:
     ]
 
 
-def build_separator(width: int = 50, char: str = "-") -> List[str]:
+def build_separator(width: int = 50, char: str = "-") -> list[str]:
     """
     Build a separator line for email sections.
 
@@ -100,10 +100,10 @@ def build_separator(width: int = 50, char: str = "-") -> List[str]:
 
 
 def build_key_value_section(
-    data: Dict[str, Any],
+    data: dict[str, Any],
     indent: str = "",
     format_numbers: bool = True
-) -> List[str]:
+) -> list[str]:
     """
     Build a section with key-value pairs.
 
@@ -149,10 +149,10 @@ def build_key_value_section(
 
 def build_list_section(
     section_title: str,
-    items: List[str],
+    items: list[str],
     width: int = 50,
     include_separator: bool = True
-) -> List[str]:
+) -> list[str]:
     """
     Build a titled list section with optional separator.
 
@@ -198,7 +198,7 @@ def build_footer(
     custom_message: Optional[str] = None,
     width: int = 50,
     include_separator: bool = True
-) -> List[str]:
+) -> list[str]:
     """
     Build a standard email footer.
 

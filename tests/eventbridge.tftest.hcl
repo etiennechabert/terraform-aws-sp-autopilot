@@ -70,8 +70,8 @@ run "test_scheduler_eventbridge_rule_default_schedule" {
   }
 
   assert {
-    condition     = aws_cloudwatch_event_rule.scheduler.schedule_expression == "cron(0 1 1 * ? *)"
-    error_message = "Scheduler EventBridge rule should use default schedule: cron(0 1 1 * ? *)"
+    condition     = aws_cloudwatch_event_rule.scheduler.schedule_expression == "cron(0 8 1 * ? *)"
+    error_message = "Scheduler EventBridge rule should use default schedule: cron(0 8 1 * ? *)"
   }
 }
 
@@ -169,8 +169,8 @@ run "test_purchaser_eventbridge_rule_default_schedule" {
   }
 
   assert {
-    condition     = aws_cloudwatch_event_rule.purchaser.schedule_expression == "cron(0 2 1 * ? *)"
-    error_message = "Purchaser EventBridge rule should use default schedule: cron(0 2 1 * ? *)"
+    condition     = aws_cloudwatch_event_rule.purchaser.schedule_expression == "cron(0 8 4 * ? *)"
+    error_message = "Purchaser EventBridge rule should use default schedule: cron(0 8 4 * ? *)"
   }
 }
 
@@ -287,8 +287,8 @@ run "test_reporter_eventbridge_rule_default_schedule" {
   }
 
   assert {
-    condition     = aws_cloudwatch_event_rule.reporter[0].schedule_expression == "cron(0 8 1 * ? *)"
-    error_message = "Reporter EventBridge rule should use default schedule: cron(0 8 1 * ? *)"
+    condition     = aws_cloudwatch_event_rule.reporter[0].schedule_expression == "cron(0 9 1 * ? *)"
+    error_message = "Reporter EventBridge rule should use default schedule: cron(0 9 1 * ? *)"
   }
 }
 

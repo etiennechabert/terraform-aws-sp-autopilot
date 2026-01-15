@@ -5,7 +5,7 @@ This module provides schema validation and type enforcement for purchase intent
 messages to ensure data integrity before attempting to purchase Savings Plans.
 """
 
-from typing import Any, Dict
+from typing import Any
 
 
 # Valid values for sp_type field
@@ -26,7 +26,7 @@ REQUIRED_FIELDS = [
 ]
 
 
-def validate_purchase_intent(purchase_intent: Dict[str, Any]) -> None:
+def validate_purchase_intent(purchase_intent: dict[str, Any]) -> None:
     """
     Validate purchase intent message schema and data types.
 
@@ -71,7 +71,7 @@ def validate_purchase_intent(purchase_intent: Dict[str, Any]) -> None:
     _validate_field_types(purchase_intent)
 
 
-def _validate_field_types(purchase_intent: Dict[str, Any]) -> None:
+def _validate_field_types(purchase_intent: dict[str, Any]) -> None:
     """
     Validate data types for fields in purchase intent.
 
