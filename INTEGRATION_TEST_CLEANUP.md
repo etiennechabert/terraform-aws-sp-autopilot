@@ -2,6 +2,8 @@
 
 ## ✅ Cleanup is Automatic and Guaranteed
 
+**Status**: IAM permissions configured ✅ Ready to test!
+
 ### How It Works
 
 Every integration test uses Terratest's `defer terraform.Destroy()` pattern:
