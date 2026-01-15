@@ -36,7 +36,7 @@ from shared.handler_utils import (
 
 _coverage_spec = importlib.util.spec_from_file_location(
     "coverage_calc",  # Use different name to avoid conflict
-    _os_for_import.path.join(_os_for_import.path.dirname(__file__), "coverage.py"),
+    _os_for_import.path.join(_os_for_import.path.dirname(__file__), "coverage_calculator.py"),
 )
 coverage_module = importlib.util.module_from_spec(_coverage_spec)
 _coverage_spec.loader.exec_module(coverage_module)
