@@ -37,9 +37,7 @@ def calculate_current_coverage(
 
     # Get list of existing Savings Plans
     try:
-        response = savingsplans_client.describe_savings_plans(
-            filters=[{"name": "state", "values": ["active"]}]
-        )
+        response = savingsplans_client.describe_savings_plans(states=["active"])
         savings_plans = response.get("savingsPlans", [])
         logger.info(f"Found {len(savings_plans)} active Savings Plans")
 
