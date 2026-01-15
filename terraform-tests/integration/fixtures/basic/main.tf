@@ -33,7 +33,7 @@ provider "aws" {
 # ============================================================================
 
 module "sp_autopilot" {
-  source = "../../.."
+  source = "../../../.."
 
   # Savings Plan Types
   enable_compute_sp  = var.enable_compute_sp
