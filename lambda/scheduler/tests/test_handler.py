@@ -4,12 +4,14 @@ Comprehensive unit tests for Scheduler Lambda handler.
 Tests cover all 12 functions with edge cases to achieve >= 80% coverage.
 """
 
-import pytest
-from unittest.mock import Mock, patch, MagicMock, call
-from datetime import datetime, timezone, timedelta
 import json
-import sys
 import os
+import sys
+from datetime import datetime, timedelta, timezone
+from unittest.mock import MagicMock, patch
+
+import pytest
+
 
 # Add parent directory to path
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
@@ -623,8 +625,9 @@ def test_get_aws_recommendations_parallel_execution_both_enabled():
     def api_side_effect(*args, **kwargs):
         if kwargs.get('SavingsPlansType') == 'COMPUTE_SP':
             return compute_side_effect(*args, **kwargs)
-        elif kwargs.get('SavingsPlansType') == 'DATABASE_SP':
+        if kwargs.get('SavingsPlansType') == 'DATABASE_SP':
             return database_side_effect(*args, **kwargs)
+        return None
 
     mock_ce.get_savings_plans_purchase_recommendation.side_effect = api_side_effect
 
@@ -685,8 +688,9 @@ def test_get_aws_recommendations_parallel_execution_error_handling():
                     ]
                 }
             }
-        elif kwargs.get('SavingsPlansType') == 'DATABASE_SP':
+        if kwargs.get('SavingsPlansType') == 'DATABASE_SP':
             raise ClientError(error_response, 'get_savings_plans_purchase_recommendation')
+        return None
 
     mock_ce.get_savings_plans_purchase_recommendation.side_effect = api_side_effect
 
@@ -1232,12 +1236,12 @@ def test_split_by_term_compute_sp():
     assert len(result) == 2
 
     # Check three-year plan
-    three_year_plan = [p for p in result if p['term'] == 'THREE_YEAR'][0]
+    three_year_plan = next(p for p in result if p['term'] == 'THREE_YEAR')
     assert three_year_plan['hourly_commitment'] == pytest.approx(3.0 * 0.67, rel=0.01)
     assert three_year_plan['term'] == 'THREE_YEAR'
 
     # Check one-year plan
-    one_year_plan = [p for p in result if p['term'] == 'ONE_YEAR'][0]
+    one_year_plan = next(p for p in result if p['term'] == 'ONE_YEAR')
     assert one_year_plan['hourly_commitment'] == pytest.approx(3.0 * 0.33, rel=0.01)
     assert one_year_plan['term'] == 'ONE_YEAR'
 
@@ -1295,14 +1299,14 @@ def test_split_by_term_sagemaker_sp():
     assert len(result) == 2
 
     # Check three-year plan
-    three_year_plan = [p for p in result if p['term'] == 'THREE_YEAR'][0]
+    three_year_plan = next(p for p in result if p['term'] == 'THREE_YEAR')
     assert three_year_plan['hourly_commitment'] == pytest.approx(6.0 * 0.67, rel=0.01)
     assert three_year_plan['term'] == 'THREE_YEAR'
     assert three_year_plan['sp_type'] == 'sagemaker'
     assert three_year_plan['payment_option'] == 'ALL_UPFRONT'
 
     # Check one-year plan
-    one_year_plan = [p for p in result if p['term'] == 'ONE_YEAR'][0]
+    one_year_plan = next(p for p in result if p['term'] == 'ONE_YEAR')
     assert one_year_plan['hourly_commitment'] == pytest.approx(6.0 * 0.33, rel=0.01)
     assert one_year_plan['term'] == 'ONE_YEAR'
     assert one_year_plan['sp_type'] == 'sagemaker'
@@ -1542,7 +1546,7 @@ def test_handler_dry_run_mode(mock_env_vars):
     with patch('shared.handler_utils.load_config_from_env', return_value=mock_config), \
          patch('shared.handler_utils.initialize_clients', return_value=mock_clients), \
          patch('boto3.client', return_value=MagicMock()), \
-         patch.object(handler, 'purge_queue') as mock_purge, \
+         patch.object(handler, 'purge_queue'), \
          patch.object(handler, 'calculate_current_coverage') as mock_coverage, \
          patch.object(handler, 'get_aws_recommendations') as mock_recs, \
          patch.object(handler, 'send_dry_run_email') as mock_email, \
@@ -1597,7 +1601,7 @@ def test_handler_production_mode(mock_env_vars, monkeypatch):
     with patch('shared.handler_utils.load_config_from_env', return_value=mock_config), \
          patch('shared.handler_utils.initialize_clients', return_value=mock_clients), \
          patch('boto3.client', return_value=MagicMock()), \
-         patch.object(handler, 'purge_queue') as mock_purge, \
+         patch.object(handler, 'purge_queue'), \
          patch.object(handler, 'calculate_current_coverage') as mock_coverage, \
          patch.object(handler, 'get_aws_recommendations') as mock_recs, \
          patch.object(handler, 'send_scheduled_email') as mock_email, \
@@ -1640,7 +1644,7 @@ def test_handler_error_raises_exception(mock_env_vars):
          patch('shared.handler_utils.initialize_clients', return_value=mock_clients), \
          patch('boto3.client', return_value=MagicMock()), \
          patch.object(handler, 'purge_queue') as mock_purge, \
-         patch('shared.handler_utils.send_error_notification') as mock_error_email:
+         patch('shared.handler_utils.send_error_notification'):
 
         # Make purge_queue raise an error
         error_response = {'Error': {'Code': 'AccessDenied'}}

@@ -14,13 +14,15 @@ This Lambda:
 
 import json
 import logging
-from datetime import datetime, timezone, timedelta, date
-from typing import Dict, List, Any, Optional
+from datetime import date, datetime, timedelta, timezone
+from typing import Any
 
+import boto3
 from botocore.exceptions import ClientError
-
-from shared import handler_utils, notifications
 from validation import validate_purchase_intent
+
+from shared import handler_utils
+
 
 # Configure logging
 logger = logging.getLogger()
@@ -28,7 +30,7 @@ logger.setLevel(logging.INFO)
 
 
 @handler_utils.lambda_handler_wrapper('Purchaser')
-def handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
+def handler(event: dict[str, Any], context: Any) -> dict[str, Any]:
     """
     Main handler for Purchaser Lambda.
 
@@ -50,7 +52,6 @@ def handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
         def send_error_email(error_msg: str) -> None:
             """Send error notification using shared utility."""
             # Get SNS client directly (before full client initialization)
-            import boto3
             sns = boto3.client('sns')
             handler_utils.send_error_notification(
                 sns_client=sns,
@@ -107,7 +108,6 @@ def handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
         # Try to send error notification
         try:
             config = load_configuration()
-            import boto3
             sns = boto3.client('sns')
             handler_utils.send_error_notification(
                 sns_client=sns,
@@ -122,7 +122,7 @@ def handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
         raise  # Re-raise to ensure Lambda fails visibly
 
 
-def load_configuration() -> Dict[str, Any]:
+def load_configuration() -> dict[str, Any]:
     """Load and validate configuration from environment variables."""
     schema = {
         'queue_url': {
@@ -173,7 +173,7 @@ def load_configuration() -> Dict[str, Any]:
     return handler_utils.load_config_from_env(schema)
 
 
-def receive_messages(sqs_client: Any, queue_url: str, max_messages: int = 10) -> List[Dict[str, Any]]:
+def receive_messages(sqs_client: Any, queue_url: str, max_messages: int = 10) -> list[dict[str, Any]]:
     """
     Receive messages from SQS queue.
 
@@ -199,11 +199,11 @@ def receive_messages(sqs_client: Any, queue_url: str, max_messages: int = 10) ->
         return messages
 
     except ClientError as e:
-        logger.error(f"Failed to receive messages: {str(e)}")
+        logger.error(f"Failed to receive messages: {e!s}")
         raise
 
 
-def get_current_coverage(clients: Dict[str, Any], config: Dict[str, Any]) -> Dict[str, float]:
+def get_current_coverage(clients: dict[str, Any], config: dict[str, Any]) -> dict[str, float]:
     """
     Calculate current Savings Plans coverage, excluding plans expiring soon.
 
@@ -239,11 +239,11 @@ def get_current_coverage(clients: Dict[str, Any], config: Dict[str, Any]) -> Dic
         return adjusted_coverage
 
     except ClientError as e:
-        logger.error(f"Failed to calculate coverage: {str(e)}")
+        logger.error(f"Failed to calculate coverage: {e!s}")
         raise
 
 
-def get_ce_coverage(ce_client: Any, start_date: date, end_date: date, config: Dict[str, Any]) -> Dict[str, Any]:
+def get_ce_coverage(ce_client: Any, start_date: date, end_date: date, config: dict[str, Any]) -> dict[str, Any]:
     """
     Get Savings Plans coverage from Cost Explorer.
 
@@ -297,11 +297,11 @@ def get_ce_coverage(ce_client: Any, start_date: date, end_date: date, config: Di
         return coverage
 
     except ClientError as e:
-        logger.error(f"Failed to get Cost Explorer coverage: {str(e)}")
+        logger.error(f"Failed to get Cost Explorer coverage: {e!s}")
         raise
 
 
-def get_expiring_plans(savingsplans_client: Any, config: Dict[str, Any]) -> List[Dict[str, Any]]:
+def get_expiring_plans(savingsplans_client: Any, config: dict[str, Any]) -> list[dict[str, Any]]:
     """
     Get list of Savings Plans expiring within renewal_window_days.
 
@@ -341,14 +341,14 @@ def get_expiring_plans(savingsplans_client: Any, config: Dict[str, Any]) -> List
         return expiring_plans
 
     except ClientError as e:
-        logger.error(f"Failed to get Savings Plans: {str(e)}")
+        logger.error(f"Failed to get Savings Plans: {e!s}")
         raise
 
 
 def adjust_coverage_for_expiring_plans(
-    raw_coverage: Dict[str, float],
-    expiring_plans: List[Dict[str, Any]]
-) -> Dict[str, float]:
+    raw_coverage: dict[str, float],
+    expiring_plans: list[dict[str, Any]]
+) -> dict[str, float]:
     """
     Adjust coverage by excluding expiring plans.
 
@@ -393,11 +393,11 @@ def adjust_coverage_for_expiring_plans(
 
 
 def process_purchase_messages(
-    clients: Dict[str, Any],
-    config: Dict[str, Any],
-    messages: List[Dict[str, Any]],
-    initial_coverage: Dict[str, float]
-) -> Dict[str, Any]:
+    clients: dict[str, Any],
+    config: dict[str, Any],
+    messages: list[dict[str, Any]],
+    initial_coverage: dict[str, float]
+) -> dict[str, Any]:
     """
     Process all purchase messages from the queue.
 
@@ -432,10 +432,10 @@ def process_purchase_messages(
             try:
                 validate_purchase_intent(purchase_intent)
             except ValueError as e:
-                logger.error(f"Message validation failed: {str(e)}")
+                logger.error(f"Message validation failed: {e!s}")
                 results['failed'].append({
                     'intent': purchase_intent,
-                    'error': f"Validation error: {str(e)}"
+                    'error': f"Validation error: {e!s}"
                 })
                 results['failed_count'] += 1
                 # Message stays in queue for retry - do not delete
@@ -471,7 +471,7 @@ def process_purchase_messages(
                 delete_message(clients['sqs'], config['queue_url'], message['ReceiptHandle'])
 
         except ClientError as e:
-            logger.error(f"Failed to process purchase: {str(e)}")
+            logger.error(f"Failed to process purchase: {e!s}")
             results['failed'].append({
                 'intent': purchase_intent if 'purchase_intent' in locals() else {},
                 'error': str(e)
@@ -480,7 +480,7 @@ def process_purchase_messages(
             # Message stays in queue for retry
 
         except Exception as e:
-            logger.error(f"Unexpected error processing message: {str(e)}")
+            logger.error(f"Unexpected error processing message: {e!s}")
             results['failed'].append({
                 'error': str(e)
             })
@@ -492,9 +492,9 @@ def process_purchase_messages(
 
 
 def would_exceed_cap(
-    config: Dict[str, Any],
-    purchase_intent: Dict[str, Any],
-    current_coverage: Dict[str, float]
+    config: dict[str, Any],
+    purchase_intent: dict[str, Any],
+    current_coverage: dict[str, float]
 ) -> bool:
     """
     Check if purchase would exceed max_coverage_cap.
@@ -539,8 +539,8 @@ def would_exceed_cap(
 
 def execute_purchase(
     savingsplans_client: Any,
-    config: Dict[str, Any],
-    purchase_intent: Dict[str, Any]
+    config: dict[str, Any],
+    purchase_intent: dict[str, Any]
 ) -> str:
     """
     Execute a Savings Plan purchase via AWS API.
@@ -603,9 +603,9 @@ def execute_purchase(
 
 
 def update_coverage_tracking(
-    current_coverage: Dict[str, float],
-    purchase_intent: Dict[str, Any]
-) -> Dict[str, float]:
+    current_coverage: dict[str, float],
+    purchase_intent: dict[str, Any]
+) -> dict[str, float]:
     """
     Update coverage tracking after a purchase.
 
@@ -665,15 +665,15 @@ def delete_message(sqs_client: Any, queue_url: str, receipt_handle: str) -> None
         )
         logger.info("Message deleted from queue")
     except ClientError as e:
-        logger.error(f"Failed to delete message: {str(e)}")
+        logger.error(f"Failed to delete message: {e!s}")
         raise
 
 
 def send_summary_email(
     sns_client: Any,
-    config: Dict[str, Any],
-    results: Dict[str, Any],
-    coverage: Dict[str, float]
+    config: dict[str, Any],
+    results: dict[str, Any],
+    coverage: dict[str, float]
 ) -> None:
     """
     Send aggregated summary email for all purchases.
@@ -812,5 +812,5 @@ def send_summary_email(
         )
         logger.info("Summary email sent successfully")
     except ClientError as e:
-        logger.error(f"Failed to send summary email: {str(e)}")
+        logger.error(f"Failed to send summary email: {e!s}")
         raise

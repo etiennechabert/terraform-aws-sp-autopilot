@@ -9,12 +9,12 @@ import json
 import logging
 import os
 from datetime import datetime, timezone
-from typing import Any, Dict, Optional, Callable
+from typing import Any, Callable, Optional
 
 from botocore.exceptions import ClientError
 
-from shared.aws_utils import get_clients
 from shared import notifications
+from shared.aws_utils import get_clients
 
 
 # Configure logging
@@ -22,7 +22,7 @@ logger = logging.getLogger()
 logger.setLevel(logging.INFO)
 
 
-def load_config_from_env(schema: Dict[str, Dict[str, Any]]) -> Dict[str, Any]:
+def load_config_from_env(schema: dict[str, dict[str, Any]]) -> dict[str, Any]:
     """
     Load and validate configuration from environment variables based on a schema.
 
@@ -83,12 +83,11 @@ def load_config_from_env(schema: Dict[str, Dict[str, Any]]) -> Dict[str, Any]:
         if is_required:
             # Required field - will raise KeyError if missing
             raw_value = os.environ[env_var]
+        # Optional field - use default if missing
+        elif default_value is not None:
+            raw_value = os.environ.get(env_var, default_value)
         else:
-            # Optional field - use default if missing
-            if default_value is not None:
-                raw_value = os.environ.get(env_var, default_value)
-            else:
-                raw_value = os.environ.get(env_var)
+            raw_value = os.environ.get(env_var)
 
         # Skip if value is None (optional field not provided, no default)
         if raw_value is None:
@@ -120,10 +119,10 @@ def load_config_from_env(schema: Dict[str, Dict[str, Any]]) -> Dict[str, Any]:
 
 
 def initialize_clients(
-    config: Dict[str, Any],
+    config: dict[str, Any],
     session_name: str,
     error_callback: Optional[Callable[[str], None]] = None
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     """
     Initialize AWS clients with assume role support and standardized error handling.
 
@@ -171,9 +170,9 @@ def initialize_clients(
         return clients
     except ClientError as e:
         # Build descriptive error message
-        error_msg = f"Failed to initialize AWS clients: {str(e)}"
+        error_msg = f"Failed to initialize AWS clients: {e!s}"
         if config.get('management_account_role_arn'):
-            error_msg = f"Failed to assume role {config['management_account_role_arn']}: {str(e)}"
+            error_msg = f"Failed to assume role {config['management_account_role_arn']}: {e!s}"
 
         # Log error with full traceback
         logger.error(error_msg, exc_info=True)
@@ -243,14 +242,14 @@ def lambda_handler_wrapper(lambda_name: str) -> Callable:
         - Handlers should implement their own error notification before raising
     """
     def decorator(handler_func: Callable) -> Callable:
-        def wrapper(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
+        def wrapper(event: dict[str, Any], context: Any) -> dict[str, Any]:
             try:
                 logger.info(f"Starting {lambda_name} Lambda execution")
                 result = handler_func(event, context)
                 logger.info(f"{lambda_name} Lambda completed successfully")
                 return result
             except Exception as e:
-                logger.error(f"{lambda_name} Lambda failed: {str(e)}", exc_info=True)
+                logger.error(f"{lambda_name} Lambda failed: {e!s}", exc_info=True)
                 raise  # Re-raise to ensure Lambda fails visibly
         return wrapper
     return decorator
@@ -339,7 +338,7 @@ Please check CloudWatch Logs for full details.
         logger.info(f"Error notification sent via SNS to {sns_topic_arn}")
     except Exception as e:
         # Don't raise - we're already in error handling
-        logger.warning(f"Failed to send SNS error notification: {str(e)}")
+        logger.warning(f"Failed to send SNS error notification: {e!s}")
 
     # Send Slack notification (if configured)
     if slack_webhook_url:
@@ -363,7 +362,7 @@ Please check CloudWatch Logs for full details.
             else:
                 logger.warning("Slack error notification failed")
         except Exception as e:
-            logger.warning(f"Failed to send Slack error notification: {str(e)}")
+            logger.warning(f"Failed to send Slack error notification: {e!s}")
 
     # Send Teams notification (if configured)
     if teams_webhook_url:
@@ -386,4 +385,4 @@ Please check CloudWatch Logs for full details.
             else:
                 logger.warning("Teams error notification failed")
         except Exception as e:
-            logger.warning(f"Failed to send Teams error notification: {str(e)}")
+            logger.warning(f"Failed to send Teams error notification: {e!s}")

@@ -44,7 +44,7 @@ Example Usage:
 
 import json
 import logging
-from typing import Any, Dict, List
+from typing import Any
 from urllib.error import HTTPError, URLError
 from urllib.request import Request, urlopen
 
@@ -54,7 +54,7 @@ logger = logging.getLogger()
 logger.setLevel(logging.INFO)
 
 
-def format_slack_message(subject: str, body_lines: List[str], severity: str = 'info') -> Dict[str, Any]:
+def format_slack_message(subject: str, body_lines: list[str], severity: str = 'info') -> dict[str, Any]:
     """
     Format message for Slack using Block Kit format with color-coded attachments.
 
@@ -149,7 +149,7 @@ def format_slack_message(subject: str, body_lines: List[str], severity: str = 'i
     }
 
 
-def format_teams_message(subject: str, body_lines: List[str]) -> Dict[str, Any]:
+def format_teams_message(subject: str, body_lines: list[str]) -> dict[str, Any]:
     """
     Format message for Microsoft Teams using MessageCard format.
 
@@ -173,7 +173,7 @@ def format_teams_message(subject: str, body_lines: List[str]) -> Dict[str, Any]:
     }
 
 
-def send_slack_notification(webhook_url: str, message_data: Dict[str, Any]) -> bool:
+def send_slack_notification(webhook_url: str, message_data: dict[str, Any]) -> bool:
     """
     Send notification to Slack via webhook.
 
@@ -216,7 +216,7 @@ def send_slack_notification(webhook_url: str, message_data: Dict[str, Any]) -> b
         return False
 
 
-def send_teams_notification(webhook_url: str, message_data: Dict[str, Any]) -> bool:
+def send_teams_notification(webhook_url: str, message_data: dict[str, Any]) -> bool:
     """
     Send notification to Microsoft Teams via webhook.
 

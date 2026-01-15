@@ -16,20 +16,20 @@ This Lambda:
 
 import json
 import logging
-import os
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from datetime import datetime, timezone
-from typing import Dict, List, Any, Optional
+from typing import Any, Optional
 
+import boto3
 from botocore.exceptions import ClientError
 
-from shared import notifications
 from shared.handler_utils import (
-    load_config_from_env,
     initialize_clients,
     lambda_handler_wrapper,
-    send_error_notification
+    load_config_from_env,
+    send_error_notification,
 )
+
 
 # Configure logging
 logger = logging.getLogger()
@@ -37,7 +37,7 @@ logger.setLevel(logging.INFO)
 
 
 @lambda_handler_wrapper('Scheduler')
-def handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
+def handler(event: dict[str, Any], context: Any) -> dict[str, Any]:
     """
     Main handler for Scheduler Lambda.
 
@@ -59,7 +59,6 @@ def handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
         def send_error_email(error_msg: str) -> None:
             """Send error notification using shared utility."""
             # Get SNS client directly (before full client initialization)
-            import boto3
             sns = boto3.client('sns')
             send_error_notification(
                 sns_client=sns,
@@ -118,7 +117,6 @@ def handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
         # Try to send error notification
         try:
             config = load_config_from_env(CONFIG_SCHEMA)
-            import boto3
             sns = boto3.client('sns')
             send_error_notification(
                 sns_client=sns,
@@ -266,7 +264,7 @@ def purge_queue(sqs_client: Any, queue_url: str) -> None:
             raise
 
 
-def calculate_current_coverage(savingsplans_client: Any, ce_client: Any, config: Dict[str, Any]) -> Dict[str, float]:
+def calculate_current_coverage(savingsplans_client: Any, ce_client: Any, config: dict[str, Any]) -> dict[str, float]:
     """
     Calculate current Savings Plans coverage, excluding plans expiring soon.
 
@@ -314,7 +312,7 @@ def calculate_current_coverage(savingsplans_client: Any, ce_client: Any, config:
         logger.info(f"Valid plans after filtering: {len(valid_plan_ids)}")
 
     except ClientError as e:
-        logger.error(f"Failed to describe Savings Plans: {str(e)}")
+        logger.error(f"Failed to describe Savings Plans: {e!s}")
         raise
 
     # Get coverage from Cost Explorer
@@ -364,14 +362,14 @@ def calculate_current_coverage(savingsplans_client: Any, ce_client: Any, config:
         }
 
     except ClientError as e:
-        logger.error(f"Failed to get coverage from Cost Explorer: {str(e)}")
+        logger.error(f"Failed to get coverage from Cost Explorer: {e!s}")
         raise
 
     logger.info(f"Coverage calculated: {coverage}")
     return coverage
 
 
-def _fetch_compute_sp_recommendation(ce_client: Any, config: Dict[str, Any], lookback_period: str) -> Optional[Dict[str, Any]]:
+def _fetch_compute_sp_recommendation(ce_client: Any, config: dict[str, Any], lookback_period: str) -> Optional[dict[str, Any]]:
     """
     Fetch Compute Savings Plan recommendation from AWS Cost Explorer.
 
@@ -433,16 +431,15 @@ def _fetch_compute_sp_recommendation(ce_client: Any, config: Dict[str, Any], loo
                 'GenerationTimestamp': generation_timestamp,
                 'Details': best_recommendation
             }
-        else:
-            logger.info("No Compute SP recommendations available from AWS")
-            return None
+        logger.info("No Compute SP recommendations available from AWS")
+        return None
 
     except ClientError as e:
-        logger.error(f"Failed to get Compute SP recommendations: {str(e)}")
+        logger.error(f"Failed to get Compute SP recommendations: {e!s}")
         raise
 
 
-def _fetch_database_sp_recommendation(ce_client: Any, config: Dict[str, Any], lookback_period: str) -> Optional[Dict[str, Any]]:
+def _fetch_database_sp_recommendation(ce_client: Any, config: dict[str, Any], lookback_period: str) -> Optional[dict[str, Any]]:
     """
     Fetch Database Savings Plan recommendation from AWS Cost Explorer.
 
@@ -506,16 +503,15 @@ def _fetch_database_sp_recommendation(ce_client: Any, config: Dict[str, Any], lo
                 'GenerationTimestamp': generation_timestamp,
                 'Details': best_recommendation
             }
-        else:
-            logger.info("No Database SP recommendations available from AWS")
-            return None
+        logger.info("No Database SP recommendations available from AWS")
+        return None
 
     except ClientError as e:
-        logger.error(f"Failed to get Database SP recommendations: {str(e)}")
+        logger.error(f"Failed to get Database SP recommendations: {e!s}")
         raise
 
 
-def _fetch_sagemaker_sp_recommendation(ce_client: Any, config: Dict[str, Any], lookback_period: str) -> Optional[Dict[str, Any]]:
+def _fetch_sagemaker_sp_recommendation(ce_client: Any, config: dict[str, Any], lookback_period: str) -> Optional[dict[str, Any]]:
     """
     Fetch SageMaker Savings Plan recommendation from AWS Cost Explorer.
 
@@ -578,16 +574,15 @@ def _fetch_sagemaker_sp_recommendation(ce_client: Any, config: Dict[str, Any], l
                 'GenerationTimestamp': generation_timestamp,
                 'Details': best_recommendation
             }
-        else:
-            logger.info("No SageMaker SP recommendations available from AWS")
-            return None
+        logger.info("No SageMaker SP recommendations available from AWS")
+        return None
 
     except ClientError as e:
-        logger.error(f"Failed to get SageMaker SP recommendations: {str(e)}")
+        logger.error(f"Failed to get SageMaker SP recommendations: {e!s}")
         raise
 
 
-def get_aws_recommendations(ce_client: Any, config: Dict[str, Any]) -> Dict[str, Any]:
+def get_aws_recommendations(ce_client: Any, config: dict[str, Any]) -> dict[str, Any]:
     """
     Get Savings Plans purchase recommendations from AWS Cost Explorer.
 
@@ -652,7 +647,7 @@ def get_aws_recommendations(ce_client: Any, config: Dict[str, Any]) -> Dict[str,
         with ThreadPoolExecutor(max_workers=len(tasks)) as executor:
             # Submit all tasks
             futures = {}
-            for sp_type, (key, func, client, cfg, period) in tasks.items():
+            for _sp_type, (key, func, client, cfg, period) in tasks.items():
                 future = executor.submit(func, client, cfg, period)
                 futures[future] = key
 
@@ -663,7 +658,7 @@ def get_aws_recommendations(ce_client: Any, config: Dict[str, Any]) -> Dict[str,
                     result = future.result()
                     recommendations[key] = result
                 except Exception as e:
-                    logger.error(f"Failed to fetch {key} recommendation: {str(e)}")
+                    logger.error(f"Failed to fetch {key} recommendation: {e!s}")
                     raise
 
     logger.info(f"Recommendations retrieved: {recommendations}")
@@ -671,10 +666,10 @@ def get_aws_recommendations(ce_client: Any, config: Dict[str, Any]) -> Dict[str,
 
 
 def calculate_purchase_need(
-    config: Dict[str, Any],
-    coverage: Dict[str, float],
-    recommendations: Dict[str, Any]
-) -> List[Dict[str, Any]]:
+    config: dict[str, Any],
+    coverage: dict[str, float],
+    recommendations: dict[str, Any]
+) -> list[dict[str, Any]]:
     """
     Calculate required purchases to reach target coverage.
 
@@ -799,9 +794,9 @@ def calculate_purchase_need(
 
 
 def apply_purchase_limits(
-    config: Dict[str, Any],
-    purchase_plans: List[Dict[str, Any]]
-) -> List[Dict[str, Any]]:
+    config: dict[str, Any],
+    purchase_plans: list[dict[str, Any]]
+) -> list[dict[str, Any]]:
     """
     Apply max_purchase_percent limit to planned purchases.
 
@@ -853,9 +848,9 @@ def apply_purchase_limits(
 
 
 def split_by_term(
-    config: Dict[str, Any],
-    purchase_plans: List[Dict[str, Any]]
-) -> List[Dict[str, Any]]:
+    config: dict[str, Any],
+    purchase_plans: list[dict[str, Any]]
+) -> list[dict[str, Any]]:
     """
     Split Compute and SageMaker SP commitments by term mix.
 
@@ -973,8 +968,8 @@ def split_by_term(
 
 def queue_purchase_intents(
     sqs_client: Any,
-    config: Dict[str, Any],
-    purchase_plans: List[Dict[str, Any]]
+    config: dict[str, Any],
+    purchase_plans: list[dict[str, Any]]
 ) -> None:
     """
     Queue purchase intents to SQS.
@@ -1028,7 +1023,7 @@ def queue_purchase_intents(
             queued_count += 1
 
         except ClientError as e:
-            logger.error(f"Failed to queue purchase intent: {str(e)}")
+            logger.error(f"Failed to queue purchase intent: {e!s}")
             raise
 
     logger.info(f"All {queued_count} purchase intents queued successfully")
@@ -1036,9 +1031,9 @@ def queue_purchase_intents(
 
 def send_scheduled_email(
     sns_client: Any,
-    config: Dict[str, Any],
-    purchase_plans: List[Dict[str, Any]],
-    coverage: Dict[str, float]
+    config: dict[str, Any],
+    purchase_plans: list[dict[str, Any]],
+    coverage: dict[str, float]
 ) -> None:
     """
     Send email notification for scheduled purchases.
@@ -1116,15 +1111,15 @@ def send_scheduled_email(
         )
         logger.info(f"Email sent successfully to {config['sns_topic_arn']}")
     except ClientError as e:
-        logger.error(f"Failed to send email: {str(e)}")
+        logger.error(f"Failed to send email: {e!s}")
         raise
 
 
 def send_dry_run_email(
     sns_client: Any,
-    config: Dict[str, Any],
-    purchase_plans: List[Dict[str, Any]],
-    coverage: Dict[str, float]
+    config: dict[str, Any],
+    purchase_plans: list[dict[str, Any]],
+    coverage: dict[str, float]
 ) -> None:
     """
     Send email notification for dry run analysis.
@@ -1207,5 +1202,5 @@ def send_dry_run_email(
         )
         logger.info(f"Dry run email sent successfully to {config['sns_topic_arn']}")
     except ClientError as e:
-        logger.error(f"Failed to send dry run email: {str(e)}")
+        logger.error(f"Failed to send dry run email: {e!s}")
         raise

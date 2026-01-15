@@ -15,6 +15,7 @@ import logging
 from datetime import datetime, timezone, timedelta
 from typing import Dict, List, Any, Optional
 
+import boto3
 from botocore.exceptions import ClientError
 
 from shared import notifications
@@ -53,7 +54,6 @@ def handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
         def send_error_email(error_msg: str) -> None:
             """Send error notification using shared utility."""
             # Get SNS client directly (before full client initialization)
-            import boto3
             sns = boto3.client('sns')
             send_error_notification(
                 sns_client=sns,
@@ -136,7 +136,6 @@ def handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
         # Try to send error notification
         try:
             config = load_configuration()
-            import boto3
             sns = boto3.client('sns')
             send_error_notification(
                 sns_client=sns,

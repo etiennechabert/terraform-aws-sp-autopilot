@@ -117,7 +117,7 @@ def test_get_clients_with_role_arn():
 
         # Call function with session_name parameter
         from shared.aws_utils import get_clients
-        clients = get_clients(config, session_name='sp-autopilot-reporter')
+        get_clients(config, session_name='sp-autopilot-reporter')
 
         # Verify assume role was called with session_name
         mock_assume.assert_called_once_with('arn:aws:iam::123456789012:role/TestRole', 'sp-autopilot-reporter')
@@ -143,7 +143,7 @@ def test_get_clients_without_role_arn():
 
         # Call function
         from shared.aws_utils import get_clients
-        clients = get_clients(config)
+        get_clients(config)
 
         # Verify all 5 clients use boto3.client directly (no assume role)
         assert mock_boto3_client.call_count == 5
