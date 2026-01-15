@@ -166,6 +166,16 @@ jobs:
           go mod download
           go mod verify
 
+      - name: Validate test fixtures
+        working-directory: terraform-tests/integration/fixtures/basic
+        run: |
+          echo "=========================================="
+          echo "Validating test fixture configuration"
+          echo "=========================================="
+          terraform init -backend=false
+          terraform validate
+          echo "✓ Test fixture validation passed"
+
       - name: Run Terratest
         working-directory: terraform-tests/integration
         env:
