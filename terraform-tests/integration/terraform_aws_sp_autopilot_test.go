@@ -42,6 +42,10 @@ func TestTerraformBasicDeployment(t *testing.T) {
 			"notification_emails":      []string{"test@example.com"},
 			"enable_lambda_error_alarm": true,
 			"enable_dlq_alarm":          true,
+			// SAFETY: Set EventBridge schedules to far future to prevent accidental triggers during 2-3 min test window
+			"scheduler_schedule": "cron(0 0 1 1 ? 2099)", // Jan 1, 2099 - will never trigger during test
+			"purchaser_schedule": "cron(0 0 1 1 ? 2099)", // Jan 1, 2099 - will never trigger during test
+			"report_schedule":    "cron(0 0 1 1 ? 2099)", // Jan 1, 2099 - will never trigger during test
 		},
 
 		// Disable colors in Terraform commands for cleaner test output
@@ -431,6 +435,10 @@ func TestLambdaDeployment(t *testing.T) {
 			"notification_emails":      []string{"test@example.com"},
 			"enable_lambda_error_alarm": true,
 			"enable_dlq_alarm":          true,
+			// SAFETY: Set EventBridge schedules to far future to prevent accidental triggers during 2-3 min test window
+			"scheduler_schedule": "cron(0 0 1 1 ? 2099)", // Jan 1, 2099 - will never trigger during test
+			"purchaser_schedule": "cron(0 0 1 1 ? 2099)", // Jan 1, 2099 - will never trigger during test
+			"report_schedule":    "cron(0 0 1 1 ? 2099)", // Jan 1, 2099 - will never trigger during test
 		},
 
 		// Disable colors in Terraform commands for cleaner test output
@@ -590,6 +598,10 @@ func TestSchedulerLambdaInvocation(t *testing.T) {
 			"notification_emails":      []string{"test@example.com"},
 			"enable_lambda_error_alarm": true,
 			"enable_dlq_alarm":          true,
+			// SAFETY: Set EventBridge schedules to far future to prevent accidental triggers during 2-3 min test window
+			"scheduler_schedule": "cron(0 0 1 1 ? 2099)", // Jan 1, 2099 - will never trigger during test
+			"purchaser_schedule": "cron(0 0 1 1 ? 2099)", // Jan 1, 2099 - will never trigger during test
+			"report_schedule":    "cron(0 0 1 1 ? 2099)", // Jan 1, 2099 - will never trigger during test
 		},
 
 		// Disable colors in Terraform commands for cleaner test output

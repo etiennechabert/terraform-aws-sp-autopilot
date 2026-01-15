@@ -172,20 +172,31 @@ aws iam list-roles --query 'Roles[?starts_with(RoleName, `sp-autopilot`)].RoleNa
 
 ### Cost Implications
 
+**IMPORTANT: Integration tests DO NOT execute Lambdas!**
+- Tests only CREATE and DELETE infrastructure
+- Lambda functions are never invoked/executed
+- EventBridge schedules set to year 2099 during tests (will never trigger)
+- No actual automation runs = virtually ZERO Lambda costs
+
 **During Test** (2-3 minutes):
-- Resources exist and accrue charges
-- Estimated cost: < $0.01 per test run
+- Infrastructure exists but does NOT run
+- Lambda functions: **FREE** (no invocations)
+- EventBridge rules: **FREE** (scheduled for year 2099)
+- SQS/SNS: **FREE** (no messages sent)
+- S3: **~$0.00** (bucket exists empty for 2-3 minutes)
+- CloudWatch Logs: **~$0.00** (no Lambda executions = no logs)
+- **Total estimated cost: < $0.001 per test run** (essentially FREE)
 
 **After Test** (cleanup complete):
 - **NO ongoing costs** - all resources deleted
 - S3 bucket deletion includes all objects
-- CloudWatch logs are retained but minimal cost
+- CloudWatch logs retained but minimal (no executions occurred)
 
 **If Cleanup Fails**:
-- Resources continue to exist
-- Lambda functions won't execute (no trigger)
-- S3 bucket storage continues
-- Potential cost: ~$0.05-0.10 per day
+- Resources continue to exist BUT won't execute (schedules in year 2099)
+- Lambda functions won't run (no triggers)
+- S3 bucket storage: minimal
+- Potential cost: ~$0.01-0.02 per day (storage only)
 - **Budget alerts will trigger** at $0.50
 
 ### GitHub Actions Safeguards
