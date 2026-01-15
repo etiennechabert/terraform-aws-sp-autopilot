@@ -110,6 +110,11 @@ output "purchaser_error_alarm_arn" {
   value       = module.sp_autopilot.purchaser_error_alarm_arn
 }
 
+output "reporter_error_alarm_arn" {
+  description = "ARN of the Reporter Lambda error alarm"
+  value       = module.sp_autopilot.reporter_error_alarm_arn
+}
+
 output "dlq_alarm_arn" {
   description = "ARN of the DLQ depth alarm"
   value       = module.sp_autopilot.dlq_alarm_arn
