@@ -50,7 +50,6 @@ func TestFullDeploymentAndCleanup(t *testing.T) {
 			// SAFETY: Set EventBridge schedules to far future to prevent accidental triggers
 			"scheduler_schedule": "cron(0 0 1 1 ? 2099)", // Jan 1, 2099 - will never trigger
 			"purchaser_schedule": "cron(0 0 1 1 ? 2099)", // Jan 1, 2099 - will never trigger
-			"report_schedule":    "cron(0 0 1 1 ? 2099)", // Jan 1, 2099 - will never trigger
 		},
 
 		// Disable colors in Terraform commands for cleaner test output
