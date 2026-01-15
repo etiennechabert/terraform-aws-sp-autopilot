@@ -392,7 +392,7 @@ jobs:
       - name: Run Terraform Unit Tests
         run: |
           echo "Running all Terraform unit tests..."
-          terraform test -verbose -test-directory=terraform-tests/unit
+          terraform test -test-directory=terraform-tests/unit
           TEST_EXIT_CODE=$?
           echo "Test exit code: $TEST_EXIT_CODE"
 
