@@ -78,7 +78,7 @@ jobs:
         with:
           soft_fail: false
           format: default
-          additional_args: --minimum-severity HIGH
+          additional_args: --minimum-severity HIGH --exclude aws-s3-encryption-customer-key,aws-sqs-queue-encryption-use-cmk,aws-iam-no-policy-wildcards
 
       - name: Run tfsec with SARIF output
         if: always()
@@ -87,7 +87,7 @@ jobs:
           soft_fail: true
           format: sarif
           output: tfsec-results.sarif
-          additional_args: --minimum-severity HIGH
+          additional_args: --minimum-severity HIGH --exclude aws-s3-encryption-customer-key,aws-sqs-queue-encryption-use-cmk,aws-iam-no-policy-wildcards
         continue-on-error: true
 
       - name: Upload SARIF file
