@@ -8,16 +8,19 @@ to fetch multiple recommendation types in parallel for improved performance.
 
 import logging
 from concurrent.futures import ThreadPoolExecutor, as_completed
-from typing import Dict, Any, Optional
+from typing import Any, Dict, Optional
 
 from botocore.exceptions import ClientError
+
 
 # Configure logging
 logger = logging.getLogger()
 logger.setLevel(logging.INFO)
 
 
-def _fetch_compute_sp_recommendation(ce_client: Any, config: Dict[str, Any], lookback_period: str) -> Optional[Dict[str, Any]]:
+def _fetch_compute_sp_recommendation(
+    ce_client: Any, config: Dict[str, Any], lookback_period: str
+) -> Optional[Dict[str, Any]]:
     """
     Fetch Compute Savings Plan recommendation from AWS Cost Explorer.
 
@@ -39,20 +42,20 @@ def _fetch_compute_sp_recommendation(ce_client: Any, config: Dict[str, Any], loo
     logger.info("Fetching Compute Savings Plan recommendations")
     try:
         response = ce_client.get_savings_plans_purchase_recommendation(
-            SavingsPlansType='COMPUTE_SP',
+            SavingsPlansType="COMPUTE_SP",
             LookbackPeriodInDays=lookback_period,
-            TermInYears='ONE_YEAR',
-            PaymentOption='ALL_UPFRONT'
+            TermInYears="ONE_YEAR",
+            PaymentOption="ALL_UPFRONT",
         )
 
         # Extract recommendation metadata
-        metadata = response.get('Metadata', {})
-        recommendation_id = metadata.get('RecommendationId', 'unknown')
-        generation_timestamp = metadata.get('GenerationTimestamp', 'unknown')
+        metadata = response.get("Metadata", {})
+        recommendation_id = metadata.get("RecommendationId", "unknown")
+        generation_timestamp = metadata.get("GenerationTimestamp", "unknown")
 
         # Validate sufficient data
-        lookback_period_days = metadata.get('LookbackPeriodInDays', '0')
-        if lookback_period_days and int(lookback_period_days) < config['min_data_days']:
+        lookback_period_days = metadata.get("LookbackPeriodInDays", "0")
+        if lookback_period_days and int(lookback_period_days) < config["min_data_days"]:
             logger.warning(
                 f"Compute SP recommendation has insufficient data: "
                 f"{lookback_period_days} days < {config['min_data_days']} days minimum"
@@ -60,13 +63,15 @@ def _fetch_compute_sp_recommendation(ce_client: Any, config: Dict[str, Any], loo
             return None
 
         # Extract recommendation details
-        recommendation_details = response.get('SavingsPlansPurchaseRecommendation', {})
-        recommendation_summary = recommendation_details.get('SavingsPlansPurchaseRecommendationDetails', [])
+        recommendation_details = response.get("SavingsPlansPurchaseRecommendation", {})
+        recommendation_summary = recommendation_details.get(
+            "SavingsPlansPurchaseRecommendationDetails", []
+        )
 
         if recommendation_summary:
             # Get the first (best) recommendation
             best_recommendation = recommendation_summary[0]
-            hourly_commitment = best_recommendation.get('HourlyCommitmentToPurchase', '0')
+            hourly_commitment = best_recommendation.get("HourlyCommitmentToPurchase", "0")
 
             logger.info(
                 f"Compute SP recommendation: ${hourly_commitment}/hour "
@@ -74,21 +79,22 @@ def _fetch_compute_sp_recommendation(ce_client: Any, config: Dict[str, Any], loo
             )
 
             return {
-                'HourlyCommitmentToPurchase': hourly_commitment,
-                'RecommendationId': recommendation_id,
-                'GenerationTimestamp': generation_timestamp,
-                'Details': best_recommendation
+                "HourlyCommitmentToPurchase": hourly_commitment,
+                "RecommendationId": recommendation_id,
+                "GenerationTimestamp": generation_timestamp,
+                "Details": best_recommendation,
             }
-        else:
-            logger.info("No Compute SP recommendations available from AWS")
-            return None
+        logger.info("No Compute SP recommendations available from AWS")
+        return None
 
     except ClientError as e:
-        logger.error(f"Failed to get Compute SP recommendations: {str(e)}")
+        logger.error(f"Failed to get Compute SP recommendations: {e!s}")
         raise
 
 
-def _fetch_database_sp_recommendation(ce_client: Any, config: Dict[str, Any], lookback_period: str) -> Optional[Dict[str, Any]]:
+def _fetch_database_sp_recommendation(
+    ce_client: Any, config: Dict[str, Any], lookback_period: str
+) -> Optional[Dict[str, Any]]:
     """
     Fetch Database Savings Plan recommendation from AWS Cost Explorer.
 
@@ -112,20 +118,20 @@ def _fetch_database_sp_recommendation(ce_client: Any, config: Dict[str, Any], lo
         # Database Savings Plans were added to AWS in December 2025
         # They use the DATABASE_SP type in the Cost Explorer API
         response = ce_client.get_savings_plans_purchase_recommendation(
-            SavingsPlansType='DATABASE_SP',
+            SavingsPlansType="DATABASE_SP",
             LookbackPeriodInDays=lookback_period,
-            TermInYears='ONE_YEAR',
-            PaymentOption='NO_UPFRONT'
+            TermInYears="ONE_YEAR",
+            PaymentOption="NO_UPFRONT",
         )
 
         # Extract recommendation metadata
-        metadata = response.get('Metadata', {})
-        recommendation_id = metadata.get('RecommendationId', 'unknown')
-        generation_timestamp = metadata.get('GenerationTimestamp', 'unknown')
+        metadata = response.get("Metadata", {})
+        recommendation_id = metadata.get("RecommendationId", "unknown")
+        generation_timestamp = metadata.get("GenerationTimestamp", "unknown")
 
         # Validate sufficient data
-        lookback_period_days = metadata.get('LookbackPeriodInDays', '0')
-        if lookback_period_days and int(lookback_period_days) < config['min_data_days']:
+        lookback_period_days = metadata.get("LookbackPeriodInDays", "0")
+        if lookback_period_days and int(lookback_period_days) < config["min_data_days"]:
             logger.warning(
                 f"Database SP recommendation has insufficient data: "
                 f"{lookback_period_days} days < {config['min_data_days']} days minimum"
@@ -133,13 +139,15 @@ def _fetch_database_sp_recommendation(ce_client: Any, config: Dict[str, Any], lo
             return None
 
         # Extract recommendation details
-        recommendation_details = response.get('SavingsPlansPurchaseRecommendation', {})
-        recommendation_summary = recommendation_details.get('SavingsPlansPurchaseRecommendationDetails', [])
+        recommendation_details = response.get("SavingsPlansPurchaseRecommendation", {})
+        recommendation_summary = recommendation_details.get(
+            "SavingsPlansPurchaseRecommendationDetails", []
+        )
 
         if recommendation_summary:
             # Get the first (best) recommendation
             best_recommendation = recommendation_summary[0]
-            hourly_commitment = best_recommendation.get('HourlyCommitmentToPurchase', '0')
+            hourly_commitment = best_recommendation.get("HourlyCommitmentToPurchase", "0")
 
             logger.info(
                 f"Database SP recommendation: ${hourly_commitment}/hour "
@@ -147,21 +155,22 @@ def _fetch_database_sp_recommendation(ce_client: Any, config: Dict[str, Any], lo
             )
 
             return {
-                'HourlyCommitmentToPurchase': hourly_commitment,
-                'RecommendationId': recommendation_id,
-                'GenerationTimestamp': generation_timestamp,
-                'Details': best_recommendation
+                "HourlyCommitmentToPurchase": hourly_commitment,
+                "RecommendationId": recommendation_id,
+                "GenerationTimestamp": generation_timestamp,
+                "Details": best_recommendation,
             }
-        else:
-            logger.info("No Database SP recommendations available from AWS")
-            return None
+        logger.info("No Database SP recommendations available from AWS")
+        return None
 
     except ClientError as e:
-        logger.error(f"Failed to get Database SP recommendations: {str(e)}")
+        logger.error(f"Failed to get Database SP recommendations: {e!s}")
         raise
 
 
-def _fetch_sagemaker_sp_recommendation(ce_client: Any, config: Dict[str, Any], lookback_period: str) -> Optional[Dict[str, Any]]:
+def _fetch_sagemaker_sp_recommendation(
+    ce_client: Any, config: Dict[str, Any], lookback_period: str
+) -> Optional[Dict[str, Any]]:
     """
     Fetch SageMaker Savings Plan recommendation from AWS Cost Explorer.
 
@@ -184,20 +193,20 @@ def _fetch_sagemaker_sp_recommendation(ce_client: Any, config: Dict[str, Any], l
     try:
         # SageMaker Savings Plans use the SAGEMAKER_SP type in the Cost Explorer API
         response = ce_client.get_savings_plans_purchase_recommendation(
-            SavingsPlansType='SAGEMAKER_SP',
+            SavingsPlansType="SAGEMAKER_SP",
             LookbackPeriodInDays=lookback_period,
-            TermInYears='ONE_YEAR',
-            PaymentOption='NO_UPFRONT'
+            TermInYears="ONE_YEAR",
+            PaymentOption="NO_UPFRONT",
         )
 
         # Extract recommendation metadata
-        metadata = response.get('Metadata', {})
-        recommendation_id = metadata.get('RecommendationId', 'unknown')
-        generation_timestamp = metadata.get('GenerationTimestamp', 'unknown')
+        metadata = response.get("Metadata", {})
+        recommendation_id = metadata.get("RecommendationId", "unknown")
+        generation_timestamp = metadata.get("GenerationTimestamp", "unknown")
 
         # Validate sufficient data
-        lookback_period_days = metadata.get('LookbackPeriodInDays', '0')
-        if lookback_period_days and int(lookback_period_days) < config['min_data_days']:
+        lookback_period_days = metadata.get("LookbackPeriodInDays", "0")
+        if lookback_period_days and int(lookback_period_days) < config["min_data_days"]:
             logger.warning(
                 f"SageMaker SP recommendation has insufficient data: "
                 f"{lookback_period_days} days < {config['min_data_days']} days minimum"
@@ -205,13 +214,15 @@ def _fetch_sagemaker_sp_recommendation(ce_client: Any, config: Dict[str, Any], l
             return None
 
         # Extract recommendation details
-        recommendation_details = response.get('SavingsPlansPurchaseRecommendation', {})
-        recommendation_summary = recommendation_details.get('SavingsPlansPurchaseRecommendationDetails', [])
+        recommendation_details = response.get("SavingsPlansPurchaseRecommendation", {})
+        recommendation_summary = recommendation_details.get(
+            "SavingsPlansPurchaseRecommendationDetails", []
+        )
 
         if recommendation_summary:
             # Get the first (best) recommendation
             best_recommendation = recommendation_summary[0]
-            hourly_commitment = best_recommendation.get('HourlyCommitmentToPurchase', '0')
+            hourly_commitment = best_recommendation.get("HourlyCommitmentToPurchase", "0")
 
             logger.info(
                 f"SageMaker SP recommendation: ${hourly_commitment}/hour "
@@ -219,17 +230,16 @@ def _fetch_sagemaker_sp_recommendation(ce_client: Any, config: Dict[str, Any], l
             )
 
             return {
-                'HourlyCommitmentToPurchase': hourly_commitment,
-                'RecommendationId': recommendation_id,
-                'GenerationTimestamp': generation_timestamp,
-                'Details': best_recommendation
+                "HourlyCommitmentToPurchase": hourly_commitment,
+                "RecommendationId": recommendation_id,
+                "GenerationTimestamp": generation_timestamp,
+                "Details": best_recommendation,
             }
-        else:
-            logger.info("No SageMaker SP recommendations available from AWS")
-            return None
+        logger.info("No SageMaker SP recommendations available from AWS")
+        return None
 
     except ClientError as e:
-        logger.error(f"Failed to get SageMaker SP recommendations: {str(e)}")
+        logger.error(f"Failed to get SageMaker SP recommendations: {e!s}")
         raise
 
 
@@ -267,31 +277,45 @@ def get_aws_recommendations(ce_client: Any, config: Dict[str, Any]) -> Dict[str,
     """
     logger.info("Getting AWS recommendations")
 
-    recommendations = {
-        'compute': None,
-        'database': None,
-        'sagemaker': None
-    }
+    recommendations = {"compute": None, "database": None, "sagemaker": None}
 
     # Map lookback_days to AWS API parameter value
-    lookback_days = config['lookback_days']
+    lookback_days = config["lookback_days"]
     if lookback_days <= 7:
-        lookback_period = 'SEVEN_DAYS'
+        lookback_period = "SEVEN_DAYS"
     elif lookback_days <= 30:
-        lookback_period = 'THIRTY_DAYS'
+        lookback_period = "THIRTY_DAYS"
     else:
-        lookback_period = 'SIXTY_DAYS'
+        lookback_period = "SIXTY_DAYS"
 
     logger.info(f"Using lookback period: {lookback_period} (config: {lookback_days} days)")
 
     # Prepare tasks for parallel execution
     tasks = {}
-    if config['enable_compute_sp']:
-        tasks['compute'] = ('compute', _fetch_compute_sp_recommendation, ce_client, config, lookback_period)
-    if config['enable_database_sp']:
-        tasks['database'] = ('database', _fetch_database_sp_recommendation, ce_client, config, lookback_period)
-    if config['enable_sagemaker_sp']:
-        tasks['sagemaker'] = ('sagemaker', _fetch_sagemaker_sp_recommendation, ce_client, config, lookback_period)
+    if config["enable_compute_sp"]:
+        tasks["compute"] = (
+            "compute",
+            _fetch_compute_sp_recommendation,
+            ce_client,
+            config,
+            lookback_period,
+        )
+    if config["enable_database_sp"]:
+        tasks["database"] = (
+            "database",
+            _fetch_database_sp_recommendation,
+            ce_client,
+            config,
+            lookback_period,
+        )
+    if config["enable_sagemaker_sp"]:
+        tasks["sagemaker"] = (
+            "sagemaker",
+            _fetch_sagemaker_sp_recommendation,
+            ce_client,
+            config,
+            lookback_period,
+        )
 
     # Execute API calls in parallel using ThreadPoolExecutor
     if tasks:
@@ -309,7 +333,7 @@ def get_aws_recommendations(ce_client: Any, config: Dict[str, Any]) -> Dict[str,
                     result = future.result()
                     recommendations[key] = result
                 except Exception as e:
-                    logger.error(f"Failed to fetch {key} recommendation: {str(e)}")
+                    logger.error(f"Failed to fetch {key} recommendation: {e!s}")
                     raise
 
     logger.info(f"Recommendations retrieved: {recommendations}")

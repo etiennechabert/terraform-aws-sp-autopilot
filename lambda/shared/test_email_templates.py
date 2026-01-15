@@ -18,6 +18,7 @@ from shared import email_templates
 # build_header Tests
 # ============================================================================
 
+
 def test_build_header_default_width():
     """Test build_header with default width."""
     result = email_templates.build_header("Purchase Summary")
@@ -68,6 +69,7 @@ def test_build_header_long_title():
 # build_separator Tests
 # ============================================================================
 
+
 def test_build_separator_default_params():
     """Test build_separator with default parameters."""
     result = email_templates.build_separator()
@@ -108,13 +110,10 @@ def test_build_separator_custom_width_and_char():
 # build_key_value_section Tests
 # ============================================================================
 
+
 def test_build_key_value_section_mixed_types():
     """Test build_key_value_section with mixed value types."""
-    data = {
-        'Total Plans': 5,
-        'Coverage': 85.75,
-        'Status': 'Active'
-    }
+    data = {"Total Plans": 5, "Coverage": 85.75, "Status": "Active"}
 
     result = email_templates.build_key_value_section(data)
 
@@ -122,53 +121,45 @@ def test_build_key_value_section_mixed_types():
     assert len(result) == 3
 
     # Verify each key-value pair is formatted correctly
-    assert 'Total Plans: 5' in result
-    assert 'Coverage: 85.75' in result
-    assert 'Status: Active' in result
+    assert "Total Plans: 5" in result
+    assert "Coverage: 85.75" in result
+    assert "Status: Active" in result
 
 
 def test_build_key_value_section_float_formatting():
     """Test build_key_value_section formats floats with 2 decimals."""
-    data = {
-        'Compute SP': 75.5,
-        'Database SP': 82.3456789
-    }
+    data = {"Compute SP": 75.5, "Database SP": 82.3456789}
 
     result = email_templates.build_key_value_section(data)
 
     assert len(result) == 2
-    assert 'Compute SP: 75.50' in result
-    assert 'Database SP: 82.35' in result
+    assert "Compute SP: 75.50" in result
+    assert "Database SP: 82.35" in result
 
 
 def test_build_key_value_section_with_indent():
     """Test build_key_value_section with indentation."""
-    data = {
-        'Item 1': 'Value 1',
-        'Item 2': 'Value 2'
-    }
+    data = {"Item 1": "Value 1", "Item 2": "Value 2"}
 
-    result = email_templates.build_key_value_section(data, indent='  ')
+    result = email_templates.build_key_value_section(data, indent="  ")
 
     assert len(result) == 2
-    assert '  Item 1: Value 1' in result
-    assert '  Item 2: Value 2' in result
+    assert "  Item 1: Value 1" in result
+    assert "  Item 2: Value 2" in result
     # Verify indentation is applied
     for line in result:
-        assert line.startswith('  ')
+        assert line.startswith("  ")
 
 
 def test_build_key_value_section_format_numbers_false():
     """Test build_key_value_section with format_numbers disabled."""
-    data = {
-        'Value': 85.75678
-    }
+    data = {"Value": 85.75678}
 
     result = email_templates.build_key_value_section(data, format_numbers=False)
 
     assert len(result) == 1
     # Should convert to string without formatting
-    assert 'Value: 85.75678' in result
+    assert "Value: 85.75678" in result
 
 
 def test_build_key_value_section_empty_dict():
@@ -181,33 +172,25 @@ def test_build_key_value_section_empty_dict():
 
 def test_build_key_value_section_integer_values():
     """Test build_key_value_section with integer values only."""
-    data = {
-        'Count': 100,
-        'Total': 500
-    }
+    data = {"Count": 100, "Total": 500}
 
     result = email_templates.build_key_value_section(data)
 
     assert len(result) == 2
-    assert 'Count: 100' in result
-    assert 'Total: 500' in result
+    assert "Count: 100" in result
+    assert "Total: 500" in result
 
 
 # ============================================================================
 # build_list_section Tests
 # ============================================================================
 
+
 def test_build_list_section_with_separator():
     """Test build_list_section with separator (default)."""
-    items = [
-        "1. Compute SP - $1.50/hour",
-        "2. Database SP - $0.75/hour"
-    ]
+    items = ["1. Compute SP - $1.50/hour", "2. Database SP - $0.75/hour"]
 
-    result = email_templates.build_list_section(
-        "SUCCESSFUL PURCHASES",
-        items
-    )
+    result = email_templates.build_list_section("SUCCESSFUL PURCHASES", items)
 
     assert isinstance(result, list)
     assert len(result) == 4  # title + separator + 2 items
@@ -227,11 +210,7 @@ def test_build_list_section_without_separator():
     """Test build_list_section without separator."""
     items = ["First note", "Second note"]
 
-    result = email_templates.build_list_section(
-        "Notes",
-        items,
-        include_separator=False
-    )
+    result = email_templates.build_list_section("Notes", items, include_separator=False)
 
     assert len(result) == 3  # title + 2 items
     assert result[0] == "Notes"
@@ -246,11 +225,7 @@ def test_build_list_section_custom_width():
     """Test build_list_section with custom width."""
     items = ["Item 1"]
 
-    result = email_templates.build_list_section(
-        "Custom Width Section",
-        items,
-        width=60
-    )
+    result = email_templates.build_list_section("Custom Width Section", items, width=60)
 
     # Verify separator uses custom width
     assert result[1] == "-" * 60
@@ -259,10 +234,7 @@ def test_build_list_section_custom_width():
 
 def test_build_list_section_empty_items():
     """Test build_list_section with empty items list."""
-    result = email_templates.build_list_section(
-        "Empty Section",
-        []
-    )
+    result = email_templates.build_list_section("Empty Section", [])
 
     assert len(result) == 2  # title + separator only
     assert result[0] == "Empty Section"
@@ -271,10 +243,7 @@ def test_build_list_section_empty_items():
 
 def test_build_list_section_single_item():
     """Test build_list_section with single item."""
-    result = email_templates.build_list_section(
-        "Single Item",
-        ["Only one item"]
-    )
+    result = email_templates.build_list_section("Single Item", ["Only one item"])
 
     assert len(result) == 3
     assert result[0] == "Single Item"
@@ -285,6 +254,7 @@ def test_build_list_section_single_item():
 # ============================================================================
 # build_footer Tests
 # ============================================================================
+
 
 def test_build_footer_default():
     """Test build_footer with default parameters."""
@@ -332,10 +302,7 @@ def test_build_footer_without_separator():
 
 def test_build_footer_custom_message_and_width():
     """Test build_footer with both custom message and width."""
-    result = email_templates.build_footer(
-        custom_message="Custom footer",
-        width=40
-    )
+    result = email_templates.build_footer(custom_message="Custom footer", width=40)
 
     assert len(result) == 2
     assert result[0] == "-" * 40
@@ -345,9 +312,7 @@ def test_build_footer_custom_message_and_width():
 def test_build_footer_all_custom_params():
     """Test build_footer with all parameters customized."""
     result = email_templates.build_footer(
-        custom_message="All custom",
-        width=30,
-        include_separator=False
+        custom_message="All custom", width=30, include_separator=False
     )
 
     assert len(result) == 1
@@ -357,6 +322,7 @@ def test_build_footer_all_custom_params():
 # ============================================================================
 # format_currency Tests
 # ============================================================================
+
 
 def test_format_currency_default():
     """Test format_currency with default parameters."""
@@ -435,6 +401,7 @@ def test_format_currency_monthly_zero():
 # format_percentage Tests
 # ============================================================================
 
+
 def test_format_percentage_default_decimals():
     """Test format_percentage with default 2 decimals."""
     result = email_templates.format_percentage(85.5)
@@ -488,15 +455,16 @@ def test_format_percentage_high_precision():
 # Integration Tests - Complete Email Building
 # ============================================================================
 
+
 def test_build_complete_email_simple():
     """Test building a complete simple email using multiple functions."""
     lines = []
     lines.extend(email_templates.build_header("Purchase Summary", width=60))
-    lines.extend(email_templates.build_key_value_section({
-        'Total Purchases': 5,
-        'Successful': 4,
-        'Failed': 1
-    }))
+    lines.extend(
+        email_templates.build_key_value_section(
+            {"Total Purchases": 5, "Successful": 4, "Failed": 1}
+        )
+    )
     lines.extend(email_templates.build_footer())
 
     email_body = "\n".join(lines)
@@ -514,16 +482,19 @@ def test_build_complete_email_complex():
     """Test building a complex email with multiple sections."""
     lines = []
     lines.extend(email_templates.build_header("Savings Plans Report", width=60))
-    lines.extend(email_templates.build_key_value_section({
-        'Report Generated': '2024-01-15 10:30:00 UTC',
-        'Reporting Period': '30 days'
-    }))
+    lines.extend(
+        email_templates.build_key_value_section(
+            {"Report Generated": "2024-01-15 10:30:00 UTC", "Reporting Period": "30 days"}
+        )
+    )
     lines.append("")  # Blank line
-    lines.extend(email_templates.build_list_section(
-        "SUCCESSFUL PURCHASES",
-        items=['Compute SP - $1.50/hour', 'Database SP - $0.75/hour'],
-        width=60
-    ))
+    lines.extend(
+        email_templates.build_list_section(
+            "SUCCESSFUL PURCHASES",
+            items=["Compute SP - $1.50/hour", "Database SP - $0.75/hour"],
+            width=60,
+        )
+    )
     lines.extend(email_templates.build_footer(width=60))
 
     email_body = "\n".join(lines)

@@ -10,6 +10,7 @@ from typing import Any, Dict, List
 
 from botocore.exceptions import ClientError
 
+
 # Configure logging
 logger = logging.getLogger()
 logger.setLevel(logging.INFO)
@@ -19,7 +20,7 @@ def send_scheduled_email(
     sns_client: Any,
     config: Dict[str, Any],
     purchase_plans: List[Dict[str, Any]],
-    coverage: Dict[str, float]
+    coverage: Dict[str, float],
 ) -> None:
     """
     Send email notification for scheduled purchases.
@@ -53,51 +54,55 @@ def send_scheduled_email(
     # Add details for each purchase plan
     total_annual_cost = 0.0
     for i, plan in enumerate(purchase_plans, 1):
-        sp_type = plan.get('sp_type', 'unknown')
-        hourly_commitment = plan.get('hourly_commitment', 0.0)
-        term = plan.get('term', 'unknown')
-        payment_option = plan.get('payment_option', 'ALL_UPFRONT')
+        sp_type = plan.get("sp_type", "unknown")
+        hourly_commitment = plan.get("hourly_commitment", 0.0)
+        term = plan.get("term", "unknown")
+        payment_option = plan.get("payment_option", "ALL_UPFRONT")
 
         # Calculate estimated annual cost (hourly * 24 * 365)
         annual_cost = hourly_commitment * 8760
         total_annual_cost += annual_cost
 
-        email_lines.extend([
-            f"{i}. {sp_type.upper()} Savings Plan",
-            f"   Hourly Commitment: ${hourly_commitment:.4f}/hour",
-            f"   Term: {term}",
-            f"   Payment Option: {payment_option}",
-            f"   Estimated Annual Cost: ${annual_cost:,.2f}",
-            ""
-        ])
+        email_lines.extend(
+            [
+                f"{i}. {sp_type.upper()} Savings Plan",
+                f"   Hourly Commitment: ${hourly_commitment:.4f}/hour",
+                f"   Term: {term}",
+                f"   Payment Option: {payment_option}",
+                f"   Estimated Annual Cost: ${annual_cost:,.2f}",
+                "",
+            ]
+        )
 
-    email_lines.extend([
-        "-" * 50,
-        f"Total Estimated Annual Cost: ${total_annual_cost:,.2f}",
-        "",
-        "CANCELLATION INSTRUCTIONS:",
-        "To cancel these purchases before they execute:",
-        "1. Purge the SQS queue to remove all pending purchase intents",
-        f"2. Queue URL: {config.get('queue_url', 'N/A')}",
-        "3. AWS CLI command:",
-        f"   aws sqs purge-queue --queue-url {config.get('queue_url', 'QUEUE_URL')}",
-        "",
-        "These purchases will be executed by the Purchaser Lambda.",
-        "Monitor CloudWatch Logs and SNS notifications for execution results.",
-    ])
+    email_lines.extend(
+        [
+            "-" * 50,
+            f"Total Estimated Annual Cost: ${total_annual_cost:,.2f}",
+            "",
+            "CANCELLATION INSTRUCTIONS:",
+            "To cancel these purchases before they execute:",
+            "1. Purge the SQS queue to remove all pending purchase intents",
+            f"2. Queue URL: {config.get('queue_url', 'N/A')}",
+            "3. AWS CLI command:",
+            f"   aws sqs purge-queue --queue-url {config.get('queue_url', 'QUEUE_URL')}",
+            "",
+            "These purchases will be executed by the Purchaser Lambda.",
+            "Monitor CloudWatch Logs and SNS notifications for execution results.",
+        ]
+    )
 
     message = "\n".join(email_lines)
 
     # Publish to SNS
     try:
         sns_client.publish(
-            TopicArn=config['sns_topic_arn'],
-            Subject='Savings Plans Scheduled for Purchase',
-            Message=message
+            TopicArn=config["sns_topic_arn"],
+            Subject="Savings Plans Scheduled for Purchase",
+            Message=message,
         )
         logger.info(f"Email sent successfully to {config['sns_topic_arn']}")
     except ClientError as e:
-        logger.error(f"Failed to send email: {str(e)}")
+        logger.error(f"Failed to send email: {e!s}")
         raise
 
 
@@ -105,7 +110,7 @@ def send_dry_run_email(
     sns_client: Any,
     config: Dict[str, Any],
     purchase_plans: List[Dict[str, Any]],
-    coverage: Dict[str, float]
+    coverage: Dict[str, float],
 ) -> None:
     """
     Send email notification for dry run analysis.
@@ -141,52 +146,56 @@ def send_dry_run_email(
     # Add details for each purchase plan
     total_annual_cost = 0.0
     for i, plan in enumerate(purchase_plans, 1):
-        sp_type = plan.get('sp_type', 'unknown')
-        hourly_commitment = plan.get('hourly_commitment', 0.0)
-        term = plan.get('term', 'unknown')
-        payment_option = plan.get('payment_option', 'ALL_UPFRONT')
+        sp_type = plan.get("sp_type", "unknown")
+        hourly_commitment = plan.get("hourly_commitment", 0.0)
+        term = plan.get("term", "unknown")
+        payment_option = plan.get("payment_option", "ALL_UPFRONT")
 
         # Calculate estimated annual cost (hourly * 24 * 365)
         annual_cost = hourly_commitment * 8760
         total_annual_cost += annual_cost
 
-        email_lines.extend([
-            f"{i}. {sp_type.upper()} Savings Plan",
-            f"   Hourly Commitment: ${hourly_commitment:.4f}/hour",
-            f"   Term: {term}",
-            f"   Payment Option: {payment_option}",
-            f"   Estimated Annual Cost: ${annual_cost:,.2f}",
-            ""
-        ])
+        email_lines.extend(
+            [
+                f"{i}. {sp_type.upper()} Savings Plan",
+                f"   Hourly Commitment: ${hourly_commitment:.4f}/hour",
+                f"   Term: {term}",
+                f"   Payment Option: {payment_option}",
+                f"   Estimated Annual Cost: ${annual_cost:,.2f}",
+                "",
+            ]
+        )
 
-    email_lines.extend([
-        "-" * 50,
-        f"Total Estimated Annual Cost: ${total_annual_cost:,.2f}",
-        "",
-        "TO ENABLE ACTUAL PURCHASES:",
-        "1. Set the DRY_RUN environment variable to 'false'",
-        "2. Update the Lambda configuration:",
-        "   aws lambda update-function-configuration \\",
-        "     --function-name <scheduler-lambda-name> \\",
-        "     --environment Variables={DRY_RUN=false,...}",
-        "",
-        "3. Or via Terraform:",
-        "   Set dry_run = false in your terraform.tfvars",
-        "",
-        "Once disabled, the Scheduler will queue purchase intents to SQS,",
-        "and the Purchaser Lambda will execute the actual purchases.",
-    ])
+    email_lines.extend(
+        [
+            "-" * 50,
+            f"Total Estimated Annual Cost: ${total_annual_cost:,.2f}",
+            "",
+            "TO ENABLE ACTUAL PURCHASES:",
+            "1. Set the DRY_RUN environment variable to 'false'",
+            "2. Update the Lambda configuration:",
+            "   aws lambda update-function-configuration \\",
+            "     --function-name <scheduler-lambda-name> \\",
+            "     --environment Variables={DRY_RUN=false,...}",
+            "",
+            "3. Or via Terraform:",
+            "   Set dry_run = false in your terraform.tfvars",
+            "",
+            "Once disabled, the Scheduler will queue purchase intents to SQS,",
+            "and the Purchaser Lambda will execute the actual purchases.",
+        ]
+    )
 
     message = "\n".join(email_lines)
 
     # Publish to SNS
     try:
         sns_client.publish(
-            TopicArn=config['sns_topic_arn'],
-            Subject='[DRY RUN] Savings Plans Analysis - No Purchases Scheduled',
-            Message=message
+            TopicArn=config["sns_topic_arn"],
+            Subject="[DRY RUN] Savings Plans Analysis - No Purchases Scheduled",
+            Message=message,
         )
         logger.info(f"Dry run email sent successfully to {config['sns_topic_arn']}")
     except ClientError as e:
-        logger.error(f"Failed to send dry run email: {str(e)}")
+        logger.error(f"Failed to send dry run email: {e!s}")
         raise

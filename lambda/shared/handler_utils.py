@@ -68,16 +68,16 @@ def load_config_from_env(schema: dict[str, dict[str, Any]]) -> dict[str, Any]:
 
     for field_name, field_spec in schema.items():
         # Get environment variable name (default to uppercase field name)
-        env_var = field_spec.get('env_var', field_name.upper())
+        env_var = field_spec.get("env_var", field_name.upper())
 
         # Check if field is required
-        is_required = field_spec.get('required', False)
+        is_required = field_spec.get("required", False)
 
         # Get field type
-        field_type = field_spec.get('type', 'str')
+        field_type = field_spec.get("type", "str")
 
         # Get default value
-        default_value = field_spec.get('default')
+        default_value = field_spec.get("default")
 
         # Retrieve value from environment
         if is_required:
@@ -95,25 +95,33 @@ def load_config_from_env(schema: dict[str, dict[str, Any]]) -> dict[str, Any]:
 
         # Type conversion
         try:
-            if field_type == 'str':
+            if field_type == "str":
                 config[field_name] = raw_value
-            elif field_type == 'bool':
+            elif field_type == "bool":
                 # Boolean conversion: 'true' (case-insensitive) -> True, else False
-                config[field_name] = raw_value.lower() == 'true'
-            elif field_type == 'int':
+                config[field_name] = raw_value.lower() == "true"
+            elif field_type == "int":
                 config[field_name] = int(raw_value)
-            elif field_type == 'float':
+            elif field_type == "float":
                 config[field_name] = float(raw_value)
-            elif field_type == 'json':
+            elif field_type == "json":
                 config[field_name] = json.loads(raw_value)
             else:
                 # Unknown type - treat as string and log warning
-                logger.warning(f"Unknown type '{field_type}' for field '{field_name}', treating as string")
+                logger.warning(
+                    f"Unknown type '{field_type}' for field '{field_name}', treating as string"
+                )
                 config[field_name] = raw_value
         except (ValueError, TypeError) as e:
-            raise ValueError(f"Failed to convert field '{field_name}' (env var '{env_var}') to type '{field_type}': {e}") from e
+            raise ValueError(
+                f"Failed to convert field '{field_name}' (env var '{env_var}') to type '{field_type}': {e}"
+            ) from e
         except json.JSONDecodeError as e:
-            raise json.JSONDecodeError(f"Failed to parse JSON for field '{field_name}' (env var '{env_var}'): {e.msg}", e.doc, e.pos) from e
+            raise json.JSONDecodeError(
+                f"Failed to parse JSON for field '{field_name}' (env var '{env_var}'): {e.msg}",
+                e.doc,
+                e.pos,
+            ) from e
 
     return config
 
@@ -121,7 +129,7 @@ def load_config_from_env(schema: dict[str, dict[str, Any]]) -> dict[str, Any]:
 def initialize_clients(
     config: dict[str, Any],
     session_name: str,
-    error_callback: Optional[Callable[[str], None]] = None
+    error_callback: Optional[Callable[[str], None]] = None,
 ) -> dict[str, Any]:
     """
     Initialize AWS clients with assume role support and standardized error handling.
@@ -171,7 +179,7 @@ def initialize_clients(
     except ClientError as e:
         # Build descriptive error message
         error_msg = f"Failed to initialize AWS clients: {e!s}"
-        if config.get('management_account_role_arn'):
+        if config.get("management_account_role_arn"):
             error_msg = f"Failed to assume role {config['management_account_role_arn']}: {e!s}"
 
         # Log error with full traceback
@@ -241,6 +249,7 @@ def lambda_handler_wrapper(lambda_name: str) -> Callable:
         - All exceptions are re-raised to ensure Lambda execution fails visibly
         - Handlers should implement their own error notification before raising
     """
+
     def decorator(handler_func: Callable) -> Callable:
         def wrapper(event: dict[str, Any], context: Any) -> dict[str, Any]:
             try:
@@ -251,7 +260,9 @@ def lambda_handler_wrapper(lambda_name: str) -> Callable:
             except Exception as e:
                 logger.error(f"{lambda_name} Lambda failed: {e!s}", exc_info=True)
                 raise  # Re-raise to ensure Lambda fails visibly
+
         return wrapper
+
     return decorator
 
 
@@ -259,9 +270,9 @@ def send_error_notification(
     sns_client: Any,
     sns_topic_arn: str,
     error_message: str,
-    lambda_name: str = 'Lambda',
+    lambda_name: str = "Lambda",
     slack_webhook_url: Optional[str] = None,
-    teams_webhook_url: Optional[str] = None
+    teams_webhook_url: Optional[str] = None,
 ) -> None:
     """
     Send error notification via SNS, Slack, and Teams.
@@ -330,11 +341,7 @@ Please check CloudWatch Logs for full details.
 
     # Send SNS notification
     try:
-        sns_client.publish(
-            TopicArn=sns_topic_arn,
-            Subject=sns_subject,
-            Message=sns_message
-        )
+        sns_client.publish(TopicArn=sns_topic_arn, Subject=sns_subject, Message=sns_message)
         logger.info(f"Error notification sent via SNS to {sns_topic_arn}")
     except Exception as e:
         # Don't raise - we're already in error handling
@@ -350,12 +357,10 @@ Please check CloudWatch Logs for full details.
                 "",
                 f"**Time:** {timestamp}",
                 "",
-                "Please check CloudWatch Logs for full details."
+                "Please check CloudWatch Logs for full details.",
             ]
             slack_message = notifications.format_slack_message(
-                sns_subject,
-                body_lines,
-                severity='error'
+                sns_subject, body_lines, severity="error"
             )
             if notifications.send_slack_notification(slack_webhook_url, slack_message):
                 logger.info("Slack error notification sent successfully")
@@ -374,12 +379,9 @@ Please check CloudWatch Logs for full details.
                 "",
                 f"Time: {timestamp}",
                 "",
-                "Please check CloudWatch Logs for full details."
+                "Please check CloudWatch Logs for full details.",
             ]
-            teams_message = notifications.format_teams_message(
-                sns_subject,
-                body_lines
-            )
+            teams_message = notifications.format_teams_message(sns_subject, body_lines)
             if notifications.send_teams_notification(teams_webhook_url, teams_message):
                 logger.info("Teams error notification sent successfully")
             else:

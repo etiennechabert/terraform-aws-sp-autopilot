@@ -69,10 +69,7 @@ def build_header(title: str, width: int = 50) -> list[str]:
         logger.warning("Empty title provided to build_header, using empty string")
         title = ""
 
-    return [
-        title,
-        "=" * width
-    ]
+    return [title, "=" * width]
 
 
 def build_separator(width: int = 50, char: str = "-") -> list[str]:
@@ -100,9 +97,7 @@ def build_separator(width: int = 50, char: str = "-") -> list[str]:
 
 
 def build_key_value_section(
-    data: dict[str, Any],
-    indent: str = "",
-    format_numbers: bool = True
+    data: dict[str, Any], indent: str = "", format_numbers: bool = True
 ) -> list[str]:
     """
     Build a section with key-value pairs.
@@ -148,10 +143,7 @@ def build_key_value_section(
 
 
 def build_list_section(
-    section_title: str,
-    items: list[str],
-    width: int = 50,
-    include_separator: bool = True
+    section_title: str, items: list[str], width: int = 50, include_separator: bool = True
 ) -> list[str]:
     """
     Build a titled list section with optional separator.
@@ -195,9 +187,7 @@ def build_list_section(
 
 
 def build_footer(
-    custom_message: Optional[str] = None,
-    width: int = 50,
-    include_separator: bool = True
+    custom_message: Optional[str] = None, width: int = 50, include_separator: bool = True
 ) -> list[str]:
     """
     Build a standard email footer.
@@ -238,11 +228,7 @@ def build_footer(
     return lines
 
 
-def format_currency(
-    amount: float,
-    hourly: bool = False,
-    monthly: bool = False
-) -> str:
+def format_currency(amount: float, hourly: bool = False, monthly: bool = False) -> str:
     """
     Format a currency amount with proper precision and optional rate suffix.
 
