@@ -158,7 +158,7 @@ resource "null_resource" "scheduler_add_shared" {
   }
 
   provisioner "local-exec" {
-    command     = "cd ${path.module}/lambda && zip -u ${path.module}/.terraform/scheduler.zip shared/*.py"
+    command     = "cd lambda && zip -u .terraform/scheduler.zip shared/*.py"
     working_dir = path.module
     interpreter = ["bash", "-c"]
   }
@@ -194,7 +194,7 @@ resource "null_resource" "purchaser_add_shared" {
   }
 
   provisioner "local-exec" {
-    command     = "cd ${path.module}/lambda && zip -u ${path.module}/.terraform/purchaser.zip shared/*.py"
+    command     = "cd lambda && zip -u .terraform/purchaser.zip shared/*.py"
     working_dir = path.module
     interpreter = ["bash", "-c"]
   }
@@ -230,7 +230,7 @@ resource "null_resource" "reporter_add_shared" {
   }
 
   provisioner "local-exec" {
-    command     = "cd ${path.module}/lambda && zip -u ${path.module}/.terraform/reporter.zip shared/*.py"
+    command     = "cd lambda && zip -u .terraform/reporter.zip shared/*.py"
     working_dir = path.module
     interpreter = ["bash", "-c"]
   }
