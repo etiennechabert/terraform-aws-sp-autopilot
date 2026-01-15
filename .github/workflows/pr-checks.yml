@@ -176,7 +176,7 @@ jobs:
             });
 
   scheduler-tests:
-    needs: lint
+    needs: [terraform-validation, tfsec-scan, lint]
     name: Scheduler Lambda Tests
     runs-on: ubuntu-latest
 
@@ -236,7 +236,7 @@ jobs:
             });
 
   purchaser-tests:
-    needs: lint
+    needs: [terraform-validation, tfsec-scan, lint]
     name: Purchaser Lambda Tests
     runs-on: ubuntu-latest
 
@@ -296,7 +296,7 @@ jobs:
             });
 
   reporter-tests:
-    needs: lint
+    needs: [terraform-validation, tfsec-scan, lint]
     name: Reporter Lambda Tests
     runs-on: ubuntu-latest
 
