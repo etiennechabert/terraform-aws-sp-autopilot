@@ -117,25 +117,84 @@ resource "aws_lambda_function" "reporter" {
 # Lambda Deployment Packages
 # ============================================================================
 
-# Scheduler Lambda deployment package
+# Scheduler Lambda deployment package (includes shared module)
 data "archive_file" "scheduler" {
   type        = "zip"
-  source_dir  = "${path.module}/lambda/scheduler"
+  source_dir  = "${path.module}/lambda"
   output_path = "${path.module}/.terraform/scheduler.zip"
+
+  excludes = [
+    "purchaser",
+    "reporter",
+    "shared/.pytest_cache",
+    "shared/__pycache__",
+    "shared/.coverage",
+    "shared/htmlcov",
+    "shared/tests",
+    "scheduler/.pytest_cache",
+    "scheduler/__pycache__",
+    "scheduler/.coverage",
+    "scheduler/htmlcov",
+    "scheduler/tests",
+    "scheduler/TESTING.md",
+    "scheduler/README.md",
+    "scheduler/pytest.ini",
+    "scheduler/requirements.txt",
+    "scheduler/test_dry_run.sh",
+    "scheduler/integration_test_dry_run.md"
+  ]
 }
 
-# Purchaser Lambda deployment package
+# Purchaser Lambda deployment package (includes shared module)
 data "archive_file" "purchaser" {
   type        = "zip"
-  source_dir  = "${path.module}/lambda/purchaser"
+  source_dir  = "${path.module}/lambda"
   output_path = "${path.module}/.terraform/purchaser.zip"
+
+  excludes = [
+    "scheduler",
+    "reporter",
+    "shared/.pytest_cache",
+    "shared/__pycache__",
+    "shared/.coverage",
+    "shared/htmlcov",
+    "shared/tests",
+    "purchaser/.pytest_cache",
+    "purchaser/__pycache__",
+    "purchaser/.coverage",
+    "purchaser/htmlcov",
+    "purchaser/tests",
+    "purchaser/TESTING.md",
+    "purchaser/README.md",
+    "purchaser/pytest.ini",
+    "purchaser/requirements.txt"
+  ]
 }
 
-# Reporter Lambda deployment package
+# Reporter Lambda deployment package (includes shared module)
 data "archive_file" "reporter" {
   type        = "zip"
-  source_dir  = "${path.module}/lambda/reporter"
+  source_dir  = "${path.module}/lambda"
   output_path = "${path.module}/.terraform/reporter.zip"
+
+  excludes = [
+    "scheduler",
+    "purchaser",
+    "shared/.pytest_cache",
+    "shared/__pycache__",
+    "shared/.coverage",
+    "shared/htmlcov",
+    "shared/tests",
+    "reporter/.pytest_cache",
+    "reporter/__pycache__",
+    "reporter/.coverage",
+    "reporter/htmlcov",
+    "reporter/tests",
+    "reporter/TESTING.md",
+    "reporter/README.md",
+    "reporter/pytest.ini",
+    "reporter/requirements.txt"
+  ]
 }
 
 # Create placeholder ZIP files
