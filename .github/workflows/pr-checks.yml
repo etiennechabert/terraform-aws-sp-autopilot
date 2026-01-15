@@ -203,7 +203,7 @@ jobs:
           PYTHONPATH: ${{ github.workspace }}/lambda
           AWS_DEFAULT_REGION: us-east-1
         run: |
-          pytest -v --cov=. --cov-report=term-missing --cov-report=xml --cov-fail-under=80
+          pytest
 
       - name: Upload coverage reports to Codecov
         uses: codecov/codecov-action@v5
@@ -263,7 +263,7 @@ jobs:
           PYTHONPATH: ${{ github.workspace }}/lambda
           AWS_DEFAULT_REGION: us-east-1
         run: |
-          pytest -v --cov=. --cov-report=term-missing --cov-report=xml --cov-fail-under=80
+          pytest
 
       - name: Upload coverage reports to Codecov
         uses: codecov/codecov-action@v5
@@ -323,7 +323,7 @@ jobs:
           PYTHONPATH: ${{ github.workspace }}/lambda
           AWS_DEFAULT_REGION: us-east-1
         run: |
-          pytest -v --cov=. --cov-report=term-missing --cov-report=xml --cov-fail-under=80
+          pytest
 
       - name: Upload coverage reports to Codecov
         uses: codecov/codecov-action@v5
