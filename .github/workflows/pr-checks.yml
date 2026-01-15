@@ -13,6 +13,7 @@ permissions:
   security-events: write
 
 jobs:
+  # Stage 1: Fast validation checks (run first)
   terraform-validation:
     name: Terraform Format and Validate
     runs-on: ubuntu-latest
@@ -113,6 +114,340 @@ jobs:
             - Restrict security group rules
             - Enable logging and monitoring
             - Use secure default configurations
+
+            *Pushed by: @${{ github.actor }}, Action: \`${{ github.event_name }}\`*`;
+
+            github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: output
+            });
+
+  # Stage 2: Lambda tests (runs after Stage 1 passes)
+  lint:
+    name: Python Linting
+    runs-on: ubuntu-latest
+    needs: [terraform-validation, tfsec-scan]
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install ruff
+        run: |
+          python -m pip install --upgrade pip
+          pip install ruff
+
+      - name: Run ruff check
+        run: |
+          ruff check lambda/
+
+      - name: Run ruff format check
+        run: |
+          ruff format --check lambda/
+
+      - name: Comment PR with Linting Results
+        if: github.event_name == 'pull_request' && failure()
+        uses: actions/github-script@v7
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            const output = `#### Python Linting Failed ❌
+
+            **Ruff linting or formatting checks failed.**
+
+            Please run the following commands locally to fix:
+            - \`ruff check --fix lambda/\`
+            - \`ruff format lambda/\`
+
+            *Pushed by: @${{ github.actor }}, Action: \`${{ github.event_name }}\`*`;
+
+            github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: output
+            });
+
+  scheduler-tests:
+    needs: lint
+    name: Scheduler Lambda Tests
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: 'pip'
+          cache-dependency-path: 'lambda/scheduler/requirements.txt'
+
+      - name: Install dependencies
+        working-directory: lambda/scheduler
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: Run pytest with coverage
+        working-directory: lambda/scheduler
+        env:
+          PYTHONPATH: ${{ github.workspace }}/lambda
+          AWS_DEFAULT_REGION: us-east-1
+        run: |
+          pytest -v --cov=. --cov-report=term-missing --cov-report=xml --cov-fail-under=80
+
+      - name: Upload coverage reports to Codecov
+        uses: codecov/codecov-action@v5
+        with:
+          token: ${{ secrets.CODECOV_TOKEN }}
+          files: ./lambda/scheduler/coverage.xml
+          flags: scheduler
+          name: scheduler-coverage
+          fail_ci_if_error: false
+
+      - name: Comment PR with Test Results
+        if: github.event_name == 'pull_request' && failure()
+        uses: actions/github-script@v7
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            const output = `#### Scheduler Lambda Tests Failed ❌
+
+            **Pytest execution failed or coverage is below 80%.**
+
+            Please review the test results above and fix any failing tests or improve test coverage.
+
+            *Pushed by: @${{ github.actor }}, Action: \`${{ github.event_name }}\`*`;
+
+            github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: output
+            });
+
+  purchaser-tests:
+    needs: lint
+    name: Purchaser Lambda Tests
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: 'pip'
+          cache-dependency-path: 'lambda/purchaser/requirements.txt'
+
+      - name: Install dependencies
+        working-directory: lambda/purchaser
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: Run integration tests
+        working-directory: lambda/purchaser
+        env:
+          PYTHONPATH: ${{ github.workspace }}/lambda
+          AWS_DEFAULT_REGION: us-east-1
+        run: |
+          python tests/test_integration.py
+
+      - name: Comment PR with Test Results
+        if: github.event_name == 'pull_request' && failure()
+        uses: actions/github-script@v7
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            const output = `#### Purchaser Lambda Tests Failed ❌
+
+            **Integration test execution failed.**
+
+            Please review the test results above and fix any failing tests.
+
+            *Pushed by: @${{ github.actor }}, Action: \`${{ github.event_name }}\`*`;
+
+            github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: output
+            });
+
+  # Stage 2: Terraform unit tests (runs in parallel with Lambda tests after Stage 1 passes)
+  terraform-unit-tests:
+    name: Terraform Unit Tests
+    runs-on: ubuntu-latest
+    needs: [terraform-validation, tfsec-scan]
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: "1.11.0"
+
+      - name: Verify Terraform Version
+        run: |
+          terraform version
+          terraform version | grep -E "v1\.1[1-9]|v1\.[2-9][0-9]|v[2-9]" || (echo "ERROR: Terraform 1.11+ required for override_during support" && exit 1)
+
+      - name: Verify AWS Credentials NOT Set
+        run: |
+          echo "Verifying tests run without AWS credentials..."
+          if [ -n "$AWS_ACCESS_KEY_ID" ] || [ -n "$AWS_SECRET_ACCESS_KEY" ]; then
+            echo "ERROR: AWS credentials should not be set for these tests"
+            exit 1
+          fi
+          echo "✓ AWS credentials not set (as expected)"
+
+      - name: Initialize Terraform
+        run: |
+          terraform init
+          echo "✓ Terraform initialized successfully"
+
+      - name: Run Terraform Unit Tests
+        run: |
+          echo "Running all Terraform unit tests..."
+          terraform test -verbose -test-directory=terraform-tests/unit
+          TEST_EXIT_CODE=$?
+          echo "Test exit code: $TEST_EXIT_CODE"
+
+          if [ $TEST_EXIT_CODE -eq 0 ]; then
+            echo "✅ All tests passed!"
+          else
+            echo "❌ Tests failed with exit code $TEST_EXIT_CODE"
+            exit $TEST_EXIT_CODE
+          fi
+
+      - name: Verify No Credential Errors
+        run: |
+          echo "Checking for credential-related errors..."
+          terraform test -test-directory=terraform-tests/unit 2>&1 | tee test_output.log
+
+          if grep -iE "(credential|authentication|no valid credential|unable to locate credential)" test_output.log; then
+            echo "❌ FAILURE: Credential-related errors detected"
+            exit 1
+          else
+            echo "✅ No credential errors detected"
+          fi
+
+      - name: Validate Test File Structure
+        run: |
+          echo "Checking for required test files..."
+          REQUIRED_FILES=(
+            "terraform-tests/unit/s3.tftest.hcl"
+            "terraform-tests/unit/sqs.tftest.hcl"
+            "terraform-tests/unit/sns.tftest.hcl"
+            "terraform-tests/unit/iam.tftest.hcl"
+            "terraform-tests/unit/cloudwatch.tftest.hcl"
+            "terraform-tests/unit/eventbridge.tftest.hcl"
+            "terraform-tests/unit/variables.tftest.hcl"
+          )
+
+          for file in "${REQUIRED_FILES[@]}"; do
+            if [ -f "$file" ]; then
+              echo "✓ $file exists"
+            else
+              echo "✗ $file MISSING"
+              exit 1
+            fi
+          done
+
+      - name: Test Summary
+        if: always()
+        run: |
+          echo "========================================="
+          echo "Terraform Unit Tests Summary"
+          echo "========================================="
+          echo "Version: $(terraform version -json | jq -r '.terraform_version')"
+          echo "AWS Credentials: NOT REQUIRED ✓"
+          echo "Mock Provider: ENABLED ✓"
+          echo "Test Files: $(ls -1 terraform-tests/unit/*.tftest.hcl 2>/dev/null | wc -l)"
+          echo "========================================="
+
+  # Stage 3: Terraform integration tests (runs only after unit tests pass)
+  terraform-integration-tests:
+    name: Terraform Integration Tests
+    runs-on: ubuntu-latest
+    needs: terraform-unit-tests
+    timeout-minutes: 30
+
+    env:
+      AWS_DEFAULT_REGION: us-east-1
+      GO_VERSION: '1.21'
+      TERRAFORM_VERSION: '1.11.0'
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: ${{ env.GO_VERSION }}
+          cache: true
+          cache-dependency-path: terraform-tests/integration/go.mod
+
+      - name: Set up Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: ${{ env.TERRAFORM_VERSION }}
+          terraform_wrapper: false
+
+      - name: Configure AWS Credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ env.AWS_DEFAULT_REGION }}
+
+      - name: Install Terratest Dependencies
+        working-directory: terraform-tests/integration
+        run: |
+          go mod download
+          go mod verify
+
+      - name: Run Terratest Integration Tests
+        working-directory: terraform-tests/integration
+        run: |
+          go test -v -timeout 30m -parallel 1
+        env:
+          TF_VAR_environment: ci-test
+          TF_VAR_project_name: sp-autopilot-ci
+
+      - name: Cleanup Resources on Failure
+        if: failure()
+        working-directory: terraform-tests/integration
+        run: |
+          echo "Cleaning up any remaining test resources..."
+          go test -v -timeout 10m -run TestCleanup || true
+
+      - name: Comment PR with Test Results
+        if: github.event_name == 'pull_request' && failure()
+        uses: actions/github-script@v7
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            const output = `#### Terraform Integration Tests Failed ❌
+
+            **Terratest integration tests failed.**
+
+            Please review the test results above and fix any failing tests.
 
             *Pushed by: @${{ github.actor }}, Action: \`${{ github.event_name }}\`*`;
 
