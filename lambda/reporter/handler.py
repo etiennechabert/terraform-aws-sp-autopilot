@@ -1280,4 +1280,3 @@ def send_error_email(config: Dict[str, Any] = None, error_msg: str = None) -> No
 
 
 # Backward-compatible imports for AWS utils (required by existing tests)
-from shared.aws_utils import get_assumed_role_session, get_clients
