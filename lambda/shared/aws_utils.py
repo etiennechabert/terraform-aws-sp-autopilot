@@ -18,7 +18,9 @@ logger = logging.getLogger()
 logger.setLevel(logging.INFO)
 
 
-def get_assumed_role_session(role_arn: str, session_name: str = 'sp-autopilot-session') -> Optional[boto3.Session]:
+def get_assumed_role_session(
+    role_arn: str, session_name: str = "sp-autopilot-session"
+) -> Optional[boto3.Session]:
     """
     Assume a cross-account role and return a session with temporary credentials.
 
@@ -38,31 +40,32 @@ def get_assumed_role_session(role_arn: str, session_name: str = 'sp-autopilot-se
     logger.info(f"Assuming role: {role_arn}")
 
     try:
-        sts_client = boto3.client('sts')
-        response = sts_client.assume_role(
-            RoleArn=role_arn,
-            RoleSessionName=session_name
-        )
+        sts_client = boto3.client("sts")
+        response = sts_client.assume_role(RoleArn=role_arn, RoleSessionName=session_name)
 
-        credentials = response['Credentials']
+        credentials = response["Credentials"]
 
         session = boto3.Session(
-            aws_access_key_id=credentials['AccessKeyId'],
-            aws_secret_access_key=credentials['SecretAccessKey'],
-            aws_session_token=credentials['SessionToken']
+            aws_access_key_id=credentials["AccessKeyId"],
+            aws_secret_access_key=credentials["SecretAccessKey"],
+            aws_session_token=credentials["SessionToken"],
         )
 
         logger.info(f"Successfully assumed role, session expires: {credentials['Expiration']}")
         return session
 
     except ClientError as e:
-        error_code = e.response.get('Error', {}).get('Code', 'Unknown')
-        error_message = e.response.get('Error', {}).get('Message', str(e))
-        logger.error(f"Failed to assume role {role_arn} - Code: {error_code}, Message: {error_message}")
+        error_code = e.response.get("Error", {}).get("Code", "Unknown")
+        error_message = e.response.get("Error", {}).get("Message", str(e))
+        logger.error(
+            f"Failed to assume role {role_arn} - Code: {error_code}, Message: {error_message}"
+        )
         raise
 
 
-def get_clients(config: dict[str, Any], session_name: str = 'sp-autopilot-session') -> dict[str, Any]:
+def get_clients(
+    config: dict[str, Any], session_name: str = "sp-autopilot-session"
+) -> dict[str, Any]:
     """
     Get AWS clients, using assumed role if configured.
 
@@ -73,22 +76,22 @@ def get_clients(config: dict[str, Any], session_name: str = 'sp-autopilot-sessio
     Returns:
         Dictionary of boto3 clients
     """
-    role_arn = config.get('management_account_role_arn')
+    role_arn = config.get("management_account_role_arn")
 
     if role_arn:
         session = get_assumed_role_session(role_arn, session_name)
         return {
-            'ce': session.client('ce'),
-            'savingsplans': session.client('savingsplans'),
+            "ce": session.client("ce"),
+            "savingsplans": session.client("savingsplans"),
             # Keep SNS/SQS/S3 using local credentials
-            'sns': boto3.client('sns'),
-            'sqs': boto3.client('sqs'),
-            's3': boto3.client('s3'),
+            "sns": boto3.client("sns"),
+            "sqs": boto3.client("sqs"),
+            "s3": boto3.client("s3"),
         }
     return {
-        'ce': boto3.client('ce'),
-        'savingsplans': boto3.client('savingsplans'),
-        'sns': boto3.client('sns'),
-        'sqs': boto3.client('sqs'),
-        's3': boto3.client('s3'),
+        "ce": boto3.client("ce"),
+        "savingsplans": boto3.client("savingsplans"),
+        "sns": boto3.client("sns"),
+        "sqs": boto3.client("sqs"),
+        "s3": boto3.client("s3"),
     }

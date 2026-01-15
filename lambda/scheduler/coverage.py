@@ -5,16 +5,19 @@ Calculates current Savings Plans coverage, excluding plans expiring soon.
 """
 
 import logging
-from datetime import datetime, timezone, timedelta
-from typing import Dict, Any
+from datetime import datetime, timedelta, timezone
+from typing import Any, Dict
 
 from botocore.exceptions import ClientError
+
 
 # Configure logging
 logger = logging.getLogger()
 
 
-def calculate_current_coverage(savingsplans_client: Any, ce_client: Any, config: Dict[str, Any]) -> Dict[str, float]:
+def calculate_current_coverage(
+    savingsplans_client: Any, ce_client: Any, config: Dict[str, Any]
+) -> Dict[str, float]:
     """
     Calculate current Savings Plans coverage, excluding plans expiring soon.
 
@@ -30,39 +33,38 @@ def calculate_current_coverage(savingsplans_client: Any, ce_client: Any, config:
 
     # Get current date for expiration filtering
     now = datetime.now(timezone.utc)
-    renewal_window_days = config['renewal_window_days']
+    renewal_window_days = config["renewal_window_days"]
 
     # Get list of existing Savings Plans
     try:
         response = savingsplans_client.describe_savings_plans(
-            filters=[
-                {
-                    'name': 'state',
-                    'values': ['active']
-                }
-            ]
+            filters=[{"name": "state", "values": ["active"]}]
         )
-        savings_plans = response.get('savingsPlans', [])
+        savings_plans = response.get("savingsPlans", [])
         logger.info(f"Found {len(savings_plans)} active Savings Plans")
 
         # Filter out plans expiring within renewal_window_days
         valid_plan_ids = []
         for plan in savings_plans:
-            if 'end' in plan:
+            if "end" in plan:
                 # Parse end date (ISO 8601 format)
-                end_date = datetime.fromisoformat(plan['end'].replace('Z', '+00:00'))
+                end_date = datetime.fromisoformat(plan["end"].replace("Z", "+00:00"))
                 days_until_expiry = (end_date - now).days
 
                 if days_until_expiry > renewal_window_days:
-                    valid_plan_ids.append(plan['savingsPlanId'])
-                    logger.debug(f"Including plan {plan['savingsPlanId']} - expires in {days_until_expiry} days")
+                    valid_plan_ids.append(plan["savingsPlanId"])
+                    logger.debug(
+                        f"Including plan {plan['savingsPlanId']} - expires in {days_until_expiry} days"
+                    )
                 else:
-                    logger.info(f"Excluding plan {plan['savingsPlanId']} - expires in {days_until_expiry} days (within renewal window)")
+                    logger.info(
+                        f"Excluding plan {plan['savingsPlanId']} - expires in {days_until_expiry} days (within renewal window)"
+                    )
 
         logger.info(f"Valid plans after filtering: {len(valid_plan_ids)}")
 
     except ClientError as e:
-        logger.error(f"Failed to describe Savings Plans: {str(e)}")
+        logger.error(f"Failed to describe Savings Plans: {e!s}")
         raise
 
     # Get coverage from Cost Explorer
@@ -72,31 +74,24 @@ def calculate_current_coverage(savingsplans_client: Any, ce_client: Any, config:
         start_date = end_date - timedelta(days=1)
 
         response = ce_client.get_savings_plans_coverage(
-            TimePeriod={
-                'Start': start_date.isoformat(),
-                'End': end_date.isoformat()
-            },
-            Granularity='DAILY'
+            TimePeriod={"Start": start_date.isoformat(), "End": end_date.isoformat()},
+            Granularity="DAILY",
         )
 
-        coverage_by_time = response.get('SavingsPlansCoverages', [])
+        coverage_by_time = response.get("SavingsPlansCoverages", [])
 
         if not coverage_by_time:
             logger.warning("No coverage data available from Cost Explorer")
-            return {
-                'compute': 0.0,
-                'database': 0.0,
-                'sagemaker': 0.0
-            }
+            return {"compute": 0.0, "database": 0.0, "sagemaker": 0.0}
 
         # Get the most recent coverage data point
         latest_coverage = coverage_by_time[-1]
-        coverage_data = latest_coverage.get('Coverage', {})
+        coverage_data = latest_coverage.get("Coverage", {})
 
         # Extract coverage percentage
         coverage_percentage = 0.0
-        if 'CoveragePercentage' in coverage_data:
-            coverage_percentage = float(coverage_data['CoveragePercentage'])
+        if "CoveragePercentage" in coverage_data:
+            coverage_percentage = float(coverage_data["CoveragePercentage"])
 
         logger.info(f"Overall Savings Plans coverage: {coverage_percentage}%")
 
@@ -104,14 +99,10 @@ def calculate_current_coverage(savingsplans_client: Any, ce_client: Any, config:
         # For now, we'll use the overall coverage for compute and assume 0 for database and sagemaker
         # In a production system, you might need to call GetSavingsPlansCoverage with
         # GroupBy to separate by service or use DescribeSavingsPlans to categorize
-        coverage = {
-            'compute': coverage_percentage,
-            'database': 0.0,
-            'sagemaker': 0.0
-        }
+        coverage = {"compute": coverage_percentage, "database": 0.0, "sagemaker": 0.0}
 
     except ClientError as e:
-        logger.error(f"Failed to get coverage from Cost Explorer: {str(e)}")
+        logger.error(f"Failed to get coverage from Cost Explorer: {e!s}")
         raise
 
     logger.info(f"Coverage calculated: {coverage}")

@@ -14,44 +14,41 @@ This Lambda:
 8. Sends notification email with analysis results
 """
 
-import json
-import logging
-from typing import Dict, Any
-
-from shared.handler_utils import (
-    load_config_from_env,
-    initialize_clients,
-    lambda_handler_wrapper,
-    send_error_notification
-)
-from shared.aws_utils import (
-    get_assumed_role_session,
-    get_clients
-)
-
-# Import new modular components
-# Import with aliases to avoid shadowing when we create backward-compatible wrappers
-from config import CONFIG_SCHEMA, load_configuration
-
 # Special handling for coverage module to avoid conflict with pytest-cov
 # Import it explicitly to avoid naming conflicts with pytest-cov's coverage module
 import importlib.util
+import json
+import logging
 import os as _os_for_import
+from typing import Any, Dict
+
+# Import new modular components
+# Import with aliases to avoid shadowing when we create backward-compatible wrappers
+from config import CONFIG_SCHEMA
+
+from shared.handler_utils import (
+    initialize_clients,
+    lambda_handler_wrapper,
+    load_config_from_env,
+    send_error_notification,
+)
+
+
 _coverage_spec = importlib.util.spec_from_file_location(
     "coverage_calc",  # Use different name to avoid conflict
-    _os_for_import.path.join(_os_for_import.path.dirname(__file__), "coverage.py")
+    _os_for_import.path.join(_os_for_import.path.dirname(__file__), "coverage.py"),
 )
 coverage_module = importlib.util.module_from_spec(_coverage_spec)
 _coverage_spec.loader.exec_module(coverage_module)
 del _coverage_spec, _os_for_import  # Clean up temporary variables
+
+# Import concurrent.futures components for backward compatibility with tests
 
 import email_notifications as email_module
 import purchase_calculator as purchase_module
 import queue_manager as queue_module
 import recommendations as recommendations_module
 
-# Import concurrent.futures components for backward compatibility with tests
-from concurrent.futures import ThreadPoolExecutor, as_completed
 
 # Configure logging
 logger = logging.getLogger()
@@ -60,10 +57,12 @@ logger.setLevel(logging.INFO)
 # Module-level boto3 clients for backward compatibility with existing tests
 # These are initialized lazily when accessed
 import boto3
-ce_client = boto3.client('ce')
-sqs_client = boto3.client('sqs')
-sns_client = boto3.client('sns')
-savingsplans_client = boto3.client('savingsplans')
+
+
+ce_client = boto3.client("ce")
+sqs_client = boto3.client("sqs")
+sns_client = boto3.client("sns")
+savingsplans_client = boto3.client("savingsplans")
 
 
 # Backward-compatible wrapper functions for existing tests
@@ -88,12 +87,16 @@ def queue_purchase_intents(config: Dict[str, Any], purchase_plans: list) -> None
     return queue_module.queue_purchase_intents(sqs_client, config, purchase_plans)
 
 
-def send_scheduled_email(config: Dict[str, Any], purchase_plans: list, coverage_data: Dict[str, float]) -> None:
+def send_scheduled_email(
+    config: Dict[str, Any], purchase_plans: list, coverage_data: Dict[str, float]
+) -> None:
     """Send scheduled email - backward compatible wrapper."""
     return email_module.send_scheduled_email(sns_client, config, purchase_plans, coverage_data)
 
 
-def send_dry_run_email(config: Dict[str, Any], purchase_plans: list, coverage_data: Dict[str, float]) -> None:
+def send_dry_run_email(
+    config: Dict[str, Any], purchase_plans: list, coverage_data: Dict[str, float]
+) -> None:
     """Send dry run email - backward compatible wrapper."""
     return email_module.send_dry_run_email(sns_client, config, purchase_plans, coverage_data)
 
@@ -118,25 +121,27 @@ def send_error_email(error_msg: str, sns_topic_arn: str = None) -> None:
     if sns_topic_arn is None:
         # Try to get SNS topic ARN from environment
         import os
-        sns_topic_arn = os.environ.get('SNS_TOPIC_ARN')
+
+        sns_topic_arn = os.environ.get("SNS_TOPIC_ARN")
         if not sns_topic_arn:
             logger.warning("SNS_TOPIC_ARN not found in environment")
             return
 
     try:
         import boto3
-        sns = boto3.client('sns')
+
+        sns = boto3.client("sns")
         send_error_notification(
             sns_client=sns,
             sns_topic_arn=sns_topic_arn,
             error_message=error_msg,
-            lambda_name='Scheduler'
+            lambda_name="Scheduler",
         )
     except Exception as e:
         logger.warning(f"Failed to send error notification: {e}")
 
 
-@lambda_handler_wrapper('Scheduler')
+@lambda_handler_wrapper("Scheduler")
 def handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
     """
     Main handler for Scheduler Lambda.
@@ -160,29 +165,34 @@ def handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
             """Send error notification using shared utility."""
             # Get SNS client directly (before full client initialization)
             import boto3
-            sns = boto3.client('sns')
+
+            sns = boto3.client("sns")
             send_error_notification(
                 sns_client=sns,
-                sns_topic_arn=config['sns_topic_arn'],
+                sns_topic_arn=config["sns_topic_arn"],
                 error_message=error_msg,
-                lambda_name='Scheduler'
+                lambda_name="Scheduler",
             )
 
         # Initialize clients (with assume role if configured)
-        clients = initialize_clients(config, 'sp-autopilot-scheduler', send_error_email)
-        ce_client = clients['ce']
-        savingsplans_client = clients['savingsplans']
-        sqs_client = clients['sqs']
-        sns_client = clients['sns']
+        clients = initialize_clients(config, "sp-autopilot-scheduler", send_error_email)
+        ce_client = clients["ce"]
+        savingsplans_client = clients["savingsplans"]
+        sqs_client = clients["sqs"]
+        sns_client = clients["sns"]
 
         logger.info(f"Configuration loaded: dry_run={config['dry_run']}")
 
         # Step 1: Purge existing queue
-        queue_module.purge_queue(sqs_client, config['queue_url'])
+        queue_module.purge_queue(sqs_client, config["queue_url"])
 
         # Step 2: Calculate current coverage
-        coverage = coverage_module.calculate_current_coverage(savingsplans_client, ce_client, config)
-        logger.info(f"Current coverage - Compute: {coverage.get('compute', 0)}%, Database: {coverage.get('database', 0)}%, SageMaker: {coverage.get('sagemaker', 0)}%")
+        coverage = coverage_module.calculate_current_coverage(
+            savingsplans_client, ce_client, config
+        )
+        logger.info(
+            f"Current coverage - Compute: {coverage.get('compute', 0)}%, Database: {coverage.get('database', 0)}%, SageMaker: {coverage.get('sagemaker', 0)}%"
+        )
 
         # Step 3: Get AWS recommendations
         recommendations = recommendations_module.get_aws_recommendations(ce_client, config)
@@ -197,7 +207,7 @@ def handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
         purchase_plans = purchase_module.split_by_term(config, purchase_plans)
 
         # Step 7: Queue or notify
-        if config['dry_run']:
+        if config["dry_run"]:
             logger.info("Dry run mode - sending email only, NOT queuing messages")
             email_module.send_dry_run_email(sns_client, config, purchase_plans, coverage)
         else:
@@ -206,12 +216,14 @@ def handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
             email_module.send_scheduled_email(sns_client, config, purchase_plans, coverage)
 
         return {
-            'statusCode': 200,
-            'body': json.dumps({
-                'message': 'Scheduler completed successfully',
-                'dry_run': config['dry_run'],
-                'purchases_planned': len(purchase_plans)
-            })
+            "statusCode": 200,
+            "body": json.dumps(
+                {
+                    "message": "Scheduler completed successfully",
+                    "dry_run": config["dry_run"],
+                    "purchases_planned": len(purchase_plans),
+                }
+            ),
         }
 
     except Exception as e:
@@ -219,12 +231,13 @@ def handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
         try:
             config = load_config_from_env(CONFIG_SCHEMA)
             import boto3
-            sns = boto3.client('sns')
+
+            sns = boto3.client("sns")
             send_error_notification(
                 sns_client=sns,
-                sns_topic_arn=config['sns_topic_arn'],
+                sns_topic_arn=config["sns_topic_arn"],
                 error_message=str(e),
-                lambda_name='Scheduler'
+                lambda_name="Scheduler",
             )
         except Exception as notification_error:
             logger.warning(f"Failed to send error notification: {notification_error}")

@@ -54,7 +54,9 @@ logger = logging.getLogger()
 logger.setLevel(logging.INFO)
 
 
-def format_slack_message(subject: str, body_lines: list[str], severity: str = 'info') -> dict[str, Any]:
+def format_slack_message(
+    subject: str, body_lines: list[str], severity: str = "info"
+) -> dict[str, Any]:
     """
     Format message for Slack using Block Kit format with color-coded attachments.
 
@@ -109,44 +111,24 @@ def format_slack_message(subject: str, body_lines: list[str], severity: str = 'i
     """
     # Map severity to color codes and emoji indicators
     severity_config = {
-        'success': {'color': '#36a64f', 'emoji': '✅'},  # Green
-        'warning': {'color': '#ff9900', 'emoji': '⚠️'},   # Orange
-        'error': {'color': '#ff0000', 'emoji': '❌'},     # Red
-        'info': {'color': '#0078D4', 'emoji': 'ℹ️'}      # Blue
+        "success": {"color": "#36a64f", "emoji": "✅"},  # Green
+        "warning": {"color": "#ff9900", "emoji": "⚠️"},  # Orange
+        "error": {"color": "#ff0000", "emoji": "❌"},  # Red
+        "info": {"color": "#0078D4", "emoji": "ℹ️"},  # Blue
     }
 
     # Get config for severity level, default to info if invalid
-    config = severity_config.get(severity, severity_config['info'])
+    config = severity_config.get(severity, severity_config["info"])
 
     # Prepend emoji to subject for quick visual scanning
     enhanced_subject = f"{config['emoji']} {subject}"
 
     blocks = [
-        {
-            "type": "header",
-            "text": {
-                "type": "plain_text",
-                "text": enhanced_subject,
-                "emoji": True
-            }
-        },
-        {
-            "type": "section",
-            "text": {
-                "type": "mrkdwn",
-                "text": "\n".join(body_lines)
-            }
-        }
+        {"type": "header", "text": {"type": "plain_text", "text": enhanced_subject, "emoji": True}},
+        {"type": "section", "text": {"type": "mrkdwn", "text": "\n".join(body_lines)}},
     ]
 
-    return {
-        "attachments": [
-            {
-                "color": config['color'],
-                "blocks": blocks
-            }
-        ]
-    }
+    return {"attachments": [{"color": config["color"], "blocks": blocks}]}
 
 
 def format_teams_message(subject: str, body_lines: list[str]) -> dict[str, Any]:
@@ -169,7 +151,7 @@ def format_teams_message(subject: str, body_lines: list[str]) -> dict[str, Any]:
         "summary": subject,
         "themeColor": "0078D4",
         "title": subject,
-        "text": text_content
+        "text": text_content,
     }
 
 
@@ -190,12 +172,8 @@ def send_slack_notification(webhook_url: str, message_data: dict[str, Any]) -> b
 
     try:
         # Prepare request
-        data = json.dumps(message_data).encode('utf-8')
-        request = Request(
-            webhook_url,
-            data=data,
-            headers={'Content-Type': 'application/json'}
-        )
+        data = json.dumps(message_data).encode("utf-8")
+        request = Request(webhook_url, data=data, headers={"Content-Type": "application/json"})
 
         # Send request
         with urlopen(request, timeout=10) as response:
@@ -233,12 +211,8 @@ def send_teams_notification(webhook_url: str, message_data: dict[str, Any]) -> b
 
     try:
         # Prepare request
-        data = json.dumps(message_data).encode('utf-8')
-        request = Request(
-            webhook_url,
-            data=data,
-            headers={'Content-Type': 'application/json'}
-        )
+        data = json.dumps(message_data).encode("utf-8")
+        request = Request(webhook_url, data=data, headers={"Content-Type": "application/json"})
 
         # Send request
         with urlopen(request, timeout=10) as response:
