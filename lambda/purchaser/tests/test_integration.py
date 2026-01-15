@@ -19,6 +19,7 @@ from unittest.mock import Mock, patch
 import pytest
 from botocore.exceptions import ClientError
 
+
 # Add lambda directory to path
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
@@ -75,7 +76,9 @@ def test_empty_queue(mock_env_vars, mock_clients):
     # Verify
     assert response["statusCode"] == 200
     assert "No purchases to process" in response["body"]
-    assert not mock_clients["sns"].publish.called, "SNS publish should NOT be called for empty queue"
+    assert not mock_clients["sns"].publish.called, (
+        "SNS publish should NOT be called for empty queue"
+    )
 
 
 def test_valid_purchase_success(mock_env_vars, mock_clients):
@@ -121,7 +124,9 @@ def test_valid_purchase_success(mock_env_vars, mock_clients):
 
     # Verify
     assert response["statusCode"] == 200
-    assert mock_clients["savingsplans"].create_savings_plan.called, "CreateSavingsPlan should be called"
+    assert mock_clients["savingsplans"].create_savings_plan.called, (
+        "CreateSavingsPlan should be called"
+    )
     assert mock_clients["sqs"].delete_message.called, "Message should be deleted from queue"
     assert mock_clients["sns"].publish.called, "Summary email should be sent"
 
@@ -176,8 +181,12 @@ def test_cap_enforcement(mock_env_vars, mock_clients):
 
     # Verify
     assert response["statusCode"] == 200
-    assert not mock_clients["savingsplans"].create_savings_plan.called, "CreateSavingsPlan should NOT be called when exceeding cap"
-    assert mock_clients["sqs"].delete_message.called, "Message should still be deleted even when skipped"
+    assert not mock_clients["savingsplans"].create_savings_plan.called, (
+        "CreateSavingsPlan should NOT be called when exceeding cap"
+    )
+    assert mock_clients["sqs"].delete_message.called, (
+        "Message should still be deleted even when skipped"
+    )
     assert mock_clients["sns"].publish.called, "Summary email should be sent"
 
     # Verify email content mentions skip
@@ -244,7 +253,9 @@ def test_database_sp_purchase(mock_env_vars, mock_clients):
     }
 
     mock_clients["sqs"].receive_message.return_value = {
-        "Messages": [{"Body": json.dumps(purchase_intent), "ReceiptHandle": "receipt-handle-db-123"}]
+        "Messages": [
+            {"Body": json.dumps(purchase_intent), "ReceiptHandle": "receipt-handle-db-123"}
+        ]
     }
 
     # Mock current coverage (low database coverage, won't exceed cap)
@@ -278,7 +289,9 @@ def test_database_sp_purchase(mock_env_vars, mock_clients):
 
     # Verify
     assert response["statusCode"] == 200
-    assert mock_clients["savingsplans"].create_savings_plan.called, "CreateSavingsPlan should be called for Database SP"
+    assert mock_clients["savingsplans"].create_savings_plan.called, (
+        "CreateSavingsPlan should be called for Database SP"
+    )
     assert mock_clients["sqs"].delete_message.called, "Message should be deleted from queue"
     assert mock_clients["sns"].publish.called, "Summary email should be sent"
 
@@ -331,7 +344,9 @@ def test_validation_errors(mock_env_vars, mock_clients):
 
     # Verify malformed message handling
     assert response["statusCode"] == 200
-    assert not mock_clients["sqs"].delete_message.called, "Malformed message should NOT be deleted (kept for retry)"
+    assert not mock_clients["sqs"].delete_message.called, (
+        "Malformed message should NOT be deleted (kept for retry)"
+    )
     assert mock_clients["sns"].publish.called, "Summary email should be sent"
 
     # Verify email shows failed purchase
@@ -357,7 +372,9 @@ def test_validation_errors(mock_env_vars, mock_clients):
     }
 
     mock_clients["sqs"].receive_message.return_value = {
-        "Messages": [{"Body": json.dumps(invalid_sp_type_intent), "ReceiptHandle": "receipt-invalid"}]
+        "Messages": [
+            {"Body": json.dumps(invalid_sp_type_intent), "ReceiptHandle": "receipt-invalid"}
+        ]
     }
 
     # Execute handler
@@ -365,7 +382,9 @@ def test_validation_errors(mock_env_vars, mock_clients):
 
     # Verify invalid sp_type handling
     assert response["statusCode"] == 200
-    assert not mock_clients["sqs"].delete_message.called, "Invalid sp_type message should NOT be deleted"
+    assert not mock_clients["sqs"].delete_message.called, (
+        "Invalid sp_type message should NOT be deleted"
+    )
     assert mock_clients["sns"].publish.called, "Summary email should be sent"
 
     # Verify email shows validation error

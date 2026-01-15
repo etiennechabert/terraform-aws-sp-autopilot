@@ -359,7 +359,7 @@ jobs:
   terraform-unit-tests:
     name: Terraform Unit Tests
     runs-on: ubuntu-latest
-    needs: [terraform-validation, tfsec-scan]
+    needs: [terraform-validation, tfsec-scan, lint]
 
     steps:
       - name: Checkout code
