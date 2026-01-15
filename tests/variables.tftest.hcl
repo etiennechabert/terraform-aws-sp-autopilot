@@ -928,7 +928,7 @@ run "test_multiple_validation_failures" {
 
   expect_failures = [
     var.coverage_target_percent,
-    var.max_coverage_cap,
+    terraform_data.validate_max_coverage_cap,
     var.min_commitment_per_plan,
   ]
 }
