@@ -131,7 +131,7 @@ resource "aws_lambda_function" "reporter" {
 data "archive_file" "scheduler" {
   type             = "zip"
   source_dir       = "${path.module}/lambda/scheduler"
-  output_path      = "${path.module}/.terraform/scheduler.zip"
+  output_path      = "${path.module}/scheduler.zip"
   output_file_mode = "0666"
 
   # Include only Python files, exclude tests and docs
@@ -158,7 +158,7 @@ resource "null_resource" "scheduler_add_shared" {
   }
 
   provisioner "local-exec" {
-    command     = "cd lambda && zip -u .terraform/scheduler.zip shared/*.py"
+    command     = "cd lambda && zip -u ../scheduler.zip shared/*.py"
     working_dir = path.module
     interpreter = ["bash", "-c"]
   }
@@ -170,7 +170,7 @@ resource "null_resource" "scheduler_add_shared" {
 data "archive_file" "purchaser" {
   type             = "zip"
   source_dir       = "${path.module}/lambda/purchaser"
-  output_path      = "${path.module}/.terraform/purchaser.zip"
+  output_path      = "${path.module}/purchaser.zip"
   output_file_mode = "0666"
 
   excludes = [
@@ -194,7 +194,7 @@ resource "null_resource" "purchaser_add_shared" {
   }
 
   provisioner "local-exec" {
-    command     = "cd lambda && zip -u .terraform/purchaser.zip shared/*.py"
+    command     = "cd lambda && zip -u ../purchaser.zip shared/*.py"
     working_dir = path.module
     interpreter = ["bash", "-c"]
   }
@@ -206,7 +206,7 @@ resource "null_resource" "purchaser_add_shared" {
 data "archive_file" "reporter" {
   type             = "zip"
   source_dir       = "${path.module}/lambda/reporter"
-  output_path      = "${path.module}/.terraform/reporter.zip"
+  output_path      = "${path.module}/reporter.zip"
   output_file_mode = "0666"
 
   excludes = [
@@ -230,7 +230,7 @@ resource "null_resource" "reporter_add_shared" {
   }
 
   provisioner "local-exec" {
-    command     = "cd lambda && zip -u .terraform/reporter.zip shared/*.py"
+    command     = "cd lambda && zip -u ../reporter.zip shared/*.py"
     working_dir = path.module
     interpreter = ["bash", "-c"]
   }
