@@ -222,3 +222,5 @@ tmpclaude-*-cwd
 
 # Documentation verification reports
 *_verification_report.txt
+
+.terraform
