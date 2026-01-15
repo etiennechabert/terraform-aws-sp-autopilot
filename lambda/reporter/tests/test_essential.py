@@ -39,9 +39,7 @@ def test_handler_success_with_email(mock_env_vars):
         }
 
         # Mock data collection
-        mock_coverage.return_value = [
-            {"timestamp": "2026-01-15", "coverage_percentage": 75.0}
-        ]
+        mock_coverage.return_value = [{"timestamp": "2026-01-15", "coverage_percentage": 75.0}]
         mock_savings.return_value = {
             "total_commitment": 1000.0,
             "plans_count": 2,
@@ -128,9 +126,7 @@ def test_get_savings_data_with_active_plans():
                 }
             ]
         }
-        mock_util.return_value = {
-            "Total": {"Utilization": {"UtilizationPercentage": "85.5"}}
-        }
+        mock_util.return_value = {"Total": {"Utilization": {"UtilizationPercentage": "85.5"}}}
 
         result = handler.get_savings_data()
 
@@ -163,9 +159,7 @@ def test_send_report_email_success(mock_env_vars):
         coverage_summary = {"current": 75.0, "trend": "up"}
         savings_summary = {"total_commitment": 1000.0}
 
-        handler.send_report_email(
-            config, "report_key.html", coverage_summary, savings_summary
-        )
+        handler.send_report_email(config, "report_key.html", coverage_summary, savings_summary)
 
         mock_publish.assert_called_once()
         call_args = mock_publish.call_args[1]

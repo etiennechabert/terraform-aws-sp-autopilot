@@ -210,7 +210,7 @@ def get_coverage_history(ce_client: Any = None, lookback_days: int = 30) -> List
         ClientError: If Cost Explorer API call fails
     """
     if ce_client is None:
-        ce_client = globals()['ce_client']
+        ce_client = globals()["ce_client"]
 
     logger.info(f"Fetching coverage history for last {lookback_days} days")
 
@@ -285,7 +285,7 @@ def get_actual_cost_data(ce_client: Any = None, lookback_days: int = 30) -> Dict
         ClientError: If Cost Explorer API call fails
     """
     if ce_client is None:
-        ce_client = globals()['ce_client']
+        ce_client = globals()["ce_client"]
 
     logger.info(f"Fetching actual cost data for last {lookback_days} days")
 
@@ -397,9 +397,9 @@ def get_savings_data(savingsplans_client: Any = None, ce_client: Any = None) -> 
         ClientError: If Savings Plans or Cost Explorer API calls fail
     """
     if savingsplans_client is None:
-        savingsplans_client = globals()['savingsplans_client']
+        savingsplans_client = globals()["savingsplans_client"]
     if ce_client is None:
-        ce_client = globals()['ce_client']
+        ce_client = globals()["ce_client"]
 
     logger.info("Fetching savings data from active Savings Plans")
 
@@ -1266,7 +1266,7 @@ def send_error_email(config: Dict[str, Any] = None, error_msg: str = None) -> No
         config = load_configuration()
 
     try:
-        sns_client = globals()['sns_client']
+        sns_client = globals()["sns_client"]
         send_error_notification(
             sns_client=sns_client,
             sns_topic_arn=config["sns_topic_arn"],
