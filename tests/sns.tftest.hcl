@@ -132,7 +132,7 @@ run "test_email_subscription_single" {
   }
 
   # Note: Individual instance attributes (protocol, endpoint, topic_arn) are computed values
-  # during plan phase and cannot be reliably tested without command = apply
+  # during plan phase and cannot be reliably tested without using apply mode
   # These are validated through integration tests instead
 }
 
