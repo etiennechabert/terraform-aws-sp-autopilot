@@ -25,58 +25,83 @@ provider "aws" {
 
 module "savings_plans" {
   source  = "etiennechabert/sp-autopilot/aws"
-  version = "~> 1.0"
+  version = "~> 2.0"
 
-  # Enable both Compute and Database Savings Plans for comprehensive coverage
-  enable_compute_sp  = true
-  enable_database_sp = true
+  # Purchase strategy - production targets for organization
+  purchase_strategy = {
+    coverage_target_percent = 85  # Target 85% coverage across organization
+    max_coverage_cap        = 95  # Hard cap at 95% to maintain flexibility
+    lookback_days           = 30  # 30 days of usage history
+    min_data_days           = 14  # Require at least 14 days of data
 
-  # Coverage strategy - production targets
-  coverage_target_percent = 85 # Target 85% coverage across organization
-  max_coverage_cap        = 95 # Hard cap at 95% to maintain flexibility
-
-  # Risk management - moderate commitment growth
-  max_purchase_percent = 8  # Max 8% of monthly org spend per cycle
-  lookback_days        = 30 # 30 days of usage history
-  min_data_days        = 14 # Require at least 14 days of data
-
-  # Compute SP configuration - balanced approach
-  compute_sp_term_mix = {
-    three_year = 0.67 # 67% in 3-year plans (higher discount)
-    one_year   = 0.33 # 33% in 1-year plans (flexibility for growth)
+    # Moderate commitment growth for organization
+    simple = {
+      max_purchase_percent = 8  # Max 8% of monthly org spend per cycle
+    }
   }
-  compute_sp_payment_option = "ALL_UPFRONT" # Maximum savings
 
-  # Database SP configuration (AWS constraints: 1-year, No Upfront only)
-  # database_sp_term = "ONE_YEAR"           # Fixed by AWS
-  # database_sp_payment_option = "NO_UPFRONT"  # Fixed by AWS
+  # Savings Plans configuration - both Compute and Database for comprehensive coverage
+  sp_plans = {
+    compute = {
+      enabled                = true
+      all_upfront_three_year = 0.67  # 67% in 3-year all-upfront (higher discount)
+      all_upfront_one_year   = 0.33  # 33% in 1-year all-upfront (flexibility for growth)
+    }
 
-  # AWS Organizations - assume role in management account
-  # This role must exist in the management account with permissions for:
-  # - ce:GetSavingsPlansPurchaseRecommendation
-  # - savingsplans:CreateSavingsPlan
-  # - savingsplans:DescribeSavingsPlans
-  management_account_role_arn = "arn:aws:iam::123456789012:role/SavingsPlansAutomationRole"
+    database = {
+      enabled             = true
+      no_upfront_one_year = 1  # AWS constraint: only 1-year NO_UPFRONT available
+    }
+
+    sagemaker = {
+      enabled = false
+    }
+  }
 
   # Scheduling - 5-day review window for organization-level changes
-  scheduler_schedule = "cron(0 8 1 * ? *)" # 1st of month at 8:00 AM UTC
-  purchaser_schedule = "cron(0 8 6 * ? *)" # 6th of month at 8:00 AM UTC
+  scheduler = {
+    scheduler = "cron(0 8 1 * ? *)"  # 1st of month at 8:00 AM UTC
+    purchaser = "cron(0 8 6 * ? *)"  # 6th of month at 8:00 AM UTC (5-day window)
+    reporter  = "cron(0 9 1 * ? *)"  # 1st of month at 9:00 AM UTC
+  }
 
   # Notifications - multiple stakeholders for org-wide changes
-  notification_emails = [
-    "finops@example.com",           # FinOps team
-    "cloud-governance@example.com", # Cloud governance team
-    "aws-admins@example.com"        # AWS administrators
-  ]
+  notifications = {
+    emails = [
+      "finops@example.com",           # FinOps team
+      "cloud-governance@example.com", # Cloud governance team
+      "aws-admins@example.com"        # AWS administrators
+    ]
+    send_no_action = true  # Get notified even when no action needed
+  }
 
-  # Operations
-  dry_run              = true # Start in dry-run mode - emails only
-  send_no_action_email = true # Get notified even when no action needed
+  # Reporting
+  reporting = {
+    enabled       = true
+    format        = "html"
+    email_reports = true  # Email reports to stakeholders
+  }
 
   # Monitoring - critical for organization-level automation
-  enable_lambda_error_alarm = true
-  enable_dlq_alarm          = true
-  lambda_error_threshold    = 1
+  monitoring = {
+    lambda_error_alarm = true
+    dlq_alarm          = true
+    error_threshold    = 1
+  }
+
+  # Lambda configuration (using defaults)
+  lambda_config = {}
+
+  # Operations - AWS Organizations integration
+  operations = {
+    dry_run = true  # Start in dry-run mode - emails only
+    # AWS Organizations - assume role in management account
+    # This role must exist in the management account with permissions for:
+    # - ce:GetSavingsPlansPurchaseRecommendation
+    # - savingsplans:CreateSavingsPlan
+    # - savingsplans:DescribeSavingsPlans
+    management_account_role_arn = "arn:aws:iam::123456789012:role/SavingsPlansAutomationRole"
+  }
 
   # Tagging - organization standards
   tags = {

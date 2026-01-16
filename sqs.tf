@@ -49,7 +49,7 @@ resource "aws_sqs_queue" "purchase_intents" {
 # ============================================================================
 
 resource "aws_cloudwatch_metric_alarm" "dlq_alarm" {
-  count = var.enable_dlq_alarm ? 1 : 0
+  count = local.enable_dlq_alarm ? 1 : 0
 
   alarm_name          = "${local.module_name}-purchase-intents-dlq-depth"
   alarm_description   = "Triggers when messages land in the purchase intents DLQ, indicating repeated processing failures"

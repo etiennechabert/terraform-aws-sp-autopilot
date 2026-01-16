@@ -20,7 +20,7 @@ resource "aws_sns_topic" "notifications" {
 # ============================================================================
 
 resource "aws_sns_topic_subscription" "email_notifications" {
-  for_each = toset(var.notification_emails)
+  for_each = toset(local.notification_emails)
 
   topic_arn = aws_sns_topic.notifications.arn
   protocol  = "email"

@@ -1,446 +1,376 @@
 # AWS Savings Plans Automation Module - Configuration Variables
+# Version: 2.0 - Refactored to nested structure
 
 # ============================================================================
-# 7.1 Savings Plan Types
+# Lambda Control & Configuration
 # ============================================================================
 
-variable "enable_compute_sp" {
-  description = "Enable Compute Savings Plans automation"
-  type        = bool
-  default     = true
-}
-
-variable "enable_database_sp" {
-  description = "Enable Database Savings Plans automation"
-  type        = bool
-  default     = false
-}
-
-# ============================================================================
-# 7.2 Coverage Strategy
-# ============================================================================
-
-variable "coverage_target_percent" {
-  description = "Target hourly coverage percentage"
-  type        = number
-  default     = 90
-
-  validation {
-    condition     = var.coverage_target_percent >= 1 && var.coverage_target_percent <= 100
-    error_message = "Coverage target percent must be between 1 and 100."
-  }
-}
-
-variable "max_coverage_cap" {
-  description = "Hard cap - never exceed this coverage"
-  type        = number
-  default     = 95
-
-  validation {
-    condition     = var.max_coverage_cap <= 100
-    error_message = "Max coverage cap must be less than or equal to 100."
-  }
-}
-
-variable "lookback_days" {
-  description = "Days of usage history for AWS recommendations"
-  type        = number
-  default     = 30
-}
-
-# ============================================================================
-# 7.3 Risk Management
-# ============================================================================
-
-variable "max_purchase_percent" {
-  description = "Max purchase as % of monthly spend"
-  type        = number
-  default     = 10
-}
-
-variable "min_data_days" {
-  description = "Skip if insufficient usage history"
-  type        = number
-  default     = 14
-}
-
-variable "min_commitment_per_plan" {
-  description = "Minimum commitment per SP (AWS min: $0.001/hr)"
-  type        = number
-  default     = 0.001
-
-  validation {
-    condition     = var.min_commitment_per_plan >= 0.001
-    error_message = "Min commitment per plan must be at least 0.001 (AWS minimum)."
-  }
-}
-
-# ============================================================================
-# 7.4 Expiring Plans
-# ============================================================================
-
-variable "renewal_window_days" {
-  description = "SPs expiring within X days excluded from coverage calculation"
-  type        = number
-  default     = 7
-}
-
-# ============================================================================
-# 7.5 Compute SP Options
-# ============================================================================
-
-variable "compute_sp_term_mix" {
-  description = "Split of commitment between terms"
+variable "lambda_config" {
+  description = "Lambda function configuration including enable/disable controls and performance settings"
   type = object({
-    three_year = number
-    one_year   = number
+    scheduler = optional(object({
+      enabled   = optional(bool, true)
+      memory_mb = optional(number, 256)
+      timeout   = optional(number, 300)
+    }), {})
+
+    purchaser = optional(object({
+      enabled   = optional(bool, true)
+      memory_mb = optional(number, 256)
+      timeout   = optional(number, 300)
+    }), {})
+
+    reporter = optional(object({
+      enabled   = optional(bool, true)
+      memory_mb = optional(number, 256)
+      timeout   = optional(number, 300)
+    }), {})
+  })
+  default = {}
+}
+
+# ============================================================================
+# Purchase Strategy Configuration
+# ============================================================================
+
+variable "purchase_strategy" {
+  description = "Purchase strategy configuration including coverage targets and risk management"
+  type = object({
+    # Coverage targets
+    coverage_target_percent = number
+    max_coverage_cap        = number
+
+    # Historical data settings
+    lookback_days = optional(number, 30)
+    min_data_days = optional(number, 14)
+
+    # Renewal and commitment settings
+    renewal_window_days     = optional(number, 7)
+    min_commitment_per_plan = optional(number, 0.001)
+
+    # Strategy type - exactly one must be defined
+    simple = optional(object({
+      max_purchase_percent = number
+    }))
+
+    dichotomy = optional(object({
+      max_purchase_percent = number
+      min_purchase_percent = number
+    }))
+  })
+
+  validation {
+    condition     = var.purchase_strategy.coverage_target_percent >= 1 && var.purchase_strategy.coverage_target_percent <= 100
+    error_message = "coverage_target_percent must be between 1 and 100."
+  }
+
+  validation {
+    condition     = var.purchase_strategy.max_coverage_cap <= 100
+    error_message = "max_coverage_cap must be less than or equal to 100."
+  }
+
+  validation {
+    condition     = var.purchase_strategy.coverage_target_percent <= var.purchase_strategy.max_coverage_cap
+    error_message = "coverage_target_percent must be <= max_coverage_cap."
+  }
+
+  validation {
+    condition     = try(var.purchase_strategy.min_commitment_per_plan >= 0.001, true)
+    error_message = "min_commitment_per_plan must be at least 0.001 (AWS minimum)."
+  }
+
+  validation {
+    condition = (
+      (var.purchase_strategy.simple != null && var.purchase_strategy.dichotomy == null) ||
+      (var.purchase_strategy.simple == null && var.purchase_strategy.dichotomy != null)
+    )
+    error_message = "Exactly one purchase strategy (simple or dichotomy) must be defined."
+  }
+
+  validation {
+    condition = (
+      var.purchase_strategy.simple != null ?
+        var.purchase_strategy.simple.max_purchase_percent > 0 && var.purchase_strategy.simple.max_purchase_percent <= 100 :
+        true
+    )
+    error_message = "simple.max_purchase_percent must be between 0 and 100."
+  }
+
+  validation {
+    condition = (
+      var.purchase_strategy.dichotomy != null ?
+        (var.purchase_strategy.dichotomy.min_purchase_percent > 0 &&
+         var.purchase_strategy.dichotomy.max_purchase_percent <= 100 &&
+         var.purchase_strategy.dichotomy.min_purchase_percent < var.purchase_strategy.dichotomy.max_purchase_percent) :
+        true
+    )
+    error_message = "For dichotomy strategy: 0 < min_purchase_percent < max_purchase_percent <= 100."
+  }
+}
+
+# ============================================================================
+# Savings Plans Configuration
+# ============================================================================
+
+variable "sp_plans" {
+  description = "Savings Plans configuration for Compute, Database, and SageMaker"
+  type = object({
+    compute = optional(object({
+      enabled                    = bool
+      all_upfront_three_year     = optional(number, 0)
+      all_upfront_one_year       = optional(number, 0)
+      partial_upfront_three_year = optional(number, 0)
+      partial_upfront_one_year   = optional(number, 0)
+      no_upfront_three_year      = optional(number, 0)
+      no_upfront_one_year        = optional(number, 0)
+      partial_upfront_percent    = optional(number, 50)
+    }))
+
+    database = optional(object({
+      enabled             = bool
+      no_upfront_one_year = optional(number, 1)  # AWS only supports 1-year NO_UPFRONT
+    }))
+
+    sagemaker = optional(object({
+      enabled                    = bool
+      all_upfront_three_year     = optional(number, 0)
+      all_upfront_one_year       = optional(number, 0)
+      partial_upfront_three_year = optional(number, 0)
+      partial_upfront_one_year   = optional(number, 0)
+      no_upfront_three_year      = optional(number, 0)
+      no_upfront_one_year        = optional(number, 0)
+      partial_upfront_percent    = optional(number, 50)
+    }))
+  })
+
+  # At least one SP type must be enabled
+  validation {
+    condition = (
+      try(var.sp_plans.compute.enabled, false) ||
+      try(var.sp_plans.database.enabled, false) ||
+      try(var.sp_plans.sagemaker.enabled, false)
+    )
+    error_message = "At least one SP type (compute, database, or sagemaker) must be enabled."
+  }
+
+  # Compute percentages must sum to 1.0 (if enabled)
+  validation {
+    condition = (
+      try(var.sp_plans.compute.enabled, false) ?
+        abs(
+          try(var.sp_plans.compute.all_upfront_three_year, 0) +
+          try(var.sp_plans.compute.all_upfront_one_year, 0) +
+          try(var.sp_plans.compute.partial_upfront_three_year, 0) +
+          try(var.sp_plans.compute.partial_upfront_one_year, 0) +
+          try(var.sp_plans.compute.no_upfront_three_year, 0) +
+          try(var.sp_plans.compute.no_upfront_one_year, 0) - 1
+        ) < 0.0001
+      : true
+    )
+    error_message = "Compute SP payment/term percentages must sum to 1.0 when enabled."
+  }
+
+  # Database must be exactly 1.0 (AWS constraint - only one option available)
+  validation {
+    condition = (
+      try(var.sp_plans.database.enabled, false) ?
+        try(var.sp_plans.database.no_upfront_one_year, 0) == 1
+      : true
+    )
+    error_message = "Database SP must have no_upfront_one_year = 1 (AWS only supports 1-year NO_UPFRONT)."
+  }
+
+  # SageMaker percentages must sum to 1.0 (if enabled)
+  validation {
+    condition = (
+      try(var.sp_plans.sagemaker.enabled, false) ?
+        abs(
+          try(var.sp_plans.sagemaker.all_upfront_three_year, 0) +
+          try(var.sp_plans.sagemaker.all_upfront_one_year, 0) +
+          try(var.sp_plans.sagemaker.partial_upfront_three_year, 0) +
+          try(var.sp_plans.sagemaker.partial_upfront_one_year, 0) +
+          try(var.sp_plans.sagemaker.no_upfront_three_year, 0) +
+          try(var.sp_plans.sagemaker.no_upfront_one_year, 0) - 1
+        ) < 0.0001
+      : true
+    )
+    error_message = "SageMaker SP payment/term percentages must sum to 1.0 when enabled."
+  }
+
+  # All percentages must be non-negative
+  validation {
+    condition = alltrue([
+      try(var.sp_plans.compute.all_upfront_three_year >= 0, true),
+      try(var.sp_plans.compute.all_upfront_one_year >= 0, true),
+      try(var.sp_plans.compute.partial_upfront_three_year >= 0, true),
+      try(var.sp_plans.compute.partial_upfront_one_year >= 0, true),
+      try(var.sp_plans.compute.no_upfront_three_year >= 0, true),
+      try(var.sp_plans.compute.no_upfront_one_year >= 0, true),
+      try(var.sp_plans.sagemaker.all_upfront_three_year >= 0, true),
+      try(var.sp_plans.sagemaker.all_upfront_one_year >= 0, true),
+      try(var.sp_plans.sagemaker.partial_upfront_three_year >= 0, true),
+      try(var.sp_plans.sagemaker.partial_upfront_one_year >= 0, true),
+      try(var.sp_plans.sagemaker.no_upfront_three_year >= 0, true),
+      try(var.sp_plans.sagemaker.no_upfront_one_year >= 0, true),
+    ])
+    error_message = "All SP payment/term percentages must be non-negative."
+  }
+
+  # partial_upfront_percent must be between 0 and 100
+  validation {
+    condition = alltrue([
+      try(var.sp_plans.compute.partial_upfront_percent >= 0 && var.sp_plans.compute.partial_upfront_percent <= 100, true),
+      try(var.sp_plans.sagemaker.partial_upfront_percent >= 0 && var.sp_plans.sagemaker.partial_upfront_percent <= 100, true),
+    ])
+    error_message = "partial_upfront_percent must be between 0 and 100."
+  }
+}
+
+# ============================================================================
+# Scheduling
+# ============================================================================
+
+variable "scheduler" {
+  description = "EventBridge cron schedules for each Lambda function. Set to null to disable a schedule."
+  type = object({
+    scheduler = optional(string)  # Set to null to disable, defaults to "cron(0 8 1 * ? *)"
+    purchaser = optional(string)  # Set to null to disable, defaults to "cron(0 8 4 * ? *)"
+    reporter  = optional(string)  # Set to null to disable, defaults to "cron(0 9 1 * ? *)"
   })
   default = {
-    three_year = 0.67
-    one_year   = 0.33
+    scheduler = "cron(0 8 1 * ? *)"  # 1st of month at 8am UTC
+    purchaser = "cron(0 8 4 * ? *)"  # 4th of month at 8am UTC
+    reporter  = "cron(0 9 1 * ? *)"  # 1st of month at 9am UTC
+  }
+}
+
+# ============================================================================
+# Notifications
+# ============================================================================
+
+variable "notifications" {
+  description = "Notification configuration for email, Slack, and Teams"
+  type = object({
+    emails         = list(string)
+    slack_webhook  = optional(string)
+    teams_webhook  = optional(string)
+    send_no_action = optional(bool, true)
+  })
+
+  validation {
+    condition     = length(var.notifications.emails) > 0 || var.notifications.slack_webhook != null || var.notifications.teams_webhook != null
+    error_message = "At least one notification method (emails, slack_webhook, or teams_webhook) must be configured."
+  }
+}
+
+# ============================================================================
+# Reporting
+# ============================================================================
+
+variable "reporting" {
+  description = "Report generation and storage configuration"
+  type = object({
+    enabled        = optional(bool, true)
+    format         = optional(string, "html")
+    email_reports  = optional(bool, false)
+    retention_days = optional(number, 365)
+
+    s3_lifecycle = optional(object({
+      transition_ia_days         = optional(number, 90)
+      transition_glacier_days    = optional(number, 180)
+      expiration_days            = optional(number, 365)
+      noncurrent_expiration_days = optional(number, 90)
+    }), {})
+  })
+  default = {}
+
+  validation {
+    condition     = contains(["html", "pdf", "json"], try(var.reporting.format, "html"))
+    error_message = "report_format must be one of: html, pdf, json."
   }
 
   validation {
-    condition     = var.compute_sp_term_mix.three_year >= 0 && var.compute_sp_term_mix.one_year >= 0
-    error_message = "Both term mix values must be non-negative."
+    condition     = try(var.reporting.retention_days >= 1, true)
+    error_message = "retention_days must be at least 1."
   }
 
   validation {
-    condition     = abs(var.compute_sp_term_mix.three_year + var.compute_sp_term_mix.one_year - 1) < 0.0001
-    error_message = "The sum of compute_sp_term_mix.three_year and compute_sp_term_mix.one_year must equal 1."
+    condition = (
+      try(var.reporting.s3_lifecycle.transition_glacier_days, 180) >
+      try(var.reporting.s3_lifecycle.transition_ia_days, 90)
+    )
+    error_message = "s3_lifecycle.transition_glacier_days must be greater than transition_ia_days."
   }
-}
-
-variable "compute_sp_payment_option" {
-  description = "Payment option for Compute Savings Plans"
-  type        = string
-  default     = "ALL_UPFRONT"
 
   validation {
-    condition     = contains(["ALL_UPFRONT", "PARTIAL_UPFRONT", "NO_UPFRONT"], var.compute_sp_payment_option)
-    error_message = "compute_sp_payment_option must be one of: ALL_UPFRONT, PARTIAL_UPFRONT, NO_UPFRONT."
+    condition = (
+      try(var.reporting.s3_lifecycle.expiration_days, 365) >=
+      try(var.reporting.s3_lifecycle.transition_glacier_days, 180)
+    )
+    error_message = "s3_lifecycle.expiration_days must be >= transition_glacier_days."
   }
-}
-
-variable "partial_upfront_percent" {
-  description = "Percentage paid upfront for PARTIAL_UPFRONT"
-  type        = number
-  default     = 50
-}
-
-# ============================================================================
-# 7.5.1 Database SP Options
-# ============================================================================
-
-variable "database_sp_term" {
-  description = "Term length for Database Savings Plans (AWS constraint: must be ONE_YEAR)"
-  type        = string
-  default     = "ONE_YEAR"
 
   validation {
-    condition     = var.database_sp_term == "ONE_YEAR"
-    error_message = "database_sp_term must be ONE_YEAR. AWS Database Savings Plans only support 1-year terms."
+    condition     = try(var.reporting.s3_lifecycle.transition_ia_days >= 1, true)
+    error_message = "s3_lifecycle.transition_ia_days must be at least 1."
   }
-}
-
-variable "database_sp_payment_option" {
-  description = "Payment option for Database Savings Plans (AWS constraint: must be NO_UPFRONT)"
-  type        = string
-  default     = "NO_UPFRONT"
 
   validation {
-    condition     = var.database_sp_payment_option == "NO_UPFRONT"
-    error_message = "database_sp_payment_option must be NO_UPFRONT. AWS Database Savings Plans only support no upfront payment."
+    condition     = try(var.reporting.s3_lifecycle.transition_glacier_days >= 1, true)
+    error_message = "s3_lifecycle.transition_glacier_days must be at least 1."
+  }
+
+  validation {
+    condition     = try(var.reporting.s3_lifecycle.expiration_days >= 1, true)
+    error_message = "s3_lifecycle.expiration_days must be at least 1."
+  }
+
+  validation {
+    condition     = try(var.reporting.s3_lifecycle.noncurrent_expiration_days >= 1, true)
+    error_message = "s3_lifecycle.noncurrent_expiration_days must be at least 1."
   }
 }
 
 # ============================================================================
-# 7.6 Scheduling
+# Monitoring
 # ============================================================================
 
-variable "scheduler_schedule" {
-  description = "When scheduler runs (EventBridge cron expression)"
-  type        = string
-  default     = "cron(0 8 1 * ? *)"
-}
-
-variable "purchaser_schedule" {
-  description = "When purchaser runs (EventBridge cron expression)"
-  type        = string
-  default     = "cron(0 8 4 * ? *)"
+variable "monitoring" {
+  description = "CloudWatch monitoring and alarm configuration"
+  type = object({
+    lambda_error_alarm = optional(bool, true)
+    dlq_alarm          = optional(bool, true)
+    error_threshold    = optional(number, 1)
+  })
+  default = {}
 }
 
 # ============================================================================
-# 7.7 Operations
+# Operations
 # ============================================================================
 
-variable "dry_run" {
-  description = "If true, scheduler sends email only (no queue)"
-  type        = bool
-  default     = true
-}
-
-variable "send_no_action_email" {
-  description = "Send email when no purchases needed"
-  type        = bool
-  default     = true
-}
-
-variable "enable_cost_forecasting" {
-  description = "Enable cost forecasting integration (can be disabled to reduce API costs)"
-  type        = bool
-  default     = true
+variable "operations" {
+  description = "Operational settings including dry-run mode and AWS Organizations integration"
+  type = object({
+    dry_run                     = optional(bool, true)
+    enable_cost_forecasting     = optional(bool, true)
+    management_account_role_arn = optional(string)
+  })
+  default = {}
 }
 
 # ============================================================================
-# 7.8 Notifications
-# ============================================================================
-
-variable "notification_emails" {
-  description = "Email addresses for notifications"
-  type        = list(string)
-  default     = []
-}
-
-variable "slack_webhook_url" {
-  description = "Slack webhook URL for notifications"
-  type        = string
-  default     = null
-  sensitive   = true
-}
-
-variable "teams_webhook_url" {
-  description = "Microsoft Teams webhook URL for notifications"
-  type        = string
-  default     = null
-  sensitive   = true
-}
-
-# ============================================================================
-# 7.9 Monitoring
-# ============================================================================
-
-variable "enable_lambda_error_alarm" {
-  description = "CloudWatch alarm on Lambda errors"
-  type        = bool
-  default     = true
-}
-
-variable "enable_dlq_alarm" {
-  description = "CloudWatch alarm on DLQ depth"
-  type        = bool
-  default     = true
-}
-
-variable "lambda_error_threshold" {
-  description = "Number of Lambda errors to trigger alarm"
-  type        = number
-  default     = 1
-}
-
-# ============================================================================
-# 7.10 AWS Organizations
-# ============================================================================
-
-variable "management_account_role_arn" {
-  description = "Role ARN to assume in management account"
-  type        = string
-  default     = null
-}
-
-# ============================================================================
-# 7.11 Tagging
+# Simple Top-Level Variables
 # ============================================================================
 
 variable "tags" {
-  description = "Additional tags to apply to purchased SPs"
+  description = "Additional tags to apply to all resources"
   type        = map(string)
   default     = {}
 }
-
-# ============================================================================
-# 7.12 Report Configuration
-# ============================================================================
-
-variable "enable_reports" {
-  description = "Enable periodic coverage and savings reports"
-  type        = bool
-  default     = true
-}
-
-variable "report_schedule" {
-  description = "When reporter runs (EventBridge cron expression)"
-  type        = string
-  default     = "cron(0 9 1 * ? *)"
-}
-
-variable "report_retention_days" {
-  description = "Days to retain reports in S3 before expiration"
-  type        = number
-  default     = 365
-
-  validation {
-    condition     = var.report_retention_days >= 1
-    error_message = "report_retention_days must be at least 1."
-  }
-}
-
-variable "s3_lifecycle_transition_ia_days" {
-  description = "Days before transitioning reports to STANDARD_IA storage class"
-  type        = number
-  default     = 90
-
-  validation {
-    condition     = var.s3_lifecycle_transition_ia_days >= 1
-    error_message = "s3_lifecycle_transition_ia_days must be at least 1."
-  }
-}
-
-variable "s3_lifecycle_transition_glacier_days" {
-  description = "Days before transitioning reports to GLACIER storage class"
-  type        = number
-  default     = 180
-
-  validation {
-    condition     = var.s3_lifecycle_transition_glacier_days >= 1
-    error_message = "S3 lifecycle transition to Glacier must be at least 1 day."
-  }
-}
-
-variable "s3_lifecycle_expiration_days" {
-  description = "Days before expiring report objects"
-  type        = number
-  default     = 365
-
-  validation {
-    condition     = var.s3_lifecycle_expiration_days >= 1
-    error_message = "S3 lifecycle expiration must be at least 1 day."
-  }
-}
-
-variable "s3_lifecycle_noncurrent_expiration_days" {
-  description = "Days before expiring noncurrent report versions"
-  type        = number
-  default     = 90
-
-  validation {
-    condition     = var.s3_lifecycle_noncurrent_expiration_days >= 1
-    error_message = "S3 lifecycle noncurrent version expiration must be at least 1 day."
-  }
-}
-
-variable "report_format" {
-  description = "Format for generated reports"
-  type        = string
-  default     = "html"
-
-  validation {
-    condition     = contains(["html", "pdf", "json"], var.report_format)
-    error_message = "report_format must be one of: html, pdf, json."
-  }
-}
-
-variable "email_reports" {
-  description = "Send reports via email to notification_emails"
-  type        = bool
-  default     = false
-}
-
-# ============================================================================
-# 7.13 Security & Encryption
-# ============================================================================
-# SQS queues use AWS-managed encryption (alias/aws/sqs) which provides free at-rest
-# encryption without requiring customer-managed KMS keys or additional IAM permissions.
-
-# ============================================================================
-# SageMaker Savings Plans Configuration
-# ============================================================================
-
-variable "enable_sagemaker_sp" {
-  description = "Enable SageMaker Savings Plans automation"
-  type        = bool
-  default     = false
-}
-
-variable "sagemaker_sp_term_mix" {
-  description = "Split of commitment between terms for SageMaker Savings Plans"
-  type = object({
-    three_year = number
-    one_year   = number
-  })
-  default = {
-    three_year = 0.7
-    one_year   = 0.3
-  }
-
-  validation {
-    condition     = var.sagemaker_sp_term_mix.three_year >= 0 && var.sagemaker_sp_term_mix.one_year >= 0
-    error_message = "Both term mix values must be non-negative."
-  }
-
-  validation {
-    condition     = abs(var.sagemaker_sp_term_mix.three_year + var.sagemaker_sp_term_mix.one_year - 1) < 0.0001
-    error_message = "sagemaker_sp_term_mix.three_year + sagemaker_sp_term_mix.one_year must equal 1."
-  }
-}
-
-variable "sagemaker_sp_payment_option" {
-  description = "Payment option for SageMaker Savings Plans"
-  type        = string
-  default     = "ALL_UPFRONT"
-
-  validation {
-    condition     = contains(["ALL_UPFRONT", "PARTIAL_UPFRONT", "NO_UPFRONT"], var.sagemaker_sp_payment_option)
-    error_message = "sagemaker_sp_payment_option must be one of: ALL_UPFRONT, PARTIAL_UPFRONT, NO_UPFRONT."
-  }
-}
-
-# ============================================================================
-# SNS Encryption Configuration
-# ============================================================================
 
 variable "enable_sns_kms_encryption" {
   description = "Enable KMS encryption for SNS topic (uses AWS managed key alias/aws/sns)"
   type        = bool
   default     = false
-}
-
-# ============================================================================
-# Lambda Configuration
-# ============================================================================
-
-variable "lambda_scheduler_memory_size" {
-  description = "Memory size in MB for Scheduler Lambda function"
-  type        = number
-  default     = 256
-}
-
-variable "lambda_scheduler_timeout" {
-  description = "Timeout in seconds for Scheduler Lambda function"
-  type        = number
-  default     = 300
-}
-
-variable "lambda_purchaser_memory_size" {
-  description = "Memory size in MB for Purchaser Lambda function"
-  type        = number
-  default     = 256
-}
-
-variable "lambda_purchaser_timeout" {
-  description = "Timeout in seconds for Purchaser Lambda function"
-  type        = number
-  default     = 300
-}
-
-variable "lambda_reporter_memory_size" {
-  description = "Memory size in MB for Reporter Lambda function"
-  type        = number
-  default     = 256
-}
-
-variable "lambda_reporter_timeout" {
-  description = "Timeout in seconds for Reporter Lambda function"
-  type        = number
-  default     = 300
 }

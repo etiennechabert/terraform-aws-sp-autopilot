@@ -57,24 +57,24 @@ resource "aws_s3_bucket_lifecycle_configuration" "reports" {
 
     # Transition to cheaper storage after configured days
     transition {
-      days          = var.s3_lifecycle_transition_ia_days
+      days          = local.s3_lifecycle_transition_ia_days
       storage_class = "STANDARD_IA"
     }
 
     # Transition to Glacier after configured days
     transition {
-      days          = var.s3_lifecycle_transition_glacier_days
+      days          = local.s3_lifecycle_transition_glacier_days
       storage_class = "GLACIER"
     }
 
     # Delete reports after configured days
     expiration {
-      days = var.s3_lifecycle_expiration_days
+      days = local.s3_lifecycle_expiration_days
     }
 
     # Clean up old versions
     noncurrent_version_expiration {
-      noncurrent_days = var.s3_lifecycle_noncurrent_expiration_days
+      noncurrent_days = local.s3_lifecycle_noncurrent_expiration_days
     }
   }
 }
