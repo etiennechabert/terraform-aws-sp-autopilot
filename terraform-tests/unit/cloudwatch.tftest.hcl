@@ -49,12 +49,12 @@ run "test_scheduler_log_group_naming" {
   }
 
   assert {
-    condition     = aws_cloudwatch_log_group.scheduler.name == "/aws/lambda/sp-autopilot-scheduler"
+    condition     = aws_cloudwatch_log_group.scheduler[0].name == "/aws/lambda/sp-autopilot-scheduler"
     error_message = "Scheduler log group name should follow pattern: /aws/lambda/sp-autopilot-scheduler"
   }
 
   assert {
-    condition     = aws_cloudwatch_log_group.scheduler.name != ""
+    condition     = aws_cloudwatch_log_group.scheduler[0].name != ""
     error_message = "Scheduler log group name should not be empty"
   }
 }
@@ -83,12 +83,12 @@ run "test_purchaser_log_group_naming" {
   }
 
   assert {
-    condition     = aws_cloudwatch_log_group.purchaser.name == "/aws/lambda/sp-autopilot-purchaser"
+    condition     = aws_cloudwatch_log_group.purchaser[0].name == "/aws/lambda/sp-autopilot-purchaser"
     error_message = "Purchaser log group name should follow pattern: /aws/lambda/sp-autopilot-purchaser"
   }
 
   assert {
-    condition     = aws_cloudwatch_log_group.purchaser.name != ""
+    condition     = aws_cloudwatch_log_group.purchaser[0].name != ""
     error_message = "Purchaser log group name should not be empty"
   }
 }
@@ -117,12 +117,12 @@ run "test_reporter_log_group_naming" {
   }
 
   assert {
-    condition     = aws_cloudwatch_log_group.reporter.name == "/aws/lambda/sp-autopilot-reporter"
+    condition     = aws_cloudwatch_log_group.reporter[0].name == "/aws/lambda/sp-autopilot-reporter"
     error_message = "Reporter log group name should follow pattern: /aws/lambda/sp-autopilot-reporter"
   }
 
   assert {
-    condition     = aws_cloudwatch_log_group.reporter.name != ""
+    condition     = aws_cloudwatch_log_group.reporter[0].name != ""
     error_message = "Reporter log group name should not be empty"
   }
 }
@@ -151,17 +151,17 @@ run "test_log_groups_retention" {
   }
 
   assert {
-    condition     = aws_cloudwatch_log_group.scheduler.retention_in_days == 30
+    condition     = aws_cloudwatch_log_group.scheduler[0].retention_in_days == 30
     error_message = "Scheduler log group should have 30 days retention"
   }
 
   assert {
-    condition     = aws_cloudwatch_log_group.purchaser.retention_in_days == 30
+    condition     = aws_cloudwatch_log_group.purchaser[0].retention_in_days == 30
     error_message = "Purchaser log group should have 30 days retention"
   }
 
   assert {
-    condition     = aws_cloudwatch_log_group.reporter.retention_in_days == 30
+    condition     = aws_cloudwatch_log_group.reporter[0].retention_in_days == 30
     error_message = "Reporter log group should have 30 days retention"
   }
 }
@@ -194,32 +194,32 @@ run "test_log_groups_tags" {
   }
 
   assert {
-    condition     = aws_cloudwatch_log_group.scheduler.tags["ManagedBy"] == "terraform-aws-sp-autopilot"
+    condition     = aws_cloudwatch_log_group.scheduler[0].tags["ManagedBy"] == "terraform-aws-sp-autopilot"
     error_message = "Scheduler log group should have ManagedBy tag"
   }
 
   assert {
-    condition     = aws_cloudwatch_log_group.scheduler.tags["Module"] == "savings-plans-automation"
+    condition     = aws_cloudwatch_log_group.scheduler[0].tags["Module"] == "savings-plans-automation"
     error_message = "Scheduler log group should have Module tag"
   }
 
   assert {
-    condition     = aws_cloudwatch_log_group.scheduler.tags["Name"] == "sp-autopilot-scheduler-logs"
+    condition     = aws_cloudwatch_log_group.scheduler[0].tags["Name"] == "sp-autopilot-scheduler-logs"
     error_message = "Scheduler log group should have correct Name tag"
   }
 
   assert {
-    condition     = aws_cloudwatch_log_group.purchaser.tags["Name"] == "sp-autopilot-purchaser-logs"
+    condition     = aws_cloudwatch_log_group.purchaser[0].tags["Name"] == "sp-autopilot-purchaser-logs"
     error_message = "Purchaser log group should have correct Name tag"
   }
 
   assert {
-    condition     = aws_cloudwatch_log_group.reporter.tags["Name"] == "sp-autopilot-reporter-logs"
+    condition     = aws_cloudwatch_log_group.reporter[0].tags["Name"] == "sp-autopilot-reporter-logs"
     error_message = "Reporter log group should have correct Name tag"
   }
 
   assert {
-    condition     = aws_cloudwatch_log_group.scheduler.tags["Environment"] == "test"
+    condition     = aws_cloudwatch_log_group.scheduler[0].tags["Environment"] == "test"
     error_message = "Log groups should include custom tags from variables"
   }
 }

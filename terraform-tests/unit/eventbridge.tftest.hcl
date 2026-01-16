@@ -49,12 +49,12 @@ run "test_scheduler_eventbridge_rule_naming" {
   }
 
   assert {
-    condition     = aws_cloudwatch_event_rule.scheduler.name == "sp-autopilot-scheduler"
+    condition     = aws_cloudwatch_event_rule.scheduler[0].name == "sp-autopilot-scheduler"
     error_message = "Scheduler EventBridge rule name should follow pattern: sp-autopilot-scheduler"
   }
 
   assert {
-    condition     = aws_cloudwatch_event_rule.scheduler.name != ""
+    condition     = aws_cloudwatch_event_rule.scheduler[0].name != ""
     error_message = "Scheduler EventBridge rule name should not be empty"
   }
 }
@@ -83,7 +83,7 @@ run "test_scheduler_eventbridge_rule_description" {
   }
 
   assert {
-    condition     = aws_cloudwatch_event_rule.scheduler.description == "Triggers Scheduler Lambda to analyze usage and recommend Savings Plans purchases"
+    condition     = aws_cloudwatch_event_rule.scheduler[0].description == "Triggers Scheduler Lambda to analyze usage and recommend Savings Plans purchases"
     error_message = "Scheduler EventBridge rule should have correct description"
   }
 }
@@ -112,7 +112,7 @@ run "test_scheduler_eventbridge_rule_default_schedule" {
   }
 
   assert {
-    condition     = aws_cloudwatch_event_rule.scheduler.schedule_expression == "cron(0 8 1 * ? *)"
+    condition     = aws_cloudwatch_event_rule.scheduler[0].schedule_expression == "cron(0 8 1 * ? *)"
     error_message = "Scheduler EventBridge rule should use default schedule: cron(0 8 1 * ? *)"
   }
 }
@@ -144,7 +144,7 @@ run "test_scheduler_eventbridge_rule_custom_schedule" {
   }
 
   assert {
-    condition     = aws_cloudwatch_event_rule.scheduler.schedule_expression == "cron(0 2 1 * ? *)"
+    condition     = aws_cloudwatch_event_rule.scheduler[0].schedule_expression == "cron(0 2 1 * ? *)"
     error_message = "Scheduler EventBridge rule should use custom schedule value"
   }
 }
@@ -177,17 +177,17 @@ run "test_scheduler_eventbridge_rule_tags" {
   }
 
   assert {
-    condition     = aws_cloudwatch_event_rule.scheduler.tags["ManagedBy"] == "terraform-aws-sp-autopilot"
+    condition     = aws_cloudwatch_event_rule.scheduler[0].tags["ManagedBy"] == "terraform-aws-sp-autopilot"
     error_message = "Scheduler EventBridge rule should have ManagedBy tag"
   }
 
   assert {
-    condition     = aws_cloudwatch_event_rule.scheduler.tags["Module"] == "savings-plans-automation"
+    condition     = aws_cloudwatch_event_rule.scheduler[0].tags["Module"] == "savings-plans-automation"
     error_message = "Scheduler EventBridge rule should have Module tag"
   }
 
   assert {
-    condition     = aws_cloudwatch_event_rule.scheduler.tags["Environment"] == "test"
+    condition     = aws_cloudwatch_event_rule.scheduler[0].tags["Environment"] == "test"
     error_message = "Scheduler EventBridge rule should include custom tags from variables"
   }
 }
@@ -220,12 +220,12 @@ run "test_purchaser_eventbridge_rule_naming" {
   }
 
   assert {
-    condition     = aws_cloudwatch_event_rule.purchaser.name == "sp-autopilot-purchaser"
+    condition     = aws_cloudwatch_event_rule.purchaser[0].name == "sp-autopilot-purchaser"
     error_message = "Purchaser EventBridge rule name should follow pattern: sp-autopilot-purchaser"
   }
 
   assert {
-    condition     = aws_cloudwatch_event_rule.purchaser.name != ""
+    condition     = aws_cloudwatch_event_rule.purchaser[0].name != ""
     error_message = "Purchaser EventBridge rule name should not be empty"
   }
 }
@@ -254,7 +254,7 @@ run "test_purchaser_eventbridge_rule_description" {
   }
 
   assert {
-    condition     = aws_cloudwatch_event_rule.purchaser.description == "Triggers Purchaser Lambda to process and execute Savings Plans purchases from SQS queue"
+    condition     = aws_cloudwatch_event_rule.purchaser[0].description == "Triggers Purchaser Lambda to process and execute Savings Plans purchases from SQS queue"
     error_message = "Purchaser EventBridge rule should have correct description"
   }
 }
@@ -283,7 +283,7 @@ run "test_purchaser_eventbridge_rule_default_schedule" {
   }
 
   assert {
-    condition     = aws_cloudwatch_event_rule.purchaser.schedule_expression == "cron(0 8 4 * ? *)"
+    condition     = aws_cloudwatch_event_rule.purchaser[0].schedule_expression == "cron(0 8 4 * ? *)"
     error_message = "Purchaser EventBridge rule should use default schedule: cron(0 8 4 * ? *)"
   }
 }
@@ -315,7 +315,7 @@ run "test_purchaser_eventbridge_rule_custom_schedule" {
   }
 
   assert {
-    condition     = aws_cloudwatch_event_rule.purchaser.schedule_expression == "cron(0 3 1 * ? *)"
+    condition     = aws_cloudwatch_event_rule.purchaser[0].schedule_expression == "cron(0 3 1 * ? *)"
     error_message = "Purchaser EventBridge rule should use custom schedule value"
   }
 }
@@ -348,17 +348,17 @@ run "test_purchaser_eventbridge_rule_tags" {
   }
 
   assert {
-    condition     = aws_cloudwatch_event_rule.purchaser.tags["ManagedBy"] == "terraform-aws-sp-autopilot"
+    condition     = aws_cloudwatch_event_rule.purchaser[0].tags["ManagedBy"] == "terraform-aws-sp-autopilot"
     error_message = "Purchaser EventBridge rule should have ManagedBy tag"
   }
 
   assert {
-    condition     = aws_cloudwatch_event_rule.purchaser.tags["Module"] == "savings-plans-automation"
+    condition     = aws_cloudwatch_event_rule.purchaser[0].tags["Module"] == "savings-plans-automation"
     error_message = "Purchaser EventBridge rule should have Module tag"
   }
 
   assert {
-    condition     = aws_cloudwatch_event_rule.purchaser.tags["Environment"] == "test"
+    condition     = aws_cloudwatch_event_rule.purchaser[0].tags["Environment"] == "test"
     error_message = "Purchaser EventBridge rule should include custom tags from variables"
   }
 }
@@ -594,7 +594,7 @@ run "test_scheduler_eventbridge_target_configuration" {
 
   override_resource {
     override_during = plan
-    target          = aws_lambda_function.scheduler
+    target          = aws_lambda_function.scheduler[0]
     values = {
       arn = "arn:aws:lambda:us-east-1:123456789012:function:sp-autopilot-scheduler"
     }
@@ -602,7 +602,7 @@ run "test_scheduler_eventbridge_target_configuration" {
 
   override_resource {
     override_during = plan
-    target          = aws_cloudwatch_event_target.scheduler
+    target          = aws_cloudwatch_event_target.scheduler[0]
     values = {
       rule = "sp-autopilot-scheduler"
       arn  = "arn:aws:lambda:us-east-1:123456789012:function:sp-autopilot-scheduler"
@@ -610,17 +610,17 @@ run "test_scheduler_eventbridge_target_configuration" {
   }
 
   assert {
-    condition     = aws_cloudwatch_event_target.scheduler.rule == aws_cloudwatch_event_rule.scheduler.name
+    condition     = aws_cloudwatch_event_target.scheduler[0].rule == aws_cloudwatch_event_rule.scheduler[0].name
     error_message = "Scheduler EventBridge target should reference correct rule"
   }
 
   assert {
-    condition     = aws_cloudwatch_event_target.scheduler.target_id == "SchedulerLambda"
+    condition     = aws_cloudwatch_event_target.scheduler[0].target_id == "SchedulerLambda"
     error_message = "Scheduler EventBridge target should have correct target_id"
   }
 
   assert {
-    condition     = aws_cloudwatch_event_target.scheduler.arn == aws_lambda_function.scheduler.arn
+    condition     = aws_cloudwatch_event_target.scheduler[0].arn == aws_lambda_function.scheduler[0].arn
     error_message = "Scheduler EventBridge target should reference Scheduler Lambda ARN"
   }
 }
@@ -654,7 +654,7 @@ run "test_purchaser_eventbridge_target_configuration" {
 
   override_resource {
     override_during = plan
-    target          = aws_lambda_function.purchaser
+    target          = aws_lambda_function.purchaser[0]
     values = {
       arn = "arn:aws:lambda:us-east-1:123456789012:function:sp-autopilot-purchaser"
     }
@@ -662,7 +662,7 @@ run "test_purchaser_eventbridge_target_configuration" {
 
   override_resource {
     override_during = plan
-    target          = aws_cloudwatch_event_target.purchaser
+    target          = aws_cloudwatch_event_target.purchaser[0]
     values = {
       rule = "sp-autopilot-purchaser"
       arn  = "arn:aws:lambda:us-east-1:123456789012:function:sp-autopilot-purchaser"
@@ -670,17 +670,17 @@ run "test_purchaser_eventbridge_target_configuration" {
   }
 
   assert {
-    condition     = aws_cloudwatch_event_target.purchaser.rule == "sp-autopilot-purchaser"
+    condition     = aws_cloudwatch_event_target.purchaser[0].rule == "sp-autopilot-purchaser"
     error_message = "Purchaser EventBridge target should reference correct rule"
   }
 
   assert {
-    condition     = aws_cloudwatch_event_target.purchaser.target_id == "PurchaserLambda"
+    condition     = aws_cloudwatch_event_target.purchaser[0].target_id == "PurchaserLambda"
     error_message = "Purchaser EventBridge target should have correct target_id"
   }
 
   assert {
-    condition     = aws_cloudwatch_event_target.purchaser.arn == aws_lambda_function.purchaser.arn
+    condition     = aws_cloudwatch_event_target.purchaser[0].arn == aws_lambda_function.purchaser[0].arn
     error_message = "Purchaser EventBridge target should reference Purchaser Lambda ARN"
   }
 }

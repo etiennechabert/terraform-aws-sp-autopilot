@@ -49,12 +49,12 @@ run "test_scheduler_role_naming" {
   }
 
   assert {
-    condition     = aws_iam_role.scheduler.name == "sp-autopilot-scheduler"
+    condition     = aws_iam_role.scheduler[0].name == "sp-autopilot-scheduler"
     error_message = "Scheduler IAM role name should follow pattern: sp-autopilot-scheduler"
   }
 
   assert {
-    condition     = aws_iam_role.scheduler.description == "IAM role for Scheduler Lambda function - analyzes usage and queues purchase recommendations"
+    condition     = aws_iam_role.scheduler[0].description == "IAM role for Scheduler Lambda function - analyzes usage and queues purchase recommendations"
     error_message = "Scheduler IAM role should have correct description"
   }
 }
@@ -83,17 +83,17 @@ run "test_scheduler_role_assume_policy" {
   }
 
   assert {
-    condition     = can(jsondecode(aws_iam_role.scheduler.assume_role_policy))
+    condition     = can(jsondecode(aws_iam_role.scheduler[0].assume_role_policy))
     error_message = "Scheduler IAM role assume role policy should be valid JSON"
   }
 
   assert {
-    condition     = jsondecode(aws_iam_role.scheduler.assume_role_policy).Statement[0].Principal.Service == "lambda.amazonaws.com"
+    condition     = jsondecode(aws_iam_role.scheduler[0].assume_role_policy).Statement[0].Principal.Service == "lambda.amazonaws.com"
     error_message = "Scheduler IAM role should allow Lambda service to assume it"
   }
 
   assert {
-    condition     = jsondecode(aws_iam_role.scheduler.assume_role_policy).Statement[0].Action == "sts:AssumeRole"
+    condition     = jsondecode(aws_iam_role.scheduler[0].assume_role_policy).Statement[0].Action == "sts:AssumeRole"
     error_message = "Scheduler IAM role should allow sts:AssumeRole action"
   }
 }
@@ -126,22 +126,22 @@ run "test_scheduler_role_tags" {
   }
 
   assert {
-    condition     = aws_iam_role.scheduler.tags["ManagedBy"] == "terraform-aws-sp-autopilot"
+    condition     = aws_iam_role.scheduler[0].tags["ManagedBy"] == "terraform-aws-sp-autopilot"
     error_message = "Scheduler IAM role should have ManagedBy tag"
   }
 
   assert {
-    condition     = aws_iam_role.scheduler.tags["Module"] == "savings-plans-automation"
+    condition     = aws_iam_role.scheduler[0].tags["Module"] == "savings-plans-automation"
     error_message = "Scheduler IAM role should have Module tag"
   }
 
   assert {
-    condition     = aws_iam_role.scheduler.tags["Name"] == "sp-autopilot-scheduler-role"
+    condition     = aws_iam_role.scheduler[0].tags["Name"] == "sp-autopilot-scheduler-role"
     error_message = "Scheduler IAM role should have Name tag"
   }
 
   assert {
-    condition     = aws_iam_role.scheduler.tags["Environment"] == "test"
+    condition     = aws_iam_role.scheduler[0].tags["Environment"] == "test"
     error_message = "Scheduler IAM role should include custom tags from variables"
   }
 }
@@ -450,12 +450,12 @@ run "test_purchaser_role_naming" {
   }
 
   assert {
-    condition     = aws_iam_role.purchaser.name == "sp-autopilot-purchaser"
+    condition     = aws_iam_role.purchaser[0].name == "sp-autopilot-purchaser"
     error_message = "Purchaser IAM role name should follow pattern: sp-autopilot-purchaser"
   }
 
   assert {
-    condition     = aws_iam_role.purchaser.description == "IAM role for Purchaser Lambda function - executes Savings Plans purchases from queue"
+    condition     = aws_iam_role.purchaser[0].description == "IAM role for Purchaser Lambda function - executes Savings Plans purchases from queue"
     error_message = "Purchaser IAM role should have correct description"
   }
 }
@@ -484,17 +484,17 @@ run "test_purchaser_role_assume_policy" {
   }
 
   assert {
-    condition     = can(jsondecode(aws_iam_role.purchaser.assume_role_policy))
+    condition     = can(jsondecode(aws_iam_role.purchaser[0].assume_role_policy))
     error_message = "Purchaser IAM role assume role policy should be valid JSON"
   }
 
   assert {
-    condition     = jsondecode(aws_iam_role.purchaser.assume_role_policy).Statement[0].Principal.Service == "lambda.amazonaws.com"
+    condition     = jsondecode(aws_iam_role.purchaser[0].assume_role_policy).Statement[0].Principal.Service == "lambda.amazonaws.com"
     error_message = "Purchaser IAM role should allow Lambda service to assume it"
   }
 
   assert {
-    condition     = jsondecode(aws_iam_role.purchaser.assume_role_policy).Statement[0].Action == "sts:AssumeRole"
+    condition     = jsondecode(aws_iam_role.purchaser[0].assume_role_policy).Statement[0].Action == "sts:AssumeRole"
     error_message = "Purchaser IAM role should allow sts:AssumeRole action"
   }
 }
@@ -527,22 +527,22 @@ run "test_purchaser_role_tags" {
   }
 
   assert {
-    condition     = aws_iam_role.purchaser.tags["ManagedBy"] == "terraform-aws-sp-autopilot"
+    condition     = aws_iam_role.purchaser[0].tags["ManagedBy"] == "terraform-aws-sp-autopilot"
     error_message = "Purchaser IAM role should have ManagedBy tag"
   }
 
   assert {
-    condition     = aws_iam_role.purchaser.tags["Module"] == "savings-plans-automation"
+    condition     = aws_iam_role.purchaser[0].tags["Module"] == "savings-plans-automation"
     error_message = "Purchaser IAM role should have Module tag"
   }
 
   assert {
-    condition     = aws_iam_role.purchaser.tags["Name"] == "sp-autopilot-purchaser-role"
+    condition     = aws_iam_role.purchaser[0].tags["Name"] == "sp-autopilot-purchaser-role"
     error_message = "Purchaser IAM role should have Name tag"
   }
 
   assert {
-    condition     = aws_iam_role.purchaser.tags["Environment"] == "test"
+    condition     = aws_iam_role.purchaser[0].tags["Environment"] == "test"
     error_message = "Purchaser IAM role should include custom tags from variables"
   }
 }
@@ -572,7 +572,7 @@ run "test_purchaser_cloudwatch_logs_policy" {
 
   override_resource {
     override_during = plan
-    target          = aws_iam_role.purchaser
+    target          = aws_iam_role.purchaser[0]
     values = {
       id  = "sp-autopilot-purchaser"
       arn = "arn:aws:iam::123456789012:role/sp-autopilot-purchaser"
@@ -593,7 +593,7 @@ run "test_purchaser_cloudwatch_logs_policy" {
   }
 
   assert {
-    condition     = aws_iam_role_policy.purchaser_cloudwatch_logs.role == aws_iam_role.purchaser.id
+    condition     = aws_iam_role_policy.purchaser_cloudwatch_logs.role == aws_iam_role.purchaser[0].id
     error_message = "Purchaser CloudWatch Logs policy should be attached to purchaser role"
   }
 
@@ -878,12 +878,12 @@ run "test_reporter_role_naming" {
   }
 
   assert {
-    condition     = aws_iam_role.reporter.name == "sp-autopilot-reporter"
+    condition     = aws_iam_role.reporter[0].name == "sp-autopilot-reporter"
     error_message = "Reporter IAM role name should follow pattern: sp-autopilot-reporter"
   }
 
   assert {
-    condition     = aws_iam_role.reporter.description == "IAM role for Reporter Lambda function - generates periodic coverage and savings reports"
+    condition     = aws_iam_role.reporter[0].description == "IAM role for Reporter Lambda function - generates periodic coverage and savings reports"
     error_message = "Reporter IAM role should have correct description"
   }
 }
@@ -912,17 +912,17 @@ run "test_reporter_role_assume_policy" {
   }
 
   assert {
-    condition     = can(jsondecode(aws_iam_role.reporter.assume_role_policy))
+    condition     = can(jsondecode(aws_iam_role.reporter[0].assume_role_policy))
     error_message = "Reporter IAM role assume role policy should be valid JSON"
   }
 
   assert {
-    condition     = jsondecode(aws_iam_role.reporter.assume_role_policy).Statement[0].Principal.Service == "lambda.amazonaws.com"
+    condition     = jsondecode(aws_iam_role.reporter[0].assume_role_policy).Statement[0].Principal.Service == "lambda.amazonaws.com"
     error_message = "Reporter IAM role should allow Lambda service to assume it"
   }
 
   assert {
-    condition     = jsondecode(aws_iam_role.reporter.assume_role_policy).Statement[0].Action == "sts:AssumeRole"
+    condition     = jsondecode(aws_iam_role.reporter[0].assume_role_policy).Statement[0].Action == "sts:AssumeRole"
     error_message = "Reporter IAM role should allow sts:AssumeRole action"
   }
 }
@@ -955,22 +955,22 @@ run "test_reporter_role_tags" {
   }
 
   assert {
-    condition     = aws_iam_role.reporter.tags["ManagedBy"] == "terraform-aws-sp-autopilot"
+    condition     = aws_iam_role.reporter[0].tags["ManagedBy"] == "terraform-aws-sp-autopilot"
     error_message = "Reporter IAM role should have ManagedBy tag"
   }
 
   assert {
-    condition     = aws_iam_role.reporter.tags["Module"] == "savings-plans-automation"
+    condition     = aws_iam_role.reporter[0].tags["Module"] == "savings-plans-automation"
     error_message = "Reporter IAM role should have Module tag"
   }
 
   assert {
-    condition     = aws_iam_role.reporter.tags["Name"] == "sp-autopilot-reporter-role"
+    condition     = aws_iam_role.reporter[0].tags["Name"] == "sp-autopilot-reporter-role"
     error_message = "Reporter IAM role should have Name tag"
   }
 
   assert {
-    condition     = aws_iam_role.reporter.tags["Environment"] == "test"
+    condition     = aws_iam_role.reporter[0].tags["Environment"] == "test"
     error_message = "Reporter IAM role should include custom tags from variables"
   }
 }

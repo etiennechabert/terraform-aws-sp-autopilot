@@ -159,7 +159,8 @@ run "test_email_subscriptions_empty" {
       }
     }
     notifications = {
-      emails = []
+      emails        = []
+      slack_webhook = "https://hooks.slack.com/services/test"
     }
   }
 
