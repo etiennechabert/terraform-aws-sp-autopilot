@@ -195,12 +195,12 @@ def load_configuration() -> Dict[str, Any]:
     return load_config_from_env(schema)
 
 
-def get_coverage_history(ce_client: Any, lookback_days: int = 30) -> List[Dict[str, Any]]:
+def get_coverage_history(ce_client: Any = None, lookback_days: int = 30) -> List[Dict[str, Any]]:
     """
     Get Savings Plans coverage history from Cost Explorer.
 
     Args:
-        ce_client: Boto3 Cost Explorer client
+        ce_client: Boto3 Cost Explorer client (defaults to module-level client)
         lookback_days: Number of days to look back for coverage data
 
     Returns:
@@ -209,6 +209,9 @@ def get_coverage_history(ce_client: Any, lookback_days: int = 30) -> List[Dict[s
     Raises:
         ClientError: If Cost Explorer API call fails
     """
+    if ce_client is None:
+        ce_client = globals()["ce_client"]
+
     logger.info(f"Fetching coverage history for last {lookback_days} days")
 
     try:
@@ -267,12 +270,12 @@ def get_coverage_history(ce_client: Any, lookback_days: int = 30) -> List[Dict[s
         raise
 
 
-def get_actual_cost_data(ce_client: Any, lookback_days: int = 30) -> Dict[str, Any]:
+def get_actual_cost_data(ce_client: Any = None, lookback_days: int = 30) -> Dict[str, Any]:
     """
     Get actual Savings Plans and On-Demand costs from Cost Explorer.
 
     Args:
-        ce_client: Boto3 Cost Explorer client
+        ce_client: Boto3 Cost Explorer client (defaults to module-level client)
         lookback_days: Number of days to look back for cost data
 
     Returns:
@@ -281,6 +284,9 @@ def get_actual_cost_data(ce_client: Any, lookback_days: int = 30) -> Dict[str, A
     Raises:
         ClientError: If Cost Explorer API call fails
     """
+    if ce_client is None:
+        ce_client = globals()["ce_client"]
+
     logger.info(f"Fetching actual cost data for last {lookback_days} days")
 
     try:
@@ -376,13 +382,13 @@ def get_actual_cost_data(ce_client: Any, lookback_days: int = 30) -> Dict[str, A
         raise
 
 
-def get_savings_data(savingsplans_client: Any, ce_client: Any) -> Dict[str, Any]:
+def get_savings_data(savingsplans_client: Any = None, ce_client: Any = None) -> Dict[str, Any]:
     """
     Get savings data from active Savings Plans.
 
     Args:
-        savingsplans_client: Boto3 Savings Plans client
-        ce_client: Boto3 Cost Explorer client
+        savingsplans_client: Boto3 Savings Plans client (defaults to module-level client)
+        ce_client: Boto3 Cost Explorer client (defaults to module-level client)
 
     Returns:
         dict: Savings Plans data including commitment, utilization, and estimated savings
@@ -390,6 +396,11 @@ def get_savings_data(savingsplans_client: Any, ce_client: Any) -> Dict[str, Any]
     Raises:
         ClientError: If Savings Plans or Cost Explorer API calls fail
     """
+    if savingsplans_client is None:
+        savingsplans_client = globals()["savingsplans_client"]
+    if ce_client is None:
+        ce_client = globals()["ce_client"]
+
     logger.info("Fetching savings data from active Savings Plans")
 
     try:
@@ -1049,13 +1060,14 @@ def generate_json_report(
 
 
 def upload_report_to_s3(
-    s3_client: Any, config: Dict[str, Any], report_content: str, report_format: str = "html"
+    config: Dict[str, Any], report_content: str, report_format: str = "html"
 ) -> str:
     """
     Upload report to S3 with timestamp-based key.
 
+    Uses module-level s3_client for S3 operations.
+
     Args:
-        s3_client: Boto3 S3 client
         config: Configuration dictionary with reports_bucket
         report_content: HTML report content
         report_format: Report format (default: 'html')
@@ -1099,7 +1111,6 @@ def upload_report_to_s3(
 
 
 def send_report_email(
-    sns_client: Any,
     config: Dict[str, Any],
     s3_object_key: str,
     coverage_summary: Dict[str, Any],
@@ -1108,8 +1119,9 @@ def send_report_email(
     """
     Send email notification with S3 report link and summary.
 
+    Uses module-level sns_client for sending notifications.
+
     Args:
-        sns_client: Boto3 SNS client
         config: Configuration dictionary with sns_topic_arn and reports_bucket
         s3_object_key: S3 object key of the uploaded report
         coverage_summary: Coverage summary metrics
@@ -1237,3 +1249,34 @@ def send_report_email(
                 logger.warning("Teams notification failed")
     except Exception as e:
         logger.warning(f"Teams notification error (non-fatal): {e!s}")
+
+
+def send_error_email(config: Dict[str, Any] = None, error_msg: str = None) -> None:
+    """
+    Send error notification email - backward compatible wrapper.
+
+    This function provides backward compatibility for tests that expect
+    send_error_email at module level.
+
+    Args:
+        config: Configuration dictionary (if None, loads from env)
+        error_msg: Error message to send
+    """
+    if config is None:
+        config = load_configuration()
+
+    try:
+        sns_client = globals()["sns_client"]
+        send_error_notification(
+            sns_client=sns_client,
+            sns_topic_arn=config["sns_topic_arn"],
+            error_message=error_msg,
+            lambda_name="Reporter",
+            slack_webhook_url=config.get("slack_webhook_url"),
+            teams_webhook_url=config.get("teams_webhook_url"),
+        )
+    except Exception as e:
+        logger.warning(f"Failed to send error email: {e}")
+
+
+# Backward-compatible imports for AWS utils (required by existing tests)

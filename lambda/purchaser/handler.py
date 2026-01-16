@@ -789,7 +789,6 @@ def send_summary_email(
 
 
 # Backward-compatible imports for AWS utils (required by existing tests)
-from shared.aws_utils import get_assumed_role_session, get_clients
 
 
 def send_error_email(error_msg: str, sns_topic_arn: str = None) -> None:

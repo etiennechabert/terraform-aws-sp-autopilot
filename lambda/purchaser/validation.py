@@ -9,7 +9,7 @@ from typing import Any
 
 
 # Valid values for sp_type field
-VALID_SP_TYPES = ["ComputeSavingsPlans", "DatabaseSavingsPlans"]
+VALID_SP_TYPES = ["ComputeSavingsPlans", "DatabaseSavingsPlans", "SageMakerSavingsPlans"]
 
 # Valid values for payment_option field
 VALID_PAYMENT_OPTIONS = ["NO_UPFRONT", "ALL_UPFRONT", "PARTIAL_UPFRONT"]

@@ -17,7 +17,7 @@ import pytest
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
 
 # Import from new modular structure with aliases to avoid conflicts
-# Note: Must import our local 'coverage.py' before pytest-cov loads its coverage module
+# Note: Must import our local 'coverage_calculator.py' before pytest-cov loads its coverage module
 # We do this by explicitly importing it with importlib to avoid naming conflicts
 import importlib.util
 import os as _os
@@ -25,7 +25,7 @@ import os as _os
 
 _coverage_spec = importlib.util.spec_from_file_location(
     "coverage_module",
-    _os.path.join(_os.path.dirname(_os.path.abspath(__file__)), "..", "coverage.py"),
+    _os.path.join(_os.path.dirname(_os.path.abspath(__file__)), "..", "coverage_calculator.py"),
 )
 coverage_module = importlib.util.module_from_spec(_coverage_spec)
 _coverage_spec.loader.exec_module(coverage_module)

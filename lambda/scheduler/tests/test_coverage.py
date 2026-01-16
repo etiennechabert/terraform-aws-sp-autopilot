@@ -23,7 +23,7 @@ import os as _os
 
 _coverage_spec = importlib.util.spec_from_file_location(
     "coverage_module",
-    _os.path.join(_os.path.dirname(_os.path.abspath(__file__)), "..", "coverage.py"),
+    _os.path.join(_os.path.dirname(_os.path.abspath(__file__)), "..", "coverage_calculator.py"),
 )
 coverage_module = importlib.util.module_from_spec(_coverage_spec)
 _coverage_spec.loader.exec_module(coverage_module)
