@@ -39,32 +39,32 @@ output "sns_topic_arn" {
 
 output "scheduler_lambda_arn" {
   description = "ARN of the Scheduler Lambda function"
-  value       = aws_lambda_function.scheduler.arn
+  value       = local.lambda_scheduler_enabled ? aws_lambda_function.scheduler[0].arn : null
 }
 
 output "scheduler_lambda_name" {
   description = "Name of the Scheduler Lambda function"
-  value       = aws_lambda_function.scheduler.function_name
+  value       = local.lambda_scheduler_enabled ? aws_lambda_function.scheduler[0].function_name : null
 }
 
 output "purchaser_lambda_arn" {
   description = "ARN of the Purchaser Lambda function"
-  value       = aws_lambda_function.purchaser.arn
+  value       = local.lambda_purchaser_enabled ? aws_lambda_function.purchaser[0].arn : null
 }
 
 output "purchaser_lambda_name" {
   description = "Name of the Purchaser Lambda function"
-  value       = aws_lambda_function.purchaser.function_name
+  value       = local.lambda_purchaser_enabled ? aws_lambda_function.purchaser[0].function_name : null
 }
 
 output "reporter_lambda_arn" {
   description = "ARN of the Reporter Lambda function"
-  value       = aws_lambda_function.reporter.arn
+  value       = local.lambda_reporter_enabled ? aws_lambda_function.reporter[0].arn : null
 }
 
 output "reporter_lambda_name" {
   description = "Name of the Reporter Lambda function"
-  value       = aws_lambda_function.reporter.function_name
+  value       = local.lambda_reporter_enabled ? aws_lambda_function.reporter[0].function_name : null
 }
 
 # ============================================================================
@@ -73,32 +73,32 @@ output "reporter_lambda_name" {
 
 output "scheduler_rule_arn" {
   description = "ARN of the EventBridge rule for Scheduler Lambda"
-  value       = aws_cloudwatch_event_rule.scheduler.arn
+  value       = local.lambda_scheduler_enabled && local.scheduler_schedule != null ? aws_cloudwatch_event_rule.scheduler[0].arn : null
 }
 
 output "scheduler_rule_name" {
   description = "Name of the EventBridge rule for Scheduler Lambda"
-  value       = aws_cloudwatch_event_rule.scheduler.name
+  value       = local.lambda_scheduler_enabled && local.scheduler_schedule != null ? aws_cloudwatch_event_rule.scheduler[0].name : null
 }
 
 output "purchaser_rule_arn" {
   description = "ARN of the EventBridge rule for Purchaser Lambda"
-  value       = aws_cloudwatch_event_rule.purchaser.arn
+  value       = local.lambda_purchaser_enabled && local.purchaser_schedule != null ? aws_cloudwatch_event_rule.purchaser[0].arn : null
 }
 
 output "purchaser_rule_name" {
   description = "Name of the EventBridge rule for Purchaser Lambda"
-  value       = aws_cloudwatch_event_rule.purchaser.name
+  value       = local.lambda_purchaser_enabled && local.purchaser_schedule != null ? aws_cloudwatch_event_rule.purchaser[0].name : null
 }
 
 output "reporter_rule_arn" {
   description = "ARN of the EventBridge rule for Reporter Lambda"
-  value       = var.enable_reports ? aws_cloudwatch_event_rule.reporter[0].arn : null
+  value       = local.lambda_reporter_enabled && local.report_schedule != null ? aws_cloudwatch_event_rule.reporter[0].arn : null
 }
 
 output "reporter_rule_name" {
   description = "Name of the EventBridge rule for Reporter Lambda"
-  value       = var.enable_reports ? aws_cloudwatch_event_rule.reporter[0].name : null
+  value       = local.lambda_reporter_enabled && local.report_schedule != null ? aws_cloudwatch_event_rule.reporter[0].name : null
 }
 
 # ============================================================================
