@@ -461,7 +461,7 @@ purchase_strategy = {
 
   dichotomy = {
     max_purchase_percent = 50 # Maximum purchase size
-    min_purchase_percent = 1  # Minimum purchase threshold
+    min_purchase_percent = 1  # Halving threshold (use exact gap when below)
   }
 }
 ```
