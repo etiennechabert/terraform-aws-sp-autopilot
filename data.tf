@@ -91,9 +91,9 @@ locals {
   # Database SP Configuration
   # ==========================================================================
 
-  database_enabled            = try(var.sp_plans.database.enabled, false)
-  database_sp_term            = "ONE_YEAR"    # AWS constraint
-  database_sp_payment_option  = "NO_UPFRONT"  # AWS constraint
+  database_enabled           = try(var.sp_plans.database.enabled, false)
+  database_sp_term           = "ONE_YEAR"   # AWS constraint
+  database_sp_payment_option = "NO_UPFRONT" # AWS constraint
 
   # ==========================================================================
   # SageMaker SP Configuration
@@ -142,13 +142,13 @@ locals {
   purchase_strategy_type = (
     var.purchase_strategy.simple != null ? "simple" :
     var.purchase_strategy.dichotomy != null ? "dichotomy" :
-    "simple"  # default
+    "simple" # default
   )
 
   max_purchase_percent = (
     local.purchase_strategy_type == "simple" ?
-      var.purchase_strategy.simple.max_purchase_percent :
-      var.purchase_strategy.dichotomy.max_purchase_percent
+    var.purchase_strategy.simple.max_purchase_percent :
+    var.purchase_strategy.dichotomy.max_purchase_percent
   )
 
   # ==========================================================================
@@ -170,10 +170,10 @@ locals {
   # Reporting Settings
   # ==========================================================================
 
-  enable_reports              = try(var.reporting.enabled, true)
-  report_format               = try(var.reporting.format, "html")
-  email_reports               = try(var.reporting.email_reports, false)
-  report_retention_days       = try(var.reporting.retention_days, 365)
+  enable_reports        = try(var.reporting.enabled, true)
+  report_format         = try(var.reporting.format, "html")
+  email_reports         = try(var.reporting.email_reports, false)
+  report_retention_days = try(var.reporting.retention_days, 365)
 
   s3_lifecycle_transition_ia_days         = try(var.reporting.s3_lifecycle.transition_ia_days, 90)
   s3_lifecycle_transition_glacier_days    = try(var.reporting.s3_lifecycle.transition_glacier_days, 180)
@@ -191,24 +191,24 @@ locals {
   # Scheduling (null = disabled)
   # ==========================================================================
 
-  scheduler_schedule = var.scheduler.scheduler  # Can be null to disable
-  purchaser_schedule = var.scheduler.purchaser  # Can be null to disable
-  report_schedule    = var.scheduler.reporter   # Can be null to disable
+  scheduler_schedule = var.scheduler.scheduler # Can be null to disable
+  purchaser_schedule = var.scheduler.purchaser # Can be null to disable
+  report_schedule    = var.scheduler.reporter  # Can be null to disable
 
   # ==========================================================================
   # Lambda Configuration
   # ==========================================================================
 
-  lambda_scheduler_memory_size = try(var.lambda_config.scheduler.memory_mb, 128)
-  lambda_scheduler_timeout     = try(var.lambda_config.scheduler.timeout, 300)
+  lambda_scheduler_memory_size     = try(var.lambda_config.scheduler.memory_mb, 128)
+  lambda_scheduler_timeout         = try(var.lambda_config.scheduler.timeout, 300)
   lambda_scheduler_assume_role_arn = try(var.lambda_config.scheduler.assume_role_arn, null)
 
-  lambda_purchaser_memory_size = try(var.lambda_config.purchaser.memory_mb, 128)
-  lambda_purchaser_timeout     = try(var.lambda_config.purchaser.timeout, 300)
+  lambda_purchaser_memory_size     = try(var.lambda_config.purchaser.memory_mb, 128)
+  lambda_purchaser_timeout         = try(var.lambda_config.purchaser.timeout, 300)
   lambda_purchaser_assume_role_arn = try(var.lambda_config.purchaser.assume_role_arn, null)
 
-  lambda_reporter_memory_size  = try(var.lambda_config.reporter.memory_mb, 128)
-  lambda_reporter_timeout      = try(var.lambda_config.reporter.timeout, 300)
+  lambda_reporter_memory_size     = try(var.lambda_config.reporter.memory_mb, 128)
+  lambda_reporter_timeout         = try(var.lambda_config.reporter.timeout, 300)
   lambda_reporter_assume_role_arn = try(var.lambda_config.reporter.assume_role_arn, null)
 
   # ==========================================================================
@@ -229,5 +229,5 @@ locals {
   sns_kms_key           = try(var.encryption.sns_kms_key, "alias/aws/sns")
   sqs_kms_key           = try(var.encryption.sqs_kms_key, "alias/aws/sqs")
   s3_encryption_enabled = try(var.encryption.s3.enabled, true)
-  s3_kms_key            = try(var.encryption.s3.kms_key, null)  # null = AES256, otherwise SSE-KMS
+  s3_kms_key            = try(var.encryption.s3.kms_key, null) # null = AES256, otherwise SSE-KMS
 }

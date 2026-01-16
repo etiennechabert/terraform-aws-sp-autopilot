@@ -354,7 +354,7 @@ run "test_scheduler_eventbridge_target_configuration" {
 
   override_resource {
     override_during = plan
-    target = aws_lambda_function.scheduler
+    target          = aws_lambda_function.scheduler
     values = {
       arn = "arn:aws:lambda:us-east-1:123456789012:function:sp-autopilot-scheduler"
     }
@@ -362,7 +362,7 @@ run "test_scheduler_eventbridge_target_configuration" {
 
   override_resource {
     override_during = plan
-    target = aws_cloudwatch_event_target.scheduler
+    target          = aws_cloudwatch_event_target.scheduler
     values = {
       rule = "sp-autopilot-scheduler"
       arn  = "arn:aws:lambda:us-east-1:123456789012:function:sp-autopilot-scheduler"
@@ -400,7 +400,7 @@ run "test_purchaser_eventbridge_target_configuration" {
 
   override_resource {
     override_during = plan
-    target = aws_lambda_function.purchaser
+    target          = aws_lambda_function.purchaser
     values = {
       arn = "arn:aws:lambda:us-east-1:123456789012:function:sp-autopilot-purchaser"
     }
@@ -408,7 +408,7 @@ run "test_purchaser_eventbridge_target_configuration" {
 
   override_resource {
     override_during = plan
-    target = aws_cloudwatch_event_target.purchaser
+    target          = aws_cloudwatch_event_target.purchaser
     values = {
       rule = "sp-autopilot-purchaser"
       arn  = "arn:aws:lambda:us-east-1:123456789012:function:sp-autopilot-purchaser"

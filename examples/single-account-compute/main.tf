@@ -27,14 +27,14 @@ module "savings_plans" {
 
   # Purchase strategy - conservative targets
   purchase_strategy = {
-    coverage_target_percent = 80  # Target 80% coverage
-    max_coverage_cap        = 90  # Never exceed 90% coverage
-    lookback_days           = 30  # 30 days of usage history
-    min_data_days           = 14  # Require at least 14 days of data
+    coverage_target_percent = 80 # Target 80% coverage
+    max_coverage_cap        = 90 # Never exceed 90% coverage
+    lookback_days           = 30 # 30 days of usage history
+    min_data_days           = 14 # Require at least 14 days of data
 
     # Simple strategy with gradual commitment growth
     simple = {
-      max_purchase_percent = 5  # Max 5% of monthly spend per cycle
+      max_purchase_percent = 5 # Max 5% of monthly spend per cycle
     }
   }
 
@@ -42,8 +42,8 @@ module "savings_plans" {
   sp_plans = {
     compute = {
       enabled                = true
-      all_upfront_three_year = 0.70  # 70% in 3-year all-upfront (maximum savings)
-      all_upfront_one_year   = 0.30  # 30% in 1-year all-upfront (more flexibility)
+      all_upfront_three_year = 0.70 # 70% in 3-year all-upfront (maximum savings)
+      all_upfront_one_year   = 0.30 # 30% in 1-year all-upfront (more flexibility)
     }
 
     database = {
@@ -65,7 +65,7 @@ module "savings_plans" {
   # Notifications
   notifications = {
     emails         = ["devops@example.com", "finops@example.com"]
-    send_no_action = true  # Get notified even when no action needed
+    send_no_action = true # Get notified even when no action needed
   }
 
   # Reporting (enabled by default)
@@ -84,7 +84,7 @@ module "savings_plans" {
   # Lambda configuration (using defaults with error alarms enabled)
   lambda_config = {
     scheduler = {
-      dry_run     = true  # Start in dry-run mode - emails only
+      dry_run     = true # Start in dry-run mode - emails only
       error_alarm = true
     }
     purchaser = { error_alarm = true }

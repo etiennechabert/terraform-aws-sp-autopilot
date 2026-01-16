@@ -163,8 +163,8 @@ run "test_lambda_error_alarms_enabled" {
   command = plan
 
   variables {
-    enable_compute_sp        = true
-    dry_run                  = true
+    enable_compute_sp         = true
+    dry_run                   = true
     enable_lambda_error_alarm = true
   }
 
@@ -189,8 +189,8 @@ run "test_lambda_error_alarms_disabled" {
   command = plan
 
   variables {
-    enable_compute_sp        = true
-    dry_run                  = true
+    enable_compute_sp         = true
+    dry_run                   = true
     enable_lambda_error_alarm = false
   }
 
@@ -215,8 +215,8 @@ run "test_scheduler_error_alarm_naming" {
   command = plan
 
   variables {
-    enable_compute_sp        = true
-    dry_run                  = true
+    enable_compute_sp         = true
+    dry_run                   = true
     enable_lambda_error_alarm = true
   }
 
@@ -236,8 +236,8 @@ run "test_purchaser_error_alarm_naming" {
   command = plan
 
   variables {
-    enable_compute_sp        = true
-    dry_run                  = true
+    enable_compute_sp         = true
+    dry_run                   = true
     enable_lambda_error_alarm = true
   }
 
@@ -257,8 +257,8 @@ run "test_reporter_error_alarm_naming" {
   command = plan
 
   variables {
-    enable_compute_sp        = true
-    dry_run                  = true
+    enable_compute_sp         = true
+    dry_run                   = true
     enable_lambda_error_alarm = true
   }
 
@@ -278,8 +278,8 @@ run "test_error_alarms_metric_configuration" {
   command = plan
 
   variables {
-    enable_compute_sp        = true
-    dry_run                  = true
+    enable_compute_sp         = true
+    dry_run                   = true
     enable_lambda_error_alarm = true
   }
 
@@ -314,10 +314,10 @@ run "test_error_alarms_threshold_configuration" {
   command = plan
 
   variables {
-    enable_compute_sp        = true
-    dry_run                  = true
+    enable_compute_sp         = true
+    dry_run                   = true
     enable_lambda_error_alarm = true
-    lambda_error_threshold   = 1
+    lambda_error_threshold    = 1
   }
 
   assert {
@@ -341,10 +341,10 @@ run "test_error_alarms_custom_threshold" {
   command = plan
 
   variables {
-    enable_compute_sp        = true
-    dry_run                  = true
+    enable_compute_sp         = true
+    dry_run                   = true
     enable_lambda_error_alarm = true
-    lambda_error_threshold   = 5
+    lambda_error_threshold    = 5
   }
 
   assert {
@@ -368,8 +368,8 @@ run "test_error_alarms_dimensions" {
   command = plan
 
   variables {
-    enable_compute_sp        = true
-    dry_run                  = true
+    enable_compute_sp         = true
+    dry_run                   = true
     enable_lambda_error_alarm = true
   }
 
@@ -394,8 +394,8 @@ run "test_error_alarms_alarm_actions" {
   command = plan
 
   variables {
-    enable_compute_sp        = true
-    dry_run                  = true
+    enable_compute_sp         = true
+    dry_run                   = true
     enable_lambda_error_alarm = true
   }
 
@@ -416,8 +416,8 @@ run "test_error_alarms_tags" {
   command = plan
 
   variables {
-    enable_compute_sp        = true
-    dry_run                  = true
+    enable_compute_sp         = true
+    dry_run                   = true
     enable_lambda_error_alarm = true
     tags = {
       Environment = "test"

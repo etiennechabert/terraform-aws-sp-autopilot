@@ -10,27 +10,27 @@ variable "lambda_config" {
   type = object({
     scheduler = optional(object({
       enabled         = optional(bool, true)
-      dry_run         = optional(bool, false)  # If true, sends email only (no SQS queueing)
+      dry_run         = optional(bool, false) # If true, sends email only (no SQS queueing)
       memory_mb       = optional(number, 128)
       timeout         = optional(number, 300)
-      assume_role_arn = optional(string)  # Role to assume for Cost Explorer and Savings Plans APIs (AWS Orgs)
-      error_alarm     = optional(bool, true)  # Enable CloudWatch error alarm for this Lambda
+      assume_role_arn = optional(string)     # Role to assume for Cost Explorer and Savings Plans APIs (AWS Orgs)
+      error_alarm     = optional(bool, true) # Enable CloudWatch error alarm for this Lambda
     }), {})
 
     purchaser = optional(object({
       enabled         = optional(bool, true)
       memory_mb       = optional(number, 128)
       timeout         = optional(number, 300)
-      assume_role_arn = optional(string)  # Role to assume for Savings Plans purchase APIs (AWS Orgs)
-      error_alarm     = optional(bool, true)  # Enable CloudWatch error alarm for this Lambda
+      assume_role_arn = optional(string)     # Role to assume for Savings Plans purchase APIs (AWS Orgs)
+      error_alarm     = optional(bool, true) # Enable CloudWatch error alarm for this Lambda
     }), {})
 
     reporter = optional(object({
       enabled         = optional(bool, true)
       memory_mb       = optional(number, 128)
       timeout         = optional(number, 300)
-      assume_role_arn = optional(string)  # Role to assume for Cost Explorer and Savings Plans APIs (AWS Orgs)
-      error_alarm     = optional(bool, true)  # Enable CloudWatch error alarm for this Lambda
+      assume_role_arn = optional(string)     # Role to assume for Cost Explorer and Savings Plans APIs (AWS Orgs)
+      error_alarm     = optional(bool, true) # Enable CloudWatch error alarm for this Lambda
     }), {})
   })
   default = {}
@@ -97,8 +97,8 @@ variable "purchase_strategy" {
   validation {
     condition = (
       var.purchase_strategy.simple != null ?
-        var.purchase_strategy.simple.max_purchase_percent > 0 && var.purchase_strategy.simple.max_purchase_percent <= 100 :
-        true
+      var.purchase_strategy.simple.max_purchase_percent > 0 && var.purchase_strategy.simple.max_purchase_percent <= 100 :
+      true
     )
     error_message = "simple.max_purchase_percent must be between 0 and 100."
   }
@@ -106,10 +106,10 @@ variable "purchase_strategy" {
   validation {
     condition = (
       var.purchase_strategy.dichotomy != null ?
-        (var.purchase_strategy.dichotomy.min_purchase_percent > 0 &&
-         var.purchase_strategy.dichotomy.max_purchase_percent <= 100 &&
-         var.purchase_strategy.dichotomy.min_purchase_percent < var.purchase_strategy.dichotomy.max_purchase_percent) :
-        true
+      (var.purchase_strategy.dichotomy.min_purchase_percent > 0 &&
+        var.purchase_strategy.dichotomy.max_purchase_percent <= 100 &&
+      var.purchase_strategy.dichotomy.min_purchase_percent < var.purchase_strategy.dichotomy.max_purchase_percent) :
+      true
     )
     error_message = "For dichotomy strategy: 0 < min_purchase_percent < max_purchase_percent <= 100."
   }
@@ -135,7 +135,7 @@ variable "sp_plans" {
 
     database = optional(object({
       enabled             = bool
-      no_upfront_one_year = optional(number, 1)  # AWS only supports 1-year NO_UPFRONT
+      no_upfront_one_year = optional(number, 1) # AWS only supports 1-year NO_UPFRONT
     }))
 
     sagemaker = optional(object({
@@ -164,12 +164,12 @@ variable "sp_plans" {
   validation {
     condition = (
       try(var.sp_plans.compute.enabled, false) ?
-        (try(var.sp_plans.compute.all_upfront_three_year, 0) +
-         try(var.sp_plans.compute.all_upfront_one_year, 0) +
-         try(var.sp_plans.compute.partial_upfront_three_year, 0) +
-         try(var.sp_plans.compute.partial_upfront_one_year, 0) +
-         try(var.sp_plans.compute.no_upfront_three_year, 0) +
-         try(var.sp_plans.compute.no_upfront_one_year, 0)) == 1
+      (try(var.sp_plans.compute.all_upfront_three_year, 0) +
+        try(var.sp_plans.compute.all_upfront_one_year, 0) +
+        try(var.sp_plans.compute.partial_upfront_three_year, 0) +
+        try(var.sp_plans.compute.partial_upfront_one_year, 0) +
+        try(var.sp_plans.compute.no_upfront_three_year, 0) +
+      try(var.sp_plans.compute.no_upfront_one_year, 0)) == 1
       : true
     )
     error_message = "Compute SP payment/term percentages must sum to 1.0 when enabled."
@@ -179,7 +179,7 @@ variable "sp_plans" {
   validation {
     condition = (
       try(var.sp_plans.database.enabled, false) ?
-        try(var.sp_plans.database.no_upfront_one_year, 0) == 1
+      try(var.sp_plans.database.no_upfront_one_year, 0) == 1
       : true
     )
     error_message = "Database SP must have no_upfront_one_year = 1 (AWS only supports 1-year NO_UPFRONT)."
@@ -189,12 +189,12 @@ variable "sp_plans" {
   validation {
     condition = (
       try(var.sp_plans.sagemaker.enabled, false) ?
-        (try(var.sp_plans.sagemaker.all_upfront_three_year, 0) +
-         try(var.sp_plans.sagemaker.all_upfront_one_year, 0) +
-         try(var.sp_plans.sagemaker.partial_upfront_three_year, 0) +
-         try(var.sp_plans.sagemaker.partial_upfront_one_year, 0) +
-         try(var.sp_plans.sagemaker.no_upfront_three_year, 0) +
-         try(var.sp_plans.sagemaker.no_upfront_one_year, 0)) == 1
+      (try(var.sp_plans.sagemaker.all_upfront_three_year, 0) +
+        try(var.sp_plans.sagemaker.all_upfront_one_year, 0) +
+        try(var.sp_plans.sagemaker.partial_upfront_three_year, 0) +
+        try(var.sp_plans.sagemaker.partial_upfront_one_year, 0) +
+        try(var.sp_plans.sagemaker.no_upfront_three_year, 0) +
+      try(var.sp_plans.sagemaker.no_upfront_one_year, 0)) == 1
       : true
     )
     error_message = "SageMaker SP payment/term percentages must sum to 1.0 when enabled."
@@ -236,14 +236,14 @@ variable "sp_plans" {
 variable "scheduler" {
   description = "EventBridge cron schedules for each Lambda function. Set to null to disable a schedule."
   type = object({
-    scheduler = optional(string)  # Set to null to disable, defaults to "cron(0 8 1 * ? *)"
-    purchaser = optional(string)  # Set to null to disable, defaults to "cron(0 8 10 * ? *)"
-    reporter  = optional(string)  # Set to null to disable, defaults to "cron(0 9 20 * ? *)"
+    scheduler = optional(string) # Set to null to disable, defaults to "cron(0 8 1 * ? *)"
+    purchaser = optional(string) # Set to null to disable, defaults to "cron(0 8 10 * ? *)"
+    reporter  = optional(string) # Set to null to disable, defaults to "cron(0 9 20 * ? *)"
   })
   default = {
-    scheduler = "cron(0 8 1 * ? *)"   # 1st of month at 8am UTC
-    purchaser = "cron(0 8 10 * ? *)"  # 10th of month at 8am UTC
-    reporter  = "cron(0 9 20 * ? *)"  # 20th of month at 9am UTC
+    scheduler = "cron(0 8 1 * ? *)"  # 1st of month at 8am UTC
+    purchaser = "cron(0 8 10 * ? *)" # 10th of month at 8am UTC
+    reporter  = "cron(0 9 20 * ? *)" # 20th of month at 9am UTC
   }
 }
 
@@ -342,7 +342,7 @@ variable "monitoring" {
   description = "CloudWatch monitoring and alarm configuration"
   type = object({
     dlq_alarm       = optional(bool, true)
-    error_threshold = optional(number, 1)  # Threshold for Lambda error alarms (configured per-Lambda in lambda_config)
+    error_threshold = optional(number, 1) # Threshold for Lambda error alarms (configured per-Lambda in lambda_config)
   })
   default = {}
 }
@@ -364,11 +364,11 @@ variable "tags" {
 variable "encryption" {
   description = "Encryption configuration for SNS, SQS, and S3"
   type = object({
-    sns_kms_key = optional(string, "alias/aws/sns")  # Default: AWS managed KMS key. Set to null to disable.
-    sqs_kms_key = optional(string, "alias/aws/sqs")  # Default: AWS managed KMS key. Set to null to disable.
+    sns_kms_key = optional(string, "alias/aws/sns") # Default: AWS managed KMS key. Set to null to disable.
+    sqs_kms_key = optional(string, "alias/aws/sqs") # Default: AWS managed KMS key. Set to null to disable.
     s3 = optional(object({
-      enabled = optional(bool, true)   # Enable/disable S3 encryption
-      kms_key = optional(string)       # null = AES256 (SSE-S3, free), set to KMS key ARN for SSE-KMS
+      enabled = optional(bool, true) # Enable/disable S3 encryption
+      kms_key = optional(string)     # null = AES256 (SSE-S3, free), set to KMS key ARN for SSE-KMS
     }), {})
   })
   default = {
@@ -376,7 +376,7 @@ variable "encryption" {
     sqs_kms_key = "alias/aws/sqs"
     s3 = {
       enabled = true
-      kms_key = null  # AES256 by default
+      kms_key = null # AES256 by default
     }
   }
 }

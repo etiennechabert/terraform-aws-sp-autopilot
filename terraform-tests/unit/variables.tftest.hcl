@@ -31,7 +31,7 @@ run "test_coverage_target_percent_valid_min" {
 
   variables {
     coverage_target_percent = 1
-    max_coverage_cap       = 2
+    max_coverage_cap        = 2
   }
 }
 
@@ -41,7 +41,7 @@ run "test_coverage_target_percent_valid_max" {
 
   variables {
     coverage_target_percent = 100
-    max_coverage_cap       = 100
+    max_coverage_cap        = 100
   }
 }
 
@@ -90,7 +90,7 @@ run "test_max_coverage_cap_valid_at_100" {
 
   variables {
     coverage_target_percent = 90
-    max_coverage_cap       = 100
+    max_coverage_cap        = 100
   }
 }
 
@@ -100,7 +100,7 @@ run "test_max_coverage_cap_invalid_above_100" {
 
   variables {
     coverage_target_percent = 90
-    max_coverage_cap       = 101
+    max_coverage_cap        = 101
   }
 
   expect_failures = [
@@ -114,7 +114,7 @@ run "test_max_coverage_cap_invalid_less_than_target" {
 
   variables {
     coverage_target_percent = 90
-    max_coverage_cap       = 85
+    max_coverage_cap        = 85
   }
 
   expect_failures = [
@@ -882,25 +882,25 @@ run "test_complex_valid_configuration" {
   command = plan
 
   variables {
-    coverage_target_percent             = 85
-    max_coverage_cap                   = 95
-    min_commitment_per_plan            = 0.01
+    coverage_target_percent = 85
+    max_coverage_cap        = 95
+    min_commitment_per_plan = 0.01
     compute_sp_term_mix = {
       three_year = 0.75
       one_year   = 0.25
     }
-    compute_sp_payment_option          = "PARTIAL_UPFRONT"
+    compute_sp_payment_option = "PARTIAL_UPFRONT"
     sagemaker_sp_term_mix = {
       three_year = 0.8
       one_year   = 0.2
     }
-    sagemaker_sp_payment_option        = "NO_UPFRONT"
-    report_retention_days              = 730
-    s3_lifecycle_transition_ia_days    = 30
-    s3_lifecycle_transition_glacier_days = 90
-    s3_lifecycle_expiration_days       = 730
+    sagemaker_sp_payment_option             = "NO_UPFRONT"
+    report_retention_days                   = 730
+    s3_lifecycle_transition_ia_days         = 30
+    s3_lifecycle_transition_glacier_days    = 90
+    s3_lifecycle_expiration_days            = 730
     s3_lifecycle_noncurrent_expiration_days = 30
-    report_format                      = "pdf"
+    report_format                           = "pdf"
   }
 }
 
@@ -922,12 +922,12 @@ run "test_multiple_validation_failures" {
 
   variables {
     coverage_target_percent = 80
-    max_coverage_cap       = 50
+    max_coverage_cap        = 50
     min_commitment_per_plan = 0.0005
   }
 
   expect_failures = [
-    terraform_data.validate_max_coverage_cap,  # 50 < 80, cross-validation fails
-    var.min_commitment_per_plan,               # 0.0005 < 0.001, variable validation fails
+    terraform_data.validate_max_coverage_cap, # 50 < 80, cross-validation fails
+    var.min_commitment_per_plan,              # 0.0005 < 0.001, variable validation fails
   ]
 }

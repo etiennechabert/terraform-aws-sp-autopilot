@@ -136,9 +136,9 @@ run "test_s3_lifecycle_ia_transition" {
   command = plan
 
   variables {
-    enable_compute_sp                   = true
-    dry_run                             = true
-    s3_lifecycle_transition_ia_days     = 90
+    enable_compute_sp               = true
+    dry_run                         = true
+    s3_lifecycle_transition_ia_days = 90
   }
 
   # Note: Cannot index lifecycle transition blocks - they are sets, not lists
@@ -155,10 +155,10 @@ run "test_s3_lifecycle_glacier_transition" {
   command = plan
 
   variables {
-    enable_compute_sp                       = true
-    dry_run                                 = true
-    s3_lifecycle_transition_ia_days         = 90
-    s3_lifecycle_transition_glacier_days    = 180
+    enable_compute_sp                    = true
+    dry_run                              = true
+    s3_lifecycle_transition_ia_days      = 90
+    s3_lifecycle_transition_glacier_days = 180
   }
 
   # Note: Cannot index lifecycle transition blocks - they are sets, not lists
@@ -175,9 +175,9 @@ run "test_s3_lifecycle_expiration" {
   command = plan
 
   variables {
-    enable_compute_sp               = true
-    dry_run                         = true
-    s3_lifecycle_expiration_days    = 365
+    enable_compute_sp            = true
+    dry_run                      = true
+    s3_lifecycle_expiration_days = 365
   }
 
   assert {
@@ -191,9 +191,9 @@ run "test_s3_lifecycle_noncurrent_expiration" {
   command = plan
 
   variables {
-    enable_compute_sp                           = true
-    dry_run                                     = true
-    s3_lifecycle_noncurrent_expiration_days     = 90
+    enable_compute_sp                       = true
+    dry_run                                 = true
+    s3_lifecycle_noncurrent_expiration_days = 90
   }
 
   assert {
@@ -263,12 +263,12 @@ run "test_s3_lifecycle_custom_values" {
   command = plan
 
   variables {
-    enable_compute_sp                           = true
-    dry_run                                     = true
-    s3_lifecycle_transition_ia_days             = 30
-    s3_lifecycle_transition_glacier_days        = 60
-    s3_lifecycle_expiration_days                = 180
-    s3_lifecycle_noncurrent_expiration_days     = 30
+    enable_compute_sp                       = true
+    dry_run                                 = true
+    s3_lifecycle_transition_ia_days         = 30
+    s3_lifecycle_transition_glacier_days    = 60
+    s3_lifecycle_expiration_days            = 180
+    s3_lifecycle_noncurrent_expiration_days = 30
   }
 
   # Note: Cannot index lifecycle transition/expiration blocks - they are sets

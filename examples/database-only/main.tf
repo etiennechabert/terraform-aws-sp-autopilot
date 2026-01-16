@@ -28,14 +28,14 @@ module "savings_plans" {
 
   # Purchase strategy - conservative targets
   purchase_strategy = {
-    coverage_target_percent = 80  # Target 80% coverage
-    max_coverage_cap        = 90  # Never exceed 90% coverage
-    lookback_days           = 30  # 30 days of usage history
-    min_data_days           = 14  # Require at least 14 days of data
+    coverage_target_percent = 80 # Target 80% coverage
+    max_coverage_cap        = 90 # Never exceed 90% coverage
+    lookback_days           = 30 # 30 days of usage history
+    min_data_days           = 14 # Require at least 14 days of data
 
     # Gradual commitment growth
     simple = {
-      max_purchase_percent = 5  # Max 5% of monthly spend per cycle
+      max_purchase_percent = 5 # Max 5% of monthly spend per cycle
     }
   }
 
@@ -47,7 +47,7 @@ module "savings_plans" {
 
     database = {
       enabled             = true
-      no_upfront_one_year = 1  # AWS constraint: only 1-year NO_UPFRONT available
+      no_upfront_one_year = 1 # AWS constraint: only 1-year NO_UPFRONT available
     }
 
     sagemaker = {
@@ -65,7 +65,7 @@ module "savings_plans" {
   # Notifications
   notifications = {
     emails         = ["database-team@example.com", "finops@example.com"]
-    send_no_action = true  # Get notified even when no action needed
+    send_no_action = true # Get notified even when no action needed
   }
 
   # Reporting
@@ -84,7 +84,7 @@ module "savings_plans" {
   # Lambda configuration (using defaults with error alarms)
   lambda_config = {
     scheduler = {
-      dry_run     = true  # Start in dry-run mode - emails only
+      dry_run     = true # Start in dry-run mode - emails only
       error_alarm = true
     }
     purchaser = { error_alarm = true }

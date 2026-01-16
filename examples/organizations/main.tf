@@ -29,14 +29,14 @@ module "savings_plans" {
 
   # Purchase strategy - production targets for organization
   purchase_strategy = {
-    coverage_target_percent = 85  # Target 85% coverage across organization
-    max_coverage_cap        = 95  # Hard cap at 95% to maintain flexibility
-    lookback_days           = 30  # 30 days of usage history
-    min_data_days           = 14  # Require at least 14 days of data
+    coverage_target_percent = 85 # Target 85% coverage across organization
+    max_coverage_cap        = 95 # Hard cap at 95% to maintain flexibility
+    lookback_days           = 30 # 30 days of usage history
+    min_data_days           = 14 # Require at least 14 days of data
 
     # Moderate commitment growth for organization
     simple = {
-      max_purchase_percent = 8  # Max 8% of monthly org spend per cycle
+      max_purchase_percent = 8 # Max 8% of monthly org spend per cycle
     }
   }
 
@@ -44,13 +44,13 @@ module "savings_plans" {
   sp_plans = {
     compute = {
       enabled                = true
-      all_upfront_three_year = 0.67  # 67% in 3-year all-upfront (higher discount)
-      all_upfront_one_year   = 0.33  # 33% in 1-year all-upfront (flexibility for growth)
+      all_upfront_three_year = 0.67 # 67% in 3-year all-upfront (higher discount)
+      all_upfront_one_year   = 0.33 # 33% in 1-year all-upfront (flexibility for growth)
     }
 
     database = {
       enabled             = true
-      no_upfront_one_year = 1  # AWS constraint: only 1-year NO_UPFRONT available
+      no_upfront_one_year = 1 # AWS constraint: only 1-year NO_UPFRONT available
     }
 
     sagemaker = {
@@ -72,14 +72,14 @@ module "savings_plans" {
       "cloud-governance@example.com", # Cloud governance team
       "aws-admins@example.com"        # AWS administrators
     ]
-    send_no_action = true  # Get notified even when no action needed
+    send_no_action = true # Get notified even when no action needed
   }
 
   # Reporting
   reporting = {
     enabled       = true
     format        = "html"
-    email_reports = true  # Email reports to stakeholders
+    email_reports = true # Email reports to stakeholders
   }
 
   # Monitoring - critical for organization-level automation
@@ -92,7 +92,7 @@ module "savings_plans" {
   # Each Lambda can assume a different role in the management account
   lambda_config = {
     scheduler = {
-      dry_run         = true  # Start in dry-run mode - emails only
+      dry_run         = true # Start in dry-run mode - emails only
       assume_role_arn = "arn:aws:iam::123456789012:role/SavingsPlansSchedulerRole"
       error_alarm     = true
     }
