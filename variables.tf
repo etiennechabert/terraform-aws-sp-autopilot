@@ -160,14 +160,12 @@ variable "sp_plans" {
   validation {
     condition = (
       try(var.sp_plans.compute.enabled, false) ?
-        abs(
-          try(var.sp_plans.compute.all_upfront_three_year, 0) +
-          try(var.sp_plans.compute.all_upfront_one_year, 0) +
-          try(var.sp_plans.compute.partial_upfront_three_year, 0) +
-          try(var.sp_plans.compute.partial_upfront_one_year, 0) +
-          try(var.sp_plans.compute.no_upfront_three_year, 0) +
-          try(var.sp_plans.compute.no_upfront_one_year, 0) - 1
-        ) < 0.0001
+        (try(var.sp_plans.compute.all_upfront_three_year, 0) +
+         try(var.sp_plans.compute.all_upfront_one_year, 0) +
+         try(var.sp_plans.compute.partial_upfront_three_year, 0) +
+         try(var.sp_plans.compute.partial_upfront_one_year, 0) +
+         try(var.sp_plans.compute.no_upfront_three_year, 0) +
+         try(var.sp_plans.compute.no_upfront_one_year, 0)) == 1
       : true
     )
     error_message = "Compute SP payment/term percentages must sum to 1.0 when enabled."
@@ -187,14 +185,12 @@ variable "sp_plans" {
   validation {
     condition = (
       try(var.sp_plans.sagemaker.enabled, false) ?
-        abs(
-          try(var.sp_plans.sagemaker.all_upfront_three_year, 0) +
-          try(var.sp_plans.sagemaker.all_upfront_one_year, 0) +
-          try(var.sp_plans.sagemaker.partial_upfront_three_year, 0) +
-          try(var.sp_plans.sagemaker.partial_upfront_one_year, 0) +
-          try(var.sp_plans.sagemaker.no_upfront_three_year, 0) +
-          try(var.sp_plans.sagemaker.no_upfront_one_year, 0) - 1
-        ) < 0.0001
+        (try(var.sp_plans.sagemaker.all_upfront_three_year, 0) +
+         try(var.sp_plans.sagemaker.all_upfront_one_year, 0) +
+         try(var.sp_plans.sagemaker.partial_upfront_three_year, 0) +
+         try(var.sp_plans.sagemaker.partial_upfront_one_year, 0) +
+         try(var.sp_plans.sagemaker.no_upfront_three_year, 0) +
+         try(var.sp_plans.sagemaker.no_upfront_one_year, 0)) == 1
       : true
     )
     error_message = "SageMaker SP payment/term percentages must sum to 1.0 when enabled."
