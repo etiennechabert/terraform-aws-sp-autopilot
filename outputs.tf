@@ -121,17 +121,17 @@ output "reports_bucket_arn" {
 
 output "scheduler_role_arn" {
   description = "ARN of the Scheduler Lambda execution role"
-  value       = aws_iam_role.scheduler.arn
+  value       = local.lambda_scheduler_enabled ? aws_iam_role.scheduler[0].arn : null
 }
 
 output "purchaser_role_arn" {
   description = "ARN of the Purchaser Lambda execution role"
-  value       = aws_iam_role.purchaser.arn
+  value       = local.lambda_purchaser_enabled ? aws_iam_role.purchaser[0].arn : null
 }
 
 output "reporter_role_arn" {
   description = "ARN of the Reporter Lambda execution role"
-  value       = aws_iam_role.reporter.arn
+  value       = local.lambda_reporter_enabled ? aws_iam_role.reporter[0].arn : null
 }
 
 # ============================================================================
@@ -188,9 +188,9 @@ output "module_configuration" {
 output "database_sp_configuration" {
   description = "Database Savings Plans configuration for monitoring"
   value = {
-    enabled        = var.enable_database_sp
-    term           = var.database_sp_term
-    payment_option = var.database_sp_payment_option
+    enabled        = local.database_enabled
+    term           = local.database_sp_term
+    payment_option = local.database_sp_payment_option
     supported_services = [
       "RDS",
       "Aurora",
@@ -212,7 +212,7 @@ output "database_sp_configuration" {
 
 output "lambda_environment_database_sp" {
   description = "Database SP enablement flag for Lambda functions"
-  value       = var.enable_database_sp ? "true" : "false"
+  value       = local.database_enabled ? "true" : "false"
 }
 
 # ============================================================================
@@ -222,9 +222,9 @@ output "lambda_environment_database_sp" {
 output "sagemaker_sp_configuration" {
   description = "SageMaker Savings Plans configuration for monitoring"
   value = {
-    enabled        = var.enable_sagemaker_sp
-    term_mix       = var.sagemaker_sp_term_mix
-    payment_option = var.sagemaker_sp_payment_option
+    enabled        = local.sagemaker_enabled
+    term_mix       = local.sagemaker_term_mix
+    payment_option = local.sagemaker_payment_option
     supported_services = [
       "SageMaker"
     ]
@@ -238,5 +238,5 @@ output "sagemaker_sp_configuration" {
 
 output "lambda_environment_sagemaker_sp" {
   description = "SageMaker SP enablement flag for Lambda functions"
-  value       = var.enable_sagemaker_sp ? "true" : "false"
+  value       = local.sagemaker_enabled ? "true" : "false"
 }
