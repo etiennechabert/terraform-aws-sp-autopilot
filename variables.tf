@@ -362,15 +362,21 @@ variable "tags" {
 # ============================================================================
 
 variable "encryption" {
-  description = "Encryption configuration for SNS, SQS, and S3. Set to null to disable encryption, or provide custom KMS key ARN."
+  description = "Encryption configuration for SNS, SQS, and S3"
   type = object({
     sns_kms_key = optional(string, "alias/aws/sns")  # Default: AWS managed KMS key. Set to null to disable.
     sqs_kms_key = optional(string, "alias/aws/sqs")  # Default: AWS managed KMS key. Set to null to disable.
-    s3_kms_key  = optional(string)                   # Default: null = AES256 (SSE-S3, free). Set to KMS key for SSE-KMS.
+    s3 = optional(object({
+      enabled = optional(bool, true)   # Enable/disable S3 encryption
+      kms_key = optional(string)       # null = AES256 (SSE-S3, free), set to KMS key ARN for SSE-KMS
+    }), {})
   })
   default = {
     sns_kms_key = "alias/aws/sns"
     sqs_kms_key = "alias/aws/sqs"
-    s3_kms_key  = null  # AES256 by default
+    s3 = {
+      enabled = true
+      kms_key = null  # AES256 by default
+    }
   }
 }

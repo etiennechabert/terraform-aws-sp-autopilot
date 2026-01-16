@@ -226,7 +226,8 @@ locals {
   # Encryption Settings
   # ==========================================================================
 
-  sns_kms_key = try(var.encryption.sns_kms_key, "alias/aws/sns")
-  sqs_kms_key = try(var.encryption.sqs_kms_key, "alias/aws/sqs")
-  s3_kms_key  = try(var.encryption.s3_kms_key, null)  # null = AES256, otherwise SSE-KMS
+  sns_kms_key         = try(var.encryption.sns_kms_key, "alias/aws/sns")
+  sqs_kms_key         = try(var.encryption.sqs_kms_key, "alias/aws/sqs")
+  s3_encryption_enabled = try(var.encryption.s3.enabled, true)
+  s3_kms_key          = try(var.encryption.s3.kms_key, null)  # null = AES256, otherwise SSE-KMS
 }
