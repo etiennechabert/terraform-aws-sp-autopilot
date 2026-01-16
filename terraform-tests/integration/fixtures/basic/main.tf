@@ -28,12 +28,32 @@ provider "aws" {
   }
 }
 
+# Management account provider (same as default for testing)
+provider "aws" {
+  alias  = "management"
+  region = var.aws_region
+
+  default_tags {
+    tags = {
+      Environment = "test"
+      TestFixture = "basic"
+      ManagedBy   = "terratest"
+    }
+  }
+}
+
 # ============================================================================
 # Module Under Test
 # ============================================================================
 
 module "sp_autopilot" {
   source = "../../../.."
+
+  # Provider configuration
+  providers = {
+    aws            = aws
+    aws.management = aws.management
+  }
 
   # Savings Plan Types
   enable_compute_sp  = var.enable_compute_sp
