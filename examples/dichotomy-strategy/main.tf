@@ -3,11 +3,11 @@
 # This example demonstrates the dichotomy purchase strategy, which uses
 # exponentially decreasing purchase sizes based on coverage gap:
 #
-# Strategy Behavior (max_purchase_percent = 50%, target = 90%):
+# Strategy Behavior (max_purchase_percent = 50%, target = 90%, min = 1%):
 # - Month 1: At 0% → Try 50% (0+50=50% ✓) → Purchase 50%
 # - Month 2: At 50% → Try 50% (100%) ✗ → Try 25% (75% ✓) → Purchase 25%
 # - Month 3: At 75% → Try 50% ✗ → Try 25% (100%) ✗ → Try 12.5% (87.5% ✓) → Purchase 12.5%
-# - Month 4: At 87.5% → Keep halving until fits → Purchase 1.5625% (→ 89.0625%)
+# - Month 4: At 87.5% → Keep halving until fits → Purchase 1.6% (rounded from 1.5625%)
 #
 # Benefits:
 # - Adaptive purchase sizing based on coverage gap
@@ -171,9 +171,9 @@ output "module_configuration" {
 #
 # Month 4:
 # - Current coverage: 87.5%
-# - Try: Keep halving → 1.5625% (89.0625%) ✓
+# - Try: Keep halving → 1.5625% → round to 1.6% ✓
 # - AWS recommendation: $2.50/hour
-# - Purchase: $0.04/hour (1.5625% of $2.50)
-# - New coverage: 89.0625%
+# - Purchase: $0.04/hour (1.6% of $2.50)
+# - New coverage: 89.1%
 #
 # ...continues until 90% target reached

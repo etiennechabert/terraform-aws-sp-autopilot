@@ -8,15 +8,16 @@ This example demonstrates the **dichotomy purchase strategy**, an adaptive appro
 
 The dichotomy strategy **always starts with `max_purchase_percent`** and halves until the purchase doesn't cause coverage to exceed the target.
 
-**Example progression** (max 50%, target 90%):
+**Example progression** (max 50%, target 90%, min 1%):
 
 | Month | Coverage | Try Sequence | Purchase % | Result |
 |-------|----------|--------------|------------|--------|
 | 1     | 0%       | 50% → 0+50=50% ✓ | 50%        | Coverage → 50% |
 | 2     | 50%      | 50% (100%) ✗ → 25% (75%) ✓ | 25%        | Coverage → 75% |
 | 3     | 75%      | 50% ✗ → 25% (100%) ✗ → 12.5% (87.5%) ✓ | 12.5%      | Coverage → 87.5% |
-| 4     | 87.5%    | 50% ✗ → 25% ✗ → 12.5% ✗ → 6.25% ✗ → 3.125% ✗ → 1.5625% (89.0625%) ✓ | 1.5625%    | Coverage → 89.0625% |
-| 5     | 89.0625% | 50% ✗ → ... → 0.78125% (89.84375%) ✓ | 0.78125%   | Coverage → 89.84375% |
+| 4     | 87.5%    | 50% ✗ → 25% ✗ → 12.5% ✗ → 6.25% ✗ → 3.125% ✗ → 1.5625% → round to 1.6% ✓ | 1.6%       | Coverage → 89.1% |
+| 5     | 89.1%    | 50% ✗ → ... → 0.78125% < min → use min 1% ✓ | 1%         | Coverage → 90.1% |
+| 6     | 90.1%    | Gap -0.1% (at target) | 0%         | No purchase |
 
 ### Key Benefits
 
@@ -59,11 +60,11 @@ purchase_strategy = {
 
 **min_purchase_percent**: 0.5-5%
 - Minimum purchase granularity - **never purchase less than this amount**
-- When halved amount is close to this threshold (<2x), rounds to this value
+- Purchase percentages are rounded to 1 decimal place for cleaner values
 - Examples with min=1%:
-  - At 87.5% (target 90%): halve to 1.5625% < 2% → purchase 1%
-  - At 88.5% (gap 1.5%): halve to 0.78% < 1% → purchase 1%
-  - At 89.5% (gap 0.5%): gap < 1% → **still purchase 1%** (overshoots to 90.5%)
+  - At 87.5% (target 90%): halve to 1.5625% → round to 1.6%
+  - At 88.5% (gap 1.5%): halve to 0.78125% < 1% → use min 1%
+  - At 89.5% (gap 0.5%): gap < 1% → **still purchase min 1%** (overshoots to 90.5%)
 - Slight overshoot is acceptable - max_coverage_cap (95%) provides safety
 - Recommended: 1% for most use cases
 
@@ -135,7 +136,7 @@ terraform apply
 
 - Always starts with max_purchase_percent (50%)
 - Halves until current + purchase <= target
-- Example at 87.5%: Try 50% ✗ → 25% ✗ → 12.5% ✗ → 6.25% ✗ → 3.125% ✗ → 1.5625% ✓
+- Example at 87.5%: Try 50% ✗ → 25% ✗ → 12.5% ✗ → 6.25% ✗ → 3.125% ✗ → 1.5625% → round to 1.6% ✓
 - Stops when coverage >= target (90%)
 
 ## Monitoring
