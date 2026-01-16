@@ -6,6 +6,7 @@ Covers HTML and JSON report generation, and cost data fetching.
 import os
 import sys
 
+
 # Set up environment variables BEFORE importing handler
 os.environ["AWS_ACCESS_KEY_ID"] = "testing"
 os.environ["AWS_SECRET_ACCESS_KEY"] = "testing"
@@ -13,10 +14,10 @@ os.environ["AWS_SECURITY_TOKEN"] = "testing"
 os.environ["AWS_SESSION_TOKEN"] = "testing"
 os.environ["AWS_DEFAULT_REGION"] = "us-east-1"
 
-from unittest.mock import Mock, patch
-from datetime import datetime, timezone
+from unittest.mock import Mock
 
 import pytest
+
 
 # Add lambda directory to path
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))

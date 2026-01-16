@@ -6,6 +6,7 @@ Covers S3 errors, SNS errors, and email formatting edge cases.
 import os
 import sys
 
+
 # Set up environment variables BEFORE importing handler
 os.environ["AWS_ACCESS_KEY_ID"] = "testing"
 os.environ["AWS_SECRET_ACCESS_KEY"] = "testing"
@@ -15,10 +16,11 @@ os.environ["AWS_DEFAULT_REGION"] = "us-east-1"
 os.environ["REPORTS_BUCKET"] = "test-bucket"
 os.environ["SNS_TOPIC_ARN"] = "arn:aws:sns:us-east-1:123456789012:test-topic"
 
-from unittest.mock import Mock, patch
+from unittest.mock import patch
 
 import pytest
 from botocore.exceptions import ClientError
+
 
 # Add lambda directory to path
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
