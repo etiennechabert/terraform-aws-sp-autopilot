@@ -79,10 +79,10 @@ variable "sp_plans" {
   })
   default = {
     compute = {
-      enabled                    = true
-      all_upfront_three_year     = 0.67
-      all_upfront_one_year       = 0.33
-      partial_upfront_percent    = 50
+      enabled                 = true
+      all_upfront_three_year  = 0.67
+      all_upfront_one_year    = 0.33
+      partial_upfront_percent = 50
     }
     database = {
       enabled = false
@@ -142,10 +142,10 @@ variable "reporting" {
     retention_days = optional(number, 365)
 
     s3_lifecycle = optional(object({
-      transition_ia_days          = optional(number, 90)
-      transition_glacier_days     = optional(number, 180)
-      expiration_days             = optional(number, 365)
-      noncurrent_expiration_days  = optional(number, 90)
+      transition_ia_days         = optional(number, 90)
+      transition_glacier_days    = optional(number, 180)
+      expiration_days            = optional(number, 365)
+      noncurrent_expiration_days = optional(number, 90)
     }), {})
   })
   default = {
