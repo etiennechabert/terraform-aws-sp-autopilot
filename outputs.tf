@@ -140,22 +140,22 @@ output "reporter_role_arn" {
 
 output "scheduler_error_alarm_arn" {
   description = "ARN of the Scheduler Lambda error alarm"
-  value       = var.enable_lambda_error_alarm ? aws_cloudwatch_metric_alarm.scheduler_error_alarm[0].arn : null
+  value       = local.lambda_scheduler_enabled && local.lambda_scheduler_error_alarm_enabled ? aws_cloudwatch_metric_alarm.scheduler_error_alarm[0].arn : null
 }
 
 output "purchaser_error_alarm_arn" {
   description = "ARN of the Purchaser Lambda error alarm"
-  value       = var.enable_lambda_error_alarm ? aws_cloudwatch_metric_alarm.purchaser_error_alarm[0].arn : null
+  value       = local.lambda_purchaser_enabled && local.lambda_purchaser_error_alarm_enabled ? aws_cloudwatch_metric_alarm.purchaser_error_alarm[0].arn : null
 }
 
 output "reporter_error_alarm_arn" {
   description = "ARN of the Reporter Lambda error alarm"
-  value       = var.enable_lambda_error_alarm ? aws_cloudwatch_metric_alarm.reporter_error_alarm[0].arn : null
+  value       = local.lambda_reporter_enabled && local.lambda_reporter_error_alarm_enabled ? aws_cloudwatch_metric_alarm.reporter_error_alarm[0].arn : null
 }
 
 output "dlq_alarm_arn" {
   description = "ARN of the DLQ depth alarm"
-  value       = var.enable_dlq_alarm ? aws_cloudwatch_metric_alarm.dlq_alarm[0].arn : null
+  value       = local.enable_dlq_alarm ? aws_cloudwatch_metric_alarm.dlq_alarm[0].arn : null
 }
 
 # ============================================================================
@@ -165,19 +165,19 @@ output "dlq_alarm_arn" {
 output "module_configuration" {
   description = "Module configuration summary"
   value = {
-    compute_sp_enabled    = var.enable_compute_sp
-    database_sp_enabled   = var.enable_database_sp
-    database_sp_term      = var.database_sp_term
-    database_sp_payment   = var.database_sp_payment_option
-    sagemaker_sp_enabled  = var.enable_sagemaker_sp
-    sagemaker_sp_term_mix = var.sagemaker_sp_term_mix
-    sagemaker_sp_payment  = var.sagemaker_sp_payment_option
-    coverage_target       = var.coverage_target_percent
-    max_coverage_cap      = var.max_coverage_cap
-    dry_run               = var.dry_run
-    scheduler_schedule    = var.scheduler_schedule
-    purchaser_schedule    = var.purchaser_schedule
-    notification_emails   = length(var.notification_emails)
+    compute_sp_enabled    = local.compute_enabled
+    database_sp_enabled   = local.database_enabled
+    database_sp_term      = local.database_sp_term
+    database_sp_payment   = local.database_sp_payment_option
+    sagemaker_sp_enabled  = local.sagemaker_enabled
+    sagemaker_sp_term_mix = local.sagemaker_term_mix
+    sagemaker_sp_payment  = local.sagemaker_payment_option
+    coverage_target       = local.coverage_target_percent
+    max_coverage_cap      = local.max_coverage_cap
+    dry_run               = local.dry_run
+    scheduler_schedule    = local.scheduler_schedule
+    purchaser_schedule    = local.purchaser_schedule
+    notification_emails   = length(local.notification_emails)
   }
 }
 

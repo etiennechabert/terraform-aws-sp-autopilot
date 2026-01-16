@@ -92,7 +92,7 @@ module "savings_plans" {
   # Each Lambda can assume a different role in the management account
   lambda_config = {
     scheduler = {
-      # Role to assume for Cost Explorer and Savings Plans read operations
+      dry_run         = true  # Start in dry-run mode - emails only
       assume_role_arn = "arn:aws:iam::123456789012:role/SavingsPlansSchedulerRole"
       error_alarm     = true
     }
@@ -106,13 +106,6 @@ module "savings_plans" {
       assume_role_arn = "arn:aws:iam::123456789012:role/SavingsPlansReporterRole"
       error_alarm     = true
     }
-  }
-
-  # Operations
-  operations = {
-    dry_run = true  # Start in dry-run mode - emails only
-    # DEPRECATED: Use lambda_config.*.assume_role_arn instead
-    # management_account_role_arn = "arn:aws:iam::123456789012:role/SavingsPlansAutomationRole"
   }
 
   # Tagging - organization standards

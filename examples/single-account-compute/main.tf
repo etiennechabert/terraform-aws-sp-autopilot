@@ -83,14 +83,12 @@ module "savings_plans" {
 
   # Lambda configuration (using defaults with error alarms enabled)
   lambda_config = {
-    scheduler = { error_alarm = true }
+    scheduler = {
+      dry_run     = true  # Start in dry-run mode - emails only
+      error_alarm = true
+    }
     purchaser = { error_alarm = true }
     reporter  = { error_alarm = true }
-  }
-
-  # Operations
-  operations = {
-    dry_run = true  # Start in dry-run mode - emails only
   }
 
   # Tagging

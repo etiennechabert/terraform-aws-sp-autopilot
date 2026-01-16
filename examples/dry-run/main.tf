@@ -88,16 +88,15 @@ module "savings_plans" {
     error_threshold = 1
   }
 
-  # Lambda configuration (using defaults with error alarms)
+  # Lambda configuration
+  # DRY-RUN MODE - THE CRITICAL SETTING
   lambda_config = {
-    scheduler = { error_alarm = true }
+    scheduler = {
+      dry_run     = true  # KEEPS THIS SAFE - emails only, no purchases
+      error_alarm = true
+    }
     purchaser = { error_alarm = true }
     reporter  = { error_alarm = true }
-  }
-
-  # DRY-RUN MODE - THE CRITICAL SETTING
-  operations = {
-    dry_run = true  # KEEPS THIS SAFE - emails only, no purchases
   }
 
   # Tagging

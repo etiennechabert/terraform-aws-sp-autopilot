@@ -10,6 +10,7 @@ variable "lambda_config" {
   type = object({
     scheduler = optional(object({
       enabled         = optional(bool, true)
+      dry_run         = optional(bool, false)  # If true, sends email only (no SQS queueing)
       memory_mb       = optional(number, 256)
       timeout         = optional(number, 300)
       assume_role_arn = optional(string)  # Role to assume for Cost Explorer and Savings Plans APIs (AWS Orgs)
@@ -342,20 +343,6 @@ variable "monitoring" {
   type = object({
     dlq_alarm       = optional(bool, true)
     error_threshold = optional(number, 1)  # Threshold for Lambda error alarms (configured per-Lambda in lambda_config)
-  })
-  default = {}
-}
-
-# ============================================================================
-# Operations
-# ============================================================================
-
-variable "operations" {
-  description = "Operational settings including dry-run mode and AWS Organizations integration"
-  type = object({
-    dry_run                     = optional(bool, true)
-    enable_cost_forecasting     = optional(bool, true)
-    management_account_role_arn = optional(string)
   })
   default = {}
 }
