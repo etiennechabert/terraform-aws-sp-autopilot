@@ -51,11 +51,11 @@ module "savings_plans" {
   # Savings Plans configuration - Compute with balanced term mix
   sp_plans = {
     compute = {
-      enabled                = true
-      all_upfront_three_year = 0.50 # 50% in 3-year all-upfront
-      all_upfront_one_year   = 0.30 # 30% in 1-year all-upfront
+      enabled                  = true
+      all_upfront_three_year   = 0.50 # 50% in 3-year all-upfront
+      all_upfront_one_year     = 0.30 # 30% in 1-year all-upfront
       partial_upfront_one_year = 0.20 # 20% in 1-year partial-upfront
-      partial_upfront_percent = 60  # Pay 60% upfront for partial plans
+      partial_upfront_percent  = 60   # Pay 60% upfront for partial plans
     }
 
     database = {
@@ -69,9 +69,9 @@ module "savings_plans" {
 
   # Scheduling - monthly automation cycle
   scheduler = {
-    scheduler = "cron(0 8 1 * ? *)"  # 1st of month - analyze usage
-    purchaser = "cron(0 8 4 * ? *)"  # 4th of month - execute purchases (3-day review)
-    reporter  = "cron(0 9 1 * ? *)"  # 1st of month - generate reports
+    scheduler = "cron(0 8 1 * ? *)" # 1st of month - analyze usage
+    purchaser = "cron(0 8 4 * ? *)" # 4th of month - execute purchases (3-day review)
+    reporter  = "cron(0 9 1 * ? *)" # 1st of month - generate reports
   }
 
   # Notifications
