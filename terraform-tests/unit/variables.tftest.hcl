@@ -21,25 +21,6 @@ mock_provider "aws" {
   }
 }
 
-# Mock provider for management account alias
-mock_provider "aws" {
-  alias = "management"
-
-  mock_data "aws_caller_identity" {
-    defaults = {
-      account_id = "123456789012"
-      arn        = "arn:aws:iam::123456789012:user/test"
-      user_id    = "AIDAEXAMPLE"
-    }
-  }
-
-  mock_data "aws_region" {
-    defaults = {
-      name = "us-east-1"
-    }
-  }
-}
-
 # ============================================================================
 # 7.2 Coverage Strategy - Variable Validations
 # ============================================================================
