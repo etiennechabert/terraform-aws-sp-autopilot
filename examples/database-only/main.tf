@@ -57,9 +57,9 @@ module "savings_plans" {
 
   # Scheduling - spread evenly across the month
   scheduler = {
-    scheduler = "cron(0 8 1 * ? *)"   # 1st of month at 8:00 AM UTC
-    purchaser = "cron(0 8 10 * ? *)"  # 10th of month at 8:00 AM UTC (9-day review window)
-    reporter  = "cron(0 9 20 * ? *)"  # 20th of month at 9:00 AM UTC
+    scheduler = "cron(0 8 1 * ? *)"  # 1st of month at 8:00 AM UTC
+    purchaser = "cron(0 8 10 * ? *)" # 10th of month at 8:00 AM UTC (9-day review window)
+    reporter  = "cron(0 9 20 * ? *)" # 20th of month at 9:00 AM UTC
   }
 
   # Notifications
