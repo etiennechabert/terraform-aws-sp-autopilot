@@ -58,14 +58,18 @@ def calculate_purchase_need_simple(
 
         # Only purchase if gap is positive and we have a recommendation
         if coverage_gap > 0 and recommendations.get("compute"):
-            hourly_commitment = recommendations["compute"].get("HourlyCommitmentToPurchase", "0")
+            hourly_commitment = recommendations["compute"].get(
+                "HourlyCommitmentToPurchase", "0"
+            )
             hourly_commitment_float = float(hourly_commitment)
 
             if hourly_commitment_float > 0:
                 purchase_plan = {
                     "sp_type": "compute",
                     "hourly_commitment": hourly_commitment_float,
-                    "payment_option": config.get("compute_sp_payment_option", "ALL_UPFRONT"),
+                    "payment_option": config.get(
+                        "compute_sp_payment_option", "ALL_UPFRONT"
+                    ),
                     "recommendation_id": recommendations["compute"].get(
                         "RecommendationId", "unknown"
                     ),
@@ -79,9 +83,13 @@ def calculate_purchase_need_simple(
             else:
                 logger.info("Compute SP recommendation has zero commitment - skipping")
         elif coverage_gap <= 0:
-            logger.info("Compute SP coverage already meets or exceeds target - no purchase needed")
+            logger.info(
+                "Compute SP coverage already meets or exceeds target - no purchase needed"
+            )
         else:
-            logger.info("Compute SP has coverage gap but no AWS recommendation available")
+            logger.info(
+                "Compute SP has coverage gap but no AWS recommendation available"
+            )
 
     # Process Database SP if enabled
     if config["enable_database_sp"]:
@@ -95,7 +103,9 @@ def calculate_purchase_need_simple(
 
         # Only purchase if gap is positive and we have a recommendation
         if coverage_gap > 0 and recommendations.get("database"):
-            hourly_commitment = recommendations["database"].get("HourlyCommitmentToPurchase", "0")
+            hourly_commitment = recommendations["database"].get(
+                "HourlyCommitmentToPurchase", "0"
+            )
             hourly_commitment_float = float(hourly_commitment)
 
             if hourly_commitment_float > 0:
@@ -117,9 +127,13 @@ def calculate_purchase_need_simple(
             else:
                 logger.info("Database SP recommendation has zero commitment - skipping")
         elif coverage_gap <= 0:
-            logger.info("Database SP coverage already meets or exceeds target - no purchase needed")
+            logger.info(
+                "Database SP coverage already meets or exceeds target - no purchase needed"
+            )
         else:
-            logger.info("Database SP has coverage gap but no AWS recommendation available")
+            logger.info(
+                "Database SP has coverage gap but no AWS recommendation available"
+            )
 
     # Process SageMaker SP if enabled
     if config["enable_sagemaker_sp"]:
@@ -133,14 +147,18 @@ def calculate_purchase_need_simple(
 
         # Only purchase if gap is positive and we have a recommendation
         if coverage_gap > 0 and recommendations.get("sagemaker"):
-            hourly_commitment = recommendations["sagemaker"].get("HourlyCommitmentToPurchase", "0")
+            hourly_commitment = recommendations["sagemaker"].get(
+                "HourlyCommitmentToPurchase", "0"
+            )
             hourly_commitment_float = float(hourly_commitment)
 
             if hourly_commitment_float > 0:
                 purchase_plan = {
                     "sp_type": "sagemaker",
                     "hourly_commitment": hourly_commitment_float,
-                    "payment_option": config.get("sagemaker_sp_payment_option", "ALL_UPFRONT"),
+                    "payment_option": config.get(
+                        "sagemaker_sp_payment_option", "ALL_UPFRONT"
+                    ),
                     "recommendation_id": recommendations["sagemaker"].get(
                         "RecommendationId", "unknown"
                     ),
@@ -152,13 +170,19 @@ def calculate_purchase_need_simple(
                     f"(recommendation_id: {purchase_plan['recommendation_id']})"
                 )
             else:
-                logger.info("SageMaker SP recommendation has zero commitment - skipping")
+                logger.info(
+                    "SageMaker SP recommendation has zero commitment - skipping"
+                )
         elif coverage_gap <= 0:
             logger.info(
                 "SageMaker SP coverage already meets or exceeds target - no purchase needed"
             )
         else:
-            logger.info("SageMaker SP has coverage gap but no AWS recommendation available")
+            logger.info(
+                "SageMaker SP has coverage gap but no AWS recommendation available"
+            )
 
-    logger.info(f"Simple strategy purchase need calculated: {len(purchase_plans)} plans")
+    logger.info(
+        f"Simple strategy purchase need calculated: {len(purchase_plans)} plans"
+    )
     return purchase_plans

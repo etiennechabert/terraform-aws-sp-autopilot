@@ -34,7 +34,7 @@ def calculate_dichotomy_purchase_percent(
     current_coverage_percent: float,
     target_coverage_percent: float,
     max_purchase_percent: float,
-    min_purchase_percent: float
+    min_purchase_percent: float,
 ) -> float:
     """
     Calculate purchase percentage using dichotomy strategy.
@@ -135,7 +135,10 @@ def calculate_purchase_need_dichotomy(
         if coverage_gap > 0 and recommendations.get("compute"):
             # Calculate purchase percentage using dichotomy algorithm
             purchase_percent = calculate_dichotomy_purchase_percent(
-                current_compute_coverage, target_coverage, max_purchase_percent, min_purchase_percent
+                current_compute_coverage,
+                target_coverage,
+                max_purchase_percent,
+                min_purchase_percent,
             )
 
             logger.info(
@@ -163,7 +166,9 @@ def calculate_purchase_need_dichotomy(
                 purchase_plan = {
                     "sp_type": "compute",
                     "hourly_commitment": actual_hourly_commitment,
-                    "payment_option": config.get("compute_sp_payment_option", "ALL_UPFRONT"),
+                    "payment_option": config.get(
+                        "compute_sp_payment_option", "ALL_UPFRONT"
+                    ),
                     "recommendation_id": recommendations["compute"].get(
                         "RecommendationId", "unknown"
                     ),
@@ -179,9 +184,13 @@ def calculate_purchase_need_dichotomy(
             else:
                 logger.info("Compute SP calculated commitment is zero - skipping")
         elif coverage_gap <= 0:
-            logger.info("Compute SP coverage already meets or exceeds target - no purchase needed")
+            logger.info(
+                "Compute SP coverage already meets or exceeds target - no purchase needed"
+            )
         else:
-            logger.info("Compute SP has coverage gap but no AWS recommendation available")
+            logger.info(
+                "Compute SP has coverage gap but no AWS recommendation available"
+            )
 
     # Process Database SP if enabled
     if config["enable_database_sp"]:
@@ -197,7 +206,10 @@ def calculate_purchase_need_dichotomy(
         if coverage_gap > 0 and recommendations.get("database"):
             # Calculate purchase percentage using dichotomy algorithm
             purchase_percent = calculate_dichotomy_purchase_percent(
-                current_database_coverage, target_coverage, max_purchase_percent, min_purchase_percent
+                current_database_coverage,
+                target_coverage,
+                max_purchase_percent,
+                min_purchase_percent,
             )
 
             logger.info(
@@ -240,9 +252,13 @@ def calculate_purchase_need_dichotomy(
             else:
                 logger.info("Database SP calculated commitment is zero - skipping")
         elif coverage_gap <= 0:
-            logger.info("Database SP coverage already meets or exceeds target - no purchase needed")
+            logger.info(
+                "Database SP coverage already meets or exceeds target - no purchase needed"
+            )
         else:
-            logger.info("Database SP has coverage gap but no AWS recommendation available")
+            logger.info(
+                "Database SP has coverage gap but no AWS recommendation available"
+            )
 
     # Process SageMaker SP if enabled
     if config["enable_sagemaker_sp"]:
@@ -258,7 +274,10 @@ def calculate_purchase_need_dichotomy(
         if coverage_gap > 0 and recommendations.get("sagemaker"):
             # Calculate purchase percentage using dichotomy algorithm
             purchase_percent = calculate_dichotomy_purchase_percent(
-                current_sagemaker_coverage, target_coverage, max_purchase_percent, min_purchase_percent
+                current_sagemaker_coverage,
+                target_coverage,
+                max_purchase_percent,
+                min_purchase_percent,
             )
 
             logger.info(
@@ -284,7 +303,9 @@ def calculate_purchase_need_dichotomy(
                 purchase_plan = {
                     "sp_type": "sagemaker",
                     "hourly_commitment": actual_hourly_commitment,
-                    "payment_option": config.get("sagemaker_sp_payment_option", "ALL_UPFRONT"),
+                    "payment_option": config.get(
+                        "sagemaker_sp_payment_option", "ALL_UPFRONT"
+                    ),
                     "recommendation_id": recommendations["sagemaker"].get(
                         "RecommendationId", "unknown"
                     ),
@@ -304,7 +325,9 @@ def calculate_purchase_need_dichotomy(
                 "SageMaker SP coverage already meets or exceeds target - no purchase needed"
             )
         else:
-            logger.info("SageMaker SP has coverage gap but no AWS recommendation available")
+            logger.info(
+                "SageMaker SP has coverage gap but no AWS recommendation available"
+            )
 
     logger.info(f"Dichotomy purchase need calculated: {len(purchase_plans)} plans")
     return purchase_plans
