@@ -4,10 +4,10 @@
 # exponentially decreasing purchase sizes based on coverage gap:
 #
 # Strategy Behavior (max_purchase_percent = 50%, target = 90%):
-# - Month 1: Coverage 0% → Gap 90% → Purchase 50% (max)
-# - Month 2: Coverage 50% → Gap 40% → Purchase 25% (halved)
-# - Month 3: Coverage 75% → Gap 15% → Purchase 12.5% (halved again)
-# - Month 4: Coverage 87.5% → Gap 2.5% → Purchase 2.5% (exact gap)
+# - Month 1: At 0% → Try 50% (0+50=50% ✓) → Purchase 50%
+# - Month 2: At 50% → Try 50% (100%) ✗ → Try 25% (75% ✓) → Purchase 25%
+# - Month 3: At 75% → Try 50% ✗ → Try 25% (100%) ✗ → Try 12.5% (87.5% ✓) → Purchase 12.5%
+# - Month 4: At 87.5% → Keep halving until fits → Purchase 1.5625% (→ 89.0625%)
 #
 # Benefits:
 # - Adaptive purchase sizing based on coverage gap
@@ -150,26 +150,30 @@ output "module_configuration" {
 #
 # Month 1:
 # - Current coverage: 0%
-# - Coverage gap: 90%
-# - Dichotomy purchase %: 50% (max)
+# - Try: 50% → 0+50=50% ✓
 # - AWS recommendation: $90/hour
 # - Purchase: $45/hour (50% of $90)
 # - New coverage: 50%
 #
 # Month 2:
 # - Current coverage: 50%
-# - Coverage gap: 40%
-# - Dichotomy purchase %: 25% (halved)
+# - Try: 50% (100%) ✗ → 25% (75%) ✓
 # - AWS recommendation: $40/hour
 # - Purchase: $10/hour (25% of $40)
-# - New coverage: 60%
+# - New coverage: 75%
 #
 # Month 3:
-# - Current coverage: 60%
-# - Coverage gap: 30%
-# - Dichotomy purchase %: 25%
-# - AWS recommendation: $30/hour
-# - Purchase: $7.50/hour (25% of $30)
-# - New coverage: 67.5%
+# - Current coverage: 75%
+# - Try: 50% ✗ → 25% (100%) ✗ → 12.5% (87.5%) ✓
+# - AWS recommendation: $13.50/hour
+# - Purchase: $1.69/hour (12.5% of $13.50)
+# - New coverage: 87.5%
+#
+# Month 4:
+# - Current coverage: 87.5%
+# - Try: Keep halving → 1.5625% (89.0625%) ✓
+# - AWS recommendation: $2.50/hour
+# - Purchase: $0.04/hour (1.5625% of $2.50)
+# - New coverage: 89.0625%
 #
 # ...continues until 90% target reached

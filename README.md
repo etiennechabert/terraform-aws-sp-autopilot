@@ -467,12 +467,12 @@ purchase_strategy = {
 ```
 
 **How it works:**
-- Calculates purchase as largest power-of-2 fraction of `max_purchase_percent` that doesn't exceed coverage gap
+- Always starts with `max_purchase_percent`, halves until purchase doesn't exceed target
 - Example progression (max 50%, target 90%):
-  - Month 1: Gap 90% → Purchase 50% (max)
-  - Month 2: Gap 40% → Purchase 25% (halved)
-  - Month 3: Gap 15% → Purchase 12.5% (halved)
-  - Month 4: Gap 2.5% → Purchase 2.5% (exact gap)
+  - Month 1: At 0% → Try 50% → 0+50=50% ✓ → Purchase 50%
+  - Month 2: At 50% → Try 50% (would be 100%) ✗ → Try 25% (would be 75%) ✓ → Purchase 25%
+  - Month 3: At 75% → Try 50% ✗ → Try 25% (would be 100%) ✗ → Try 12.5% (would be 87.5%) ✓ → Purchase 12.5%
+  - Month 4: At 87.5% → Keep halving until fits → Purchase 1.5625% (reaches 89.0625%)
 
 **Characteristics:**
 - Adaptive purchase sizing (fast initially, slows near target)

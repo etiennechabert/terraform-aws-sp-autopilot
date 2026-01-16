@@ -15,90 +15,82 @@ class TestCalculateDichotomyPurchasePercent:
     """Test the core dichotomy algorithm for calculating purchase percentage."""
 
     def test_large_gap_uses_max_purchase_percent(self):
-        """Test that large coverage gap uses max_purchase_percent."""
-        # Gap is 90%, max is 50% -> should use 50%
-        result = calculate_dichotomy_purchase_percent(90.0, 50.0, 1.0)
+        """Test that when at 0% coverage, we can use max."""
+        # At 0%, target 90%, max 50% -> 0% + 50% = 50% <= 90%, use 50%
+        result = calculate_dichotomy_purchase_percent(0.0, 90.0, 50.0, 1.0)
         assert result == 50.0
 
-    def test_gap_smaller_than_max_triggers_halving(self):
-        """Test that gap smaller than max triggers halving."""
-        # Gap is 40%, max is 50% -> should halve to 25%
-        result = calculate_dichotomy_purchase_percent(40.0, 50.0, 1.0)
+    def test_at_50_percent_coverage(self):
+        """Test user's example: at 50% coverage, try 50%, then 25%."""
+        # At 50%, target 90%, max 50%
+        # Try 50%: 50% + 50% = 100% > 90%, NO
+        # Try 25%: 50% + 25% = 75% <= 90%, YES
+        result = calculate_dichotomy_purchase_percent(50.0, 90.0, 50.0, 1.0)
         assert result == 25.0
 
-        # Gap is 20%, max is 50% -> should halve to 25% then 12.5%
-        result = calculate_dichotomy_purchase_percent(20.0, 50.0, 1.0)
+    def test_at_75_percent_coverage(self):
+        """Test user's example: at 75%, try 50%, 25%, then 12.5%."""
+        # At 75%, target 90%, max 50%
+        # Try 50%: 75% + 50% = 125% > 90%, NO
+        # Try 25%: 75% + 25% = 100% > 90%, NO
+        # Try 12.5%: 75% + 12.5% = 87.5% <= 90%, YES
+        result = calculate_dichotomy_purchase_percent(75.0, 90.0, 50.0, 1.0)
         assert result == 12.5
 
-        # Gap is 10%, max is 50% -> should halve to 25%, 12.5%, 6.25%
-        result = calculate_dichotomy_purchase_percent(10.0, 50.0, 1.0)
-        assert result == 6.25
-
-    def test_very_small_gap_uses_exact_gap(self):
-        """Test that very small gap uses exact gap amount."""
-        # Gap is 2.5%, max is 50% -> halve to 25%, 12.5%, 6.25%, 3.125%, then use exact gap
-        result = calculate_dichotomy_purchase_percent(2.5, 50.0, 1.0)
-        assert result == 2.5
-
-        # Gap is 0.8%, max is 50% -> use exact gap
-        result = calculate_dichotomy_purchase_percent(0.8, 50.0, 1.0)
-        assert result == 0.8
+    def test_at_87_5_percent_coverage(self):
+        """Test at 87.5% coverage."""
+        # At 87.5%, target 90%, max 50%
+        # Keep halving: 50 -> 25 -> 12.5 -> 6.25 -> 3.125 -> 1.5625
+        # 87.5% + 1.5625% = 89.0625% <= 90%, YES
+        result = calculate_dichotomy_purchase_percent(87.5, 90.0, 50.0, 1.0)
+        assert result == pytest.approx(1.5625)
 
     def test_gap_below_min_purchase_percent(self):
         """Test behavior when gap is below min_purchase_percent."""
-        # Gap is 0.5%, min is 1.0% -> should use exact gap (0.5%)
-        result = calculate_dichotomy_purchase_percent(0.5, 50.0, 1.0)
+        # At 89.5%, target 90%, gap is 0.5% < min 1% -> use exact gap
+        result = calculate_dichotomy_purchase_percent(89.5, 90.0, 50.0, 1.0)
         assert result == 0.5
 
-    def test_edge_case_gap_equals_max(self):
-        """Test edge case where gap exactly equals max."""
-        # Gap is 50%, max is 50% -> should use 50%
-        result = calculate_dichotomy_purchase_percent(50.0, 50.0, 1.0)
-        assert result == 50.0
-
-    def test_edge_case_gap_equals_halved_max(self):
-        """Test edge case where gap exactly equals halved max."""
-        # Gap is 25%, max is 50% -> should halve to 25%
-        result = calculate_dichotomy_purchase_percent(25.0, 50.0, 1.0)
-        assert result == 25.0
+    def test_edge_case_at_target(self):
+        """Test when already at target."""
+        # At 90%, target 90%, gap is 0%
+        result = calculate_dichotomy_purchase_percent(90.0, 90.0, 50.0, 1.0)
+        assert result == 0.0
 
     def test_different_max_purchase_percents(self):
         """Test with different max_purchase_percent values."""
-        # Max 100%
-        # Gap 90%: Next power-of-2 would be 50, which is >= min*2, so use it
-        assert calculate_dichotomy_purchase_percent(90.0, 100.0, 1.0) == 50.0
-        assert calculate_dichotomy_purchase_percent(60.0, 100.0, 1.0) == 50.0
-        assert calculate_dichotomy_purchase_percent(30.0, 100.0, 1.0) == 25.0
+        # At 50%, target 90%, max 100%
+        # Try 100%: 50 + 100 = 150 > 90, try 50: 50 + 50 = 100 > 90, try 25: 50 + 25 = 75 <= 90
+        assert calculate_dichotomy_purchase_percent(50.0, 90.0, 100.0, 1.0) == 25.0
 
-        # Max 25%
-        assert calculate_dichotomy_purchase_percent(30.0, 25.0, 1.0) == 25.0
-        assert calculate_dichotomy_purchase_percent(15.0, 25.0, 1.0) == 12.5
-        assert calculate_dichotomy_purchase_percent(8.0, 25.0, 1.0) == 6.25
+        # At 50%, target 90%, max 25%
+        # Try 25%: 50 + 25 = 75 <= 90, use 25%
+        assert calculate_dichotomy_purchase_percent(50.0, 90.0, 25.0, 1.0) == 25.0
 
-    def test_different_min_purchase_percents(self):
-        """Test with different min_purchase_percent values."""
-        # Min 5%: Gap 10%, next would be 6.25, which is < min*2 (10), so use gap
-        assert calculate_dichotomy_purchase_percent(10.0, 50.0, 5.0) == 10.0
-        assert calculate_dichotomy_purchase_percent(4.0, 50.0, 5.0) == 4.0
+    def test_different_targets(self):
+        """Test with different target coverage values."""
+        # At 50%, target 80%, max 50%
+        # Try 50%: 50 + 50 = 100 > 80, try 25%: 50 + 25 = 75 <= 80
+        assert calculate_dichotomy_purchase_percent(50.0, 80.0, 50.0, 1.0) == 25.0
 
-        # Min 0.1%: Gap 0.5%, next would be 0.390625, which is >= min*2 (0.2), so use next
-        assert calculate_dichotomy_purchase_percent(0.5, 50.0, 0.1) == 0.390625
-        assert calculate_dichotomy_purchase_percent(0.05, 50.0, 0.1) == 0.05
+        # At 50%, target 60%, max 50%
+        # Try 50%: 50 + 50 = 100 > 60, try 25%: 50 + 25 = 75 > 60, try 12.5%: 50 + 12.5 = 62.5 > 60
+        # try 6.25%: 50 + 6.25 = 56.25 <= 60
+        assert calculate_dichotomy_purchase_percent(50.0, 60.0, 50.0, 1.0) == 6.25
 
     def test_progression_sequence(self):
         """Test the expected progression sequence from 0% to 90% coverage."""
-        # Simulate monthly purchases with target 90%, max 50%
-        # Month 1: Gap 90% -> Purchase 50%
-        assert calculate_dichotomy_purchase_percent(90.0, 50.0, 1.0) == 50.0
+        # Month 1: At 0%, target 90% -> 0 + 50 = 50 <= 90, use 50%
+        assert calculate_dichotomy_purchase_percent(0.0, 90.0, 50.0, 1.0) == 50.0
 
-        # Month 2: Gap 40% (after 50% coverage) -> Purchase 25%
-        assert calculate_dichotomy_purchase_percent(40.0, 50.0, 1.0) == 25.0
+        # Month 2: At 50%, target 90% -> 50 + 25 = 75 <= 90, use 25%
+        assert calculate_dichotomy_purchase_percent(50.0, 90.0, 50.0, 1.0) == 25.0
 
-        # Month 3: Gap 15% (after 75% coverage) -> Purchase 12.5%
-        assert calculate_dichotomy_purchase_percent(15.0, 50.0, 1.0) == 12.5
+        # Month 3: At 75%, target 90% -> 75 + 12.5 = 87.5 <= 90, use 12.5%
+        assert calculate_dichotomy_purchase_percent(75.0, 90.0, 50.0, 1.0) == 12.5
 
-        # Month 4: Gap 2.5% (after 87.5% coverage) -> Purchase 2.5%
-        assert calculate_dichotomy_purchase_percent(2.5, 50.0, 1.0) == 2.5
+        # Month 4: At 87.5%, target 90% -> halve until fits
+        assert calculate_dichotomy_purchase_percent(87.5, 90.0, 50.0, 1.0) == pytest.approx(1.5625)
 
 
 class TestCalculatePurchaseNeedDichotomy:
@@ -180,9 +172,9 @@ class TestCalculatePurchaseNeedDichotomy:
         result = calculate_purchase_need_dichotomy(config, coverage, recommendations)
 
         assert len(result) == 1
-        # Gap is 2.5%, so purchase percent should be 2.5% (exact gap)
-        assert result[0]["hourly_commitment"] == pytest.approx(0.125, rel=1e-3)  # 2.5% of $5
-        assert result[0]["purchase_percent"] == 2.5
+        # At 87.5%, target 90%, halve until fits: 50->25->12.5->6.25->3.125->1.5625%
+        assert result[0]["hourly_commitment"] == pytest.approx(0.078125, rel=1e-3)  # 1.5625% of $5
+        assert result[0]["purchase_percent"] == pytest.approx(1.5625)
 
     def test_database_sp_purchase(self):
         """Test Database SP purchase with dichotomy strategy."""
@@ -402,12 +394,12 @@ class TestCalculatePurchaseNeedDichotomy:
         assert result[0]["purchase_percent"] == 12.5
         assert result[0]["hourly_commitment"] == 12.5
 
-        # Month 4: Coverage 87.5%, Gap 2.5%
+        # Month 4: Coverage 87.5%, target 90%, halve until fits: 1.5625%
         result = calculate_purchase_need_dichotomy(
             config, {"compute": 87.5}, recommendations
         )
-        assert result[0]["purchase_percent"] == 2.5
-        assert result[0]["hourly_commitment"] == 2.5
+        assert result[0]["purchase_percent"] == pytest.approx(1.5625)
+        assert result[0]["hourly_commitment"] == pytest.approx(1.5625)
 
         # Month 5: Coverage 90%, Gap 0% (target reached)
         result = calculate_purchase_need_dichotomy(

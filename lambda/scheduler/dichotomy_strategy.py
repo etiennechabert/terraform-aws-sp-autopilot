@@ -31,61 +31,59 @@ logger = logging.getLogger()
 
 
 def calculate_dichotomy_purchase_percent(
-    coverage_gap_percent: float,
+    current_coverage_percent: float,
+    target_coverage_percent: float,
     max_purchase_percent: float,
     min_purchase_percent: float
 ) -> float:
     """
     Calculate purchase percentage using dichotomy strategy.
 
-    Returns the largest power-of-2 fraction of max_purchase_percent
-    that doesn't exceed the coverage gap.
+    Always tries max_purchase_percent first, then halves until the purchase
+    doesn't cause coverage to exceed the target.
 
     Args:
-        coverage_gap_percent: Gap between current and target coverage (e.g., 40.0)
+        current_coverage_percent: Current coverage (e.g., 50.0)
+        target_coverage_percent: Target coverage (e.g., 90.0)
         max_purchase_percent: Maximum allowed purchase percentage (e.g., 50.0)
         min_purchase_percent: Minimum purchase percentage threshold (e.g., 1.0)
 
     Returns:
-        Purchase percentage to use (e.g., 25.0 for gap of 40%)
+        Purchase percentage to use (largest power-of-2 that doesn't exceed target)
 
     Examples:
-        >>> calculate_dichotomy_purchase_percent(90.0, 50.0, 1.0)
-        50.0  # Gap is large, use max
+        >>> calculate_dichotomy_purchase_percent(0.0, 90.0, 50.0, 1.0)
+        50.0  # At 0%, try 50% → would be 50%, OK
 
-        >>> calculate_dichotomy_purchase_percent(40.0, 50.0, 1.0)
-        25.0  # Gap 40% < 50%, so halve to 25%
+        >>> calculate_dichotomy_purchase_percent(50.0, 90.0, 50.0, 1.0)
+        25.0  # At 50%, try 50% → 100% > 90%, try 25% → 75%, OK
 
-        >>> calculate_dichotomy_purchase_percent(15.0, 50.0, 1.0)
-        12.5  # Gap 15% < 25%, so halve to 12.5%
+        >>> calculate_dichotomy_purchase_percent(75.0, 90.0, 50.0, 1.0)
+        12.5  # At 75%, try 50% → 125% > 90%, try 25% → 100% > 90%, try 12.5% → 87.5%, OK
 
-        >>> calculate_dichotomy_purchase_percent(2.5, 50.0, 1.0)
-        2.5   # Gap 2.5% < 6.25%, purchase exact gap
+        >>> calculate_dichotomy_purchase_percent(87.5, 90.0, 50.0, 1.0)
+        2.5  # At 87.5%, keep halving until 2.5% → 90%, OK
     """
-    # Edge case: if gap itself is below min, use exact gap
+    # Calculate the gap
+    coverage_gap_percent = target_coverage_percent - current_coverage_percent
+
+    # Edge case: if gap is below min, return the gap (we're very close to target)
     if coverage_gap_percent < min_purchase_percent:
         return coverage_gap_percent
 
-    # Start at maximum
+    # Start at maximum purchase percentage
     purchase_percent = max_purchase_percent
 
-    # Halve until next halve would take us below the gap
-    while purchase_percent > coverage_gap_percent:
-        next_value = purchase_percent / 2.0
+    # Halve until current + purchase doesn't exceed target
+    while current_coverage_percent + purchase_percent > target_coverage_percent:
+        # Halve the purchase percentage
+        purchase_percent = purchase_percent / 2.0
 
-        # If next halve would take us below the gap
-        if next_value < coverage_gap_percent:
-            # If the next value would be "too small" (< min * 2), use exact gap
-            # This handles the case where we're close to target and should just buy the exact gap
-            if next_value < min_purchase_percent * 2:
-                return coverage_gap_percent
-            # Otherwise, return the next_value (largest power-of-2 <= gap)
-            return next_value
+        # If we've halved below the minimum threshold, return the exact gap
+        if purchase_percent < min_purchase_percent:
+            return coverage_gap_percent
 
-        # Next halve is still >= gap, continue halving
-        purchase_percent = next_value
-
-    # We've halved down to exactly the gap
+    # Return the largest power-of-2 that fits
     return purchase_percent
 
 
@@ -137,11 +135,12 @@ def calculate_purchase_need_dichotomy(
         if coverage_gap > 0 and recommendations.get("compute"):
             # Calculate purchase percentage using dichotomy algorithm
             purchase_percent = calculate_dichotomy_purchase_percent(
-                coverage_gap, max_purchase_percent, min_purchase_percent
+                current_compute_coverage, target_coverage, max_purchase_percent, min_purchase_percent
             )
 
             logger.info(
-                f"Dichotomy algorithm: gap={coverage_gap}% -> purchase_percent={purchase_percent}%"
+                f"Dichotomy algorithm: current={current_compute_coverage}%, target={target_coverage}%, "
+                f"purchase_percent={purchase_percent}%"
             )
 
             # Get AWS recommendation
@@ -198,11 +197,12 @@ def calculate_purchase_need_dichotomy(
         if coverage_gap > 0 and recommendations.get("database"):
             # Calculate purchase percentage using dichotomy algorithm
             purchase_percent = calculate_dichotomy_purchase_percent(
-                coverage_gap, max_purchase_percent, min_purchase_percent
+                current_database_coverage, target_coverage, max_purchase_percent, min_purchase_percent
             )
 
             logger.info(
-                f"Dichotomy algorithm: gap={coverage_gap}% -> purchase_percent={purchase_percent}%"
+                f"Dichotomy algorithm: current={current_database_coverage}%, target={target_coverage}%, "
+                f"purchase_percent={purchase_percent}%"
             )
 
             # Get AWS recommendation
@@ -258,11 +258,12 @@ def calculate_purchase_need_dichotomy(
         if coverage_gap > 0 and recommendations.get("sagemaker"):
             # Calculate purchase percentage using dichotomy algorithm
             purchase_percent = calculate_dichotomy_purchase_percent(
-                coverage_gap, max_purchase_percent, min_purchase_percent
+                current_sagemaker_coverage, target_coverage, max_purchase_percent, min_purchase_percent
             )
 
             logger.info(
-                f"Dichotomy algorithm: gap={coverage_gap}% -> purchase_percent={purchase_percent}%"
+                f"Dichotomy algorithm: current={current_sagemaker_coverage}%, target={target_coverage}%, "
+                f"purchase_percent={purchase_percent}%"
             )
 
             # Get AWS recommendation

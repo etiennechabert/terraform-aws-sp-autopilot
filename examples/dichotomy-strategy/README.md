@@ -6,17 +6,17 @@ This example demonstrates the **dichotomy purchase strategy**, an adaptive appro
 
 ### How It Works
 
-The dichotomy strategy calculates purchase size as the **largest power-of-2 fraction** of `max_purchase_percent` that doesn't exceed the coverage gap.
+The dichotomy strategy **always starts with `max_purchase_percent`** and halves until the purchase doesn't cause coverage to exceed the target.
 
 **Example progression** (max 50%, target 90%):
 
-| Month | Coverage | Gap  | Purchase % | Logic                          |
-|-------|----------|------|------------|--------------------------------|
-| 1     | 0%       | 90%  | 50%        | Gap ≥ max, use max            |
-| 2     | 50%      | 40%  | 25%        | Gap < 50%, halve to 25%       |
-| 3     | 75%      | 15%  | 12.5%      | Gap < 25%, halve to 12.5%     |
-| 4     | 87.5%    | 2.5% | 2.5%       | Gap < 6.25%, use exact gap    |
-| 5     | 90%      | 0%   | 0%         | Target reached, stop          |
+| Month | Coverage | Try Sequence | Purchase % | Result |
+|-------|----------|--------------|------------|--------|
+| 1     | 0%       | 50% → 0+50=50% ✓ | 50%        | Coverage → 50% |
+| 2     | 50%      | 50% (100%) ✗ → 25% (75%) ✓ | 25%        | Coverage → 75% |
+| 3     | 75%      | 50% ✗ → 25% (100%) ✗ → 12.5% (87.5%) ✓ | 12.5%      | Coverage → 87.5% |
+| 4     | 87.5%    | 50% ✗ → 25% ✗ → 12.5% ✗ → 6.25% ✗ → 3.125% ✗ → 1.5625% (89.0625%) ✓ | 1.5625%    | Coverage → 89.0625% |
+| 5     | 89.0625% | 50% ✗ → ... → 0.78125% (89.84375%) ✓ | 0.78125%   | Coverage → 89.84375% |
 
 ### Key Benefits
 
@@ -112,24 +112,24 @@ terraform apply
 ### First Month
 
 - Scheduler analyzes current coverage: 0%
-- Coverage gap: 90%
-- Dichotomy algorithm: 90% > 50%, use max 50%
+- Try 50%: 0 + 50 = 50% ✓
 - AWS recommends: $X/hour
 - Purchase queued: $X * 0.50 /hour
 - Purchaser executes (if enabled)
 
 ### Second Month
 
-- Current coverage: ~50%
-- Coverage gap: ~40%
-- Dichotomy algorithm: 40% < 50%, halve to 25%
+- Current coverage: 50%
+- Try 50%: 50 + 50 = 100% > 90% ✗
+- Try 25%: 50 + 25 = 75% ✓
 - AWS recommends: $Y/hour
 - Purchase queued: $Y * 0.25 /hour
 
 ### Subsequent Months
 
-- Purchase percentage continues halving: 12.5%, 6.25%, 3.125%, ...
-- When purchase would be < min_purchase_percent (1%), uses exact gap
+- Always starts with max_purchase_percent (50%)
+- Halves until current + purchase <= target
+- Example at 87.5%: Try 50% ✗ → 25% ✗ → 12.5% ✗ → 6.25% ✗ → 3.125% ✗ → 1.5625% ✓
 - Stops when coverage >= target (90%)
 
 ## Monitoring
@@ -142,7 +142,7 @@ aws logs tail /aws/lambda/sp-autopilot-scheduler --follow
 
 # Look for these log messages:
 # "Using purchase strategy: dichotomy"
-# "Dichotomy algorithm: gap=40.0% -> purchase_percent=25.0%"
+# "Dichotomy algorithm: current=50.0%, target=90.0%, purchase_percent=25.0%"
 # "Scaling by 25.0% -> $X.XX/hour"
 ```
 
