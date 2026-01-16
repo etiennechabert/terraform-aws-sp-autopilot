@@ -67,9 +67,14 @@ def calculate_dichotomy_purchase_percent(
     # Calculate the gap
     coverage_gap_percent = target_coverage_percent - current_coverage_percent
 
-    # Edge case: if gap is below min, return the gap (we're very close to target)
+    # If already at or above target, no purchase needed
+    if coverage_gap_percent <= 0:
+        return 0.0
+
+    # Edge case: if gap is below min, still return min (cannot buy less than min)
+    # This may slightly overshoot target, but max_coverage_cap provides safety
     if coverage_gap_percent < min_purchase_percent:
-        return coverage_gap_percent
+        return min_purchase_percent
 
     # Start at maximum purchase percentage
     purchase_percent = max_purchase_percent

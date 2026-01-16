@@ -46,9 +46,10 @@ class TestCalculateDichotomyPurchasePercent:
 
     def test_gap_below_min_purchase_percent(self):
         """Test behavior when gap is below min_purchase_percent."""
-        # At 89.5%, target 90%, gap is 0.5% < min 1% -> use exact gap
+        # At 89.5%, target 90%, gap is 0.5% < min 1% -> still buy min 1%
+        # This overshoots to 90.5% but that's OK (max_coverage_cap protects us)
         result = calculate_dichotomy_purchase_percent(89.5, 90.0, 50.0, 1.0)
-        assert result == 0.5
+        assert result == 1.0
 
     def test_edge_case_at_target(self):
         """Test when already at target."""
@@ -397,11 +398,11 @@ class TestCalculatePurchaseNeedDichotomy:
         assert result[0]["purchase_percent"] == 1.0
         assert result[0]["hourly_commitment"] == 1.0
 
-        # Month 6: Coverage 89.5%, gap 0.5% < min -> use exact gap 0.5%
+        # Month 6: Coverage 89.5%, gap 0.5% < min -> buy min 1% (overshoots to 90.5%)
         result = calculate_purchase_need_dichotomy(config, {"compute": 89.5}, recommendations)
-        assert result[0]["purchase_percent"] == 0.5
-        assert result[0]["hourly_commitment"] == 0.5
+        assert result[0]["purchase_percent"] == 1.0
+        assert result[0]["hourly_commitment"] == 1.0
 
-        # Month 7: Coverage 90%, Gap 0% (target reached)
-        result = calculate_purchase_need_dichotomy(config, {"compute": 90.0}, recommendations)
+        # Month 7: Coverage 90.5%, Gap -0.5% (target exceeded)
+        result = calculate_purchase_need_dichotomy(config, {"compute": 90.5}, recommendations)
         assert len(result) == 0

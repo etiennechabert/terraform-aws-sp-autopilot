@@ -58,12 +58,13 @@ purchase_strategy = {
 - Lower (25-50%): Slower ramp, more conservative approach
 
 **min_purchase_percent**: 0.5-5%
-- Minimum purchase granularity - never purchase less than this amount
+- Minimum purchase granularity - **never purchase less than this amount**
 - When halved amount is close to this threshold (<2x), rounds to this value
-- Examples:
+- Examples with min=1%:
   - At 87.5% (target 90%): halve to 1.5625% < 2% → purchase 1%
   - At 88.5% (gap 1.5%): halve to 0.78% < 1% → purchase 1%
-  - At 89.5% (gap 0.5%): gap < 1% → purchase 0.5% (exception: gap itself)
+  - At 89.5% (gap 0.5%): gap < 1% → **still purchase 1%** (overshoots to 90.5%)
+- Slight overshoot is acceptable - max_coverage_cap (95%) provides safety
 - Recommended: 1% for most use cases
 
 ## Comparison with Simple Strategy
