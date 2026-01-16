@@ -12,6 +12,10 @@ permissions:
   pull-requests: write
   security-events: write
 
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
 jobs:
   # Stage 1: Fast validation checks (run first)
   terraform-validation:
@@ -124,11 +128,10 @@ jobs:
               body: output
             });
 
-  # Stage 2: Lambda tests (runs after Stage 1 passes)
+  # Stage 1: Fast validation checks (run first)
   lint:
     name: Python Linting
     runs-on: ubuntu-latest
-    needs: [terraform-validation, tfsec-scan]
 
     steps:
       - name: Checkout code
@@ -175,6 +178,7 @@ jobs:
               body: output
             });
 
+  # Stage 2: Lambda tests (runs after Stage 1 passes)
   scheduler-tests:
     needs: [terraform-validation, tfsec-scan, lint]
     name: Scheduler Lambda Tests

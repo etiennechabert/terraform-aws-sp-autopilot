@@ -4,7 +4,6 @@ Tests critical validation logic and error paths.
 """
 
 import pytest
-
 from validation import validate_purchase_intent
 
 
@@ -78,7 +77,7 @@ def test_empty_client_token():
         "payment_option": "NO_UPFRONT",
         "projected_coverage_after": 85.5,
     }
-    with pytest.raises(ValueError, match="client_token.*non-empty string"):
+    with pytest.raises(ValueError, match=r"client_token.*non-empty string"):
         validate_purchase_intent(purchase_intent)
 
 
@@ -114,7 +113,7 @@ def test_invalid_term_seconds_type():
         "payment_option": "NO_UPFRONT",
         "projected_coverage_after": 85.5,
     }
-    with pytest.raises(ValueError, match="term_seconds.*must be an integer"):
+    with pytest.raises(ValueError, match=r"term_seconds.*must be an integer"):
         validate_purchase_intent(purchase_intent)
 
 
@@ -129,7 +128,7 @@ def test_invalid_projected_coverage_type():
         "payment_option": "NO_UPFRONT",
         "projected_coverage_after": "85.5",  # String instead of number
     }
-    with pytest.raises(ValueError, match="projected_coverage_after.*must be a number"):
+    with pytest.raises(ValueError, match=r"projected_coverage_after.*must be a number"):
         validate_purchase_intent(purchase_intent)
 
 
@@ -144,7 +143,7 @@ def test_empty_offering_id():
         "payment_option": "NO_UPFRONT",
         "projected_coverage_after": 85.5,
     }
-    with pytest.raises(ValueError, match="offering_id.*non-empty string"):
+    with pytest.raises(ValueError, match=r"offering_id.*non-empty string"):
         validate_purchase_intent(purchase_intent)
 
 
@@ -160,5 +159,5 @@ def test_invalid_upfront_amount():
         "projected_coverage_after": 85.5,
         "upfront_amount": "invalid",  # Invalid type
     }
-    with pytest.raises(ValueError, match="upfront_amount.*must be numeric"):
+    with pytest.raises(ValueError, match=r"upfront_amount.*must be numeric"):
         validate_purchase_intent(purchase_intent)

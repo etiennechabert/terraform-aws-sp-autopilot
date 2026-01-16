@@ -622,7 +622,9 @@ def test_expiring_plans_renewal(mock_env_vars, mock_clients):
 
     # Verify
     assert response["statusCode"] == 200
-    assert mock_clients["savingsplans"].create_savings_plan.called, "Renewal purchase should execute"
+    assert mock_clients["savingsplans"].create_savings_plan.called, (
+        "Renewal purchase should execute"
+    )
     assert mock_clients["sqs"].delete_message.called
     assert mock_clients["sns"].publish.called
 
