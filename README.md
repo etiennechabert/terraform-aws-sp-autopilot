@@ -107,14 +107,43 @@ The module consists of two Lambda functions with an SQS queue between them:
 ```hcl
 module "savings_plans" {
   source  = "etiennechabert/sp-autopilot/aws"
-  version = "~> 1.0"
+  version = "~> 2.0"
 
-  coverage_target_percent = 90
-  max_coverage_cap        = 95
-  max_purchase_percent    = 10
-  notification_emails     = ["devops@example.com"]
+  purchase_strategy = {
+    coverage_target_percent = 90
+    max_coverage_cap        = 95
+    simple = {
+      max_purchase_percent = 10
+    }
+  }
 
-  dry_run = true  # Start in dry-run mode (recommended)
+  sp_plans = {
+    compute = {
+      enabled              = true
+      all_upfront_one_year = 1
+    }
+    database = {
+      enabled = false
+    }
+    sagemaker = {
+      enabled = false
+    }
+  }
+
+  scheduler = {
+    scheduler = "cron(0 8 1 * ? *)"
+    purchaser = "cron(0 8 4 * ? *)"
+  }
+
+  notifications = {
+    emails = ["devops@example.com"]
+  }
+
+  lambda_config = {
+    scheduler = {
+      dry_run = true  # Start in dry-run mode (recommended)
+    }
+  }
 }
 ```
 
@@ -126,14 +155,38 @@ This enables **Compute Savings Plans** (default). For other configurations:
 ```hcl
 module "savings_plans" {
   source  = "etiennechabert/sp-autopilot/aws"
-  version = "~> 1.0"
+  version = "~> 2.0"
 
-  enable_compute_sp  = false
-  enable_database_sp = true
+  purchase_strategy = {
+    coverage_target_percent = 90
+    max_coverage_cap        = 95
+    simple = {
+      max_purchase_percent = 10
+    }
+  }
 
-  coverage_target_percent = 90
-  notification_emails     = ["database-team@example.com"]
-  dry_run                 = true
+  sp_plans = {
+    compute = {
+      enabled = false
+    }
+    database = {
+      enabled             = true
+      no_upfront_one_year = 1
+    }
+    sagemaker = {
+      enabled = false
+    }
+  }
+
+  notifications = {
+    emails = ["database-team@example.com"]
+  }
+
+  lambda_config = {
+    scheduler = {
+      dry_run = true
+    }
+  }
 }
 ```
 </details>
@@ -144,21 +197,39 @@ module "savings_plans" {
 ```hcl
 module "savings_plans" {
   source  = "etiennechabert/sp-autopilot/aws"
-  version = "~> 1.0"
+  version = "~> 2.0"
 
-  enable_compute_sp  = false
-  enable_sagemaker_sp = true
-
-  coverage_target_percent = 90
-  notification_emails     = ["ml-team@example.com"]
-  dry_run                 = true
-
-  # SageMaker SP customization (optional)
-  sagemaker_sp_term_mix = {
-    three_year = 0.70
-    one_year   = 0.30
+  purchase_strategy = {
+    coverage_target_percent = 90
+    max_coverage_cap        = 95
+    simple = {
+      max_purchase_percent = 10
+    }
   }
-  sagemaker_sp_payment_option = "ALL_UPFRONT"
+
+  sp_plans = {
+    compute = {
+      enabled = false
+    }
+    database = {
+      enabled = false
+    }
+    sagemaker = {
+      enabled                  = true
+      all_upfront_three_year   = 0.7
+      all_upfront_one_year     = 0.3
+    }
+  }
+
+  notifications = {
+    emails = ["ml-team@example.com"]
+  }
+
+  lambda_config = {
+    scheduler = {
+      dry_run = true
+    }
+  }
 }
 ```
 </details>
@@ -169,36 +240,47 @@ module "savings_plans" {
 ```hcl
 module "savings_plans" {
   source  = "etiennechabert/sp-autopilot/aws"
-  version = "~> 1.0"
+  version = "~> 2.0"
 
-  enable_compute_sp   = true
-  enable_database_sp  = true
-  enable_sagemaker_sp = true
-
-  coverage_target_percent = 90
-  max_coverage_cap        = 95
-  max_purchase_percent    = 10
-
-  # Compute SP customization
-  compute_sp_term_mix = {
-    three_year = 0.67
-    one_year   = 0.33
+  purchase_strategy = {
+    coverage_target_percent = 90
+    max_coverage_cap        = 95
+    simple = {
+      max_purchase_percent = 10
+    }
   }
-  compute_sp_payment_option = "ALL_UPFRONT"
 
-  # SageMaker SP customization
-  sagemaker_sp_term_mix = {
-    three_year = 0.70
-    one_year   = 0.30
+  sp_plans = {
+    compute = {
+      enabled                = true
+      all_upfront_three_year = 0.67
+      all_upfront_one_year   = 0.33
+    }
+    database = {
+      enabled             = true
+      no_upfront_one_year = 1
+    }
+    sagemaker = {
+      enabled                = true
+      all_upfront_three_year = 0.7
+      all_upfront_one_year   = 0.3
+    }
   }
-  sagemaker_sp_payment_option = "ALL_UPFRONT"
 
-  # Schedule with 3-day review window
-  scheduler_schedule = "cron(0 8 1 * ? *)"  # 1st of month
-  purchaser_schedule = "cron(0 8 4 * ? *)"  # 4th of month
+  scheduler = {
+    scheduler = "cron(0 8 1 * ? *)"  # 1st of month
+    purchaser = "cron(0 8 4 * ? *)"  # 4th of month - 3-day review window
+  }
 
-  notification_emails = ["devops@example.com", "finops@example.com", "ml-team@example.com"]
-  dry_run             = false
+  notifications = {
+    emails = ["devops@example.com", "finops@example.com", "ml-team@example.com"]
+  }
+
+  lambda_config = {
+    scheduler = {
+      dry_run = false  # Production mode
+    }
+  }
 }
 ```
 </details>
@@ -222,18 +304,40 @@ variable "teams_webhook_url" {
 
 module "savings_plans" {
   source  = "etiennechabert/sp-autopilot/aws"
-  version = "~> 1.0"
+  version = "~> 2.0"
 
-  coverage_target_percent = 90
-  max_coverage_cap        = 95
-  max_purchase_percent    = 10
+  purchase_strategy = {
+    coverage_target_percent = 90
+    max_coverage_cap        = 95
+    simple = {
+      max_purchase_percent = 10
+    }
+  }
 
-  # Notification configuration
-  notification_emails = ["devops@example.com"]
-  slack_webhook_url   = var.slack_webhook_url
-  teams_webhook_url   = var.teams_webhook_url
+  sp_plans = {
+    compute = {
+      enabled              = true
+      all_upfront_one_year = 1
+    }
+    database = {
+      enabled = false
+    }
+    sagemaker = {
+      enabled = false
+    }
+  }
 
-  dry_run = true
+  notifications = {
+    emails        = ["devops@example.com"]
+    slack_webhook = var.slack_webhook_url
+    teams_webhook = var.teams_webhook_url
+  }
+
+  lambda_config = {
+    scheduler = {
+      dry_run = true
+    }
+  }
 }
 ```
 
@@ -308,40 +412,13 @@ module "savings_plans" {
 
 > **Tip:** Set different schedules to create a review window. Set same schedule for immediate purchases (no review).
 
-### Operations
-
-| Variable | Type | Default | Description |
-|----------|------|---------|-------------|
-| `dry_run` | `bool` | `true` | If `true`, scheduler sends email only (no queue) — **Start here!** |
-| `send_no_action_email` | `bool` | `true` | Send email when no purchases needed |
-
-### Notifications
-
-| Variable | Type | Default | Description |
-|----------|------|---------|-------------|
-| `notification_emails` | `list(string)` | `[]` | Email addresses for SNS notifications (must confirm subscription) |
-| `slack_webhook_url` | `string` | `null` | Slack webhook URL for posting notifications to a Slack channel |
-| `teams_webhook_url` | `string` | `null` | Microsoft Teams webhook URL for posting notifications to a Teams channel |
-
-### Monitoring
-
-| Variable | Type | Default | Description |
-|----------|------|---------|-------------|
-| `enable_lambda_error_alarm` | `bool` | `true` | CloudWatch alarm on Lambda function errors |
-| `enable_dlq_alarm` | `bool` | `true` | CloudWatch alarm on Dead Letter Queue depth |
-| `lambda_error_threshold` | `number` | `1` | Number of Lambda errors to trigger alarm |
-
-### AWS Organizations
-
-| Variable | Type | Default | Description |
-|----------|------|---------|-------------|
-| `management_account_role_arn` | `string` | `null` | IAM role ARN to assume in management account (for Organization-level SPs) |
-
 ### Tagging
 
 | Variable | Type | Default | Description |
 |----------|------|---------|-------------|
-| `tags` | `map(string)` | `{}` | Additional tags to apply to purchased Savings Plans |
+| `tags` | `map(string)` | `{}` | Additional tags to apply to all resources |
+
+**Note:** For complete variable documentation including `lambda_config`, `purchase_strategy`, `sp_plans`, `scheduler`, `notifications`, `monitoring`, and `reporting` nested objects, see the [variables.tf](variables.tf) file or the [examples](examples/) directory.
 
 ## Supported Services
 
@@ -525,37 +602,52 @@ To cancel a scheduled purchase before it executes:
 
 ## Cross-Account Setup for AWS Organizations
 
-When using AWS Organizations, Savings Plans must be purchased from the **management account**. Deploy this module in a secondary account and configure cross-account access.
+When using AWS Organizations, Savings Plans must be purchased from the **management account**. Deploy this module in a secondary account and configure cross-account access using per-Lambda roles for least privilege.
 
-### Configuration
+### Configuration (v2.0)
 
 ```hcl
 module "savings_plans" {
   source  = "etiennechabert/sp-autopilot/aws"
-  version = "~> 1.0"
+  version = "~> 2.0"
 
-  management_account_role_arn = "arn:aws:iam::123456789012:role/SavingsPlansAutomationRole"
+  # Per-Lambda roles for least privilege access
+  lambda_config = {
+    scheduler = {
+      assume_role_arn = "arn:aws:iam::123456789012:role/SavingsPlansSchedulerRole"
+    }
+    purchaser = {
+      assume_role_arn = "arn:aws:iam::123456789012:role/SavingsPlansPurchaserRole"
+    }
+    reporter = {
+      assume_role_arn = "arn:aws:iam::123456789012:role/SavingsPlansReporterRole"
+    }
+  }
   # ... other configuration
 }
 ```
 
-### IAM Role Setup in Management Account
+### IAM Roles Setup in Management Account
 
-Create role with trust policy allowing Lambda execution roles from secondary account:
+Each Lambda function assumes a different role with minimal permissions:
 
+#### 1. Scheduler Role (Read-Only)
+
+**Trust Policy:**
 ```json
 {
   "Version": "2012-10-17",
   "Statement": [{
     "Effect": "Allow",
-    "Principal": {"AWS": "arn:aws:iam::SECONDARY_ACCOUNT_ID:root"},
+    "Principal": {
+      "AWS": "arn:aws:iam::SECONDARY_ACCOUNT_ID:role/sp-autopilot-scheduler-role"
+    },
     "Action": "sts:AssumeRole"
   }]
 }
 ```
 
-Attach permissions policy:
-
+**Permissions Policy:**
 ```json
 {
   "Version": "2012-10-17",
@@ -564,13 +656,78 @@ Attach permissions policy:
     "Action": [
       "ce:GetSavingsPlansPurchaseRecommendation",
       "ce:GetSavingsPlansCoverage",
-      "savingsplans:CreateSavingsPlan",
       "savingsplans:DescribeSavingsPlans"
     ],
     "Resource": "*"
   }]
 }
 ```
+
+#### 2. Purchaser Role (Purchase Permissions)
+
+**Trust Policy:**
+```json
+{
+  "Version": "2012-10-17",
+  "Statement": [{
+    "Effect": "Allow",
+    "Principal": {
+      "AWS": "arn:aws:iam::SECONDARY_ACCOUNT_ID:role/sp-autopilot-purchaser-role"
+    },
+    "Action": "sts:AssumeRole"
+  }]
+}
+```
+
+**Permissions Policy:**
+```json
+{
+  "Version": "2012-10-17",
+  "Statement": [{
+    "Effect": "Allow",
+    "Action": [
+      "savingsplans:CreateSavingsPlan",
+      "savingsplans:DescribeSavingsPlans",
+      "ce:GetSavingsPlansCoverage"
+    ],
+    "Resource": "*"
+  }]
+}
+```
+
+#### 3. Reporter Role (Read-Only)
+
+**Trust Policy:**
+```json
+{
+  "Version": "2012-10-17",
+  "Statement": [{
+    "Effect": "Allow",
+    "Principal": {
+      "AWS": "arn:aws:iam::SECONDARY_ACCOUNT_ID:role/sp-autopilot-reporter-role"
+    },
+    "Action": "sts:AssumeRole"
+  }]
+}
+```
+
+**Permissions Policy:**
+```json
+{
+  "Version": "2012-10-17",
+  "Statement": [{
+    "Effect": "Allow",
+    "Action": [
+      "ce:GetSavingsPlansCoverage",
+      "ce:GetSavingsPlansUtilization",
+      "savingsplans:DescribeSavingsPlans"
+    ],
+    "Resource": "*"
+  }]
+}
+```
+
+**Security Note:** Only the purchaser Lambda has `CreateSavingsPlan` permissions, following the principle of least privilege.
 
 See [Organizations example](examples/organizations/README.md) for detailed setup instructions.
 
