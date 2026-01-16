@@ -11,7 +11,7 @@ variable "lambda_config" {
     scheduler = optional(object({
       enabled         = optional(bool, true)
       dry_run         = optional(bool, false)  # If true, sends email only (no SQS queueing)
-      memory_mb       = optional(number, 256)
+      memory_mb       = optional(number, 128)
       timeout         = optional(number, 300)
       assume_role_arn = optional(string)  # Role to assume for Cost Explorer and Savings Plans APIs (AWS Orgs)
       error_alarm     = optional(bool, true)  # Enable CloudWatch error alarm for this Lambda
@@ -19,7 +19,7 @@ variable "lambda_config" {
 
     purchaser = optional(object({
       enabled         = optional(bool, true)
-      memory_mb       = optional(number, 256)
+      memory_mb       = optional(number, 128)
       timeout         = optional(number, 300)
       assume_role_arn = optional(string)  # Role to assume for Savings Plans purchase APIs (AWS Orgs)
       error_alarm     = optional(bool, true)  # Enable CloudWatch error alarm for this Lambda
@@ -27,7 +27,7 @@ variable "lambda_config" {
 
     reporter = optional(object({
       enabled         = optional(bool, true)
-      memory_mb       = optional(number, 256)
+      memory_mb       = optional(number, 128)
       timeout         = optional(number, 300)
       assume_role_arn = optional(string)  # Role to assume for Cost Explorer and Savings Plans APIs (AWS Orgs)
       error_alarm     = optional(bool, true)  # Enable CloudWatch error alarm for this Lambda
