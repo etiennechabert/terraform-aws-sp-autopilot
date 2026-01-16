@@ -1,152 +1,85 @@
 """
-Purchase Calculator Module - Calculates and processes Savings Plan purchase plans.
+Purchase Calculator Module - Strategy dispatcher and shared utilities.
 
-This module contains the core logic for:
-1. Calculating purchase need based on coverage gaps and AWS recommendations
-2. Applying purchase limits (max_purchase_percent and min_commitment_per_plan)
-3. Splitting commitments by term mix (for Compute and SageMaker SPs)
+This module contains:
+1. Strategy registry and dispatcher (calculate_purchase_need)
+2. Shared utilities (apply_purchase_limits, split_by_term)
+
+Strategy Pattern:
+- Each strategy is implemented in its own module (simple_strategy.py, dichotomy_strategy.py)
+- Strategies are registered in PURCHASE_STRATEGIES registry
+- Contributors can add new strategies by:
+  1. Creating a new strategy module (e.g., aggressive_strategy.py)
+  2. Implementing the strategy function: (config, coverage, recommendations) -> purchase_plans
+  3. Importing and registering in PURCHASE_STRATEGIES below
 """
 
 import logging
-from typing import Any, Dict, List
+from typing import Any, Callable, Dict, List
 
 
 # Configure logging
 logger = logging.getLogger()
 
 
+# ============================================================================
+# Strategy Registry - Add new strategies here
+# ============================================================================
+
+# Type alias for strategy functions
+StrategyFunction = Callable[
+    [Dict[str, Any], Dict[str, float], Dict[str, Any]], List[Dict[str, Any]]
+]
+
+# Import strategy implementations
+from dichotomy_strategy import calculate_purchase_need_dichotomy
+from simple_strategy import calculate_purchase_need_simple
+
+
+# Registry mapping strategy names to their implementation functions
+# Contributors: Add new strategies by importing and registering here
+PURCHASE_STRATEGIES: Dict[str, StrategyFunction] = {
+    "simple": calculate_purchase_need_simple,
+    "dichotomy": calculate_purchase_need_dichotomy,
+}
+
+
 def calculate_purchase_need(
     config: Dict[str, Any], coverage: Dict[str, float], recommendations: Dict[str, Any]
 ) -> List[Dict[str, Any]]:
     """
-    Calculate required purchases to reach target coverage.
+    Calculate required purchases to reach target coverage using configured strategy.
+
+    This function acts as a dispatcher to the appropriate strategy implementation.
+    Strategies are pluggable - see PURCHASE_STRATEGIES registry.
 
     Args:
-        config: Configuration dictionary
+        config: Configuration dictionary (must include "purchase_strategy_type")
         coverage: Current coverage by SP type
         recommendations: AWS recommendations
 
     Returns:
         list: Purchase plans to execute
+
+    Raises:
+        ValueError: If configured strategy is not registered
     """
-    logger.info("Calculating purchase need")
+    strategy_type = config.get("purchase_strategy_type", "simple")
 
-    purchase_plans = []
-    target_coverage = config["coverage_target_percent"]
+    logger.info(f"Using purchase strategy: {strategy_type}")
 
-    # Process Compute SP if enabled
-    if config["enable_compute_sp"]:
-        current_compute_coverage = coverage.get("compute", 0.0)
-        coverage_gap = target_coverage - current_compute_coverage
+    # Lookup strategy function from registry
+    strategy_func = PURCHASE_STRATEGIES.get(strategy_type)
 
-        logger.info(
-            f"Compute SP - Current: {current_compute_coverage}%, "
-            f"Target: {target_coverage}%, Gap: {coverage_gap}%"
+    if not strategy_func:
+        available_strategies = ", ".join(PURCHASE_STRATEGIES.keys())
+        raise ValueError(
+            f"Unknown purchase strategy '{strategy_type}'. "
+            f"Available strategies: {available_strategies}"
         )
 
-        # Only purchase if gap is positive and we have a recommendation
-        if coverage_gap > 0 and recommendations.get("compute"):
-            hourly_commitment = recommendations["compute"].get("HourlyCommitmentToPurchase", "0")
-            hourly_commitment_float = float(hourly_commitment)
-
-            if hourly_commitment_float > 0:
-                purchase_plan = {
-                    "sp_type": "compute",
-                    "hourly_commitment": hourly_commitment_float,
-                    "payment_option": config.get("compute_sp_payment_option", "ALL_UPFRONT"),
-                    "recommendation_id": recommendations["compute"].get(
-                        "RecommendationId", "unknown"
-                    ),
-                }
-                purchase_plans.append(purchase_plan)
-                logger.info(
-                    f"Compute SP purchase planned: ${hourly_commitment_float}/hour "
-                    f"(recommendation_id: {purchase_plan['recommendation_id']})"
-                )
-            else:
-                logger.info("Compute SP recommendation has zero commitment - skipping")
-        elif coverage_gap <= 0:
-            logger.info("Compute SP coverage already meets or exceeds target - no purchase needed")
-        else:
-            logger.info("Compute SP has coverage gap but no AWS recommendation available")
-
-    # Process Database SP if enabled
-    if config["enable_database_sp"]:
-        current_database_coverage = coverage.get("database", 0.0)
-        coverage_gap = target_coverage - current_database_coverage
-
-        logger.info(
-            f"Database SP - Current: {current_database_coverage}%, "
-            f"Target: {target_coverage}%, Gap: {coverage_gap}%"
-        )
-
-        # Only purchase if gap is positive and we have a recommendation
-        if coverage_gap > 0 and recommendations.get("database"):
-            hourly_commitment = recommendations["database"].get("HourlyCommitmentToPurchase", "0")
-            hourly_commitment_float = float(hourly_commitment)
-
-            if hourly_commitment_float > 0:
-                purchase_plan = {
-                    "sp_type": "database",
-                    "hourly_commitment": hourly_commitment_float,
-                    "term": "ONE_YEAR",  # Database SP always uses 1-year term
-                    "payment_option": "NO_UPFRONT",  # Database SP uses no upfront payment
-                    "recommendation_id": recommendations["database"].get(
-                        "RecommendationId", "unknown"
-                    ),
-                }
-                purchase_plans.append(purchase_plan)
-                logger.info(
-                    f"Database SP purchase planned: ${hourly_commitment_float}/hour "
-                    f"(recommendation_id: {purchase_plan['recommendation_id']})"
-                )
-            else:
-                logger.info("Database SP recommendation has zero commitment - skipping")
-        elif coverage_gap <= 0:
-            logger.info("Database SP coverage already meets or exceeds target - no purchase needed")
-        else:
-            logger.info("Database SP has coverage gap but no AWS recommendation available")
-
-    # Process SageMaker SP if enabled
-    if config["enable_sagemaker_sp"]:
-        current_sagemaker_coverage = coverage.get("sagemaker", 0.0)
-        coverage_gap = target_coverage - current_sagemaker_coverage
-
-        logger.info(
-            f"SageMaker SP - Current: {current_sagemaker_coverage}%, "
-            f"Target: {target_coverage}%, Gap: {coverage_gap}%"
-        )
-
-        # Only purchase if gap is positive and we have a recommendation
-        if coverage_gap > 0 and recommendations.get("sagemaker"):
-            hourly_commitment = recommendations["sagemaker"].get("HourlyCommitmentToPurchase", "0")
-            hourly_commitment_float = float(hourly_commitment)
-
-            if hourly_commitment_float > 0:
-                purchase_plan = {
-                    "sp_type": "sagemaker",
-                    "hourly_commitment": hourly_commitment_float,
-                    "payment_option": config.get("sagemaker_sp_payment_option", "ALL_UPFRONT"),
-                    "recommendation_id": recommendations["sagemaker"].get(
-                        "RecommendationId", "unknown"
-                    ),
-                }
-                purchase_plans.append(purchase_plan)
-                logger.info(
-                    f"SageMaker SP purchase planned: ${hourly_commitment_float}/hour "
-                    f"(recommendation_id: {purchase_plan['recommendation_id']})"
-                )
-            else:
-                logger.info("SageMaker SP recommendation has zero commitment - skipping")
-        elif coverage_gap <= 0:
-            logger.info(
-                "SageMaker SP coverage already meets or exceeds target - no purchase needed"
-            )
-        else:
-            logger.info("SageMaker SP has coverage gap but no AWS recommendation available")
-
-    logger.info(f"Purchase need calculated: {len(purchase_plans)} plans")
-    return purchase_plans
+    # Call strategy function
+    return strategy_func(config, coverage, recommendations)
 
 
 def apply_purchase_limits(

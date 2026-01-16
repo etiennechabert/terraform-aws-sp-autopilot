@@ -40,11 +40,23 @@ CONFIG_SCHEMA = {
         "default": "90",
         "env_var": "COVERAGE_TARGET_PERCENT",
     },
+    "purchase_strategy_type": {
+        "required": False,
+        "type": "str",
+        "default": "simple",
+        "env_var": "PURCHASE_STRATEGY_TYPE",
+    },
     "max_purchase_percent": {
         "required": False,
         "type": "float",
         "default": "10",
         "env_var": "MAX_PURCHASE_PERCENT",
+    },
+    "min_purchase_percent": {
+        "required": False,
+        "type": "float",
+        "default": "1",
+        "env_var": "MIN_PURCHASE_PERCENT",
     },
     "renewal_window_days": {
         "required": False,

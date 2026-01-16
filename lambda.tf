@@ -35,7 +35,9 @@ resource "aws_lambda_function" "scheduler" {
       ENABLE_DATABASE_SP          = tostring(local.database_enabled)
       ENABLE_SAGEMAKER_SP         = tostring(local.sagemaker_enabled)
       COVERAGE_TARGET_PERCENT     = tostring(local.coverage_target_percent)
+      PURCHASE_STRATEGY_TYPE      = local.purchase_strategy_type
       MAX_PURCHASE_PERCENT        = tostring(local.max_purchase_percent)
+      MIN_PURCHASE_PERCENT        = tostring(local.min_purchase_percent)
       RENEWAL_WINDOW_DAYS         = tostring(local.renewal_window_days)
       LOOKBACK_DAYS               = tostring(local.lookback_days)
       MIN_DATA_DAYS               = tostring(local.min_data_days)
