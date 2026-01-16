@@ -107,7 +107,7 @@ The module consists of two Lambda functions with an SQS queue between them:
 ```hcl
 module "savings_plans" {
   source  = "etiennechabert/sp-autopilot/aws"
-  # version = "~> 1.0"  # Pin to version when using in production
+  version = "~> 2.0"
 
   purchase_strategy = {
     coverage_target_percent = 90
@@ -155,7 +155,7 @@ This enables **Compute Savings Plans** (default). For other configurations:
 ```hcl
 module "savings_plans" {
   source  = "etiennechabert/sp-autopilot/aws"
-  # version = "~> 1.0"  # Pin to version when using in production
+  version = "~> 2.0"
 
   purchase_strategy = {
     coverage_target_percent = 90
@@ -197,7 +197,7 @@ module "savings_plans" {
 ```hcl
 module "savings_plans" {
   source  = "etiennechabert/sp-autopilot/aws"
-  # version = "~> 1.0"  # Pin to version when using in production
+  version = "~> 2.0"
 
   purchase_strategy = {
     coverage_target_percent = 90
@@ -240,7 +240,7 @@ module "savings_plans" {
 ```hcl
 module "savings_plans" {
   source  = "etiennechabert/sp-autopilot/aws"
-  # version = "~> 1.0"  # Pin to version when using in production
+  version = "~> 2.0"
 
   purchase_strategy = {
     coverage_target_percent = 90
@@ -304,7 +304,7 @@ variable "teams_webhook_url" {
 
 module "savings_plans" {
   source  = "etiennechabert/sp-autopilot/aws"
-  # version = "~> 1.0"  # Pin to version when using in production
+  version = "~> 2.0"
 
   purchase_strategy = {
     coverage_target_percent = 90
@@ -604,12 +604,12 @@ To cancel a scheduled purchase before it executes:
 
 When using AWS Organizations, Savings Plans must be purchased from the **management account**. Deploy this module in a secondary account and configure cross-account access using per-Lambda roles for least privilege.
 
-### Configuration
+### Configuration (v2.0)
 
 ```hcl
 module "savings_plans" {
   source  = "etiennechabert/sp-autopilot/aws"
-  # version = "~> 1.0"  # Pin to version when using in production
+  version = "~> 2.0"
 
   # Per-Lambda roles for least privilege access
   lambda_config = {

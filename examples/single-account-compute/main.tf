@@ -55,11 +55,11 @@ module "savings_plans" {
     }
   }
 
-  # Scheduling - spread evenly across the month (override via var.scheduler for testing)
+  # Scheduling - spread evenly across the month
   scheduler = {
-    scheduler = try(var.scheduler.scheduler, "cron(0 8 1 * ? *)")  # 1st of month at 8:00 AM UTC
-    purchaser = try(var.scheduler.purchaser, "cron(0 8 10 * ? *)") # 10th of month at 8:00 AM UTC (9-day review window)
-    reporter  = try(var.scheduler.reporter, "cron(0 9 20 * ? *)")  # 20th of month at 9:00 AM UTC
+    scheduler = "cron(0 8 1 * ? *)"  # 1st of month at 8:00 AM UTC
+    purchaser = "cron(0 8 10 * ? *)" # 10th of month at 8:00 AM UTC (9-day review window)
+    reporter  = "cron(0 9 20 * ? *)" # 20th of month at 9:00 AM UTC
   }
 
   # Notifications
@@ -81,20 +81,14 @@ module "savings_plans" {
     error_threshold = 1
   }
 
-  # Lambda configuration (using defaults with error alarms enabled, override via var.lambda_config for testing)
+  # Lambda configuration (using defaults with error alarms enabled)
   lambda_config = {
     scheduler = {
-      dry_run     = try(var.lambda_config.scheduler.dry_run, true) # Start in dry-run mode - emails only
+      dry_run     = true # Start in dry-run mode - emails only
       error_alarm = true
     }
-    purchaser = {
-      enabled     = try(var.lambda_config.purchaser.enabled, true)
-      error_alarm = true
-    }
-    reporter = {
-      enabled     = try(var.lambda_config.reporter.enabled, true)
-      error_alarm = true
-    }
+    purchaser = { error_alarm = true }
+    reporter  = { error_alarm = true }
   }
 
   # Tagging
