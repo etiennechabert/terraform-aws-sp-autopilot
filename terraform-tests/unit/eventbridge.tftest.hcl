@@ -865,22 +865,22 @@ run "test_purchaser_lambda_permission_eventbridge" {
   }
 
   assert {
-    condition     = aws_lambda_permission.purchaser_eventbridge.statement_id == "AllowExecutionFromEventBridge"
+    condition     = aws_lambda_permission.purchaser_eventbridge[0].statement_id == "AllowExecutionFromEventBridge"
     error_message = "Purchaser Lambda permission should have correct statement_id"
   }
 
   assert {
-    condition     = aws_lambda_permission.purchaser_eventbridge.action == "lambda:InvokeFunction"
+    condition     = aws_lambda_permission.purchaser_eventbridge[0].action == "lambda:InvokeFunction"
     error_message = "Purchaser Lambda permission should allow InvokeFunction action"
   }
 
   assert {
-    condition     = aws_lambda_permission.purchaser_eventbridge.function_name == "sp-autopilot-purchaser"
+    condition     = aws_lambda_permission.purchaser_eventbridge[0].function_name == "sp-autopilot-purchaser"
     error_message = "Purchaser Lambda permission should reference correct function name"
   }
 
   assert {
-    condition     = aws_lambda_permission.purchaser_eventbridge.principal == "events.amazonaws.com"
+    condition     = aws_lambda_permission.purchaser_eventbridge[0].principal == "events.amazonaws.com"
     error_message = "Purchaser Lambda permission should have events.amazonaws.com as principal"
   }
 
