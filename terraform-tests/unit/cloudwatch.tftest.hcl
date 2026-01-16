@@ -30,8 +30,22 @@ run "test_scheduler_log_group_naming" {
   command = plan
 
   variables {
-    enable_compute_sp = true
-    dry_run           = true
+    purchase_strategy = {
+      coverage_target_percent = 80
+      max_coverage_cap        = 90
+      simple = {
+        max_purchase_percent = 5
+      }
+    }
+    sp_plans = {
+      compute = {
+        enabled              = true
+        all_upfront_one_year = 1
+      }
+    }
+    notifications = {
+      emails = ["test@example.com"]
+    }
   }
 
   assert {
@@ -50,8 +64,22 @@ run "test_purchaser_log_group_naming" {
   command = plan
 
   variables {
-    enable_compute_sp = true
-    dry_run           = true
+    purchase_strategy = {
+      coverage_target_percent = 80
+      max_coverage_cap        = 90
+      simple = {
+        max_purchase_percent = 5
+      }
+    }
+    sp_plans = {
+      compute = {
+        enabled              = true
+        all_upfront_one_year = 1
+      }
+    }
+    notifications = {
+      emails = ["test@example.com"]
+    }
   }
 
   assert {
@@ -70,8 +98,22 @@ run "test_reporter_log_group_naming" {
   command = plan
 
   variables {
-    enable_compute_sp = true
-    dry_run           = true
+    purchase_strategy = {
+      coverage_target_percent = 80
+      max_coverage_cap        = 90
+      simple = {
+        max_purchase_percent = 5
+      }
+    }
+    sp_plans = {
+      compute = {
+        enabled              = true
+        all_upfront_one_year = 1
+      }
+    }
+    notifications = {
+      emails = ["test@example.com"]
+    }
   }
 
   assert {
@@ -90,8 +132,22 @@ run "test_log_groups_retention" {
   command = plan
 
   variables {
-    enable_compute_sp = true
-    dry_run           = true
+    purchase_strategy = {
+      coverage_target_percent = 80
+      max_coverage_cap        = 90
+      simple = {
+        max_purchase_percent = 5
+      }
+    }
+    sp_plans = {
+      compute = {
+        enabled              = true
+        all_upfront_one_year = 1
+      }
+    }
+    notifications = {
+      emails = ["test@example.com"]
+    }
   }
 
   assert {
@@ -115,8 +171,22 @@ run "test_log_groups_tags" {
   command = plan
 
   variables {
-    enable_compute_sp = true
-    dry_run           = true
+    purchase_strategy = {
+      coverage_target_percent = 80
+      max_coverage_cap        = 90
+      simple = {
+        max_purchase_percent = 5
+      }
+    }
+    sp_plans = {
+      compute = {
+        enabled              = true
+        all_upfront_one_year = 1
+      }
+    }
+    notifications = {
+      emails = ["test@example.com"]
+    }
     tags = {
       Environment = "test"
       Owner       = "platform-team"
@@ -163,9 +233,27 @@ run "test_lambda_error_alarms_enabled" {
   command = plan
 
   variables {
-    enable_compute_sp         = true
-    dry_run                   = true
-    enable_lambda_error_alarm = true
+    purchase_strategy = {
+      coverage_target_percent = 80
+      max_coverage_cap        = 90
+      simple = {
+        max_purchase_percent = 5
+      }
+    }
+    sp_plans = {
+      compute = {
+        enabled              = true
+        all_upfront_one_year = 1
+      }
+    }
+    notifications = {
+      emails = ["test@example.com"]
+    }
+    lambda_config = {
+      scheduler = { error_alarm = true }
+      purchaser = { error_alarm = true }
+      reporter  = { error_alarm = true }
+    }
   }
 
   assert {
@@ -189,9 +277,27 @@ run "test_lambda_error_alarms_disabled" {
   command = plan
 
   variables {
-    enable_compute_sp         = true
-    dry_run                   = true
-    enable_lambda_error_alarm = false
+    purchase_strategy = {
+      coverage_target_percent = 80
+      max_coverage_cap        = 90
+      simple = {
+        max_purchase_percent = 5
+      }
+    }
+    sp_plans = {
+      compute = {
+        enabled              = true
+        all_upfront_one_year = 1
+      }
+    }
+    notifications = {
+      emails = ["test@example.com"]
+    }
+    lambda_config = {
+      scheduler = { error_alarm = false }
+      purchaser = { error_alarm = false }
+      reporter  = { error_alarm = false }
+    }
   }
 
   assert {
@@ -215,9 +321,27 @@ run "test_scheduler_error_alarm_naming" {
   command = plan
 
   variables {
-    enable_compute_sp         = true
-    dry_run                   = true
-    enable_lambda_error_alarm = true
+    purchase_strategy = {
+      coverage_target_percent = 80
+      max_coverage_cap        = 90
+      simple = {
+        max_purchase_percent = 5
+      }
+    }
+    sp_plans = {
+      compute = {
+        enabled              = true
+        all_upfront_one_year = 1
+      }
+    }
+    notifications = {
+      emails = ["test@example.com"]
+    }
+    lambda_config = {
+      scheduler = { error_alarm = true }
+      purchaser = { error_alarm = true }
+      reporter  = { error_alarm = true }
+    }
   }
 
   assert {
@@ -236,9 +360,27 @@ run "test_purchaser_error_alarm_naming" {
   command = plan
 
   variables {
-    enable_compute_sp         = true
-    dry_run                   = true
-    enable_lambda_error_alarm = true
+    purchase_strategy = {
+      coverage_target_percent = 80
+      max_coverage_cap        = 90
+      simple = {
+        max_purchase_percent = 5
+      }
+    }
+    sp_plans = {
+      compute = {
+        enabled              = true
+        all_upfront_one_year = 1
+      }
+    }
+    notifications = {
+      emails = ["test@example.com"]
+    }
+    lambda_config = {
+      scheduler = { error_alarm = true }
+      purchaser = { error_alarm = true }
+      reporter  = { error_alarm = true }
+    }
   }
 
   assert {
@@ -257,9 +399,27 @@ run "test_reporter_error_alarm_naming" {
   command = plan
 
   variables {
-    enable_compute_sp         = true
-    dry_run                   = true
-    enable_lambda_error_alarm = true
+    purchase_strategy = {
+      coverage_target_percent = 80
+      max_coverage_cap        = 90
+      simple = {
+        max_purchase_percent = 5
+      }
+    }
+    sp_plans = {
+      compute = {
+        enabled              = true
+        all_upfront_one_year = 1
+      }
+    }
+    notifications = {
+      emails = ["test@example.com"]
+    }
+    lambda_config = {
+      scheduler = { error_alarm = true }
+      purchaser = { error_alarm = true }
+      reporter  = { error_alarm = true }
+    }
   }
 
   assert {
@@ -278,9 +438,27 @@ run "test_error_alarms_metric_configuration" {
   command = plan
 
   variables {
-    enable_compute_sp         = true
-    dry_run                   = true
-    enable_lambda_error_alarm = true
+    purchase_strategy = {
+      coverage_target_percent = 80
+      max_coverage_cap        = 90
+      simple = {
+        max_purchase_percent = 5
+      }
+    }
+    sp_plans = {
+      compute = {
+        enabled              = true
+        all_upfront_one_year = 1
+      }
+    }
+    notifications = {
+      emails = ["test@example.com"]
+    }
+    lambda_config = {
+      scheduler = { error_alarm = true }
+      purchaser = { error_alarm = true }
+      reporter  = { error_alarm = true }
+    }
   }
 
   assert {
@@ -314,10 +492,30 @@ run "test_error_alarms_threshold_configuration" {
   command = plan
 
   variables {
-    enable_compute_sp         = true
-    dry_run                   = true
-    enable_lambda_error_alarm = true
-    lambda_error_threshold    = 1
+    purchase_strategy = {
+      coverage_target_percent = 80
+      max_coverage_cap        = 90
+      simple = {
+        max_purchase_percent = 5
+      }
+    }
+    sp_plans = {
+      compute = {
+        enabled              = true
+        all_upfront_one_year = 1
+      }
+    }
+    notifications = {
+      emails = ["test@example.com"]
+    }
+    lambda_config = {
+      scheduler = { error_alarm = true }
+      purchaser = { error_alarm = true }
+      reporter  = { error_alarm = true }
+    }
+    monitoring = {
+      error_threshold = 1
+    }
   }
 
   assert {
@@ -341,10 +539,30 @@ run "test_error_alarms_custom_threshold" {
   command = plan
 
   variables {
-    enable_compute_sp         = true
-    dry_run                   = true
-    enable_lambda_error_alarm = true
-    lambda_error_threshold    = 5
+    purchase_strategy = {
+      coverage_target_percent = 80
+      max_coverage_cap        = 90
+      simple = {
+        max_purchase_percent = 5
+      }
+    }
+    sp_plans = {
+      compute = {
+        enabled              = true
+        all_upfront_one_year = 1
+      }
+    }
+    notifications = {
+      emails = ["test@example.com"]
+    }
+    lambda_config = {
+      scheduler = { error_alarm = true }
+      purchaser = { error_alarm = true }
+      reporter  = { error_alarm = true }
+    }
+    monitoring = {
+      error_threshold = 5
+    }
   }
 
   assert {
@@ -368,9 +586,27 @@ run "test_error_alarms_dimensions" {
   command = plan
 
   variables {
-    enable_compute_sp         = true
-    dry_run                   = true
-    enable_lambda_error_alarm = true
+    purchase_strategy = {
+      coverage_target_percent = 80
+      max_coverage_cap        = 90
+      simple = {
+        max_purchase_percent = 5
+      }
+    }
+    sp_plans = {
+      compute = {
+        enabled              = true
+        all_upfront_one_year = 1
+      }
+    }
+    notifications = {
+      emails = ["test@example.com"]
+    }
+    lambda_config = {
+      scheduler = { error_alarm = true }
+      purchaser = { error_alarm = true }
+      reporter  = { error_alarm = true }
+    }
   }
 
   assert {
@@ -394,9 +630,27 @@ run "test_error_alarms_alarm_actions" {
   command = plan
 
   variables {
-    enable_compute_sp         = true
-    dry_run                   = true
-    enable_lambda_error_alarm = true
+    purchase_strategy = {
+      coverage_target_percent = 80
+      max_coverage_cap        = 90
+      simple = {
+        max_purchase_percent = 5
+      }
+    }
+    sp_plans = {
+      compute = {
+        enabled              = true
+        all_upfront_one_year = 1
+      }
+    }
+    notifications = {
+      emails = ["test@example.com"]
+    }
+    lambda_config = {
+      scheduler = { error_alarm = true }
+      purchaser = { error_alarm = true }
+      reporter  = { error_alarm = true }
+    }
   }
 
   assert {
@@ -416,9 +670,27 @@ run "test_error_alarms_tags" {
   command = plan
 
   variables {
-    enable_compute_sp         = true
-    dry_run                   = true
-    enable_lambda_error_alarm = true
+    purchase_strategy = {
+      coverage_target_percent = 80
+      max_coverage_cap        = 90
+      simple = {
+        max_purchase_percent = 5
+      }
+    }
+    sp_plans = {
+      compute = {
+        enabled              = true
+        all_upfront_one_year = 1
+      }
+    }
+    notifications = {
+      emails = ["test@example.com"]
+    }
+    lambda_config = {
+      scheduler = { error_alarm = true }
+      purchaser = { error_alarm = true }
+      reporter  = { error_alarm = true }
+    }
     tags = {
       Environment = "test"
       Owner       = "platform-team"

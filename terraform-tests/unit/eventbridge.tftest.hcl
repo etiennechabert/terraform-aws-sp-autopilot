@@ -30,8 +30,22 @@ run "test_scheduler_eventbridge_rule_naming" {
   command = plan
 
   variables {
-    enable_compute_sp = true
-    dry_run           = true
+    purchase_strategy = {
+      coverage_target_percent = 80
+      max_coverage_cap        = 90
+      simple = {
+        max_purchase_percent = 5
+      }
+    }
+    sp_plans = {
+      compute = {
+        enabled              = true
+        all_upfront_one_year = 1
+      }
+    }
+    notifications = {
+      emails = ["test@example.com"]
+    }
   }
 
   assert {
@@ -50,8 +64,22 @@ run "test_scheduler_eventbridge_rule_description" {
   command = plan
 
   variables {
-    enable_compute_sp = true
-    dry_run           = true
+    purchase_strategy = {
+      coverage_target_percent = 80
+      max_coverage_cap        = 90
+      simple = {
+        max_purchase_percent = 5
+      }
+    }
+    sp_plans = {
+      compute = {
+        enabled              = true
+        all_upfront_one_year = 1
+      }
+    }
+    notifications = {
+      emails = ["test@example.com"]
+    }
   }
 
   assert {
@@ -65,8 +93,22 @@ run "test_scheduler_eventbridge_rule_default_schedule" {
   command = plan
 
   variables {
-    enable_compute_sp = true
-    dry_run           = true
+    purchase_strategy = {
+      coverage_target_percent = 80
+      max_coverage_cap        = 90
+      simple = {
+        max_purchase_percent = 5
+      }
+    }
+    sp_plans = {
+      compute = {
+        enabled              = true
+        all_upfront_one_year = 1
+      }
+    }
+    notifications = {
+      emails = ["test@example.com"]
+    }
   }
 
   assert {
@@ -80,9 +122,25 @@ run "test_scheduler_eventbridge_rule_custom_schedule" {
   command = plan
 
   variables {
-    enable_compute_sp  = true
-    dry_run            = true
-    scheduler_schedule = "cron(0 2 1 * ? *)"
+    purchase_strategy = {
+      coverage_target_percent = 80
+      max_coverage_cap        = 90
+      simple = {
+        max_purchase_percent = 5
+      }
+    }
+    sp_plans = {
+      compute = {
+        enabled              = true
+        all_upfront_one_year = 1
+      }
+    }
+    notifications = {
+      emails = ["test@example.com"]
+    }
+    scheduler = {
+      scheduler = "cron(0 2 1 * ? *)"
+    }
   }
 
   assert {
@@ -96,8 +154,22 @@ run "test_scheduler_eventbridge_rule_tags" {
   command = plan
 
   variables {
-    enable_compute_sp = true
-    dry_run           = true
+    purchase_strategy = {
+      coverage_target_percent = 80
+      max_coverage_cap        = 90
+      simple = {
+        max_purchase_percent = 5
+      }
+    }
+    sp_plans = {
+      compute = {
+        enabled              = true
+        all_upfront_one_year = 1
+      }
+    }
+    notifications = {
+      emails = ["test@example.com"]
+    }
     tags = {
       Environment = "test"
       Owner       = "platform-team"
@@ -129,8 +201,22 @@ run "test_purchaser_eventbridge_rule_naming" {
   command = plan
 
   variables {
-    enable_compute_sp = true
-    dry_run           = true
+    purchase_strategy = {
+      coverage_target_percent = 80
+      max_coverage_cap        = 90
+      simple = {
+        max_purchase_percent = 5
+      }
+    }
+    sp_plans = {
+      compute = {
+        enabled              = true
+        all_upfront_one_year = 1
+      }
+    }
+    notifications = {
+      emails = ["test@example.com"]
+    }
   }
 
   assert {
@@ -149,8 +235,22 @@ run "test_purchaser_eventbridge_rule_description" {
   command = plan
 
   variables {
-    enable_compute_sp = true
-    dry_run           = true
+    purchase_strategy = {
+      coverage_target_percent = 80
+      max_coverage_cap        = 90
+      simple = {
+        max_purchase_percent = 5
+      }
+    }
+    sp_plans = {
+      compute = {
+        enabled              = true
+        all_upfront_one_year = 1
+      }
+    }
+    notifications = {
+      emails = ["test@example.com"]
+    }
   }
 
   assert {
@@ -164,8 +264,22 @@ run "test_purchaser_eventbridge_rule_default_schedule" {
   command = plan
 
   variables {
-    enable_compute_sp = true
-    dry_run           = true
+    purchase_strategy = {
+      coverage_target_percent = 80
+      max_coverage_cap        = 90
+      simple = {
+        max_purchase_percent = 5
+      }
+    }
+    sp_plans = {
+      compute = {
+        enabled              = true
+        all_upfront_one_year = 1
+      }
+    }
+    notifications = {
+      emails = ["test@example.com"]
+    }
   }
 
   assert {
@@ -179,9 +293,25 @@ run "test_purchaser_eventbridge_rule_custom_schedule" {
   command = plan
 
   variables {
-    enable_compute_sp  = true
-    dry_run            = true
-    purchaser_schedule = "cron(0 3 1 * ? *)"
+    purchase_strategy = {
+      coverage_target_percent = 80
+      max_coverage_cap        = 90
+      simple = {
+        max_purchase_percent = 5
+      }
+    }
+    sp_plans = {
+      compute = {
+        enabled              = true
+        all_upfront_one_year = 1
+      }
+    }
+    notifications = {
+      emails = ["test@example.com"]
+    }
+    scheduler = {
+      purchaser = "cron(0 3 1 * ? *)"
+    }
   }
 
   assert {
@@ -195,8 +325,22 @@ run "test_purchaser_eventbridge_rule_tags" {
   command = plan
 
   variables {
-    enable_compute_sp = true
-    dry_run           = true
+    purchase_strategy = {
+      coverage_target_percent = 80
+      max_coverage_cap        = 90
+      simple = {
+        max_purchase_percent = 5
+      }
+    }
+    sp_plans = {
+      compute = {
+        enabled              = true
+        all_upfront_one_year = 1
+      }
+    }
+    notifications = {
+      emails = ["test@example.com"]
+    }
     tags = {
       Environment = "test"
       Owner       = "platform-team"
@@ -228,9 +372,25 @@ run "test_reporter_eventbridge_rule_enabled" {
   command = plan
 
   variables {
-    enable_compute_sp = true
-    dry_run           = true
-    enable_reports    = true
+    purchase_strategy = {
+      coverage_target_percent = 80
+      max_coverage_cap        = 90
+      simple = {
+        max_purchase_percent = 5
+      }
+    }
+    sp_plans = {
+      compute = {
+        enabled              = true
+        all_upfront_one_year = 1
+      }
+    }
+    notifications = {
+      emails = ["test@example.com"]
+    }
+    reporting = {
+      enabled = true
+    }
   }
 
   assert {
@@ -249,9 +409,25 @@ run "test_reporter_eventbridge_rule_disabled" {
   command = plan
 
   variables {
-    enable_compute_sp = true
-    dry_run           = true
-    enable_reports    = false
+    purchase_strategy = {
+      coverage_target_percent = 80
+      max_coverage_cap        = 90
+      simple = {
+        max_purchase_percent = 5
+      }
+    }
+    sp_plans = {
+      compute = {
+        enabled              = true
+        all_upfront_one_year = 1
+      }
+    }
+    notifications = {
+      emails = ["test@example.com"]
+    }
+    reporting = {
+      enabled = false
+    }
   }
 
   assert {
@@ -265,9 +441,25 @@ run "test_reporter_eventbridge_rule_description" {
   command = plan
 
   variables {
-    enable_compute_sp = true
-    dry_run           = true
-    enable_reports    = true
+    purchase_strategy = {
+      coverage_target_percent = 80
+      max_coverage_cap        = 90
+      simple = {
+        max_purchase_percent = 5
+      }
+    }
+    sp_plans = {
+      compute = {
+        enabled              = true
+        all_upfront_one_year = 1
+      }
+    }
+    notifications = {
+      emails = ["test@example.com"]
+    }
+    reporting = {
+      enabled = true
+    }
   }
 
   assert {
@@ -281,9 +473,25 @@ run "test_reporter_eventbridge_rule_default_schedule" {
   command = plan
 
   variables {
-    enable_compute_sp = true
-    dry_run           = true
-    enable_reports    = true
+    purchase_strategy = {
+      coverage_target_percent = 80
+      max_coverage_cap        = 90
+      simple = {
+        max_purchase_percent = 5
+      }
+    }
+    sp_plans = {
+      compute = {
+        enabled              = true
+        all_upfront_one_year = 1
+      }
+    }
+    notifications = {
+      emails = ["test@example.com"]
+    }
+    reporting = {
+      enabled = true
+    }
   }
 
   assert {
@@ -297,10 +505,28 @@ run "test_reporter_eventbridge_rule_custom_schedule" {
   command = plan
 
   variables {
-    enable_compute_sp = true
-    dry_run           = true
-    enable_reports    = true
-    report_schedule   = "cron(0 9 1 * ? *)"
+    purchase_strategy = {
+      coverage_target_percent = 80
+      max_coverage_cap        = 90
+      simple = {
+        max_purchase_percent = 5
+      }
+    }
+    sp_plans = {
+      compute = {
+        enabled              = true
+        all_upfront_one_year = 1
+      }
+    }
+    notifications = {
+      emails = ["test@example.com"]
+    }
+    reporting = {
+      enabled = true
+    }
+    scheduler = {
+      reporter = "cron(0 9 1 * ? *)"
+    }
   }
 
   assert {
@@ -348,8 +574,22 @@ run "test_scheduler_eventbridge_target_configuration" {
   command = plan
 
   variables {
-    enable_compute_sp = true
-    dry_run           = true
+    purchase_strategy = {
+      coverage_target_percent = 80
+      max_coverage_cap        = 90
+      simple = {
+        max_purchase_percent = 5
+      }
+    }
+    sp_plans = {
+      compute = {
+        enabled              = true
+        all_upfront_one_year = 1
+      }
+    }
+    notifications = {
+      emails = ["test@example.com"]
+    }
   }
 
   override_resource {
@@ -394,8 +634,22 @@ run "test_purchaser_eventbridge_target_configuration" {
   command = plan
 
   variables {
-    enable_compute_sp = true
-    dry_run           = true
+    purchase_strategy = {
+      coverage_target_percent = 80
+      max_coverage_cap        = 90
+      simple = {
+        max_purchase_percent = 5
+      }
+    }
+    sp_plans = {
+      compute = {
+        enabled              = true
+        all_upfront_one_year = 1
+      }
+    }
+    notifications = {
+      emails = ["test@example.com"]
+    }
   }
 
   override_resource {
@@ -440,9 +694,25 @@ run "test_reporter_eventbridge_target_enabled" {
   command = plan
 
   variables {
-    enable_compute_sp = true
-    dry_run           = true
-    enable_reports    = true
+    purchase_strategy = {
+      coverage_target_percent = 80
+      max_coverage_cap        = 90
+      simple = {
+        max_purchase_percent = 5
+      }
+    }
+    sp_plans = {
+      compute = {
+        enabled              = true
+        all_upfront_one_year = 1
+      }
+    }
+    notifications = {
+      emails = ["test@example.com"]
+    }
+    reporting = {
+      enabled = true
+    }
   }
 
   assert {
@@ -469,9 +739,25 @@ run "test_reporter_eventbridge_target_disabled" {
   command = plan
 
   variables {
-    enable_compute_sp = true
-    dry_run           = true
-    enable_reports    = false
+    purchase_strategy = {
+      coverage_target_percent = 80
+      max_coverage_cap        = 90
+      simple = {
+        max_purchase_percent = 5
+      }
+    }
+    sp_plans = {
+      compute = {
+        enabled              = true
+        all_upfront_one_year = 1
+      }
+    }
+    notifications = {
+      emails = ["test@example.com"]
+    }
+    reporting = {
+      enabled = false
+    }
   }
 
   assert {
@@ -489,8 +775,22 @@ run "test_scheduler_lambda_permission_eventbridge" {
   command = plan
 
   variables {
-    enable_compute_sp = true
-    dry_run           = true
+    purchase_strategy = {
+      coverage_target_percent = 80
+      max_coverage_cap        = 90
+      simple = {
+        max_purchase_percent = 5
+      }
+    }
+    sp_plans = {
+      compute = {
+        enabled              = true
+        all_upfront_one_year = 1
+      }
+    }
+    notifications = {
+      emails = ["test@example.com"]
+    }
   }
 
   assert {
@@ -526,8 +826,22 @@ run "test_purchaser_lambda_permission_eventbridge" {
   command = plan
 
   variables {
-    enable_compute_sp = true
-    dry_run           = true
+    purchase_strategy = {
+      coverage_target_percent = 80
+      max_coverage_cap        = 90
+      simple = {
+        max_purchase_percent = 5
+      }
+    }
+    sp_plans = {
+      compute = {
+        enabled              = true
+        all_upfront_one_year = 1
+      }
+    }
+    notifications = {
+      emails = ["test@example.com"]
+    }
   }
 
   assert {
@@ -563,9 +877,25 @@ run "test_reporter_lambda_permission_enabled" {
   command = plan
 
   variables {
-    enable_compute_sp = true
-    dry_run           = true
-    enable_reports    = true
+    purchase_strategy = {
+      coverage_target_percent = 80
+      max_coverage_cap        = 90
+      simple = {
+        max_purchase_percent = 5
+      }
+    }
+    sp_plans = {
+      compute = {
+        enabled              = true
+        all_upfront_one_year = 1
+      }
+    }
+    notifications = {
+      emails = ["test@example.com"]
+    }
+    reporting = {
+      enabled = true
+    }
   }
 
   assert {
@@ -602,9 +932,25 @@ run "test_reporter_lambda_permission_disabled" {
   command = plan
 
   variables {
-    enable_compute_sp = true
-    dry_run           = true
-    enable_reports    = false
+    purchase_strategy = {
+      coverage_target_percent = 80
+      max_coverage_cap        = 90
+      simple = {
+        max_purchase_percent = 5
+      }
+    }
+    sp_plans = {
+      compute = {
+        enabled              = true
+        all_upfront_one_year = 1
+      }
+    }
+    notifications = {
+      emails = ["test@example.com"]
+    }
+    reporting = {
+      enabled = false
+    }
   }
 
   assert {

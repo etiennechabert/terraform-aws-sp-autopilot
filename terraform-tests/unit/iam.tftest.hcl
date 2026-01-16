@@ -30,8 +30,22 @@ run "test_scheduler_role_naming" {
   command = plan
 
   variables {
-    enable_compute_sp = true
-    dry_run           = true
+    purchase_strategy = {
+      coverage_target_percent = 80
+      max_coverage_cap        = 90
+      simple = {
+        max_purchase_percent = 5
+      }
+    }
+    sp_plans = {
+      compute = {
+        enabled              = true
+        all_upfront_one_year = 1
+      }
+    }
+    notifications = {
+      emails = ["test@example.com"]
+    }
   }
 
   assert {
@@ -50,8 +64,22 @@ run "test_scheduler_role_assume_policy" {
   command = plan
 
   variables {
-    enable_compute_sp = true
-    dry_run           = true
+    purchase_strategy = {
+      coverage_target_percent = 80
+      max_coverage_cap        = 90
+      simple = {
+        max_purchase_percent = 5
+      }
+    }
+    sp_plans = {
+      compute = {
+        enabled              = true
+        all_upfront_one_year = 1
+      }
+    }
+    notifications = {
+      emails = ["test@example.com"]
+    }
   }
 
   assert {
@@ -75,8 +103,22 @@ run "test_scheduler_role_tags" {
   command = plan
 
   variables {
-    enable_compute_sp = true
-    dry_run           = true
+    purchase_strategy = {
+      coverage_target_percent = 80
+      max_coverage_cap        = 90
+      simple = {
+        max_purchase_percent = 5
+      }
+    }
+    sp_plans = {
+      compute = {
+        enabled              = true
+        all_upfront_one_year = 1
+      }
+    }
+    notifications = {
+      emails = ["test@example.com"]
+    }
     tags = {
       Environment = "test"
       Owner       = "platform-team"
@@ -109,8 +151,22 @@ run "test_scheduler_cloudwatch_logs_policy" {
   command = plan
 
   variables {
-    enable_compute_sp = true
-    dry_run           = true
+    purchase_strategy = {
+      coverage_target_percent = 80
+      max_coverage_cap        = 90
+      simple = {
+        max_purchase_percent = 5
+      }
+    }
+    sp_plans = {
+      compute = {
+        enabled              = true
+        all_upfront_one_year = 1
+      }
+    }
+    notifications = {
+      emails = ["test@example.com"]
+    }
   }
 
   assert {
@@ -131,8 +187,22 @@ run "test_scheduler_cost_explorer_policy" {
   command = plan
 
   variables {
-    enable_compute_sp = true
-    dry_run           = true
+    purchase_strategy = {
+      coverage_target_percent = 80
+      max_coverage_cap        = 90
+      simple = {
+        max_purchase_percent = 5
+      }
+    }
+    sp_plans = {
+      compute = {
+        enabled              = true
+        all_upfront_one_year = 1
+      }
+    }
+    notifications = {
+      emails = ["test@example.com"]
+    }
   }
 
   assert {
@@ -152,8 +222,22 @@ run "test_scheduler_sqs_policy" {
   command = plan
 
   variables {
-    enable_compute_sp = true
-    dry_run           = true
+    purchase_strategy = {
+      coverage_target_percent = 80
+      max_coverage_cap        = 90
+      simple = {
+        max_purchase_percent = 5
+      }
+    }
+    sp_plans = {
+      compute = {
+        enabled              = true
+        all_upfront_one_year = 1
+      }
+    }
+    notifications = {
+      emails = ["test@example.com"]
+    }
   }
 
   assert {
@@ -173,8 +257,22 @@ run "test_scheduler_sns_policy" {
   command = plan
 
   variables {
-    enable_compute_sp = true
-    dry_run           = true
+    purchase_strategy = {
+      coverage_target_percent = 80
+      max_coverage_cap        = 90
+      simple = {
+        max_purchase_percent = 5
+      }
+    }
+    sp_plans = {
+      compute = {
+        enabled              = true
+        all_upfront_one_year = 1
+      }
+    }
+    notifications = {
+      emails = ["test@example.com"]
+    }
   }
 
   assert {
@@ -194,8 +292,22 @@ run "test_scheduler_savingsplans_policy" {
   command = plan
 
   variables {
-    enable_compute_sp = true
-    dry_run           = true
+    purchase_strategy = {
+      coverage_target_percent = 80
+      max_coverage_cap        = 90
+      simple = {
+        max_purchase_percent = 5
+      }
+    }
+    sp_plans = {
+      compute = {
+        enabled              = true
+        all_upfront_one_year = 1
+      }
+    }
+    notifications = {
+      emails = ["test@example.com"]
+    }
   }
 
   assert {
@@ -215,9 +327,33 @@ run "test_scheduler_assume_role_policy_not_created" {
   command = plan
 
   variables {
-    enable_compute_sp           = true
-    dry_run                     = true
-    management_account_role_arn = null
+    purchase_strategy = {
+      coverage_target_percent = 80
+      max_coverage_cap        = 90
+      simple = {
+        max_purchase_percent = 5
+      }
+    }
+    sp_plans = {
+      compute = {
+        enabled              = true
+        all_upfront_one_year = 1
+      }
+    }
+    notifications = {
+      emails = ["test@example.com"]
+    }
+    lambda_config = {
+      scheduler = {
+        assume_role_arn = null
+      }
+      purchaser = {
+        assume_role_arn = null
+      }
+      reporter = {
+        assume_role_arn = null
+      }
+    }
   }
 
   assert {
@@ -231,9 +367,33 @@ run "test_scheduler_assume_role_policy_created" {
   command = plan
 
   variables {
-    enable_compute_sp           = true
-    dry_run                     = true
-    management_account_role_arn = "arn:aws:iam::999888777666:role/OrganizationAccountAccessRole"
+    purchase_strategy = {
+      coverage_target_percent = 80
+      max_coverage_cap        = 90
+      simple = {
+        max_purchase_percent = 5
+      }
+    }
+    sp_plans = {
+      compute = {
+        enabled              = true
+        all_upfront_one_year = 1
+      }
+    }
+    notifications = {
+      emails = ["test@example.com"]
+    }
+    lambda_config = {
+      scheduler = {
+        assume_role_arn = "arn:aws:iam::999888777666:role/OrganizationAccountAccessRole"
+      }
+      purchaser = {
+        assume_role_arn = "arn:aws:iam::999888777666:role/OrganizationAccountAccessRole"
+      }
+      reporter = {
+        assume_role_arn = "arn:aws:iam::999888777666:role/OrganizationAccountAccessRole"
+      }
+    }
   }
 
   assert {
@@ -271,8 +431,22 @@ run "test_purchaser_role_naming" {
   command = plan
 
   variables {
-    enable_compute_sp = true
-    dry_run           = true
+    purchase_strategy = {
+      coverage_target_percent = 80
+      max_coverage_cap        = 90
+      simple = {
+        max_purchase_percent = 5
+      }
+    }
+    sp_plans = {
+      compute = {
+        enabled              = true
+        all_upfront_one_year = 1
+      }
+    }
+    notifications = {
+      emails = ["test@example.com"]
+    }
   }
 
   assert {
@@ -291,8 +465,22 @@ run "test_purchaser_role_assume_policy" {
   command = plan
 
   variables {
-    enable_compute_sp = true
-    dry_run           = true
+    purchase_strategy = {
+      coverage_target_percent = 80
+      max_coverage_cap        = 90
+      simple = {
+        max_purchase_percent = 5
+      }
+    }
+    sp_plans = {
+      compute = {
+        enabled              = true
+        all_upfront_one_year = 1
+      }
+    }
+    notifications = {
+      emails = ["test@example.com"]
+    }
   }
 
   assert {
@@ -316,8 +504,22 @@ run "test_purchaser_role_tags" {
   command = plan
 
   variables {
-    enable_compute_sp = true
-    dry_run           = true
+    purchase_strategy = {
+      coverage_target_percent = 80
+      max_coverage_cap        = 90
+      simple = {
+        max_purchase_percent = 5
+      }
+    }
+    sp_plans = {
+      compute = {
+        enabled              = true
+        all_upfront_one_year = 1
+      }
+    }
+    notifications = {
+      emails = ["test@example.com"]
+    }
     tags = {
       Environment = "test"
       Owner       = "platform-team"
@@ -350,8 +552,22 @@ run "test_purchaser_cloudwatch_logs_policy" {
   command = plan
 
   variables {
-    enable_compute_sp = true
-    dry_run           = true
+    purchase_strategy = {
+      coverage_target_percent = 80
+      max_coverage_cap        = 90
+      simple = {
+        max_purchase_percent = 5
+      }
+    }
+    sp_plans = {
+      compute = {
+        enabled              = true
+        all_upfront_one_year = 1
+      }
+    }
+    notifications = {
+      emails = ["test@example.com"]
+    }
   }
 
   override_resource {
@@ -391,8 +607,22 @@ run "test_purchaser_cost_explorer_policy" {
   command = plan
 
   variables {
-    enable_compute_sp = true
-    dry_run           = true
+    purchase_strategy = {
+      coverage_target_percent = 80
+      max_coverage_cap        = 90
+      simple = {
+        max_purchase_percent = 5
+      }
+    }
+    sp_plans = {
+      compute = {
+        enabled              = true
+        all_upfront_one_year = 1
+      }
+    }
+    notifications = {
+      emails = ["test@example.com"]
+    }
   }
 
   assert {
@@ -416,8 +646,22 @@ run "test_purchaser_sqs_policy" {
   command = plan
 
   variables {
-    enable_compute_sp = true
-    dry_run           = true
+    purchase_strategy = {
+      coverage_target_percent = 80
+      max_coverage_cap        = 90
+      simple = {
+        max_purchase_percent = 5
+      }
+    }
+    sp_plans = {
+      compute = {
+        enabled              = true
+        all_upfront_one_year = 1
+      }
+    }
+    notifications = {
+      emails = ["test@example.com"]
+    }
   }
 
   assert {
@@ -435,8 +679,22 @@ run "test_purchaser_sns_policy" {
   command = plan
 
   variables {
-    enable_compute_sp = true
-    dry_run           = true
+    purchase_strategy = {
+      coverage_target_percent = 80
+      max_coverage_cap        = 90
+      simple = {
+        max_purchase_percent = 5
+      }
+    }
+    sp_plans = {
+      compute = {
+        enabled              = true
+        all_upfront_one_year = 1
+      }
+    }
+    notifications = {
+      emails = ["test@example.com"]
+    }
   }
 
   assert {
@@ -453,8 +711,22 @@ run "test_purchaser_savingsplans_policy" {
   command = plan
 
   variables {
-    enable_compute_sp = true
-    dry_run           = true
+    purchase_strategy = {
+      coverage_target_percent = 80
+      max_coverage_cap        = 90
+      simple = {
+        max_purchase_percent = 5
+      }
+    }
+    sp_plans = {
+      compute = {
+        enabled              = true
+        all_upfront_one_year = 1
+      }
+    }
+    notifications = {
+      emails = ["test@example.com"]
+    }
   }
 
   assert {
@@ -483,9 +755,33 @@ run "test_purchaser_assume_role_policy_not_created" {
   command = plan
 
   variables {
-    enable_compute_sp           = true
-    dry_run                     = true
-    management_account_role_arn = null
+    purchase_strategy = {
+      coverage_target_percent = 80
+      max_coverage_cap        = 90
+      simple = {
+        max_purchase_percent = 5
+      }
+    }
+    sp_plans = {
+      compute = {
+        enabled              = true
+        all_upfront_one_year = 1
+      }
+    }
+    notifications = {
+      emails = ["test@example.com"]
+    }
+    lambda_config = {
+      scheduler = {
+        assume_role_arn = null
+      }
+      purchaser = {
+        assume_role_arn = null
+      }
+      reporter = {
+        assume_role_arn = null
+      }
+    }
   }
 
   assert {
@@ -499,9 +795,33 @@ run "test_purchaser_assume_role_policy_created" {
   command = plan
 
   variables {
-    enable_compute_sp           = true
-    dry_run                     = true
-    management_account_role_arn = "arn:aws:iam::999888777666:role/OrganizationAccountAccessRole"
+    purchase_strategy = {
+      coverage_target_percent = 80
+      max_coverage_cap        = 90
+      simple = {
+        max_purchase_percent = 5
+      }
+    }
+    sp_plans = {
+      compute = {
+        enabled              = true
+        all_upfront_one_year = 1
+      }
+    }
+    notifications = {
+      emails = ["test@example.com"]
+    }
+    lambda_config = {
+      scheduler = {
+        assume_role_arn = "arn:aws:iam::999888777666:role/OrganizationAccountAccessRole"
+      }
+      purchaser = {
+        assume_role_arn = "arn:aws:iam::999888777666:role/OrganizationAccountAccessRole"
+      }
+      reporter = {
+        assume_role_arn = "arn:aws:iam::999888777666:role/OrganizationAccountAccessRole"
+      }
+    }
   }
 
   assert {
@@ -539,8 +859,22 @@ run "test_reporter_role_naming" {
   command = plan
 
   variables {
-    enable_compute_sp = true
-    dry_run           = true
+    purchase_strategy = {
+      coverage_target_percent = 80
+      max_coverage_cap        = 90
+      simple = {
+        max_purchase_percent = 5
+      }
+    }
+    sp_plans = {
+      compute = {
+        enabled              = true
+        all_upfront_one_year = 1
+      }
+    }
+    notifications = {
+      emails = ["test@example.com"]
+    }
   }
 
   assert {
@@ -559,8 +893,22 @@ run "test_reporter_role_assume_policy" {
   command = plan
 
   variables {
-    enable_compute_sp = true
-    dry_run           = true
+    purchase_strategy = {
+      coverage_target_percent = 80
+      max_coverage_cap        = 90
+      simple = {
+        max_purchase_percent = 5
+      }
+    }
+    sp_plans = {
+      compute = {
+        enabled              = true
+        all_upfront_one_year = 1
+      }
+    }
+    notifications = {
+      emails = ["test@example.com"]
+    }
   }
 
   assert {
@@ -584,8 +932,22 @@ run "test_reporter_role_tags" {
   command = plan
 
   variables {
-    enable_compute_sp = true
-    dry_run           = true
+    purchase_strategy = {
+      coverage_target_percent = 80
+      max_coverage_cap        = 90
+      simple = {
+        max_purchase_percent = 5
+      }
+    }
+    sp_plans = {
+      compute = {
+        enabled              = true
+        all_upfront_one_year = 1
+      }
+    }
+    notifications = {
+      emails = ["test@example.com"]
+    }
     tags = {
       Environment = "test"
       Owner       = "platform-team"
@@ -618,8 +980,22 @@ run "test_reporter_cloudwatch_logs_policy" {
   command = plan
 
   variables {
-    enable_compute_sp = true
-    dry_run           = true
+    purchase_strategy = {
+      coverage_target_percent = 80
+      max_coverage_cap        = 90
+      simple = {
+        max_purchase_percent = 5
+      }
+    }
+    sp_plans = {
+      compute = {
+        enabled              = true
+        all_upfront_one_year = 1
+      }
+    }
+    notifications = {
+      emails = ["test@example.com"]
+    }
   }
 
   assert {
@@ -636,8 +1012,22 @@ run "test_reporter_cost_explorer_policy" {
   command = plan
 
   variables {
-    enable_compute_sp = true
-    dry_run           = true
+    purchase_strategy = {
+      coverage_target_percent = 80
+      max_coverage_cap        = 90
+      simple = {
+        max_purchase_percent = 5
+      }
+    }
+    sp_plans = {
+      compute = {
+        enabled              = true
+        all_upfront_one_year = 1
+      }
+    }
+    notifications = {
+      emails = ["test@example.com"]
+    }
   }
 
   assert {
@@ -661,8 +1051,22 @@ run "test_reporter_s3_policy" {
   command = plan
 
   variables {
-    enable_compute_sp = true
-    dry_run           = true
+    purchase_strategy = {
+      coverage_target_percent = 80
+      max_coverage_cap        = 90
+      simple = {
+        max_purchase_percent = 5
+      }
+    }
+    sp_plans = {
+      compute = {
+        enabled              = true
+        all_upfront_one_year = 1
+      }
+    }
+    notifications = {
+      emails = ["test@example.com"]
+    }
   }
 
   assert {
@@ -679,8 +1083,22 @@ run "test_reporter_sns_policy" {
   command = plan
 
   variables {
-    enable_compute_sp = true
-    dry_run           = true
+    purchase_strategy = {
+      coverage_target_percent = 80
+      max_coverage_cap        = 90
+      simple = {
+        max_purchase_percent = 5
+      }
+    }
+    sp_plans = {
+      compute = {
+        enabled              = true
+        all_upfront_one_year = 1
+      }
+    }
+    notifications = {
+      emails = ["test@example.com"]
+    }
   }
 
   assert {
@@ -697,8 +1115,22 @@ run "test_reporter_savingsplans_policy" {
   command = plan
 
   variables {
-    enable_compute_sp = true
-    dry_run           = true
+    purchase_strategy = {
+      coverage_target_percent = 80
+      max_coverage_cap        = 90
+      simple = {
+        max_purchase_percent = 5
+      }
+    }
+    sp_plans = {
+      compute = {
+        enabled              = true
+        all_upfront_one_year = 1
+      }
+    }
+    notifications = {
+      emails = ["test@example.com"]
+    }
   }
 
   assert {
@@ -722,9 +1154,33 @@ run "test_reporter_assume_role_policy_not_created" {
   command = plan
 
   variables {
-    enable_compute_sp           = true
-    dry_run                     = true
-    management_account_role_arn = null
+    purchase_strategy = {
+      coverage_target_percent = 80
+      max_coverage_cap        = 90
+      simple = {
+        max_purchase_percent = 5
+      }
+    }
+    sp_plans = {
+      compute = {
+        enabled              = true
+        all_upfront_one_year = 1
+      }
+    }
+    notifications = {
+      emails = ["test@example.com"]
+    }
+    lambda_config = {
+      scheduler = {
+        assume_role_arn = null
+      }
+      purchaser = {
+        assume_role_arn = null
+      }
+      reporter = {
+        assume_role_arn = null
+      }
+    }
   }
 
   assert {
@@ -738,9 +1194,33 @@ run "test_reporter_assume_role_policy_created" {
   command = plan
 
   variables {
-    enable_compute_sp           = true
-    dry_run                     = true
-    management_account_role_arn = "arn:aws:iam::999888777666:role/OrganizationAccountAccessRole"
+    purchase_strategy = {
+      coverage_target_percent = 80
+      max_coverage_cap        = 90
+      simple = {
+        max_purchase_percent = 5
+      }
+    }
+    sp_plans = {
+      compute = {
+        enabled              = true
+        all_upfront_one_year = 1
+      }
+    }
+    notifications = {
+      emails = ["test@example.com"]
+    }
+    lambda_config = {
+      scheduler = {
+        assume_role_arn = "arn:aws:iam::999888777666:role/OrganizationAccountAccessRole"
+      }
+      purchaser = {
+        assume_role_arn = "arn:aws:iam::999888777666:role/OrganizationAccountAccessRole"
+      }
+      reporter = {
+        assume_role_arn = "arn:aws:iam::999888777666:role/OrganizationAccountAccessRole"
+      }
+    }
   }
 
   assert {
