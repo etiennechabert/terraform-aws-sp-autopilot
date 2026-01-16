@@ -151,6 +151,12 @@ locals {
     var.purchase_strategy.dichotomy.max_purchase_percent
   )
 
+  min_purchase_percent = (
+    local.purchase_strategy_type == "dichotomy" ?
+    var.purchase_strategy.dichotomy.min_purchase_percent :
+    1.0 # default for simple strategy (not used, but included for consistency)
+  )
+
   # ==========================================================================
   # Scheduler Dry-Run Mode
   # ==========================================================================

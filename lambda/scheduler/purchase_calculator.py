@@ -5,21 +5,29 @@ This module contains the core logic for:
 1. Calculating purchase need based on coverage gaps and AWS recommendations
 2. Applying purchase limits (max_purchase_percent and min_commitment_per_plan)
 3. Splitting commitments by term mix (for Compute and SageMaker SPs)
+4. Strategy selection via pluggable strategy pattern
+
+Strategy Pattern:
+- Strategies are registered in PURCHASE_STRATEGIES registry
+- Contributors can add new strategies by implementing the strategy interface
+- Strategy functions receive (config, coverage, recommendations) and return purchase_plans
 """
 
 import logging
-from typing import Any, Dict, List
+from typing import Any, Callable, Dict, List
 
 
 # Configure logging
 logger = logging.getLogger()
 
 
-def calculate_purchase_need(
+def calculate_purchase_need_simple(
     config: Dict[str, Any], coverage: Dict[str, float], recommendations: Dict[str, Any]
 ) -> List[Dict[str, Any]]:
     """
-    Calculate required purchases to reach target coverage.
+    Calculate required purchases using SIMPLE strategy (legacy/default).
+
+    Simple strategy applies max_purchase_percent uniformly to all AWS recommendations.
 
     Args:
         config: Configuration dictionary
@@ -29,7 +37,7 @@ def calculate_purchase_need(
     Returns:
         list: Purchase plans to execute
     """
-    logger.info("Calculating purchase need")
+    logger.info("Calculating purchase need using SIMPLE strategy")
 
     purchase_plans = []
     target_coverage = config["coverage_target_percent"]
@@ -57,6 +65,7 @@ def calculate_purchase_need(
                     "recommendation_id": recommendations["compute"].get(
                         "RecommendationId", "unknown"
                     ),
+                    "strategy": "simple",
                 }
                 purchase_plans.append(purchase_plan)
                 logger.info(
@@ -94,6 +103,7 @@ def calculate_purchase_need(
                     "recommendation_id": recommendations["database"].get(
                         "RecommendationId", "unknown"
                     ),
+                    "strategy": "simple",
                 }
                 purchase_plans.append(purchase_plan)
                 logger.info(
@@ -130,6 +140,7 @@ def calculate_purchase_need(
                     "recommendation_id": recommendations["sagemaker"].get(
                         "RecommendationId", "unknown"
                     ),
+                    "strategy": "simple",
                 }
                 purchase_plans.append(purchase_plan)
                 logger.info(
@@ -145,8 +156,69 @@ def calculate_purchase_need(
         else:
             logger.info("SageMaker SP has coverage gap but no AWS recommendation available")
 
-    logger.info(f"Purchase need calculated: {len(purchase_plans)} plans")
+    logger.info(f"Simple strategy purchase need calculated: {len(purchase_plans)} plans")
     return purchase_plans
+
+
+# ============================================================================
+# Strategy Registry - Add new strategies here
+# ============================================================================
+
+# Type alias for strategy functions
+StrategyFunction = Callable[[Dict[str, Any], Dict[str, float], Dict[str, Any]], List[Dict[str, Any]]]
+
+# Registry mapping strategy names to their implementation functions
+# Contributors: Add new strategies by importing and registering here
+PURCHASE_STRATEGIES: Dict[str, StrategyFunction] = {
+    "simple": calculate_purchase_need_simple,
+}
+
+# Lazy-load dichotomy strategy to avoid circular imports
+def _get_dichotomy_strategy() -> StrategyFunction:
+    """Lazy-load dichotomy strategy."""
+    from dichotomy_strategy import calculate_purchase_need_dichotomy
+    return calculate_purchase_need_dichotomy
+
+# Register dichotomy strategy
+PURCHASE_STRATEGIES["dichotomy"] = _get_dichotomy_strategy()
+
+
+def calculate_purchase_need(
+    config: Dict[str, Any], coverage: Dict[str, float], recommendations: Dict[str, Any]
+) -> List[Dict[str, Any]]:
+    """
+    Calculate required purchases to reach target coverage using configured strategy.
+
+    This function acts as a dispatcher to the appropriate strategy implementation.
+    Strategies are pluggable - see PURCHASE_STRATEGIES registry.
+
+    Args:
+        config: Configuration dictionary (must include "purchase_strategy_type")
+        coverage: Current coverage by SP type
+        recommendations: AWS recommendations
+
+    Returns:
+        list: Purchase plans to execute
+
+    Raises:
+        ValueError: If configured strategy is not registered
+    """
+    strategy_type = config.get("purchase_strategy_type", "simple")
+
+    logger.info(f"Using purchase strategy: {strategy_type}")
+
+    # Lookup strategy function from registry
+    strategy_func = PURCHASE_STRATEGIES.get(strategy_type)
+
+    if not strategy_func:
+        available_strategies = ", ".join(PURCHASE_STRATEGIES.keys())
+        raise ValueError(
+            f"Unknown purchase strategy '{strategy_type}'. "
+            f"Available strategies: {available_strategies}"
+        )
+
+    # Call strategy function
+    return strategy_func(config, coverage, recommendations)
 
 
 def apply_purchase_limits(

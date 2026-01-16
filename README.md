@@ -425,6 +425,75 @@ Recommended approach for new deployments:
 | **Week 2-4** | `dry_run = false`<br>`coverage_target_percent = 70`<br>`max_purchase_percent = 5` | Small purchases, monitor results |
 | **Month 2+** | `coverage_target_percent = 90`<br>`max_purchase_percent = 10` | Scale up as confidence grows |
 
+### Purchase Strategies
+
+The module supports two purchase strategies: **Simple** (default) and **Dichotomy** (adaptive).
+
+#### Simple Strategy
+
+Applies a fixed percentage to AWS recommendations. Best for stable workloads with predictable growth.
+
+```hcl
+purchase_strategy = {
+  coverage_target_percent = 90
+  max_coverage_cap        = 95
+
+  simple = {
+    max_purchase_percent = 10 # Purchase 10% of AWS recommendation each cycle
+  }
+}
+```
+
+**Characteristics:**
+- Fixed purchase percentage every cycle
+- Linear ramp to target coverage
+- Predictable, easy to understand
+- Recommended for: Stable workloads, small adjustments
+
+#### Dichotomy Strategy
+
+Adaptively sizes purchases using exponential halving based on coverage gap. Best for new deployments and variable workloads.
+
+```hcl
+purchase_strategy = {
+  coverage_target_percent = 90
+  max_coverage_cap        = 95
+
+  dichotomy = {
+    max_purchase_percent = 50 # Maximum purchase size
+    min_purchase_percent = 1  # Minimum purchase threshold
+  }
+}
+```
+
+**How it works:**
+- Calculates purchase as largest power-of-2 fraction of `max_purchase_percent` that doesn't exceed coverage gap
+- Example progression (max 50%, target 90%):
+  - Month 1: Gap 90% → Purchase 50% (max)
+  - Month 2: Gap 40% → Purchase 25% (halved)
+  - Month 3: Gap 15% → Purchase 12.5% (halved)
+  - Month 4: Gap 2.5% → Purchase 2.5% (exact gap)
+
+**Characteristics:**
+- Adaptive purchase sizing (fast initially, slows near target)
+- Creates distributed, smaller commitments over time
+- Natural replacement of large expiring plans
+- Prevents over-commitment through exponential halving
+- Recommended for: New deployments, variable workloads, risk management
+
+**Comparison:**
+
+| Aspect | Simple | Dichotomy |
+|--------|--------|-----------|
+| Purchase sizing | Fixed % | Exponentially decreasing |
+| Adaptation | Static | Dynamic based on gap |
+| Ramp-up speed | Linear | Fast initially, slows near target |
+| Coverage stability | Moderate | High (distributed purchases) |
+| Over-commitment risk | Higher | Lower |
+| Complexity | Very simple | Simple (automatic) |
+
+**See also:** [Dichotomy Strategy Example](examples/dichotomy-strategy/) for detailed usage guide.
+
 ### Canceling Purchases
 
 To cancel a scheduled purchase before it executes:
