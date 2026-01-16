@@ -542,9 +542,25 @@ run "test_reporter_eventbridge_rule_tags" {
   command = plan
 
   variables {
-    enable_compute_sp = true
-    dry_run           = true
-    enable_reports    = true
+    purchase_strategy = {
+      coverage_target_percent = 80
+      max_coverage_cap        = 90
+      simple = {
+        max_purchase_percent = 5
+      }
+    }
+    sp_plans = {
+      compute = {
+        enabled              = true
+        all_upfront_one_year = 1
+      }
+    }
+    notifications = {
+      emails = ["test@example.com"]
+    }
+    reporting = {
+      enabled = true
+    }
     tags = {
       Environment = "test"
       Owner       = "platform-team"

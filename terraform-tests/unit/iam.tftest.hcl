@@ -206,13 +206,13 @@ run "test_scheduler_cost_explorer_policy" {
   }
 
   assert {
-    condition     = aws_iam_role_policy.scheduler_cost_explorer.name == "cost-explorer"
+    condition     = aws_iam_role_policy.scheduler_cost_explorer[0].name == "cost-explorer"
     error_message = "Scheduler Cost Explorer policy should have correct name"
   }
 
   # Note: Mock provider doesn't populate policy content
   assert {
-    condition     = aws_iam_role_policy.scheduler_cost_explorer.policy != null
+    condition     = aws_iam_role_policy.scheduler_cost_explorer[0].policy != null
     error_message = "Scheduler Cost Explorer policy should be set"
   }
 }
