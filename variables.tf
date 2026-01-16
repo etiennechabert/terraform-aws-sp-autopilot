@@ -237,13 +237,13 @@ variable "scheduler" {
   description = "EventBridge cron schedules for each Lambda function. Set to null to disable a schedule."
   type = object({
     scheduler = optional(string)  # Set to null to disable, defaults to "cron(0 8 1 * ? *)"
-    purchaser = optional(string)  # Set to null to disable, defaults to "cron(0 8 4 * ? *)"
-    reporter  = optional(string)  # Set to null to disable, defaults to "cron(0 9 1 * ? *)"
+    purchaser = optional(string)  # Set to null to disable, defaults to "cron(0 8 10 * ? *)"
+    reporter  = optional(string)  # Set to null to disable, defaults to "cron(0 9 20 * ? *)"
   })
   default = {
-    scheduler = "cron(0 8 1 * ? *)"  # 1st of month at 8am UTC
-    purchaser = "cron(0 8 4 * ? *)"  # 4th of month at 8am UTC
-    reporter  = "cron(0 9 1 * ? *)"  # 1st of month at 9am UTC
+    scheduler = "cron(0 8 1 * ? *)"   # 1st of month at 8am UTC
+    purchaser = "cron(0 8 10 * ? *)"  # 10th of month at 8am UTC
+    reporter  = "cron(0 9 20 * ? *)"  # 20th of month at 9am UTC
   }
 }
 
