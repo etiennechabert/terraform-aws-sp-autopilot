@@ -968,13 +968,15 @@ run "test_reporter_lambda_permission_disabled" {
     notifications = {
       emails = ["test@example.com"]
     }
-    reporting = {
-      enabled = false
+    lambda_config = {
+      reporter = {
+        enabled = false
+      }
     }
   }
 
   assert {
     condition     = length(aws_lambda_permission.reporter_eventbridge) == 0
-    error_message = "Reporter Lambda permission should not be created when enable_reports is false"
+    error_message = "Reporter Lambda permission should not be created when reporter Lambda is disabled"
   }
 }
