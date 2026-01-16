@@ -283,8 +283,8 @@ run "test_purchaser_eventbridge_rule_default_schedule" {
   }
 
   assert {
-    condition     = aws_cloudwatch_event_rule.purchaser[0].schedule_expression == "cron(0 8 4 * ? *)"
-    error_message = "Purchaser EventBridge rule should use default schedule: cron(0 8 4 * ? *)"
+    condition     = aws_cloudwatch_event_rule.purchaser[0].schedule_expression == "cron(0 8 10 * ? *)"
+    error_message = "Purchaser EventBridge rule should use default schedule: cron(0 8 10 * ? *)"
   }
 }
 
@@ -425,14 +425,16 @@ run "test_reporter_eventbridge_rule_disabled" {
     notifications = {
       emails = ["test@example.com"]
     }
-    reporting = {
-      enabled = false
+    lambda_config = {
+      reporter = {
+        enabled = false
+      }
     }
   }
 
   assert {
     condition     = length(aws_cloudwatch_event_rule.reporter) == 0
-    error_message = "Reporter EventBridge rule should not be created when enable_reports is false"
+    error_message = "Reporter EventBridge rule should not be created when reporter Lambda is disabled"
   }
 }
 
@@ -495,8 +497,8 @@ run "test_reporter_eventbridge_rule_default_schedule" {
   }
 
   assert {
-    condition     = aws_cloudwatch_event_rule.reporter[0].schedule_expression == "cron(0 9 1 * ? *)"
-    error_message = "Reporter EventBridge rule should use default schedule: cron(0 9 1 * ? *)"
+    condition     = aws_cloudwatch_event_rule.reporter[0].schedule_expression == "cron(0 9 20 * ? *)"
+    error_message = "Reporter EventBridge rule should use default schedule: cron(0 9 20 * ? *)"
   }
 }
 

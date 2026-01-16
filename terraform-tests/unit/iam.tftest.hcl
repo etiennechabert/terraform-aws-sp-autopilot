@@ -170,14 +170,14 @@ run "test_scheduler_cloudwatch_logs_policy" {
   }
 
   assert {
-    condition     = aws_iam_role_policy.scheduler_cloudwatch_logs.name == "cloudwatch-logs"
+    condition     = aws_iam_role_policy.scheduler_cloudwatch_logs[0].name == "cloudwatch-logs"
     error_message = "Scheduler CloudWatch Logs policy should have correct name"
   }
 
   # Note: Mock provider doesn't populate policy content, so we can only verify the policy exists
   # In a real environment, you would verify the policy content using integration tests
   assert {
-    condition     = aws_iam_role_policy.scheduler_cloudwatch_logs.policy != null
+    condition     = aws_iam_role_policy.scheduler_cloudwatch_logs[0].policy != null
     error_message = "Scheduler CloudWatch Logs policy should be set"
   }
 }
