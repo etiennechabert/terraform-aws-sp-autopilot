@@ -32,8 +32,9 @@ StrategyFunction = Callable[
 ]
 
 # Import strategy implementations
-from simple_strategy import calculate_purchase_need_simple
 from dichotomy_strategy import calculate_purchase_need_dichotomy
+from simple_strategy import calculate_purchase_need_simple
+
 
 # Registry mapping strategy names to their implementation functions
 # Contributors: Add new strategies by importing and registering here
@@ -101,9 +102,7 @@ def apply_purchase_limits(
         return []
 
     # Calculate total hourly commitment
-    total_commitment = sum(
-        plan.get("hourly_commitment", 0.0) for plan in purchase_plans
-    )
+    total_commitment = sum(plan.get("hourly_commitment", 0.0) for plan in purchase_plans)
     logger.info(f"Total hourly commitment before limits: ${total_commitment:.4f}/hour")
 
     # Apply max_purchase_percent limit
@@ -124,9 +123,7 @@ def apply_purchase_limits(
     # Filter out plans below minimum commitment threshold
     min_commitment = config.get("min_commitment_per_plan", 0.001)
     filtered_plans = [
-        plan
-        for plan in limited_plans
-        if plan.get("hourly_commitment", 0.0) >= min_commitment
+        plan for plan in limited_plans if plan.get("hourly_commitment", 0.0) >= min_commitment
     ]
 
     removed_count = len(limited_plans) - len(filtered_plans)
@@ -135,9 +132,7 @@ def apply_purchase_limits(
             f"Removed {removed_count} plans below minimum commitment of ${min_commitment:.4f}/hour"
         )
 
-    final_commitment = sum(
-        plan.get("hourly_commitment", 0.0) for plan in filtered_plans
-    )
+    final_commitment = sum(plan.get("hourly_commitment", 0.0) for plan in filtered_plans)
     logger.info(
         f"Purchase limits applied: {len(filtered_plans)} plans remain, ${final_commitment:.4f}/hour total commitment"
     )
@@ -262,7 +257,5 @@ def split_by_term(
             logger.warning(f"Unknown SP type '{sp_type}' - passing through unchanged")
             split_plans.append(plan)
 
-    logger.info(
-        f"Term splitting complete: {len(purchase_plans)} plans -> {len(split_plans)} plans"
-    )
+    logger.info(f"Term splitting complete: {len(purchase_plans)} plans -> {len(split_plans)} plans")
     return split_plans

@@ -374,35 +374,25 @@ class TestCalculatePurchaseNeedDichotomy:
         }
 
         # Month 1: Coverage 0%, Gap 90%
-        result = calculate_purchase_need_dichotomy(
-            config, {"compute": 0.0}, recommendations
-        )
+        result = calculate_purchase_need_dichotomy(config, {"compute": 0.0}, recommendations)
         assert result[0]["purchase_percent"] == 50.0
         assert result[0]["hourly_commitment"] == 50.0
 
         # Month 2: Coverage 50%, Gap 40%
-        result = calculate_purchase_need_dichotomy(
-            config, {"compute": 50.0}, recommendations
-        )
+        result = calculate_purchase_need_dichotomy(config, {"compute": 50.0}, recommendations)
         assert result[0]["purchase_percent"] == 25.0
         assert result[0]["hourly_commitment"] == 25.0
 
         # Month 3: Coverage 75%, Gap 15%
-        result = calculate_purchase_need_dichotomy(
-            config, {"compute": 75.0}, recommendations
-        )
+        result = calculate_purchase_need_dichotomy(config, {"compute": 75.0}, recommendations)
         assert result[0]["purchase_percent"] == 12.5
         assert result[0]["hourly_commitment"] == 12.5
 
         # Month 4: Coverage 87.5%, target 90%, halve until fits: 1.5625%
-        result = calculate_purchase_need_dichotomy(
-            config, {"compute": 87.5}, recommendations
-        )
+        result = calculate_purchase_need_dichotomy(config, {"compute": 87.5}, recommendations)
         assert result[0]["purchase_percent"] == pytest.approx(1.5625)
         assert result[0]["hourly_commitment"] == pytest.approx(1.5625)
 
         # Month 5: Coverage 90%, Gap 0% (target reached)
-        result = calculate_purchase_need_dichotomy(
-            config, {"compute": 90.0}, recommendations
-        )
+        result = calculate_purchase_need_dichotomy(config, {"compute": 90.0}, recommendations)
         assert len(result) == 0
