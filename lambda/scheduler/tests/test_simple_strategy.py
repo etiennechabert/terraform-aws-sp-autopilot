@@ -5,7 +5,6 @@ Tests the simple purchase strategy which applies AWS recommendations
 directly when there is a coverage gap.
 """
 
-
 from simple_strategy import calculate_purchase_need_simple
 
 
