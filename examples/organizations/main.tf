@@ -58,11 +58,11 @@ module "savings_plans" {
     }
   }
 
-  # Scheduling - spread evenly across the month (override via var.scheduler for testing)
+  # Scheduling - spread evenly across the month
   scheduler = {
-    scheduler = try(var.scheduler.scheduler, "cron(0 8 1 * ? *)")  # 1st of month at 8:00 AM UTC
-    purchaser = try(var.scheduler.purchaser, "cron(0 8 10 * ? *)") # 10th of month at 8:00 AM UTC (9-day review window)
-    reporter  = try(var.scheduler.reporter, "cron(0 9 20 * ? *)")  # 20th of month at 9:00 AM UTC
+    scheduler = "cron(0 8 1 * ? *)"  # 1st of month at 8:00 AM UTC
+    purchaser = "cron(0 8 10 * ? *)" # 10th of month at 8:00 AM UTC (9-day review window)
+    reporter  = "cron(0 9 20 * ? *)" # 20th of month at 9:00 AM UTC
   }
 
   # Notifications - multiple stakeholders for org-wide changes
@@ -89,21 +89,21 @@ module "savings_plans" {
   }
 
   # Lambda configuration - AWS Organizations cross-account roles with error alarms
-  # Each Lambda can assume a different role in the management account (override via var.lambda_config for testing)
+  # Each Lambda can assume a different role in the management account
   lambda_config = {
     scheduler = {
-      dry_run         = try(var.lambda_config.scheduler.dry_run, true) # Start in dry-run mode - emails only
-      assume_role_arn = try(var.lambda_config.scheduler.assume_role_arn, "arn:aws:iam::123456789012:role/SavingsPlansSchedulerRole")
+      dry_run         = true # Start in dry-run mode - emails only
+      assume_role_arn = "arn:aws:iam::123456789012:role/SavingsPlansSchedulerRole"
       error_alarm     = true
     }
     purchaser = {
-      enabled         = try(var.lambda_config.purchaser.enabled, true)
-      assume_role_arn = try(var.lambda_config.purchaser.assume_role_arn, "arn:aws:iam::123456789012:role/SavingsPlansPurchaserRole")
+      # Role to assume for Savings Plans purchase operations
+      assume_role_arn = "arn:aws:iam::123456789012:role/SavingsPlansPurchaserRole"
       error_alarm     = true
     }
     reporter = {
-      enabled         = try(var.lambda_config.reporter.enabled, true)
-      assume_role_arn = try(var.lambda_config.reporter.assume_role_arn, "arn:aws:iam::123456789012:role/SavingsPlansReporterRole")
+      # Role to assume for Cost Explorer read operations
+      assume_role_arn = "arn:aws:iam::123456789012:role/SavingsPlansReporterRole"
       error_alarm     = true
     }
   }

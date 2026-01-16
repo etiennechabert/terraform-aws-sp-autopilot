@@ -67,11 +67,11 @@ module "savings_plans" {
     }
   }
 
-  # Scheduling - monthly automation cycle (override via var.scheduler for testing)
+  # Scheduling - monthly automation cycle
   scheduler = {
-    scheduler = try(var.scheduler.scheduler, "cron(0 8 1 * ? *)") # 1st of month - analyze usage
-    purchaser = try(var.scheduler.purchaser, "cron(0 8 4 * ? *)") # 4th of month - execute purchases (3-day review)
-    reporter  = try(var.scheduler.reporter, "cron(0 9 1 * ? *)")  # 1st of month - generate reports
+    scheduler = "cron(0 8 1 * ? *)" # 1st of month - analyze usage
+    purchaser = "cron(0 8 4 * ? *)" # 4th of month - execute purchases (3-day review)
+    reporter  = "cron(0 9 1 * ? *)" # 1st of month - generate reports
   }
 
   # Notifications
@@ -94,18 +94,17 @@ module "savings_plans" {
     error_threshold = 1
   }
 
-  # Lambda configuration - purchaser enabled for production use (override via var.lambda_config for testing)
+  # Lambda configuration - purchaser enabled for production use
   lambda_config = {
     scheduler = {
-      dry_run     = try(var.lambda_config.scheduler.dry_run, false) # Production mode - queue purchases
+      dry_run     = false # Production mode - queue purchases
       error_alarm = true
     }
     purchaser = {
-      enabled     = try(var.lambda_config.purchaser.enabled, true) # Enable purchaser Lambda
+      enabled     = true # Enable purchaser Lambda
       error_alarm = true
     }
     reporter = {
-      enabled     = try(var.lambda_config.reporter.enabled, true)
       error_alarm = true
     }
   }
