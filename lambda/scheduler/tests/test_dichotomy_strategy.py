@@ -4,7 +4,6 @@ Unit tests for dichotomy_strategy module.
 Tests the dichotomy purchase strategy algorithm and integration with purchase planning.
 """
 
-import pytest
 from dichotomy_strategy import (
     calculate_dichotomy_purchase_percent,
     calculate_purchase_need_dichotomy,
@@ -39,11 +38,11 @@ class TestCalculateDichotomyPurchasePercent:
 
     def test_at_87_5_percent_coverage(self):
         """Test at 87.5% coverage."""
-        # At 87.5%, target 90%, max 50%
+        # At 87.5%, target 90%, max 50%, min 1%
         # Keep halving: 50 -> 25 -> 12.5 -> 6.25 -> 3.125 -> 1.5625
-        # 87.5% + 1.5625% = 89.0625% <= 90%, YES
+        # 1.5625% < 2*min (2%), so use min granularity -> 1.0%
         result = calculate_dichotomy_purchase_percent(87.5, 90.0, 50.0, 1.0)
-        assert result == pytest.approx(1.5625)
+        assert result == 1.0
 
     def test_gap_below_min_purchase_percent(self):
         """Test behavior when gap is below min_purchase_percent."""
@@ -89,8 +88,8 @@ class TestCalculateDichotomyPurchasePercent:
         # Month 3: At 75%, target 90% -> 75 + 12.5 = 87.5 <= 90, use 12.5%
         assert calculate_dichotomy_purchase_percent(75.0, 90.0, 50.0, 1.0) == 12.5
 
-        # Month 4: At 87.5%, target 90% -> halve until fits
-        assert calculate_dichotomy_purchase_percent(87.5, 90.0, 50.0, 1.0) == pytest.approx(1.5625)
+        # Month 4: At 87.5%, target 90% -> halve to 1.5625% < 2*min -> use min granularity 1.0%
+        assert calculate_dichotomy_purchase_percent(87.5, 90.0, 50.0, 1.0) == 1.0
 
 
 class TestCalculatePurchaseNeedDichotomy:
@@ -172,9 +171,9 @@ class TestCalculatePurchaseNeedDichotomy:
         result = calculate_purchase_need_dichotomy(config, coverage, recommendations)
 
         assert len(result) == 1
-        # At 87.5%, target 90%, halve until fits: 50->25->12.5->6.25->3.125->1.5625%
-        assert result[0]["hourly_commitment"] == pytest.approx(0.078125, rel=1e-3)  # 1.5625% of $5
-        assert result[0]["purchase_percent"] == pytest.approx(1.5625)
+        # At 87.5%, target 90%, halve to 1.5625% < 2*min -> use min granularity 1.0%
+        assert result[0]["hourly_commitment"] == 0.05  # 1.0% of $5
+        assert result[0]["purchase_percent"] == 1.0
 
     def test_database_sp_purchase(self):
         """Test Database SP purchase with dichotomy strategy."""
@@ -388,11 +387,21 @@ class TestCalculatePurchaseNeedDichotomy:
         assert result[0]["purchase_percent"] == 12.5
         assert result[0]["hourly_commitment"] == 12.5
 
-        # Month 4: Coverage 87.5%, target 90%, halve until fits: 1.5625%
+        # Month 4: Coverage 87.5%, gap 2.5%, halve to 1.5625% < 2*min -> use min 1.0%
         result = calculate_purchase_need_dichotomy(config, {"compute": 87.5}, recommendations)
-        assert result[0]["purchase_percent"] == pytest.approx(1.5625)
-        assert result[0]["hourly_commitment"] == pytest.approx(1.5625)
+        assert result[0]["purchase_percent"] == 1.0
+        assert result[0]["hourly_commitment"] == 1.0
 
-        # Month 5: Coverage 90%, Gap 0% (target reached)
+        # Month 5: Coverage 88.5%, gap 1.5%, halve to 0.78125% < min -> use min 1.0%
+        result = calculate_purchase_need_dichotomy(config, {"compute": 88.5}, recommendations)
+        assert result[0]["purchase_percent"] == 1.0
+        assert result[0]["hourly_commitment"] == 1.0
+
+        # Month 6: Coverage 89.5%, gap 0.5% < min -> use exact gap 0.5%
+        result = calculate_purchase_need_dichotomy(config, {"compute": 89.5}, recommendations)
+        assert result[0]["purchase_percent"] == 0.5
+        assert result[0]["hourly_commitment"] == 0.5
+
+        # Month 7: Coverage 90%, Gap 0% (target reached)
         result = calculate_purchase_need_dichotomy(config, {"compute": 90.0}, recommendations)
         assert len(result) == 0

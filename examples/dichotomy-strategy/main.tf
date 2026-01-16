@@ -44,7 +44,7 @@ module "savings_plans" {
     # Dichotomy strategy - exponentially decreasing purchase sizes
     dichotomy = {
       max_purchase_percent = 50 # Start at 50% of AWS recommendation
-      min_purchase_percent = 1  # Stop halving below 1%, use exact gap instead
+      min_purchase_percent = 1  # Minimum purchase granularity (never buy less)
     }
   }
 

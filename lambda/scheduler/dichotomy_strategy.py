@@ -46,10 +46,10 @@ def calculate_dichotomy_purchase_percent(
         current_coverage_percent: Current coverage (e.g., 50.0)
         target_coverage_percent: Target coverage (e.g., 90.0)
         max_purchase_percent: Maximum allowed purchase percentage (e.g., 50.0)
-        min_purchase_percent: Minimum purchase percentage threshold (e.g., 1.0)
+        min_purchase_percent: Minimum purchase granularity (e.g., 1.0)
 
     Returns:
-        Purchase percentage to use (largest power-of-2 that doesn't exceed target)
+        Purchase percentage to use (power-of-2 halving, rounded to min granularity)
 
     Examples:
         >>> calculate_dichotomy_purchase_percent(0.0, 90.0, 50.0, 1.0)
@@ -62,7 +62,7 @@ def calculate_dichotomy_purchase_percent(
         12.5  # At 75%, try 50% → 125% > 90%, try 25% → 100% > 90%, try 12.5% → 87.5%, OK
 
         >>> calculate_dichotomy_purchase_percent(87.5, 90.0, 50.0, 1.0)
-        2.5  # At 87.5%, keep halving until 2.5% → 90%, OK
+        1.0  # At 87.5%, halve to 1.5625%, but < 2*min → use min granularity 1.0%
     """
     # Calculate the gap
     coverage_gap_percent = target_coverage_percent - current_coverage_percent
@@ -79,9 +79,14 @@ def calculate_dichotomy_purchase_percent(
         # Halve the purchase percentage
         purchase_percent = purchase_percent / 2.0
 
-        # If we've halved below the minimum threshold, return the exact gap
+        # If we've halved below the minimum threshold, return the minimum
         if purchase_percent < min_purchase_percent:
-            return coverage_gap_percent
+            return min_purchase_percent
+
+    # If we ended up close to minimum (less than 2x), use minimum as granularity
+    # This ensures we purchase in clean increments when close to target
+    if purchase_percent < min_purchase_percent * 2:
+        return min_purchase_percent
 
     # Return the largest power-of-2 that fits
     return purchase_percent

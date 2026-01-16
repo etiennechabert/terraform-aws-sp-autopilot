@@ -46,7 +46,7 @@ purchase_strategy = {
 
   dichotomy = {
     max_purchase_percent = 50 # Maximum purchase as % of AWS recommendation
-    min_purchase_percent = 1  # Halving threshold (use exact gap when below)
+    min_purchase_percent = 1  # Minimum purchase granularity
   }
 }
 ```
@@ -58,9 +58,12 @@ purchase_strategy = {
 - Lower (25-50%): Slower ramp, more conservative approach
 
 **min_purchase_percent**: 0.5-5%
-- Halving threshold: when halved amount drops below this, use exact gap instead
-- Prevents infinite halving when very close to target
-- Example: At 88.99% coverage (target 90%), gap is 1.01% - will purchase 1.01%
+- Minimum purchase granularity - never purchase less than this amount
+- When halved amount is close to this threshold (<2x), rounds to this value
+- Examples:
+  - At 87.5% (target 90%): halve to 1.5625% < 2% → purchase 1%
+  - At 88.5% (gap 1.5%): halve to 0.78% < 1% → purchase 1%
+  - At 89.5% (gap 0.5%): gap < 1% → purchase 0.5% (exception: gap itself)
 - Recommended: 1% for most use cases
 
 ## Comparison with Simple Strategy
