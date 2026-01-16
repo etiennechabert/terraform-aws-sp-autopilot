@@ -1,4 +1,4 @@
-# Variables for single-account-compute example
+# Variables for dichotomy-strategy example
 # These can be overridden for testing or customization
 
 variable "scheduler" {
