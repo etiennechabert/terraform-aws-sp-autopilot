@@ -3,11 +3,26 @@ Essential integration tests for Reporter Lambda.
 Focuses on core business logic and critical paths only.
 """
 
+import os
+import sys
+
+# Set up environment variables BEFORE importing handler
+os.environ["AWS_ACCESS_KEY_ID"] = "testing"
+os.environ["AWS_SECRET_ACCESS_KEY"] = "testing"
+os.environ["AWS_SECURITY_TOKEN"] = "testing"
+os.environ["AWS_SESSION_TOKEN"] = "testing"
+os.environ["AWS_DEFAULT_REGION"] = "us-east-1"
+
 from unittest.mock import Mock, patch
 
-import handler
 import pytest
 from botocore.exceptions import ClientError
+
+# Add lambda directory to path
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
+
+import handler
 
 
 @pytest.fixture
