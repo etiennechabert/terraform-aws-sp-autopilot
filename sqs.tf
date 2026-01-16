@@ -10,7 +10,7 @@
 resource "aws_sqs_queue" "purchase_intents_dlq" {
   name                              = "${local.module_name}-purchase-intents-dlq"
   message_retention_seconds         = 1209600 # 14 days (AWS maximum)
-  kms_master_key_id                 = "alias/aws/sqs"
+  kms_master_key_id                 = local.sqs_kms_key  # null = disabled, "alias/aws/sqs" = AWS managed, custom ARN = customer managed
   kms_data_key_reuse_period_seconds = 300 # 5 minutes (default)
 
   tags = merge(
@@ -28,7 +28,7 @@ resource "aws_sqs_queue" "purchase_intents_dlq" {
 resource "aws_sqs_queue" "purchase_intents" {
   name                              = "${local.module_name}-purchase-intents"
   visibility_timeout_seconds        = 300 # 5 minutes (matching Lambda timeout)
-  kms_master_key_id                 = "alias/aws/sqs"
+  kms_master_key_id                 = local.sqs_kms_key  # null = disabled, "alias/aws/sqs" = AWS managed, custom ARN = customer managed
   kms_data_key_reuse_period_seconds = 300 # 5 minutes (default)
 
   redrive_policy = jsonencode({

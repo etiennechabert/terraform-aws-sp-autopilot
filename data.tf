@@ -235,4 +235,11 @@ locals {
   min_data_days           = try(var.purchase_strategy.min_data_days, 14)
   renewal_window_days     = try(var.purchase_strategy.renewal_window_days, 7)
   min_commitment_per_plan = try(var.purchase_strategy.min_commitment_per_plan, 0.001)
+
+  # ==========================================================================
+  # Encryption Settings
+  # ==========================================================================
+
+  sns_kms_key = try(var.encryption.sns_kms_key, "alias/aws/sns")
+  sqs_kms_key = try(var.encryption.sqs_kms_key, "alias/aws/sqs")
 }

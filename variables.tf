@@ -370,8 +370,18 @@ variable "tags" {
   default     = {}
 }
 
-variable "enable_sns_kms_encryption" {
-  description = "Enable KMS encryption for SNS topic (uses AWS managed key alias/aws/sns)"
-  type        = bool
-  default     = false
+# ============================================================================
+# Encryption
+# ============================================================================
+
+variable "encryption" {
+  description = "KMS encryption configuration for SNS and SQS. Set to null to disable encryption, or provide custom KMS key ARN."
+  type = object({
+    sns_kms_key = optional(string, "alias/aws/sns")  # Default: AWS managed key. Set to null to disable.
+    sqs_kms_key = optional(string, "alias/aws/sqs")  # Default: AWS managed key. Set to null to disable.
+  })
+  default = {
+    sns_kms_key = "alias/aws/sns"
+    sqs_kms_key = "alias/aws/sqs"
+  }
 }
