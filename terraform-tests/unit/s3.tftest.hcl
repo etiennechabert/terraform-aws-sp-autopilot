@@ -30,8 +30,22 @@ run "test_s3_bucket_naming" {
   command = plan
 
   variables {
-    enable_compute_sp = true
-    dry_run           = true
+    purchase_strategy = {
+      coverage_target_percent = 80
+      max_coverage_cap        = 90
+      simple = {
+        max_purchase_percent = 5
+      }
+    }
+    sp_plans = {
+      compute = {
+        enabled              = true
+        all_upfront_one_year = 1
+      }
+    }
+    notifications = {
+      emails = ["test@example.com"]
+    }
   }
 
   assert {
@@ -50,8 +64,22 @@ run "test_s3_versioning_enabled" {
   command = plan
 
   variables {
-    enable_compute_sp = true
-    dry_run           = true
+    purchase_strategy = {
+      coverage_target_percent = 80
+      max_coverage_cap        = 90
+      simple = {
+        max_purchase_percent = 5
+      }
+    }
+    sp_plans = {
+      compute = {
+        enabled              = true
+        all_upfront_one_year = 1
+      }
+    }
+    notifications = {
+      emails = ["test@example.com"]
+    }
   }
 
   assert {
@@ -65,8 +93,22 @@ run "test_s3_encryption_configuration" {
   command = plan
 
   variables {
-    enable_compute_sp = true
-    dry_run           = true
+    purchase_strategy = {
+      coverage_target_percent = 80
+      max_coverage_cap        = 90
+      simple = {
+        max_purchase_percent = 5
+      }
+    }
+    sp_plans = {
+      compute = {
+        enabled              = true
+        all_upfront_one_year = 1
+      }
+    }
+    notifications = {
+      emails = ["test@example.com"]
+    }
   }
 
   # Note: Cannot test encryption configuration attributes during plan phase
@@ -86,8 +128,22 @@ run "test_s3_public_access_blocks" {
   command = plan
 
   variables {
-    enable_compute_sp = true
-    dry_run           = true
+    purchase_strategy = {
+      coverage_target_percent = 80
+      max_coverage_cap        = 90
+      simple = {
+        max_purchase_percent = 5
+      }
+    }
+    sp_plans = {
+      compute = {
+        enabled              = true
+        all_upfront_one_year = 1
+      }
+    }
+    notifications = {
+      emails = ["test@example.com"]
+    }
   }
 
   assert {
@@ -116,8 +172,22 @@ run "test_s3_lifecycle_rule_enabled" {
   command = plan
 
   variables {
-    enable_compute_sp = true
-    dry_run           = true
+    purchase_strategy = {
+      coverage_target_percent = 80
+      max_coverage_cap        = 90
+      simple = {
+        max_purchase_percent = 5
+      }
+    }
+    sp_plans = {
+      compute = {
+        enabled              = true
+        all_upfront_one_year = 1
+      }
+    }
+    notifications = {
+      emails = ["test@example.com"]
+    }
   }
 
   assert {
@@ -136,9 +206,27 @@ run "test_s3_lifecycle_ia_transition" {
   command = plan
 
   variables {
-    enable_compute_sp                   = true
-    dry_run                             = true
-    s3_lifecycle_transition_ia_days     = 90
+    purchase_strategy = {
+      coverage_target_percent = 80
+      max_coverage_cap        = 90
+      simple = {
+        max_purchase_percent = 5
+      }
+    }
+    sp_plans = {
+      compute = {
+        enabled              = true
+        all_upfront_one_year = 1
+      }
+    }
+    notifications = {
+      emails = ["test@example.com"]
+    }
+    reporting = {
+      s3_lifecycle = {
+        transition_ia_days = 90
+      }
+    }
   }
 
   # Note: Cannot index lifecycle transition blocks - they are sets, not lists
@@ -155,10 +243,28 @@ run "test_s3_lifecycle_glacier_transition" {
   command = plan
 
   variables {
-    enable_compute_sp                       = true
-    dry_run                                 = true
-    s3_lifecycle_transition_ia_days         = 90
-    s3_lifecycle_transition_glacier_days    = 180
+    purchase_strategy = {
+      coverage_target_percent = 80
+      max_coverage_cap        = 90
+      simple = {
+        max_purchase_percent = 5
+      }
+    }
+    sp_plans = {
+      compute = {
+        enabled              = true
+        all_upfront_one_year = 1
+      }
+    }
+    notifications = {
+      emails = ["test@example.com"]
+    }
+    reporting = {
+      s3_lifecycle = {
+        transition_ia_days      = 90
+        transition_glacier_days = 180
+      }
+    }
   }
 
   # Note: Cannot index lifecycle transition blocks - they are sets, not lists
@@ -175,9 +281,27 @@ run "test_s3_lifecycle_expiration" {
   command = plan
 
   variables {
-    enable_compute_sp               = true
-    dry_run                         = true
-    s3_lifecycle_expiration_days    = 365
+    purchase_strategy = {
+      coverage_target_percent = 80
+      max_coverage_cap        = 90
+      simple = {
+        max_purchase_percent = 5
+      }
+    }
+    sp_plans = {
+      compute = {
+        enabled              = true
+        all_upfront_one_year = 1
+      }
+    }
+    notifications = {
+      emails = ["test@example.com"]
+    }
+    reporting = {
+      s3_lifecycle = {
+        expiration_days = 365
+      }
+    }
   }
 
   assert {
@@ -191,9 +315,27 @@ run "test_s3_lifecycle_noncurrent_expiration" {
   command = plan
 
   variables {
-    enable_compute_sp                           = true
-    dry_run                                     = true
-    s3_lifecycle_noncurrent_expiration_days     = 90
+    purchase_strategy = {
+      coverage_target_percent = 80
+      max_coverage_cap        = 90
+      simple = {
+        max_purchase_percent = 5
+      }
+    }
+    sp_plans = {
+      compute = {
+        enabled              = true
+        all_upfront_one_year = 1
+      }
+    }
+    notifications = {
+      emails = ["test@example.com"]
+    }
+    reporting = {
+      s3_lifecycle = {
+        noncurrent_expiration_days = 90
+      }
+    }
   }
 
   assert {
@@ -207,8 +349,22 @@ run "test_s3_bucket_tags" {
   command = plan
 
   variables {
-    enable_compute_sp = true
-    dry_run           = true
+    purchase_strategy = {
+      coverage_target_percent = 80
+      max_coverage_cap        = 90
+      simple = {
+        max_purchase_percent = 5
+      }
+    }
+    sp_plans = {
+      compute = {
+        enabled              = true
+        all_upfront_one_year = 1
+      }
+    }
+    notifications = {
+      emails = ["test@example.com"]
+    }
     tags = {
       Environment = "test"
       Owner       = "platform-team"
@@ -241,8 +397,22 @@ run "test_s3_bucket_naming_different_account" {
   command = plan
 
   variables {
-    enable_compute_sp = true
-    dry_run           = true
+    purchase_strategy = {
+      coverage_target_percent = 80
+      max_coverage_cap        = 90
+      simple = {
+        max_purchase_percent = 5
+      }
+    }
+    sp_plans = {
+      compute = {
+        enabled              = true
+        all_upfront_one_year = 1
+      }
+    }
+    notifications = {
+      emails = ["test@example.com"]
+    }
   }
 
   override_data {
@@ -263,12 +433,30 @@ run "test_s3_lifecycle_custom_values" {
   command = plan
 
   variables {
-    enable_compute_sp                           = true
-    dry_run                                     = true
-    s3_lifecycle_transition_ia_days             = 30
-    s3_lifecycle_transition_glacier_days        = 60
-    s3_lifecycle_expiration_days                = 180
-    s3_lifecycle_noncurrent_expiration_days     = 30
+    purchase_strategy = {
+      coverage_target_percent = 80
+      max_coverage_cap        = 90
+      simple = {
+        max_purchase_percent = 5
+      }
+    }
+    sp_plans = {
+      compute = {
+        enabled              = true
+        all_upfront_one_year = 1
+      }
+    }
+    notifications = {
+      emails = ["test@example.com"]
+    }
+    reporting = {
+      s3_lifecycle = {
+        transition_ia_days         = 30
+        transition_glacier_days    = 60
+        expiration_days            = 180
+        noncurrent_expiration_days = 30
+      }
+    }
   }
 
   # Note: Cannot index lifecycle transition/expiration blocks - they are sets

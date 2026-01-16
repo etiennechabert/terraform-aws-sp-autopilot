@@ -28,11 +28,14 @@ resource "aws_s3_bucket_versioning" "reports" {
 
 # Enable server-side encryption
 resource "aws_s3_bucket_server_side_encryption_configuration" "reports" {
+  count = local.s3_encryption_enabled ? 1 : 0
+
   bucket = aws_s3_bucket.reports.id
 
   rule {
     apply_server_side_encryption_by_default {
-      sse_algorithm = "AES256"
+      sse_algorithm     = local.s3_kms_key != null ? "aws:kms" : "AES256"
+      kms_master_key_id = local.s3_kms_key # Only used when sse_algorithm is "aws:kms"
     }
   }
 }
@@ -57,24 +60,24 @@ resource "aws_s3_bucket_lifecycle_configuration" "reports" {
 
     # Transition to cheaper storage after configured days
     transition {
-      days          = var.s3_lifecycle_transition_ia_days
+      days          = local.s3_lifecycle_transition_ia_days
       storage_class = "STANDARD_IA"
     }
 
     # Transition to Glacier after configured days
     transition {
-      days          = var.s3_lifecycle_transition_glacier_days
+      days          = local.s3_lifecycle_transition_glacier_days
       storage_class = "GLACIER"
     }
 
     # Delete reports after configured days
     expiration {
-      days = var.s3_lifecycle_expiration_days
+      days = local.s3_lifecycle_expiration_days
     }
 
     # Clean up old versions
     noncurrent_version_expiration {
-      noncurrent_days = var.s3_lifecycle_noncurrent_expiration_days
+      noncurrent_days = local.s3_lifecycle_noncurrent_expiration_days
     }
   }
 }

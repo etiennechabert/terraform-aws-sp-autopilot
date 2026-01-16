@@ -30,17 +30,31 @@ run "test_scheduler_log_group_naming" {
   command = plan
 
   variables {
-    enable_compute_sp = true
-    dry_run           = true
+    purchase_strategy = {
+      coverage_target_percent = 80
+      max_coverage_cap        = 90
+      simple = {
+        max_purchase_percent = 5
+      }
+    }
+    sp_plans = {
+      compute = {
+        enabled              = true
+        all_upfront_one_year = 1
+      }
+    }
+    notifications = {
+      emails = ["test@example.com"]
+    }
   }
 
   assert {
-    condition     = aws_cloudwatch_log_group.scheduler.name == "/aws/lambda/sp-autopilot-scheduler"
+    condition     = aws_cloudwatch_log_group.scheduler[0].name == "/aws/lambda/sp-autopilot-scheduler"
     error_message = "Scheduler log group name should follow pattern: /aws/lambda/sp-autopilot-scheduler"
   }
 
   assert {
-    condition     = aws_cloudwatch_log_group.scheduler.name != ""
+    condition     = aws_cloudwatch_log_group.scheduler[0].name != ""
     error_message = "Scheduler log group name should not be empty"
   }
 }
@@ -50,17 +64,31 @@ run "test_purchaser_log_group_naming" {
   command = plan
 
   variables {
-    enable_compute_sp = true
-    dry_run           = true
+    purchase_strategy = {
+      coverage_target_percent = 80
+      max_coverage_cap        = 90
+      simple = {
+        max_purchase_percent = 5
+      }
+    }
+    sp_plans = {
+      compute = {
+        enabled              = true
+        all_upfront_one_year = 1
+      }
+    }
+    notifications = {
+      emails = ["test@example.com"]
+    }
   }
 
   assert {
-    condition     = aws_cloudwatch_log_group.purchaser.name == "/aws/lambda/sp-autopilot-purchaser"
+    condition     = aws_cloudwatch_log_group.purchaser[0].name == "/aws/lambda/sp-autopilot-purchaser"
     error_message = "Purchaser log group name should follow pattern: /aws/lambda/sp-autopilot-purchaser"
   }
 
   assert {
-    condition     = aws_cloudwatch_log_group.purchaser.name != ""
+    condition     = aws_cloudwatch_log_group.purchaser[0].name != ""
     error_message = "Purchaser log group name should not be empty"
   }
 }
@@ -70,17 +98,31 @@ run "test_reporter_log_group_naming" {
   command = plan
 
   variables {
-    enable_compute_sp = true
-    dry_run           = true
+    purchase_strategy = {
+      coverage_target_percent = 80
+      max_coverage_cap        = 90
+      simple = {
+        max_purchase_percent = 5
+      }
+    }
+    sp_plans = {
+      compute = {
+        enabled              = true
+        all_upfront_one_year = 1
+      }
+    }
+    notifications = {
+      emails = ["test@example.com"]
+    }
   }
 
   assert {
-    condition     = aws_cloudwatch_log_group.reporter.name == "/aws/lambda/sp-autopilot-reporter"
+    condition     = aws_cloudwatch_log_group.reporter[0].name == "/aws/lambda/sp-autopilot-reporter"
     error_message = "Reporter log group name should follow pattern: /aws/lambda/sp-autopilot-reporter"
   }
 
   assert {
-    condition     = aws_cloudwatch_log_group.reporter.name != ""
+    condition     = aws_cloudwatch_log_group.reporter[0].name != ""
     error_message = "Reporter log group name should not be empty"
   }
 }
@@ -90,22 +132,36 @@ run "test_log_groups_retention" {
   command = plan
 
   variables {
-    enable_compute_sp = true
-    dry_run           = true
+    purchase_strategy = {
+      coverage_target_percent = 80
+      max_coverage_cap        = 90
+      simple = {
+        max_purchase_percent = 5
+      }
+    }
+    sp_plans = {
+      compute = {
+        enabled              = true
+        all_upfront_one_year = 1
+      }
+    }
+    notifications = {
+      emails = ["test@example.com"]
+    }
   }
 
   assert {
-    condition     = aws_cloudwatch_log_group.scheduler.retention_in_days == 30
+    condition     = aws_cloudwatch_log_group.scheduler[0].retention_in_days == 30
     error_message = "Scheduler log group should have 30 days retention"
   }
 
   assert {
-    condition     = aws_cloudwatch_log_group.purchaser.retention_in_days == 30
+    condition     = aws_cloudwatch_log_group.purchaser[0].retention_in_days == 30
     error_message = "Purchaser log group should have 30 days retention"
   }
 
   assert {
-    condition     = aws_cloudwatch_log_group.reporter.retention_in_days == 30
+    condition     = aws_cloudwatch_log_group.reporter[0].retention_in_days == 30
     error_message = "Reporter log group should have 30 days retention"
   }
 }
@@ -115,8 +171,22 @@ run "test_log_groups_tags" {
   command = plan
 
   variables {
-    enable_compute_sp = true
-    dry_run           = true
+    purchase_strategy = {
+      coverage_target_percent = 80
+      max_coverage_cap        = 90
+      simple = {
+        max_purchase_percent = 5
+      }
+    }
+    sp_plans = {
+      compute = {
+        enabled              = true
+        all_upfront_one_year = 1
+      }
+    }
+    notifications = {
+      emails = ["test@example.com"]
+    }
     tags = {
       Environment = "test"
       Owner       = "platform-team"
@@ -124,32 +194,32 @@ run "test_log_groups_tags" {
   }
 
   assert {
-    condition     = aws_cloudwatch_log_group.scheduler.tags["ManagedBy"] == "terraform-aws-sp-autopilot"
+    condition     = aws_cloudwatch_log_group.scheduler[0].tags["ManagedBy"] == "terraform-aws-sp-autopilot"
     error_message = "Scheduler log group should have ManagedBy tag"
   }
 
   assert {
-    condition     = aws_cloudwatch_log_group.scheduler.tags["Module"] == "savings-plans-automation"
+    condition     = aws_cloudwatch_log_group.scheduler[0].tags["Module"] == "savings-plans-automation"
     error_message = "Scheduler log group should have Module tag"
   }
 
   assert {
-    condition     = aws_cloudwatch_log_group.scheduler.tags["Name"] == "sp-autopilot-scheduler-logs"
+    condition     = aws_cloudwatch_log_group.scheduler[0].tags["Name"] == "sp-autopilot-scheduler-logs"
     error_message = "Scheduler log group should have correct Name tag"
   }
 
   assert {
-    condition     = aws_cloudwatch_log_group.purchaser.tags["Name"] == "sp-autopilot-purchaser-logs"
+    condition     = aws_cloudwatch_log_group.purchaser[0].tags["Name"] == "sp-autopilot-purchaser-logs"
     error_message = "Purchaser log group should have correct Name tag"
   }
 
   assert {
-    condition     = aws_cloudwatch_log_group.reporter.tags["Name"] == "sp-autopilot-reporter-logs"
+    condition     = aws_cloudwatch_log_group.reporter[0].tags["Name"] == "sp-autopilot-reporter-logs"
     error_message = "Reporter log group should have correct Name tag"
   }
 
   assert {
-    condition     = aws_cloudwatch_log_group.scheduler.tags["Environment"] == "test"
+    condition     = aws_cloudwatch_log_group.scheduler[0].tags["Environment"] == "test"
     error_message = "Log groups should include custom tags from variables"
   }
 }
@@ -163,9 +233,27 @@ run "test_lambda_error_alarms_enabled" {
   command = plan
 
   variables {
-    enable_compute_sp        = true
-    dry_run                  = true
-    enable_lambda_error_alarm = true
+    purchase_strategy = {
+      coverage_target_percent = 80
+      max_coverage_cap        = 90
+      simple = {
+        max_purchase_percent = 5
+      }
+    }
+    sp_plans = {
+      compute = {
+        enabled              = true
+        all_upfront_one_year = 1
+      }
+    }
+    notifications = {
+      emails = ["test@example.com"]
+    }
+    lambda_config = {
+      scheduler = { error_alarm = true }
+      purchaser = { error_alarm = true }
+      reporter  = { error_alarm = true }
+    }
   }
 
   assert {
@@ -189,9 +277,27 @@ run "test_lambda_error_alarms_disabled" {
   command = plan
 
   variables {
-    enable_compute_sp        = true
-    dry_run                  = true
-    enable_lambda_error_alarm = false
+    purchase_strategy = {
+      coverage_target_percent = 80
+      max_coverage_cap        = 90
+      simple = {
+        max_purchase_percent = 5
+      }
+    }
+    sp_plans = {
+      compute = {
+        enabled              = true
+        all_upfront_one_year = 1
+      }
+    }
+    notifications = {
+      emails = ["test@example.com"]
+    }
+    lambda_config = {
+      scheduler = { error_alarm = false }
+      purchaser = { error_alarm = false }
+      reporter  = { error_alarm = false }
+    }
   }
 
   assert {
@@ -215,9 +321,27 @@ run "test_scheduler_error_alarm_naming" {
   command = plan
 
   variables {
-    enable_compute_sp        = true
-    dry_run                  = true
-    enable_lambda_error_alarm = true
+    purchase_strategy = {
+      coverage_target_percent = 80
+      max_coverage_cap        = 90
+      simple = {
+        max_purchase_percent = 5
+      }
+    }
+    sp_plans = {
+      compute = {
+        enabled              = true
+        all_upfront_one_year = 1
+      }
+    }
+    notifications = {
+      emails = ["test@example.com"]
+    }
+    lambda_config = {
+      scheduler = { error_alarm = true }
+      purchaser = { error_alarm = true }
+      reporter  = { error_alarm = true }
+    }
   }
 
   assert {
@@ -236,9 +360,27 @@ run "test_purchaser_error_alarm_naming" {
   command = plan
 
   variables {
-    enable_compute_sp        = true
-    dry_run                  = true
-    enable_lambda_error_alarm = true
+    purchase_strategy = {
+      coverage_target_percent = 80
+      max_coverage_cap        = 90
+      simple = {
+        max_purchase_percent = 5
+      }
+    }
+    sp_plans = {
+      compute = {
+        enabled              = true
+        all_upfront_one_year = 1
+      }
+    }
+    notifications = {
+      emails = ["test@example.com"]
+    }
+    lambda_config = {
+      scheduler = { error_alarm = true }
+      purchaser = { error_alarm = true }
+      reporter  = { error_alarm = true }
+    }
   }
 
   assert {
@@ -257,9 +399,27 @@ run "test_reporter_error_alarm_naming" {
   command = plan
 
   variables {
-    enable_compute_sp        = true
-    dry_run                  = true
-    enable_lambda_error_alarm = true
+    purchase_strategy = {
+      coverage_target_percent = 80
+      max_coverage_cap        = 90
+      simple = {
+        max_purchase_percent = 5
+      }
+    }
+    sp_plans = {
+      compute = {
+        enabled              = true
+        all_upfront_one_year = 1
+      }
+    }
+    notifications = {
+      emails = ["test@example.com"]
+    }
+    lambda_config = {
+      scheduler = { error_alarm = true }
+      purchaser = { error_alarm = true }
+      reporter  = { error_alarm = true }
+    }
   }
 
   assert {
@@ -278,9 +438,27 @@ run "test_error_alarms_metric_configuration" {
   command = plan
 
   variables {
-    enable_compute_sp        = true
-    dry_run                  = true
-    enable_lambda_error_alarm = true
+    purchase_strategy = {
+      coverage_target_percent = 80
+      max_coverage_cap        = 90
+      simple = {
+        max_purchase_percent = 5
+      }
+    }
+    sp_plans = {
+      compute = {
+        enabled              = true
+        all_upfront_one_year = 1
+      }
+    }
+    notifications = {
+      emails = ["test@example.com"]
+    }
+    lambda_config = {
+      scheduler = { error_alarm = true }
+      purchaser = { error_alarm = true }
+      reporter  = { error_alarm = true }
+    }
   }
 
   assert {
@@ -314,10 +492,30 @@ run "test_error_alarms_threshold_configuration" {
   command = plan
 
   variables {
-    enable_compute_sp        = true
-    dry_run                  = true
-    enable_lambda_error_alarm = true
-    lambda_error_threshold   = 1
+    purchase_strategy = {
+      coverage_target_percent = 80
+      max_coverage_cap        = 90
+      simple = {
+        max_purchase_percent = 5
+      }
+    }
+    sp_plans = {
+      compute = {
+        enabled              = true
+        all_upfront_one_year = 1
+      }
+    }
+    notifications = {
+      emails = ["test@example.com"]
+    }
+    lambda_config = {
+      scheduler = { error_alarm = true }
+      purchaser = { error_alarm = true }
+      reporter  = { error_alarm = true }
+    }
+    monitoring = {
+      error_threshold = 1
+    }
   }
 
   assert {
@@ -341,10 +539,30 @@ run "test_error_alarms_custom_threshold" {
   command = plan
 
   variables {
-    enable_compute_sp        = true
-    dry_run                  = true
-    enable_lambda_error_alarm = true
-    lambda_error_threshold   = 5
+    purchase_strategy = {
+      coverage_target_percent = 80
+      max_coverage_cap        = 90
+      simple = {
+        max_purchase_percent = 5
+      }
+    }
+    sp_plans = {
+      compute = {
+        enabled              = true
+        all_upfront_one_year = 1
+      }
+    }
+    notifications = {
+      emails = ["test@example.com"]
+    }
+    lambda_config = {
+      scheduler = { error_alarm = true }
+      purchaser = { error_alarm = true }
+      reporter  = { error_alarm = true }
+    }
+    monitoring = {
+      error_threshold = 5
+    }
   }
 
   assert {
@@ -368,9 +586,27 @@ run "test_error_alarms_dimensions" {
   command = plan
 
   variables {
-    enable_compute_sp        = true
-    dry_run                  = true
-    enable_lambda_error_alarm = true
+    purchase_strategy = {
+      coverage_target_percent = 80
+      max_coverage_cap        = 90
+      simple = {
+        max_purchase_percent = 5
+      }
+    }
+    sp_plans = {
+      compute = {
+        enabled              = true
+        all_upfront_one_year = 1
+      }
+    }
+    notifications = {
+      emails = ["test@example.com"]
+    }
+    lambda_config = {
+      scheduler = { error_alarm = true }
+      purchaser = { error_alarm = true }
+      reporter  = { error_alarm = true }
+    }
   }
 
   assert {
@@ -394,9 +630,27 @@ run "test_error_alarms_alarm_actions" {
   command = plan
 
   variables {
-    enable_compute_sp        = true
-    dry_run                  = true
-    enable_lambda_error_alarm = true
+    purchase_strategy = {
+      coverage_target_percent = 80
+      max_coverage_cap        = 90
+      simple = {
+        max_purchase_percent = 5
+      }
+    }
+    sp_plans = {
+      compute = {
+        enabled              = true
+        all_upfront_one_year = 1
+      }
+    }
+    notifications = {
+      emails = ["test@example.com"]
+    }
+    lambda_config = {
+      scheduler = { error_alarm = true }
+      purchaser = { error_alarm = true }
+      reporter  = { error_alarm = true }
+    }
   }
 
   assert {
@@ -416,9 +670,27 @@ run "test_error_alarms_tags" {
   command = plan
 
   variables {
-    enable_compute_sp        = true
-    dry_run                  = true
-    enable_lambda_error_alarm = true
+    purchase_strategy = {
+      coverage_target_percent = 80
+      max_coverage_cap        = 90
+      simple = {
+        max_purchase_percent = 5
+      }
+    }
+    sp_plans = {
+      compute = {
+        enabled              = true
+        all_upfront_one_year = 1
+      }
+    }
+    notifications = {
+      emails = ["test@example.com"]
+    }
+    lambda_config = {
+      scheduler = { error_alarm = true }
+      purchaser = { error_alarm = true }
+      reporter  = { error_alarm = true }
+    }
     tags = {
       Environment = "test"
       Owner       = "platform-team"

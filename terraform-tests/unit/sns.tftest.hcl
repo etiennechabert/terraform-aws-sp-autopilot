@@ -30,8 +30,22 @@ run "test_sns_topic_naming" {
   command = plan
 
   variables {
-    enable_compute_sp = true
-    dry_run           = true
+    purchase_strategy = {
+      coverage_target_percent = 80
+      max_coverage_cap        = 90
+      simple = {
+        max_purchase_percent = 5
+      }
+    }
+    sp_plans = {
+      compute = {
+        enabled              = true
+        all_upfront_one_year = 1
+      }
+    }
+    notifications = {
+      emails = ["test@example.com"]
+    }
   }
 
   assert {
@@ -50,8 +64,22 @@ run "test_sns_topic_display_name" {
   command = plan
 
   variables {
-    enable_compute_sp = true
-    dry_run           = true
+    purchase_strategy = {
+      coverage_target_percent = 80
+      max_coverage_cap        = 90
+      simple = {
+        max_purchase_percent = 5
+      }
+    }
+    sp_plans = {
+      compute = {
+        enabled              = true
+        all_upfront_one_year = 1
+      }
+    }
+    notifications = {
+      emails = ["test@example.com"]
+    }
   }
 
   assert {
@@ -65,8 +93,22 @@ run "test_sns_topic_tags" {
   command = plan
 
   variables {
-    enable_compute_sp = true
-    dry_run           = true
+    purchase_strategy = {
+      coverage_target_percent = 80
+      max_coverage_cap        = 90
+      simple = {
+        max_purchase_percent = 5
+      }
+    }
+    sp_plans = {
+      compute = {
+        enabled              = true
+        all_upfront_one_year = 1
+      }
+    }
+    notifications = {
+      emails = ["test@example.com"]
+    }
     tags = {
       Environment = "test"
       Owner       = "platform-team"
@@ -103,9 +145,23 @@ run "test_email_subscriptions_empty" {
   command = plan
 
   variables {
-    enable_compute_sp   = true
-    dry_run             = true
-    notification_emails = []
+    purchase_strategy = {
+      coverage_target_percent = 80
+      max_coverage_cap        = 90
+      simple = {
+        max_purchase_percent = 5
+      }
+    }
+    sp_plans = {
+      compute = {
+        enabled              = true
+        all_upfront_one_year = 1
+      }
+    }
+    notifications = {
+      emails        = []
+      slack_webhook = "https://hooks.slack.com/services/test"
+    }
   }
 
   assert {
@@ -119,9 +175,22 @@ run "test_email_subscription_single" {
   command = plan
 
   variables {
-    enable_compute_sp   = true
-    dry_run             = true
-    notification_emails = ["admin@example.com"]
+    purchase_strategy = {
+      coverage_target_percent = 80
+      max_coverage_cap        = 90
+      simple = {
+        max_purchase_percent = 5
+      }
+    }
+    sp_plans = {
+      compute = {
+        enabled              = true
+        all_upfront_one_year = 1
+      }
+    }
+    notifications = {
+      emails = ["admin@example.com"]
+    }
   }
 
   # Note: Cannot override individual for_each instances with mock provider
@@ -141,9 +210,22 @@ run "test_email_subscriptions_multiple" {
   command = plan
 
   variables {
-    enable_compute_sp   = true
-    dry_run             = true
-    notification_emails = ["admin@example.com", "ops@example.com", "platform@example.com"]
+    purchase_strategy = {
+      coverage_target_percent = 80
+      max_coverage_cap        = 90
+      simple = {
+        max_purchase_percent = 5
+      }
+    }
+    sp_plans = {
+      compute = {
+        enabled              = true
+        all_upfront_one_year = 1
+      }
+    }
+    notifications = {
+      emails = ["admin@example.com", "ops@example.com", "platform@example.com"]
+    }
   }
 
   assert {
@@ -172,9 +254,22 @@ run "test_email_subscriptions_protocol" {
   command = plan
 
   variables {
-    enable_compute_sp   = true
-    dry_run             = true
-    notification_emails = ["admin@example.com", "ops@example.com"]
+    purchase_strategy = {
+      coverage_target_percent = 80
+      max_coverage_cap        = 90
+      simple = {
+        max_purchase_percent = 5
+      }
+    }
+    sp_plans = {
+      compute = {
+        enabled              = true
+        all_upfront_one_year = 1
+      }
+    }
+    notifications = {
+      emails = ["admin@example.com", "ops@example.com"]
+    }
   }
 
   assert {
@@ -193,9 +288,22 @@ run "test_email_subscriptions_topic_arn" {
   command = plan
 
   variables {
-    enable_compute_sp   = true
-    dry_run             = true
-    notification_emails = ["admin@example.com", "ops@example.com"]
+    purchase_strategy = {
+      coverage_target_percent = 80
+      max_coverage_cap        = 90
+      simple = {
+        max_purchase_percent = 5
+      }
+    }
+    sp_plans = {
+      compute = {
+        enabled              = true
+        all_upfront_one_year = 1
+      }
+    }
+    notifications = {
+      emails = ["admin@example.com", "ops@example.com"]
+    }
   }
 
   # Note: topic_arn is a computed value during plan phase for for_each resources

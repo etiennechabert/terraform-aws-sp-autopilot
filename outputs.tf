@@ -39,32 +39,32 @@ output "sns_topic_arn" {
 
 output "scheduler_lambda_arn" {
   description = "ARN of the Scheduler Lambda function"
-  value       = aws_lambda_function.scheduler.arn
+  value       = local.lambda_scheduler_enabled ? aws_lambda_function.scheduler[0].arn : null
 }
 
 output "scheduler_lambda_name" {
   description = "Name of the Scheduler Lambda function"
-  value       = aws_lambda_function.scheduler.function_name
+  value       = local.lambda_scheduler_enabled ? aws_lambda_function.scheduler[0].function_name : null
 }
 
 output "purchaser_lambda_arn" {
   description = "ARN of the Purchaser Lambda function"
-  value       = aws_lambda_function.purchaser.arn
+  value       = local.lambda_purchaser_enabled ? aws_lambda_function.purchaser[0].arn : null
 }
 
 output "purchaser_lambda_name" {
   description = "Name of the Purchaser Lambda function"
-  value       = aws_lambda_function.purchaser.function_name
+  value       = local.lambda_purchaser_enabled ? aws_lambda_function.purchaser[0].function_name : null
 }
 
 output "reporter_lambda_arn" {
   description = "ARN of the Reporter Lambda function"
-  value       = aws_lambda_function.reporter.arn
+  value       = local.lambda_reporter_enabled ? aws_lambda_function.reporter[0].arn : null
 }
 
 output "reporter_lambda_name" {
   description = "Name of the Reporter Lambda function"
-  value       = aws_lambda_function.reporter.function_name
+  value       = local.lambda_reporter_enabled ? aws_lambda_function.reporter[0].function_name : null
 }
 
 # ============================================================================
@@ -73,32 +73,32 @@ output "reporter_lambda_name" {
 
 output "scheduler_rule_arn" {
   description = "ARN of the EventBridge rule for Scheduler Lambda"
-  value       = aws_cloudwatch_event_rule.scheduler.arn
+  value       = local.lambda_scheduler_enabled && local.scheduler_schedule != null ? aws_cloudwatch_event_rule.scheduler[0].arn : null
 }
 
 output "scheduler_rule_name" {
   description = "Name of the EventBridge rule for Scheduler Lambda"
-  value       = aws_cloudwatch_event_rule.scheduler.name
+  value       = local.lambda_scheduler_enabled && local.scheduler_schedule != null ? aws_cloudwatch_event_rule.scheduler[0].name : null
 }
 
 output "purchaser_rule_arn" {
   description = "ARN of the EventBridge rule for Purchaser Lambda"
-  value       = aws_cloudwatch_event_rule.purchaser.arn
+  value       = local.lambda_purchaser_enabled && local.purchaser_schedule != null ? aws_cloudwatch_event_rule.purchaser[0].arn : null
 }
 
 output "purchaser_rule_name" {
   description = "Name of the EventBridge rule for Purchaser Lambda"
-  value       = aws_cloudwatch_event_rule.purchaser.name
+  value       = local.lambda_purchaser_enabled && local.purchaser_schedule != null ? aws_cloudwatch_event_rule.purchaser[0].name : null
 }
 
 output "reporter_rule_arn" {
   description = "ARN of the EventBridge rule for Reporter Lambda"
-  value       = var.enable_reports ? aws_cloudwatch_event_rule.reporter[0].arn : null
+  value       = local.lambda_reporter_enabled && local.report_schedule != null ? aws_cloudwatch_event_rule.reporter[0].arn : null
 }
 
 output "reporter_rule_name" {
   description = "Name of the EventBridge rule for Reporter Lambda"
-  value       = var.enable_reports ? aws_cloudwatch_event_rule.reporter[0].name : null
+  value       = local.lambda_reporter_enabled && local.report_schedule != null ? aws_cloudwatch_event_rule.reporter[0].name : null
 }
 
 # ============================================================================
@@ -121,17 +121,17 @@ output "reports_bucket_arn" {
 
 output "scheduler_role_arn" {
   description = "ARN of the Scheduler Lambda execution role"
-  value       = aws_iam_role.scheduler.arn
+  value       = local.lambda_scheduler_enabled ? aws_iam_role.scheduler[0].arn : null
 }
 
 output "purchaser_role_arn" {
   description = "ARN of the Purchaser Lambda execution role"
-  value       = aws_iam_role.purchaser.arn
+  value       = local.lambda_purchaser_enabled ? aws_iam_role.purchaser[0].arn : null
 }
 
 output "reporter_role_arn" {
   description = "ARN of the Reporter Lambda execution role"
-  value       = aws_iam_role.reporter.arn
+  value       = local.lambda_reporter_enabled ? aws_iam_role.reporter[0].arn : null
 }
 
 # ============================================================================
@@ -140,22 +140,22 @@ output "reporter_role_arn" {
 
 output "scheduler_error_alarm_arn" {
   description = "ARN of the Scheduler Lambda error alarm"
-  value       = var.enable_lambda_error_alarm ? aws_cloudwatch_metric_alarm.scheduler_error_alarm[0].arn : null
+  value       = local.lambda_scheduler_enabled && local.lambda_scheduler_error_alarm_enabled ? aws_cloudwatch_metric_alarm.scheduler_error_alarm[0].arn : null
 }
 
 output "purchaser_error_alarm_arn" {
   description = "ARN of the Purchaser Lambda error alarm"
-  value       = var.enable_lambda_error_alarm ? aws_cloudwatch_metric_alarm.purchaser_error_alarm[0].arn : null
+  value       = local.lambda_purchaser_enabled && local.lambda_purchaser_error_alarm_enabled ? aws_cloudwatch_metric_alarm.purchaser_error_alarm[0].arn : null
 }
 
 output "reporter_error_alarm_arn" {
   description = "ARN of the Reporter Lambda error alarm"
-  value       = var.enable_lambda_error_alarm ? aws_cloudwatch_metric_alarm.reporter_error_alarm[0].arn : null
+  value       = local.lambda_reporter_enabled && local.lambda_reporter_error_alarm_enabled ? aws_cloudwatch_metric_alarm.reporter_error_alarm[0].arn : null
 }
 
 output "dlq_alarm_arn" {
   description = "ARN of the DLQ depth alarm"
-  value       = var.enable_dlq_alarm ? aws_cloudwatch_metric_alarm.dlq_alarm[0].arn : null
+  value       = local.enable_dlq_alarm ? aws_cloudwatch_metric_alarm.dlq_alarm[0].arn : null
 }
 
 # ============================================================================
@@ -165,19 +165,19 @@ output "dlq_alarm_arn" {
 output "module_configuration" {
   description = "Module configuration summary"
   value = {
-    compute_sp_enabled    = var.enable_compute_sp
-    database_sp_enabled   = var.enable_database_sp
-    database_sp_term      = var.database_sp_term
-    database_sp_payment   = var.database_sp_payment_option
-    sagemaker_sp_enabled  = var.enable_sagemaker_sp
-    sagemaker_sp_term_mix = var.sagemaker_sp_term_mix
-    sagemaker_sp_payment  = var.sagemaker_sp_payment_option
-    coverage_target       = var.coverage_target_percent
-    max_coverage_cap      = var.max_coverage_cap
-    dry_run               = var.dry_run
-    scheduler_schedule    = var.scheduler_schedule
-    purchaser_schedule    = var.purchaser_schedule
-    notification_emails   = length(var.notification_emails)
+    compute_sp_enabled    = local.compute_enabled
+    database_sp_enabled   = local.database_enabled
+    database_sp_term      = local.database_sp_term
+    database_sp_payment   = local.database_sp_payment_option
+    sagemaker_sp_enabled  = local.sagemaker_enabled
+    sagemaker_sp_term_mix = local.sagemaker_term_mix
+    sagemaker_sp_payment  = local.sagemaker_payment_option
+    coverage_target       = local.coverage_target_percent
+    max_coverage_cap      = local.max_coverage_cap
+    dry_run               = local.dry_run
+    scheduler_schedule    = local.scheduler_schedule
+    purchaser_schedule    = local.purchaser_schedule
+    notification_emails   = length(local.notification_emails)
   }
 }
 
@@ -188,9 +188,9 @@ output "module_configuration" {
 output "database_sp_configuration" {
   description = "Database Savings Plans configuration for monitoring"
   value = {
-    enabled        = var.enable_database_sp
-    term           = var.database_sp_term
-    payment_option = var.database_sp_payment_option
+    enabled        = local.database_enabled
+    term           = local.database_sp_term
+    payment_option = local.database_sp_payment_option
     supported_services = [
       "RDS",
       "Aurora",
@@ -212,7 +212,7 @@ output "database_sp_configuration" {
 
 output "lambda_environment_database_sp" {
   description = "Database SP enablement flag for Lambda functions"
-  value       = var.enable_database_sp ? "true" : "false"
+  value       = local.database_enabled ? "true" : "false"
 }
 
 # ============================================================================
@@ -222,9 +222,9 @@ output "lambda_environment_database_sp" {
 output "sagemaker_sp_configuration" {
   description = "SageMaker Savings Plans configuration for monitoring"
   value = {
-    enabled        = var.enable_sagemaker_sp
-    term_mix       = var.sagemaker_sp_term_mix
-    payment_option = var.sagemaker_sp_payment_option
+    enabled        = local.sagemaker_enabled
+    term_mix       = local.sagemaker_term_mix
+    payment_option = local.sagemaker_payment_option
     supported_services = [
       "SageMaker"
     ]
@@ -238,5 +238,5 @@ output "sagemaker_sp_configuration" {
 
 output "lambda_environment_sagemaker_sp" {
   description = "SageMaker SP enablement flag for Lambda functions"
-  value       = var.enable_sagemaker_sp ? "true" : "false"
+  value       = local.sagemaker_enabled ? "true" : "false"
 }

@@ -24,43 +24,72 @@ provider "aws" {
 
 module "savings_plans" {
   source  = "etiennechabert/sp-autopilot/aws"
-  version = "~> 1.0"
+  version = "~> 2.0"
 
-  # Enable Database Savings Plans only
-  enable_compute_sp  = false
-  enable_database_sp = true
+  # Purchase strategy - conservative targets
+  purchase_strategy = {
+    coverage_target_percent = 80 # Target 80% coverage
+    max_coverage_cap        = 90 # Never exceed 90% coverage
+    lookback_days           = 30 # 30 days of usage history
+    min_data_days           = 14 # Require at least 14 days of data
 
-  # Coverage strategy - conservative targets
-  coverage_target_percent = 80 # Target 80% coverage
-  max_coverage_cap        = 90 # Never exceed 90% coverage
+    # Gradual commitment growth
+    simple = {
+      max_purchase_percent = 5 # Max 5% of monthly spend per cycle
+    }
+  }
 
-  # Risk management - gradual commitment growth
-  max_purchase_percent = 5  # Max 5% of monthly spend per cycle
-  lookback_days        = 30 # 30 days of usage history
-  min_data_days        = 14 # Require at least 14 days of data
+  # Savings Plans configuration - Database only
+  sp_plans = {
+    compute = {
+      enabled = false
+    }
 
-  # Database SP configuration (AWS constraints - cannot be changed)
-  # database_sp_term = "ONE_YEAR"           # Fixed: AWS only supports 1-year
-  # database_sp_payment_option = "NO_UPFRONT"  # Fixed: AWS only supports no upfront
+    database = {
+      enabled             = true
+      no_upfront_one_year = 1 # AWS constraint: only 1-year NO_UPFRONT available
+    }
 
-  # Scheduling - 3-day review window
-  scheduler_schedule = "cron(0 8 1 * ? *)" # 1st of month at 8:00 AM UTC
-  purchaser_schedule = "cron(0 8 4 * ? *)" # 4th of month at 8:00 AM UTC
+    sagemaker = {
+      enabled = false
+    }
+  }
+
+  # Scheduling - spread evenly across the month
+  scheduler = {
+    scheduler = "cron(0 8 1 * ? *)"  # 1st of month at 8:00 AM UTC
+    purchaser = "cron(0 8 10 * ? *)" # 10th of month at 8:00 AM UTC (9-day review window)
+    reporter  = "cron(0 9 20 * ? *)" # 20th of month at 9:00 AM UTC
+  }
 
   # Notifications
-  notification_emails = [
-    "database-team@example.com",
-    "finops@example.com"
-  ]
+  notifications = {
+    emails         = ["database-team@example.com", "finops@example.com"]
+    send_no_action = true # Get notified even when no action needed
+  }
 
-  # Operations
-  dry_run              = true # Start in dry-run mode - emails only
-  send_no_action_email = true # Get notified even when no action needed
+  # Reporting
+  reporting = {
+    enabled       = true
+    format        = "html"
+    email_reports = false
+  }
 
   # Monitoring
-  enable_lambda_error_alarm = true
-  enable_dlq_alarm          = true
-  lambda_error_threshold    = 1
+  monitoring = {
+    dlq_alarm       = true
+    error_threshold = 1
+  }
+
+  # Lambda configuration (using defaults with error alarms)
+  lambda_config = {
+    scheduler = {
+      dry_run     = true # Start in dry-run mode - emails only
+      error_alarm = true
+    }
+    purchaser = { error_alarm = true }
+    reporter  = { error_alarm = true }
+  }
 
   # Tagging
   tags = {

@@ -30,17 +30,31 @@ run "test_scheduler_role_naming" {
   command = plan
 
   variables {
-    enable_compute_sp = true
-    dry_run           = true
+    purchase_strategy = {
+      coverage_target_percent = 80
+      max_coverage_cap        = 90
+      simple = {
+        max_purchase_percent = 5
+      }
+    }
+    sp_plans = {
+      compute = {
+        enabled              = true
+        all_upfront_one_year = 1
+      }
+    }
+    notifications = {
+      emails = ["test@example.com"]
+    }
   }
 
   assert {
-    condition     = aws_iam_role.scheduler.name == "sp-autopilot-scheduler"
+    condition     = aws_iam_role.scheduler[0].name == "sp-autopilot-scheduler"
     error_message = "Scheduler IAM role name should follow pattern: sp-autopilot-scheduler"
   }
 
   assert {
-    condition     = aws_iam_role.scheduler.description == "IAM role for Scheduler Lambda function - analyzes usage and queues purchase recommendations"
+    condition     = aws_iam_role.scheduler[0].description == "IAM role for Scheduler Lambda function - analyzes usage and queues purchase recommendations"
     error_message = "Scheduler IAM role should have correct description"
   }
 }
@@ -50,22 +64,36 @@ run "test_scheduler_role_assume_policy" {
   command = plan
 
   variables {
-    enable_compute_sp = true
-    dry_run           = true
+    purchase_strategy = {
+      coverage_target_percent = 80
+      max_coverage_cap        = 90
+      simple = {
+        max_purchase_percent = 5
+      }
+    }
+    sp_plans = {
+      compute = {
+        enabled              = true
+        all_upfront_one_year = 1
+      }
+    }
+    notifications = {
+      emails = ["test@example.com"]
+    }
   }
 
   assert {
-    condition     = can(jsondecode(aws_iam_role.scheduler.assume_role_policy))
+    condition     = can(jsondecode(aws_iam_role.scheduler[0].assume_role_policy))
     error_message = "Scheduler IAM role assume role policy should be valid JSON"
   }
 
   assert {
-    condition     = jsondecode(aws_iam_role.scheduler.assume_role_policy).Statement[0].Principal.Service == "lambda.amazonaws.com"
+    condition     = jsondecode(aws_iam_role.scheduler[0].assume_role_policy).Statement[0].Principal.Service == "lambda.amazonaws.com"
     error_message = "Scheduler IAM role should allow Lambda service to assume it"
   }
 
   assert {
-    condition     = jsondecode(aws_iam_role.scheduler.assume_role_policy).Statement[0].Action == "sts:AssumeRole"
+    condition     = jsondecode(aws_iam_role.scheduler[0].assume_role_policy).Statement[0].Action == "sts:AssumeRole"
     error_message = "Scheduler IAM role should allow sts:AssumeRole action"
   }
 }
@@ -75,8 +103,22 @@ run "test_scheduler_role_tags" {
   command = plan
 
   variables {
-    enable_compute_sp = true
-    dry_run           = true
+    purchase_strategy = {
+      coverage_target_percent = 80
+      max_coverage_cap        = 90
+      simple = {
+        max_purchase_percent = 5
+      }
+    }
+    sp_plans = {
+      compute = {
+        enabled              = true
+        all_upfront_one_year = 1
+      }
+    }
+    notifications = {
+      emails = ["test@example.com"]
+    }
     tags = {
       Environment = "test"
       Owner       = "platform-team"
@@ -84,22 +126,22 @@ run "test_scheduler_role_tags" {
   }
 
   assert {
-    condition     = aws_iam_role.scheduler.tags["ManagedBy"] == "terraform-aws-sp-autopilot"
+    condition     = aws_iam_role.scheduler[0].tags["ManagedBy"] == "terraform-aws-sp-autopilot"
     error_message = "Scheduler IAM role should have ManagedBy tag"
   }
 
   assert {
-    condition     = aws_iam_role.scheduler.tags["Module"] == "savings-plans-automation"
+    condition     = aws_iam_role.scheduler[0].tags["Module"] == "savings-plans-automation"
     error_message = "Scheduler IAM role should have Module tag"
   }
 
   assert {
-    condition     = aws_iam_role.scheduler.tags["Name"] == "sp-autopilot-scheduler-role"
+    condition     = aws_iam_role.scheduler[0].tags["Name"] == "sp-autopilot-scheduler-role"
     error_message = "Scheduler IAM role should have Name tag"
   }
 
   assert {
-    condition     = aws_iam_role.scheduler.tags["Environment"] == "test"
+    condition     = aws_iam_role.scheduler[0].tags["Environment"] == "test"
     error_message = "Scheduler IAM role should include custom tags from variables"
   }
 }
@@ -109,19 +151,33 @@ run "test_scheduler_cloudwatch_logs_policy" {
   command = plan
 
   variables {
-    enable_compute_sp = true
-    dry_run           = true
+    purchase_strategy = {
+      coverage_target_percent = 80
+      max_coverage_cap        = 90
+      simple = {
+        max_purchase_percent = 5
+      }
+    }
+    sp_plans = {
+      compute = {
+        enabled              = true
+        all_upfront_one_year = 1
+      }
+    }
+    notifications = {
+      emails = ["test@example.com"]
+    }
   }
 
   assert {
-    condition     = aws_iam_role_policy.scheduler_cloudwatch_logs.name == "cloudwatch-logs"
+    condition     = aws_iam_role_policy.scheduler_cloudwatch_logs[0].name == "cloudwatch-logs"
     error_message = "Scheduler CloudWatch Logs policy should have correct name"
   }
 
   # Note: Mock provider doesn't populate policy content, so we can only verify the policy exists
   # In a real environment, you would verify the policy content using integration tests
   assert {
-    condition     = aws_iam_role_policy.scheduler_cloudwatch_logs.policy != null
+    condition     = aws_iam_role_policy.scheduler_cloudwatch_logs[0].policy != null
     error_message = "Scheduler CloudWatch Logs policy should be set"
   }
 }
@@ -131,18 +187,32 @@ run "test_scheduler_cost_explorer_policy" {
   command = plan
 
   variables {
-    enable_compute_sp = true
-    dry_run           = true
+    purchase_strategy = {
+      coverage_target_percent = 80
+      max_coverage_cap        = 90
+      simple = {
+        max_purchase_percent = 5
+      }
+    }
+    sp_plans = {
+      compute = {
+        enabled              = true
+        all_upfront_one_year = 1
+      }
+    }
+    notifications = {
+      emails = ["test@example.com"]
+    }
   }
 
   assert {
-    condition     = aws_iam_role_policy.scheduler_cost_explorer.name == "cost-explorer"
+    condition     = aws_iam_role_policy.scheduler_cost_explorer[0].name == "cost-explorer"
     error_message = "Scheduler Cost Explorer policy should have correct name"
   }
 
   # Note: Mock provider doesn't populate policy content
   assert {
-    condition     = aws_iam_role_policy.scheduler_cost_explorer.policy != null
+    condition     = aws_iam_role_policy.scheduler_cost_explorer[0].policy != null
     error_message = "Scheduler Cost Explorer policy should be set"
   }
 }
@@ -152,18 +222,32 @@ run "test_scheduler_sqs_policy" {
   command = plan
 
   variables {
-    enable_compute_sp = true
-    dry_run           = true
+    purchase_strategy = {
+      coverage_target_percent = 80
+      max_coverage_cap        = 90
+      simple = {
+        max_purchase_percent = 5
+      }
+    }
+    sp_plans = {
+      compute = {
+        enabled              = true
+        all_upfront_one_year = 1
+      }
+    }
+    notifications = {
+      emails = ["test@example.com"]
+    }
   }
 
   assert {
-    condition     = aws_iam_role_policy.scheduler_sqs.name == "sqs"
+    condition     = aws_iam_role_policy.scheduler_sqs[0].name == "sqs"
     error_message = "Scheduler SQS policy should have correct name"
   }
 
   # Note: Mock provider doesn't populate policy content
   assert {
-    condition     = aws_iam_role_policy.scheduler_sqs.policy != null
+    condition     = aws_iam_role_policy.scheduler_sqs[0].policy != null
     error_message = "Scheduler SQS policy should be set"
   }
 }
@@ -173,18 +257,32 @@ run "test_scheduler_sns_policy" {
   command = plan
 
   variables {
-    enable_compute_sp = true
-    dry_run           = true
+    purchase_strategy = {
+      coverage_target_percent = 80
+      max_coverage_cap        = 90
+      simple = {
+        max_purchase_percent = 5
+      }
+    }
+    sp_plans = {
+      compute = {
+        enabled              = true
+        all_upfront_one_year = 1
+      }
+    }
+    notifications = {
+      emails = ["test@example.com"]
+    }
   }
 
   assert {
-    condition     = aws_iam_role_policy.scheduler_sns.name == "sns"
+    condition     = aws_iam_role_policy.scheduler_sns[0].name == "sns"
     error_message = "Scheduler SNS policy should have correct name"
   }
 
   # Note: Mock provider doesn't populate policy content
   assert {
-    condition     = aws_iam_role_policy.scheduler_sns.policy != null
+    condition     = aws_iam_role_policy.scheduler_sns[0].policy != null
     error_message = "Scheduler SNS policy should be set"
   }
 }
@@ -194,18 +292,32 @@ run "test_scheduler_savingsplans_policy" {
   command = plan
 
   variables {
-    enable_compute_sp = true
-    dry_run           = true
+    purchase_strategy = {
+      coverage_target_percent = 80
+      max_coverage_cap        = 90
+      simple = {
+        max_purchase_percent = 5
+      }
+    }
+    sp_plans = {
+      compute = {
+        enabled              = true
+        all_upfront_one_year = 1
+      }
+    }
+    notifications = {
+      emails = ["test@example.com"]
+    }
   }
 
   assert {
-    condition     = aws_iam_role_policy.scheduler_savingsplans.name == "savingsplans"
+    condition     = aws_iam_role_policy.scheduler_savingsplans[0].name == "savingsplans"
     error_message = "Scheduler Savings Plans policy should have correct name"
   }
 
   # Note: Mock provider doesn't populate policy content
   assert {
-    condition     = aws_iam_role_policy.scheduler_savingsplans.policy != null
+    condition     = aws_iam_role_policy.scheduler_savingsplans[0].policy != null
     error_message = "Scheduler Savings Plans policy should be set"
   }
 }
@@ -215,9 +327,33 @@ run "test_scheduler_assume_role_policy_not_created" {
   command = plan
 
   variables {
-    enable_compute_sp           = true
-    dry_run                     = true
-    management_account_role_arn = null
+    purchase_strategy = {
+      coverage_target_percent = 80
+      max_coverage_cap        = 90
+      simple = {
+        max_purchase_percent = 5
+      }
+    }
+    sp_plans = {
+      compute = {
+        enabled              = true
+        all_upfront_one_year = 1
+      }
+    }
+    notifications = {
+      emails = ["test@example.com"]
+    }
+    lambda_config = {
+      scheduler = {
+        assume_role_arn = null
+      }
+      purchaser = {
+        assume_role_arn = null
+      }
+      reporter = {
+        assume_role_arn = null
+      }
+    }
   }
 
   assert {
@@ -231,9 +367,33 @@ run "test_scheduler_assume_role_policy_created" {
   command = plan
 
   variables {
-    enable_compute_sp           = true
-    dry_run                     = true
-    management_account_role_arn = "arn:aws:iam::999888777666:role/OrganizationAccountAccessRole"
+    purchase_strategy = {
+      coverage_target_percent = 80
+      max_coverage_cap        = 90
+      simple = {
+        max_purchase_percent = 5
+      }
+    }
+    sp_plans = {
+      compute = {
+        enabled              = true
+        all_upfront_one_year = 1
+      }
+    }
+    notifications = {
+      emails = ["test@example.com"]
+    }
+    lambda_config = {
+      scheduler = {
+        assume_role_arn = "arn:aws:iam::999888777666:role/OrganizationAccountAccessRole"
+      }
+      purchaser = {
+        assume_role_arn = "arn:aws:iam::999888777666:role/OrganizationAccountAccessRole"
+      }
+      reporter = {
+        assume_role_arn = "arn:aws:iam::999888777666:role/OrganizationAccountAccessRole"
+      }
+    }
   }
 
   assert {
@@ -271,17 +431,31 @@ run "test_purchaser_role_naming" {
   command = plan
 
   variables {
-    enable_compute_sp = true
-    dry_run           = true
+    purchase_strategy = {
+      coverage_target_percent = 80
+      max_coverage_cap        = 90
+      simple = {
+        max_purchase_percent = 5
+      }
+    }
+    sp_plans = {
+      compute = {
+        enabled              = true
+        all_upfront_one_year = 1
+      }
+    }
+    notifications = {
+      emails = ["test@example.com"]
+    }
   }
 
   assert {
-    condition     = aws_iam_role.purchaser.name == "sp-autopilot-purchaser"
+    condition     = aws_iam_role.purchaser[0].name == "sp-autopilot-purchaser"
     error_message = "Purchaser IAM role name should follow pattern: sp-autopilot-purchaser"
   }
 
   assert {
-    condition     = aws_iam_role.purchaser.description == "IAM role for Purchaser Lambda function - executes Savings Plans purchases from queue"
+    condition     = aws_iam_role.purchaser[0].description == "IAM role for Purchaser Lambda function - executes Savings Plans purchases from queue"
     error_message = "Purchaser IAM role should have correct description"
   }
 }
@@ -291,22 +465,36 @@ run "test_purchaser_role_assume_policy" {
   command = plan
 
   variables {
-    enable_compute_sp = true
-    dry_run           = true
+    purchase_strategy = {
+      coverage_target_percent = 80
+      max_coverage_cap        = 90
+      simple = {
+        max_purchase_percent = 5
+      }
+    }
+    sp_plans = {
+      compute = {
+        enabled              = true
+        all_upfront_one_year = 1
+      }
+    }
+    notifications = {
+      emails = ["test@example.com"]
+    }
   }
 
   assert {
-    condition     = can(jsondecode(aws_iam_role.purchaser.assume_role_policy))
+    condition     = can(jsondecode(aws_iam_role.purchaser[0].assume_role_policy))
     error_message = "Purchaser IAM role assume role policy should be valid JSON"
   }
 
   assert {
-    condition     = jsondecode(aws_iam_role.purchaser.assume_role_policy).Statement[0].Principal.Service == "lambda.amazonaws.com"
+    condition     = jsondecode(aws_iam_role.purchaser[0].assume_role_policy).Statement[0].Principal.Service == "lambda.amazonaws.com"
     error_message = "Purchaser IAM role should allow Lambda service to assume it"
   }
 
   assert {
-    condition     = jsondecode(aws_iam_role.purchaser.assume_role_policy).Statement[0].Action == "sts:AssumeRole"
+    condition     = jsondecode(aws_iam_role.purchaser[0].assume_role_policy).Statement[0].Action == "sts:AssumeRole"
     error_message = "Purchaser IAM role should allow sts:AssumeRole action"
   }
 }
@@ -316,8 +504,22 @@ run "test_purchaser_role_tags" {
   command = plan
 
   variables {
-    enable_compute_sp = true
-    dry_run           = true
+    purchase_strategy = {
+      coverage_target_percent = 80
+      max_coverage_cap        = 90
+      simple = {
+        max_purchase_percent = 5
+      }
+    }
+    sp_plans = {
+      compute = {
+        enabled              = true
+        all_upfront_one_year = 1
+      }
+    }
+    notifications = {
+      emails = ["test@example.com"]
+    }
     tags = {
       Environment = "test"
       Owner       = "platform-team"
@@ -325,22 +527,22 @@ run "test_purchaser_role_tags" {
   }
 
   assert {
-    condition     = aws_iam_role.purchaser.tags["ManagedBy"] == "terraform-aws-sp-autopilot"
+    condition     = aws_iam_role.purchaser[0].tags["ManagedBy"] == "terraform-aws-sp-autopilot"
     error_message = "Purchaser IAM role should have ManagedBy tag"
   }
 
   assert {
-    condition     = aws_iam_role.purchaser.tags["Module"] == "savings-plans-automation"
+    condition     = aws_iam_role.purchaser[0].tags["Module"] == "savings-plans-automation"
     error_message = "Purchaser IAM role should have Module tag"
   }
 
   assert {
-    condition     = aws_iam_role.purchaser.tags["Name"] == "sp-autopilot-purchaser-role"
+    condition     = aws_iam_role.purchaser[0].tags["Name"] == "sp-autopilot-purchaser-role"
     error_message = "Purchaser IAM role should have Name tag"
   }
 
   assert {
-    condition     = aws_iam_role.purchaser.tags["Environment"] == "test"
+    condition     = aws_iam_role.purchaser[0].tags["Environment"] == "test"
     error_message = "Purchaser IAM role should include custom tags from variables"
   }
 }
@@ -350,13 +552,27 @@ run "test_purchaser_cloudwatch_logs_policy" {
   command = plan
 
   variables {
-    enable_compute_sp = true
-    dry_run           = true
+    purchase_strategy = {
+      coverage_target_percent = 80
+      max_coverage_cap        = 90
+      simple = {
+        max_purchase_percent = 5
+      }
+    }
+    sp_plans = {
+      compute = {
+        enabled              = true
+        all_upfront_one_year = 1
+      }
+    }
+    notifications = {
+      emails = ["test@example.com"]
+    }
   }
 
   override_resource {
     override_during = plan
-    target = aws_iam_role.purchaser
+    target          = aws_iam_role.purchaser[0]
     values = {
       id  = "sp-autopilot-purchaser"
       arn = "arn:aws:iam::123456789012:role/sp-autopilot-purchaser"
@@ -365,19 +581,19 @@ run "test_purchaser_cloudwatch_logs_policy" {
 
   override_resource {
     override_during = plan
-    target = aws_iam_role_policy.purchaser_cloudwatch_logs
+    target          = aws_iam_role_policy.purchaser_cloudwatch_logs
     values = {
       role = "sp-autopilot-purchaser"
     }
   }
 
   assert {
-    condition     = aws_iam_role_policy.purchaser_cloudwatch_logs.name == "cloudwatch-logs"
+    condition     = aws_iam_role_policy.purchaser_cloudwatch_logs[0].name == "cloudwatch-logs"
     error_message = "Purchaser CloudWatch Logs policy should have correct name"
   }
 
   assert {
-    condition     = aws_iam_role_policy.purchaser_cloudwatch_logs.role == aws_iam_role.purchaser.id
+    condition     = aws_iam_role_policy.purchaser_cloudwatch_logs[0].role == aws_iam_role.purchaser[0].id
     error_message = "Purchaser CloudWatch Logs policy should be attached to purchaser role"
   }
 
@@ -391,22 +607,36 @@ run "test_purchaser_cost_explorer_policy" {
   command = plan
 
   variables {
-    enable_compute_sp = true
-    dry_run           = true
+    purchase_strategy = {
+      coverage_target_percent = 80
+      max_coverage_cap        = 90
+      simple = {
+        max_purchase_percent = 5
+      }
+    }
+    sp_plans = {
+      compute = {
+        enabled              = true
+        all_upfront_one_year = 1
+      }
+    }
+    notifications = {
+      emails = ["test@example.com"]
+    }
   }
 
   assert {
-    condition     = aws_iam_role_policy.purchaser_cost_explorer.name == "cost-explorer"
+    condition     = aws_iam_role_policy.purchaser_cost_explorer[0].name == "cost-explorer"
     error_message = "Purchaser Cost Explorer policy should have correct name"
   }
 
   assert {
-    condition     = can(jsondecode(aws_iam_role_policy.purchaser_cost_explorer.policy))
+    condition     = can(jsondecode(aws_iam_role_policy.purchaser_cost_explorer[0].policy))
     error_message = "Purchaser Cost Explorer policy should be valid JSON"
   }
 
   assert {
-    condition     = contains(jsondecode(aws_iam_role_policy.purchaser_cost_explorer.policy).Statement[0].Action, "ce:GetSavingsPlansPurchaseRecommendation")
+    condition     = contains(jsondecode(aws_iam_role_policy.purchaser_cost_explorer[0].policy).Statement[0].Action, "ce:GetSavingsPlansPurchaseRecommendation")
     error_message = "Purchaser Cost Explorer policy should include ce:GetSavingsPlansPurchaseRecommendation"
   }
 }
@@ -416,12 +646,26 @@ run "test_purchaser_sqs_policy" {
   command = plan
 
   variables {
-    enable_compute_sp = true
-    dry_run           = true
+    purchase_strategy = {
+      coverage_target_percent = 80
+      max_coverage_cap        = 90
+      simple = {
+        max_purchase_percent = 5
+      }
+    }
+    sp_plans = {
+      compute = {
+        enabled              = true
+        all_upfront_one_year = 1
+      }
+    }
+    notifications = {
+      emails = ["test@example.com"]
+    }
   }
 
   assert {
-    condition     = aws_iam_role_policy.purchaser_sqs.name == "sqs"
+    condition     = aws_iam_role_policy.purchaser_sqs[0].name == "sqs"
     error_message = "Purchaser SQS policy should have correct name"
   }
 
@@ -435,12 +679,26 @@ run "test_purchaser_sns_policy" {
   command = plan
 
   variables {
-    enable_compute_sp = true
-    dry_run           = true
+    purchase_strategy = {
+      coverage_target_percent = 80
+      max_coverage_cap        = 90
+      simple = {
+        max_purchase_percent = 5
+      }
+    }
+    sp_plans = {
+      compute = {
+        enabled              = true
+        all_upfront_one_year = 1
+      }
+    }
+    notifications = {
+      emails = ["test@example.com"]
+    }
   }
 
   assert {
-    condition     = aws_iam_role_policy.purchaser_sns.name == "sns"
+    condition     = aws_iam_role_policy.purchaser_sns[0].name == "sns"
     error_message = "Purchaser SNS policy should have correct name"
   }
 
@@ -453,27 +711,41 @@ run "test_purchaser_savingsplans_policy" {
   command = plan
 
   variables {
-    enable_compute_sp = true
-    dry_run           = true
+    purchase_strategy = {
+      coverage_target_percent = 80
+      max_coverage_cap        = 90
+      simple = {
+        max_purchase_percent = 5
+      }
+    }
+    sp_plans = {
+      compute = {
+        enabled              = true
+        all_upfront_one_year = 1
+      }
+    }
+    notifications = {
+      emails = ["test@example.com"]
+    }
   }
 
   assert {
-    condition     = aws_iam_role_policy.purchaser_savingsplans.name == "savingsplans"
+    condition     = aws_iam_role_policy.purchaser_savingsplans[0].name == "savingsplans"
     error_message = "Purchaser Savings Plans policy should have correct name"
   }
 
   assert {
-    condition     = can(jsondecode(aws_iam_role_policy.purchaser_savingsplans.policy))
+    condition     = can(jsondecode(aws_iam_role_policy.purchaser_savingsplans[0].policy))
     error_message = "Purchaser Savings Plans policy should be valid JSON"
   }
 
   assert {
-    condition     = contains(jsondecode(aws_iam_role_policy.purchaser_savingsplans.policy).Statement[0].Action, "savingsplans:DescribeSavingsPlans")
+    condition     = contains(jsondecode(aws_iam_role_policy.purchaser_savingsplans[0].policy).Statement[0].Action, "savingsplans:DescribeSavingsPlans")
     error_message = "Purchaser Savings Plans policy should include savingsplans:DescribeSavingsPlans"
   }
 
   assert {
-    condition     = contains(jsondecode(aws_iam_role_policy.purchaser_savingsplans.policy).Statement[0].Action, "savingsplans:CreateSavingsPlan")
+    condition     = contains(jsondecode(aws_iam_role_policy.purchaser_savingsplans[0].policy).Statement[0].Action, "savingsplans:CreateSavingsPlan")
     error_message = "Purchaser Savings Plans policy should include savingsplans:CreateSavingsPlan"
   }
 }
@@ -483,9 +755,33 @@ run "test_purchaser_assume_role_policy_not_created" {
   command = plan
 
   variables {
-    enable_compute_sp           = true
-    dry_run                     = true
-    management_account_role_arn = null
+    purchase_strategy = {
+      coverage_target_percent = 80
+      max_coverage_cap        = 90
+      simple = {
+        max_purchase_percent = 5
+      }
+    }
+    sp_plans = {
+      compute = {
+        enabled              = true
+        all_upfront_one_year = 1
+      }
+    }
+    notifications = {
+      emails = ["test@example.com"]
+    }
+    lambda_config = {
+      scheduler = {
+        assume_role_arn = null
+      }
+      purchaser = {
+        assume_role_arn = null
+      }
+      reporter = {
+        assume_role_arn = null
+      }
+    }
   }
 
   assert {
@@ -499,9 +795,33 @@ run "test_purchaser_assume_role_policy_created" {
   command = plan
 
   variables {
-    enable_compute_sp           = true
-    dry_run                     = true
-    management_account_role_arn = "arn:aws:iam::999888777666:role/OrganizationAccountAccessRole"
+    purchase_strategy = {
+      coverage_target_percent = 80
+      max_coverage_cap        = 90
+      simple = {
+        max_purchase_percent = 5
+      }
+    }
+    sp_plans = {
+      compute = {
+        enabled              = true
+        all_upfront_one_year = 1
+      }
+    }
+    notifications = {
+      emails = ["test@example.com"]
+    }
+    lambda_config = {
+      scheduler = {
+        assume_role_arn = "arn:aws:iam::999888777666:role/OrganizationAccountAccessRole"
+      }
+      purchaser = {
+        assume_role_arn = "arn:aws:iam::999888777666:role/OrganizationAccountAccessRole"
+      }
+      reporter = {
+        assume_role_arn = "arn:aws:iam::999888777666:role/OrganizationAccountAccessRole"
+      }
+    }
   }
 
   assert {
@@ -539,17 +859,31 @@ run "test_reporter_role_naming" {
   command = plan
 
   variables {
-    enable_compute_sp = true
-    dry_run           = true
+    purchase_strategy = {
+      coverage_target_percent = 80
+      max_coverage_cap        = 90
+      simple = {
+        max_purchase_percent = 5
+      }
+    }
+    sp_plans = {
+      compute = {
+        enabled              = true
+        all_upfront_one_year = 1
+      }
+    }
+    notifications = {
+      emails = ["test@example.com"]
+    }
   }
 
   assert {
-    condition     = aws_iam_role.reporter.name == "sp-autopilot-reporter"
+    condition     = aws_iam_role.reporter[0].name == "sp-autopilot-reporter"
     error_message = "Reporter IAM role name should follow pattern: sp-autopilot-reporter"
   }
 
   assert {
-    condition     = aws_iam_role.reporter.description == "IAM role for Reporter Lambda function - generates periodic coverage and savings reports"
+    condition     = aws_iam_role.reporter[0].description == "IAM role for Reporter Lambda function - generates periodic coverage and savings reports"
     error_message = "Reporter IAM role should have correct description"
   }
 }
@@ -559,22 +893,36 @@ run "test_reporter_role_assume_policy" {
   command = plan
 
   variables {
-    enable_compute_sp = true
-    dry_run           = true
+    purchase_strategy = {
+      coverage_target_percent = 80
+      max_coverage_cap        = 90
+      simple = {
+        max_purchase_percent = 5
+      }
+    }
+    sp_plans = {
+      compute = {
+        enabled              = true
+        all_upfront_one_year = 1
+      }
+    }
+    notifications = {
+      emails = ["test@example.com"]
+    }
   }
 
   assert {
-    condition     = can(jsondecode(aws_iam_role.reporter.assume_role_policy))
+    condition     = can(jsondecode(aws_iam_role.reporter[0].assume_role_policy))
     error_message = "Reporter IAM role assume role policy should be valid JSON"
   }
 
   assert {
-    condition     = jsondecode(aws_iam_role.reporter.assume_role_policy).Statement[0].Principal.Service == "lambda.amazonaws.com"
+    condition     = jsondecode(aws_iam_role.reporter[0].assume_role_policy).Statement[0].Principal.Service == "lambda.amazonaws.com"
     error_message = "Reporter IAM role should allow Lambda service to assume it"
   }
 
   assert {
-    condition     = jsondecode(aws_iam_role.reporter.assume_role_policy).Statement[0].Action == "sts:AssumeRole"
+    condition     = jsondecode(aws_iam_role.reporter[0].assume_role_policy).Statement[0].Action == "sts:AssumeRole"
     error_message = "Reporter IAM role should allow sts:AssumeRole action"
   }
 }
@@ -584,8 +932,22 @@ run "test_reporter_role_tags" {
   command = plan
 
   variables {
-    enable_compute_sp = true
-    dry_run           = true
+    purchase_strategy = {
+      coverage_target_percent = 80
+      max_coverage_cap        = 90
+      simple = {
+        max_purchase_percent = 5
+      }
+    }
+    sp_plans = {
+      compute = {
+        enabled              = true
+        all_upfront_one_year = 1
+      }
+    }
+    notifications = {
+      emails = ["test@example.com"]
+    }
     tags = {
       Environment = "test"
       Owner       = "platform-team"
@@ -593,22 +955,22 @@ run "test_reporter_role_tags" {
   }
 
   assert {
-    condition     = aws_iam_role.reporter.tags["ManagedBy"] == "terraform-aws-sp-autopilot"
+    condition     = aws_iam_role.reporter[0].tags["ManagedBy"] == "terraform-aws-sp-autopilot"
     error_message = "Reporter IAM role should have ManagedBy tag"
   }
 
   assert {
-    condition     = aws_iam_role.reporter.tags["Module"] == "savings-plans-automation"
+    condition     = aws_iam_role.reporter[0].tags["Module"] == "savings-plans-automation"
     error_message = "Reporter IAM role should have Module tag"
   }
 
   assert {
-    condition     = aws_iam_role.reporter.tags["Name"] == "sp-autopilot-reporter-role"
+    condition     = aws_iam_role.reporter[0].tags["Name"] == "sp-autopilot-reporter-role"
     error_message = "Reporter IAM role should have Name tag"
   }
 
   assert {
-    condition     = aws_iam_role.reporter.tags["Environment"] == "test"
+    condition     = aws_iam_role.reporter[0].tags["Environment"] == "test"
     error_message = "Reporter IAM role should include custom tags from variables"
   }
 }
@@ -618,12 +980,26 @@ run "test_reporter_cloudwatch_logs_policy" {
   command = plan
 
   variables {
-    enable_compute_sp = true
-    dry_run           = true
+    purchase_strategy = {
+      coverage_target_percent = 80
+      max_coverage_cap        = 90
+      simple = {
+        max_purchase_percent = 5
+      }
+    }
+    sp_plans = {
+      compute = {
+        enabled              = true
+        all_upfront_one_year = 1
+      }
+    }
+    notifications = {
+      emails = ["test@example.com"]
+    }
   }
 
   assert {
-    condition     = aws_iam_role_policy.reporter_cloudwatch_logs.name == "cloudwatch-logs"
+    condition     = aws_iam_role_policy.reporter_cloudwatch_logs[0].name == "cloudwatch-logs"
     error_message = "Reporter CloudWatch Logs policy should have correct name"
   }
 
@@ -636,22 +1012,36 @@ run "test_reporter_cost_explorer_policy" {
   command = plan
 
   variables {
-    enable_compute_sp = true
-    dry_run           = true
+    purchase_strategy = {
+      coverage_target_percent = 80
+      max_coverage_cap        = 90
+      simple = {
+        max_purchase_percent = 5
+      }
+    }
+    sp_plans = {
+      compute = {
+        enabled              = true
+        all_upfront_one_year = 1
+      }
+    }
+    notifications = {
+      emails = ["test@example.com"]
+    }
   }
 
   assert {
-    condition     = aws_iam_role_policy.reporter_cost_explorer.name == "cost-explorer"
+    condition     = aws_iam_role_policy.reporter_cost_explorer[0].name == "cost-explorer"
     error_message = "Reporter Cost Explorer policy should have correct name"
   }
 
   assert {
-    condition     = can(jsondecode(aws_iam_role_policy.reporter_cost_explorer.policy))
+    condition     = can(jsondecode(aws_iam_role_policy.reporter_cost_explorer[0].policy))
     error_message = "Reporter Cost Explorer policy should be valid JSON"
   }
 
   assert {
-    condition     = contains(jsondecode(aws_iam_role_policy.reporter_cost_explorer.policy).Statement[0].Action, "ce:GetSavingsPlansPurchaseRecommendation")
+    condition     = contains(jsondecode(aws_iam_role_policy.reporter_cost_explorer[0].policy).Statement[0].Action, "ce:GetSavingsPlansPurchaseRecommendation")
     error_message = "Reporter Cost Explorer policy should include ce:GetSavingsPlansPurchaseRecommendation"
   }
 }
@@ -661,12 +1051,26 @@ run "test_reporter_s3_policy" {
   command = plan
 
   variables {
-    enable_compute_sp = true
-    dry_run           = true
+    purchase_strategy = {
+      coverage_target_percent = 80
+      max_coverage_cap        = 90
+      simple = {
+        max_purchase_percent = 5
+      }
+    }
+    sp_plans = {
+      compute = {
+        enabled              = true
+        all_upfront_one_year = 1
+      }
+    }
+    notifications = {
+      emails = ["test@example.com"]
+    }
   }
 
   assert {
-    condition     = aws_iam_role_policy.reporter_s3.name == "s3"
+    condition     = aws_iam_role_policy.reporter_s3[0].name == "s3"
     error_message = "Reporter S3 policy should have correct name"
   }
 
@@ -679,12 +1083,26 @@ run "test_reporter_sns_policy" {
   command = plan
 
   variables {
-    enable_compute_sp = true
-    dry_run           = true
+    purchase_strategy = {
+      coverage_target_percent = 80
+      max_coverage_cap        = 90
+      simple = {
+        max_purchase_percent = 5
+      }
+    }
+    sp_plans = {
+      compute = {
+        enabled              = true
+        all_upfront_one_year = 1
+      }
+    }
+    notifications = {
+      emails = ["test@example.com"]
+    }
   }
 
   assert {
-    condition     = aws_iam_role_policy.reporter_sns.name == "sns"
+    condition     = aws_iam_role_policy.reporter_sns[0].name == "sns"
     error_message = "Reporter SNS policy should have correct name"
   }
 
@@ -697,22 +1115,36 @@ run "test_reporter_savingsplans_policy" {
   command = plan
 
   variables {
-    enable_compute_sp = true
-    dry_run           = true
+    purchase_strategy = {
+      coverage_target_percent = 80
+      max_coverage_cap        = 90
+      simple = {
+        max_purchase_percent = 5
+      }
+    }
+    sp_plans = {
+      compute = {
+        enabled              = true
+        all_upfront_one_year = 1
+      }
+    }
+    notifications = {
+      emails = ["test@example.com"]
+    }
   }
 
   assert {
-    condition     = aws_iam_role_policy.reporter_savingsplans.name == "savingsplans"
+    condition     = aws_iam_role_policy.reporter_savingsplans[0].name == "savingsplans"
     error_message = "Reporter Savings Plans policy should have correct name"
   }
 
   assert {
-    condition     = can(jsondecode(aws_iam_role_policy.reporter_savingsplans.policy))
+    condition     = can(jsondecode(aws_iam_role_policy.reporter_savingsplans[0].policy))
     error_message = "Reporter Savings Plans policy should be valid JSON"
   }
 
   assert {
-    condition     = contains(jsondecode(aws_iam_role_policy.reporter_savingsplans.policy).Statement[0].Action, "savingsplans:DescribeSavingsPlans")
+    condition     = contains(jsondecode(aws_iam_role_policy.reporter_savingsplans[0].policy).Statement[0].Action, "savingsplans:DescribeSavingsPlans")
     error_message = "Reporter Savings Plans policy should include savingsplans:DescribeSavingsPlans"
   }
 }
@@ -722,9 +1154,33 @@ run "test_reporter_assume_role_policy_not_created" {
   command = plan
 
   variables {
-    enable_compute_sp           = true
-    dry_run                     = true
-    management_account_role_arn = null
+    purchase_strategy = {
+      coverage_target_percent = 80
+      max_coverage_cap        = 90
+      simple = {
+        max_purchase_percent = 5
+      }
+    }
+    sp_plans = {
+      compute = {
+        enabled              = true
+        all_upfront_one_year = 1
+      }
+    }
+    notifications = {
+      emails = ["test@example.com"]
+    }
+    lambda_config = {
+      scheduler = {
+        assume_role_arn = null
+      }
+      purchaser = {
+        assume_role_arn = null
+      }
+      reporter = {
+        assume_role_arn = null
+      }
+    }
   }
 
   assert {
@@ -738,9 +1194,33 @@ run "test_reporter_assume_role_policy_created" {
   command = plan
 
   variables {
-    enable_compute_sp           = true
-    dry_run                     = true
-    management_account_role_arn = "arn:aws:iam::999888777666:role/OrganizationAccountAccessRole"
+    purchase_strategy = {
+      coverage_target_percent = 80
+      max_coverage_cap        = 90
+      simple = {
+        max_purchase_percent = 5
+      }
+    }
+    sp_plans = {
+      compute = {
+        enabled              = true
+        all_upfront_one_year = 1
+      }
+    }
+    notifications = {
+      emails = ["test@example.com"]
+    }
+    lambda_config = {
+      scheduler = {
+        assume_role_arn = "arn:aws:iam::999888777666:role/OrganizationAccountAccessRole"
+      }
+      purchaser = {
+        assume_role_arn = "arn:aws:iam::999888777666:role/OrganizationAccountAccessRole"
+      }
+      reporter = {
+        assume_role_arn = "arn:aws:iam::999888777666:role/OrganizationAccountAccessRole"
+      }
+    }
   }
 
   assert {

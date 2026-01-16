@@ -29,45 +29,75 @@ provider "aws" {
 
 module "savings_plans" {
   source  = "etiennechabert/sp-autopilot/aws"
-  version = "~> 1.0"
+  version = "~> 2.0"
 
-  # Enable Compute Savings Plans only (simplest starting point)
-  enable_compute_sp  = true
-  enable_database_sp = false
+  # Purchase strategy - ultra-conservative for evaluation
+  purchase_strategy = {
+    coverage_target_percent = 60 # Very conservative 60% target
+    max_coverage_cap        = 70 # Low ceiling to limit exposure
+    lookback_days           = 30 # 30 days of usage history
+    min_data_days           = 21 # Require 3 weeks of data for confidence
 
-  # Ultra-conservative coverage targets for evaluation
-  coverage_target_percent = 60 # Very conservative 60% target
-  max_coverage_cap        = 70 # Low ceiling to limit exposure
-
-  # Minimal purchase limits (won't be used in dry-run, but sets expectations)
-  max_purchase_percent = 3  # Only 3% of monthly spend per cycle
-  lookback_days        = 30 # 30 days of usage history
-  min_data_days        = 21 # Require 3 weeks of data for confidence
-
-  # Conservative compute SP configuration
-  compute_sp_term_mix = {
-    three_year = 0.50 # 50/50 split for flexibility
-    one_year   = 0.50
+    # Minimal purchase limits (won't be used in dry-run, but sets expectations)
+    simple = {
+      max_purchase_percent = 3 # Only 3% of monthly spend per cycle
+    }
   }
-  compute_sp_payment_option = "PARTIAL_UPFRONT" # Balance between savings and cash flow
 
-  # Extended review window (though not used in dry-run)
-  scheduler_schedule = "cron(0 8 1 * ? *)" # 1st of month at 8:00 AM UTC
-  purchaser_schedule = "cron(0 8 8 * ? *)" # 8th of month at 8:00 AM UTC (7-day window)
+  # Savings Plans configuration - Compute only (simplest starting point)
+  sp_plans = {
+    compute = {
+      enabled                    = true
+      partial_upfront_three_year = 0.50 # 50% in 3-year partial-upfront
+      partial_upfront_one_year   = 0.50 # 50% in 1-year partial-upfront (50/50 split for flexibility)
+      partial_upfront_percent    = 50   # Balance between savings and cash flow
+    }
+
+    database = {
+      enabled = false
+    }
+
+    sagemaker = {
+      enabled = false
+    }
+  }
+
+  # Scheduling - spread evenly across the month (though purchaser not used in dry-run)
+  scheduler = {
+    scheduler = "cron(0 8 1 * ? *)"  # 1st of month at 8:00 AM UTC
+    purchaser = "cron(0 8 10 * ? *)" # 10th of month at 8:00 AM UTC (not invoked in dry-run mode)
+    reporter  = "cron(0 9 20 * ? *)" # 20th of month at 9:00 AM UTC
+  }
 
   # Notifications - evaluation reports sent here
-  notification_emails = [
-    "finops@example.com" # Replace with your email for evaluation reports
-  ]
+  notifications = {
+    emails         = ["finops@example.com"] # Replace with your email for evaluation reports
+    send_no_action = true                   # Get reports even when no action recommended
+  }
 
-  # DRY-RUN MODE - THE CRITICAL SETTING
-  dry_run              = true # KEEPS THIS SAFE - emails only, no purchases
-  send_no_action_email = true # Get reports even when no action recommended
+  # Reporting
+  reporting = {
+    enabled       = true
+    format        = "html"
+    email_reports = true # Send reports via email for easy evaluation
+  }
 
   # Monitoring (for infrastructure health only)
-  enable_lambda_error_alarm = true
-  enable_dlq_alarm          = true
-  lambda_error_threshold    = 1
+  monitoring = {
+    dlq_alarm       = true
+    error_threshold = 1
+  }
+
+  # Lambda configuration
+  # DRY-RUN MODE - THE CRITICAL SETTING
+  lambda_config = {
+    scheduler = {
+      dry_run     = true # KEEPS THIS SAFE - emails only, no purchases
+      error_alarm = true
+    }
+    purchaser = { error_alarm = true }
+    reporter  = { error_alarm = true }
+  }
 
   # Tagging
   tags = {

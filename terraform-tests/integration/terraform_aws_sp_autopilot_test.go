@@ -37,20 +37,55 @@ func TestFullDeploymentAndCleanup(t *testing.T) {
 		// Path to the Terraform code to test
 		TerraformDir: "./fixtures/basic",
 
-		// Variables to pass to the Terraform code
+		// Variables to pass to the Terraform code (v2.0 nested structure)
 		Vars: map[string]interface{}{
-			"aws_region":                awsRegion,
-			"enable_compute_sp":         true,
-			"enable_database_sp":        true,
-			"coverage_target_percent":   80,
-			"max_purchase_percent":      15,
-			"dry_run":                   true,
-			"notification_emails":       []string{"e2e-test@example.com"},
-			"enable_lambda_error_alarm": true,
-			"enable_dlq_alarm":          true,
-			// SAFETY: Set EventBridge schedules to far future to prevent accidental triggers
-			"scheduler_schedule": "cron(0 0 1 1 ? 2099)", // Jan 1, 2099 - will never trigger
-			"purchaser_schedule": "cron(0 0 1 1 ? 2099)", // Jan 1, 2099 - will never trigger
+			"aws_region": awsRegion,
+			// Purchase strategy configuration
+			"purchase_strategy": map[string]interface{}{
+				"coverage_target_percent": 80,
+				"max_coverage_cap":        95,
+				"simple": map[string]interface{}{
+					"max_purchase_percent": 15,
+				},
+			},
+			// Savings Plans configuration
+			"sp_plans": map[string]interface{}{
+				"compute": map[string]interface{}{
+					"enabled":              true,
+					"all_upfront_one_year": 1.0,
+				},
+				"database": map[string]interface{}{
+					"enabled":             true,
+					"no_upfront_one_year": 1.0,
+				},
+			},
+			// EventBridge schedules - SAFETY: far future to prevent accidental triggers
+			"scheduler": map[string]interface{}{
+				"scheduler": "cron(0 0 1 1 ? 2099)", // Jan 1, 2099 - will never trigger
+				"purchaser": "cron(0 0 1 1 ? 2099)", // Jan 1, 2099 - will never trigger
+				"reporter":  "cron(0 0 1 1 ? 2099)", // Jan 1, 2099 - will never trigger
+			},
+			// Notification configuration
+			"notifications": map[string]interface{}{
+				"emails": []string{"e2e-test@example.com"},
+			},
+			// Monitoring configuration
+			"monitoring": map[string]interface{}{
+				"dlq_alarm": true,
+			},
+			// Lambda configuration with dry-run and error alarms
+			"lambda_config": map[string]interface{}{
+				"scheduler": map[string]interface{}{
+					"dry_run":     true,
+					"error_alarm": true,
+				},
+				"purchaser": map[string]interface{}{
+					"error_alarm": true,
+				},
+				"reporter": map[string]interface{}{
+					"error_alarm": true,
+				},
+			},
 		},
 
 		// Disable colors in Terraform commands for cleaner test output

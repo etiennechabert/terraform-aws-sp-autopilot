@@ -7,6 +7,8 @@
 
 # Scheduler Lambda IAM Role
 resource "aws_iam_role" "scheduler" {
+  count = local.lambda_scheduler_enabled ? 1 : 0
+
   name        = "${local.module_name}-scheduler"
   description = "IAM role for Scheduler Lambda function - analyzes usage and queues purchase recommendations"
 
@@ -31,8 +33,10 @@ resource "aws_iam_role" "scheduler" {
 
 # Scheduler Lambda Policy - CloudWatch Logs
 resource "aws_iam_role_policy" "scheduler_cloudwatch_logs" {
+  count = local.lambda_scheduler_enabled ? 1 : 0
+
   name = "cloudwatch-logs"
-  role = aws_iam_role.scheduler.id
+  role = aws_iam_role.scheduler[0].id
 
   policy = jsonencode({
     Version = "2012-10-17"
@@ -42,15 +46,17 @@ resource "aws_iam_role_policy" "scheduler_cloudwatch_logs" {
         "logs:CreateLogStream",
         "logs:PutLogEvents"
       ]
-      Resource = "${aws_cloudwatch_log_group.scheduler.arn}:*"
+      Resource = "${aws_cloudwatch_log_group.scheduler[0].arn}:*"
     }]
   })
 }
 
 # Scheduler Lambda Policy - Cost Explorer
 resource "aws_iam_role_policy" "scheduler_cost_explorer" {
+  count = local.lambda_scheduler_enabled ? 1 : 0
+
   name = "cost-explorer"
-  role = aws_iam_role.scheduler.id
+  role = aws_iam_role.scheduler[0].id
 
   policy = jsonencode({
     Version = "2012-10-17"
@@ -69,8 +75,10 @@ resource "aws_iam_role_policy" "scheduler_cost_explorer" {
 
 # Scheduler Lambda Policy - SQS
 resource "aws_iam_role_policy" "scheduler_sqs" {
+  count = local.lambda_scheduler_enabled ? 1 : 0
+
   name = "sqs"
-  role = aws_iam_role.scheduler.id
+  role = aws_iam_role.scheduler[0].id
 
   policy = jsonencode({
     Version = "2012-10-17"
@@ -88,8 +96,10 @@ resource "aws_iam_role_policy" "scheduler_sqs" {
 
 # Scheduler Lambda Policy - SNS
 resource "aws_iam_role_policy" "scheduler_sns" {
+  count = local.lambda_scheduler_enabled ? 1 : 0
+
   name = "sns"
-  role = aws_iam_role.scheduler.id
+  role = aws_iam_role.scheduler[0].id
 
   policy = jsonencode({
     Version = "2012-10-17"
@@ -105,8 +115,10 @@ resource "aws_iam_role_policy" "scheduler_sns" {
 
 # Scheduler Lambda Policy - Savings Plans
 resource "aws_iam_role_policy" "scheduler_savingsplans" {
+  count = local.lambda_scheduler_enabled ? 1 : 0
+
   name = "savingsplans"
-  role = aws_iam_role.scheduler.id
+  role = aws_iam_role.scheduler[0].id
 
   policy = jsonencode({
     Version = "2012-10-17"
@@ -124,17 +136,17 @@ resource "aws_iam_role_policy" "scheduler_savingsplans" {
 
 # Scheduler Lambda Policy - Assume Role (conditional)
 resource "aws_iam_role_policy" "scheduler_assume_role" {
-  count = var.management_account_role_arn != null ? 1 : 0
+  count = local.lambda_scheduler_enabled && local.lambda_scheduler_assume_role_arn != null ? 1 : 0
 
   name = "assume-role"
-  role = aws_iam_role.scheduler.id
+  role = aws_iam_role.scheduler[0].id
 
   policy = jsonencode({
     Version = "2012-10-17"
     Statement = [{
       Effect   = "Allow"
       Action   = "sts:AssumeRole"
-      Resource = var.management_account_role_arn
+      Resource = local.lambda_scheduler_assume_role_arn
     }]
   })
 }
@@ -145,6 +157,8 @@ resource "aws_iam_role_policy" "scheduler_assume_role" {
 
 # Purchaser Lambda IAM Role
 resource "aws_iam_role" "purchaser" {
+  count = local.lambda_purchaser_enabled ? 1 : 0
+
   name        = "${local.module_name}-purchaser"
   description = "IAM role for Purchaser Lambda function - executes Savings Plans purchases from queue"
 
@@ -169,8 +183,10 @@ resource "aws_iam_role" "purchaser" {
 
 # Purchaser Lambda Policy - CloudWatch Logs
 resource "aws_iam_role_policy" "purchaser_cloudwatch_logs" {
+  count = local.lambda_purchaser_enabled ? 1 : 0
+
   name = "cloudwatch-logs"
-  role = aws_iam_role.purchaser.id
+  role = aws_iam_role.purchaser[0].id
 
   policy = jsonencode({
     Version = "2012-10-17"
@@ -180,15 +196,17 @@ resource "aws_iam_role_policy" "purchaser_cloudwatch_logs" {
         "logs:CreateLogStream",
         "logs:PutLogEvents"
       ]
-      Resource = "${aws_cloudwatch_log_group.purchaser.arn}:*"
+      Resource = "${aws_cloudwatch_log_group.purchaser[0].arn}:*"
     }]
   })
 }
 
 # Purchaser Lambda Policy - Cost Explorer
 resource "aws_iam_role_policy" "purchaser_cost_explorer" {
+  count = local.lambda_purchaser_enabled ? 1 : 0
+
   name = "cost-explorer"
-  role = aws_iam_role.purchaser.id
+  role = aws_iam_role.purchaser[0].id
 
   policy = jsonencode({
     Version = "2012-10-17"
@@ -207,8 +225,10 @@ resource "aws_iam_role_policy" "purchaser_cost_explorer" {
 
 # Purchaser Lambda Policy - SQS
 resource "aws_iam_role_policy" "purchaser_sqs" {
+  count = local.lambda_purchaser_enabled ? 1 : 0
+
   name = "sqs"
-  role = aws_iam_role.purchaser.id
+  role = aws_iam_role.purchaser[0].id
 
   policy = jsonencode({
     Version = "2012-10-17"
@@ -226,8 +246,10 @@ resource "aws_iam_role_policy" "purchaser_sqs" {
 
 # Purchaser Lambda Policy - SNS
 resource "aws_iam_role_policy" "purchaser_sns" {
+  count = local.lambda_purchaser_enabled ? 1 : 0
+
   name = "sns"
-  role = aws_iam_role.purchaser.id
+  role = aws_iam_role.purchaser[0].id
 
   policy = jsonencode({
     Version = "2012-10-17"
@@ -243,8 +265,10 @@ resource "aws_iam_role_policy" "purchaser_sns" {
 
 # Purchaser Lambda Policy - Savings Plans
 resource "aws_iam_role_policy" "purchaser_savingsplans" {
+  count = local.lambda_purchaser_enabled ? 1 : 0
+
   name = "savingsplans"
-  role = aws_iam_role.purchaser.id
+  role = aws_iam_role.purchaser[0].id
 
   policy = jsonencode({
     Version = "2012-10-17"
@@ -263,17 +287,17 @@ resource "aws_iam_role_policy" "purchaser_savingsplans" {
 
 # Purchaser Lambda Policy - Assume Role (conditional)
 resource "aws_iam_role_policy" "purchaser_assume_role" {
-  count = var.management_account_role_arn != null ? 1 : 0
+  count = local.lambda_purchaser_enabled && local.lambda_purchaser_assume_role_arn != null ? 1 : 0
 
   name = "assume-role"
-  role = aws_iam_role.purchaser.id
+  role = aws_iam_role.purchaser[0].id
 
   policy = jsonencode({
     Version = "2012-10-17"
     Statement = [{
       Effect   = "Allow"
       Action   = "sts:AssumeRole"
-      Resource = var.management_account_role_arn
+      Resource = local.lambda_purchaser_assume_role_arn
     }]
   })
 }
@@ -284,6 +308,8 @@ resource "aws_iam_role_policy" "purchaser_assume_role" {
 
 # Reporter Lambda IAM Role
 resource "aws_iam_role" "reporter" {
+  count = local.lambda_reporter_enabled ? 1 : 0
+
   name        = "${local.module_name}-reporter"
   description = "IAM role for Reporter Lambda function - generates periodic coverage and savings reports"
 
@@ -308,8 +334,10 @@ resource "aws_iam_role" "reporter" {
 
 # Reporter Lambda Policy - CloudWatch Logs
 resource "aws_iam_role_policy" "reporter_cloudwatch_logs" {
+  count = local.lambda_reporter_enabled ? 1 : 0
+
   name = "cloudwatch-logs"
-  role = aws_iam_role.reporter.id
+  role = aws_iam_role.reporter[0].id
 
   policy = jsonencode({
     Version = "2012-10-17"
@@ -319,15 +347,17 @@ resource "aws_iam_role_policy" "reporter_cloudwatch_logs" {
         "logs:CreateLogStream",
         "logs:PutLogEvents"
       ]
-      Resource = "${aws_cloudwatch_log_group.reporter.arn}:*"
+      Resource = "${aws_cloudwatch_log_group.reporter[0].arn}:*"
     }]
   })
 }
 
 # Reporter Lambda Policy - Cost Explorer
 resource "aws_iam_role_policy" "reporter_cost_explorer" {
+  count = local.lambda_reporter_enabled ? 1 : 0
+
   name = "cost-explorer"
-  role = aws_iam_role.reporter.id
+  role = aws_iam_role.reporter[0].id
 
   policy = jsonencode({
     Version = "2012-10-17"
@@ -346,8 +376,10 @@ resource "aws_iam_role_policy" "reporter_cost_explorer" {
 
 # Reporter Lambda Policy - S3
 resource "aws_iam_role_policy" "reporter_s3" {
+  count = local.lambda_reporter_enabled ? 1 : 0
+
   name = "s3"
-  role = aws_iam_role.reporter.id
+  role = aws_iam_role.reporter[0].id
 
   policy = jsonencode({
     Version = "2012-10-17"
@@ -365,8 +397,10 @@ resource "aws_iam_role_policy" "reporter_s3" {
 
 # Reporter Lambda Policy - SNS
 resource "aws_iam_role_policy" "reporter_sns" {
+  count = local.lambda_reporter_enabled ? 1 : 0
+
   name = "sns"
-  role = aws_iam_role.reporter.id
+  role = aws_iam_role.reporter[0].id
 
   policy = jsonencode({
     Version = "2012-10-17"
@@ -382,8 +416,10 @@ resource "aws_iam_role_policy" "reporter_sns" {
 
 # Reporter Lambda Policy - Savings Plans
 resource "aws_iam_role_policy" "reporter_savingsplans" {
+  count = local.lambda_reporter_enabled ? 1 : 0
+
   name = "savingsplans"
-  role = aws_iam_role.reporter.id
+  role = aws_iam_role.reporter[0].id
 
   policy = jsonencode({
     Version = "2012-10-17"
@@ -401,17 +437,17 @@ resource "aws_iam_role_policy" "reporter_savingsplans" {
 
 # Reporter Lambda Policy - Assume Role (conditional)
 resource "aws_iam_role_policy" "reporter_assume_role" {
-  count = var.management_account_role_arn != null ? 1 : 0
+  count = local.lambda_reporter_enabled && local.lambda_reporter_assume_role_arn != null ? 1 : 0
 
   name = "assume-role"
-  role = aws_iam_role.reporter.id
+  role = aws_iam_role.reporter[0].id
 
   policy = jsonencode({
     Version = "2012-10-17"
     Statement = [{
       Effect   = "Allow"
       Action   = "sts:AssumeRole"
-      Resource = var.management_account_role_arn
+      Resource = local.lambda_reporter_assume_role_arn
     }]
   })
 }
