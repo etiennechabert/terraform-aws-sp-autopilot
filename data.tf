@@ -199,12 +199,27 @@ locals {
 
   lambda_scheduler_memory_size = try(var.lambda_config.scheduler.memory_mb, 256)
   lambda_scheduler_timeout     = try(var.lambda_config.scheduler.timeout, 300)
+  # Per-Lambda role ARN, falls back to global operations.management_account_role_arn
+  lambda_scheduler_assume_role_arn = try(
+    var.lambda_config.scheduler.assume_role_arn,
+    local.management_account_role_arn
+  )
 
   lambda_purchaser_memory_size = try(var.lambda_config.purchaser.memory_mb, 256)
   lambda_purchaser_timeout     = try(var.lambda_config.purchaser.timeout, 300)
+  # Per-Lambda role ARN, falls back to global operations.management_account_role_arn
+  lambda_purchaser_assume_role_arn = try(
+    var.lambda_config.purchaser.assume_role_arn,
+    local.management_account_role_arn
+  )
 
   lambda_reporter_memory_size  = try(var.lambda_config.reporter.memory_mb, 256)
   lambda_reporter_timeout      = try(var.lambda_config.reporter.timeout, 300)
+  # Per-Lambda role ARN, falls back to global operations.management_account_role_arn
+  lambda_reporter_assume_role_arn = try(
+    var.lambda_config.reporter.assume_role_arn,
+    local.management_account_role_arn
+  )
 
   # ==========================================================================
   # Purchase Strategy Settings (extract from nested object)

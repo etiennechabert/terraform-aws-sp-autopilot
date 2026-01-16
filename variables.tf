@@ -6,24 +6,27 @@
 # ============================================================================
 
 variable "lambda_config" {
-  description = "Lambda function configuration including enable/disable controls and performance settings"
+  description = "Lambda function configuration including enable/disable controls, performance settings, and cross-account role ARNs"
   type = object({
     scheduler = optional(object({
-      enabled   = optional(bool, true)
-      memory_mb = optional(number, 256)
-      timeout   = optional(number, 300)
+      enabled         = optional(bool, true)
+      memory_mb       = optional(number, 256)
+      timeout         = optional(number, 300)
+      assume_role_arn = optional(string)  # Role to assume for Cost Explorer and Savings Plans APIs (AWS Orgs)
     }), {})
 
     purchaser = optional(object({
-      enabled   = optional(bool, true)
-      memory_mb = optional(number, 256)
-      timeout   = optional(number, 300)
+      enabled         = optional(bool, true)
+      memory_mb       = optional(number, 256)
+      timeout         = optional(number, 300)
+      assume_role_arn = optional(string)  # Role to assume for Savings Plans purchase APIs (AWS Orgs)
     }), {})
 
     reporter = optional(object({
-      enabled   = optional(bool, true)
-      memory_mb = optional(number, 256)
-      timeout   = optional(number, 300)
+      enabled         = optional(bool, true)
+      memory_mb       = optional(number, 256)
+      timeout         = optional(number, 300)
+      assume_role_arn = optional(string)  # Role to assume for Cost Explorer and Savings Plans APIs (AWS Orgs)
     }), {})
   })
   default = {}

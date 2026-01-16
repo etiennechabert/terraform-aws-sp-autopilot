@@ -58,22 +58,27 @@ lambda_reporter_timeout      = 300
 ```hcl
 lambda_config = {
   scheduler = {
-    enabled   = true  # NEW: Can disable for testing
-    memory_mb = 256
-    timeout   = 300
+    enabled         = true  # NEW: Can disable for testing
+    memory_mb       = 256
+    timeout         = 300
+    assume_role_arn = null  # NEW: Per-Lambda role for AWS Organizations
   }
   purchaser = {
-    enabled   = true  # NEW: Can disable for extended dry-run
-    memory_mb = 256
-    timeout   = 300
+    enabled         = true  # NEW: Can disable for extended dry-run
+    memory_mb       = 256
+    timeout         = 300
+    assume_role_arn = null  # NEW: Per-Lambda role for AWS Organizations
   }
   reporter = {
-    enabled   = true  # NEW: Can disable if not needed
-    memory_mb = 256
-    timeout   = 300
+    enabled         = true  # NEW: Can disable if not needed
+    memory_mb       = 256
+    timeout         = 300
+    assume_role_arn = null  # NEW: Per-Lambda role for AWS Organizations
   }
 }
 ```
+
+**Note on AWS Organizations:** The per-Lambda `assume_role_arn` replaces the global `operations.management_account_role_arn`. You can now specify different roles for each Lambda, or use the global setting as a fallback.
 
 ### Purchase Strategy
 
@@ -387,6 +392,33 @@ lambda_config = {
   reporter  = { enabled = true }
 }
 ```
+
+### 1a. Per-Lambda AWS Organizations Roles
+
+Each Lambda can now assume a different role in your AWS Organization's management account:
+
+```hcl
+lambda_config = {
+  scheduler = {
+    # Read-only role for analyzing usage
+    assume_role_arn = "arn:aws:iam::123456789012:role/SPSchedulerRole"
+  }
+  purchaser = {
+    # Role with purchase permissions
+    assume_role_arn = "arn:aws:iam::123456789012:role/SPPurchaserRole"
+  }
+  reporter = {
+    # Read-only role for reporting
+    assume_role_arn = "arn:aws:iam::123456789012:role/SPReporterRole"
+  }
+}
+```
+
+**Benefits:**
+- **Least privilege**: Each Lambda only gets the permissions it needs
+- **Flexibility**: Deploy module in delegated admin account, operate on entire org
+- **Security**: Separate read vs. write roles
+- **Fallback**: If not specified, falls back to `operations.management_account_role_arn`
 
 ### 2. Disable Individual Schedules
 

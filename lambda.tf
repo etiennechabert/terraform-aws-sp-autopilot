@@ -45,7 +45,7 @@ resource "aws_lambda_function" "scheduler" {
       SAGEMAKER_SP_TERM_MIX       = jsonencode(local.sagemaker_term_mix)
       SAGEMAKER_SP_PAYMENT_OPTION = local.sagemaker_payment_option
       PARTIAL_UPFRONT_PERCENT     = tostring(local.compute_partial_upfront_percent)
-      MANAGEMENT_ACCOUNT_ROLE_ARN = local.management_account_role_arn
+      MANAGEMENT_ACCOUNT_ROLE_ARN = local.lambda_scheduler_assume_role_arn
       TAGS                        = jsonencode(local.common_tags)
     }
   }
@@ -80,7 +80,7 @@ resource "aws_lambda_function" "purchaser" {
       SNS_TOPIC_ARN               = aws_sns_topic.notifications.arn
       MAX_COVERAGE_CAP            = tostring(local.max_coverage_cap)
       RENEWAL_WINDOW_DAYS         = tostring(local.renewal_window_days)
-      MANAGEMENT_ACCOUNT_ROLE_ARN = local.management_account_role_arn
+      MANAGEMENT_ACCOUNT_ROLE_ARN = local.lambda_purchaser_assume_role_arn
       TAGS                        = jsonencode(local.common_tags)
     }
   }
@@ -117,7 +117,7 @@ resource "aws_lambda_function" "reporter" {
       EMAIL_REPORTS               = tostring(local.email_reports)
       SLACK_WEBHOOK_URL           = local.slack_webhook_url
       TEAMS_WEBHOOK_URL           = local.teams_webhook_url
-      MANAGEMENT_ACCOUNT_ROLE_ARN = local.management_account_role_arn
+      MANAGEMENT_ACCOUNT_ROLE_ARN = local.lambda_reporter_assume_role_arn
       TAGS                        = jsonencode(local.common_tags)
     }
   }

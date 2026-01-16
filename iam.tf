@@ -136,7 +136,7 @@ resource "aws_iam_role_policy" "scheduler_savingsplans" {
 
 # Scheduler Lambda Policy - Assume Role (conditional)
 resource "aws_iam_role_policy" "scheduler_assume_role" {
-  count = local.lambda_scheduler_enabled && local.management_account_role_arn != null ? 1 : 0
+  count = local.lambda_scheduler_enabled && local.lambda_scheduler_assume_role_arn != null ? 1 : 0
 
   name = "assume-role"
   role = aws_iam_role.scheduler[0].id
@@ -146,7 +146,7 @@ resource "aws_iam_role_policy" "scheduler_assume_role" {
     Statement = [{
       Effect   = "Allow"
       Action   = "sts:AssumeRole"
-      Resource = local.management_account_role_arn
+      Resource = local.lambda_scheduler_assume_role_arn
     }]
   })
 }
@@ -287,7 +287,7 @@ resource "aws_iam_role_policy" "purchaser_savingsplans" {
 
 # Purchaser Lambda Policy - Assume Role (conditional)
 resource "aws_iam_role_policy" "purchaser_assume_role" {
-  count = local.lambda_purchaser_enabled && local.management_account_role_arn != null ? 1 : 0
+  count = local.lambda_purchaser_enabled && local.lambda_purchaser_assume_role_arn != null ? 1 : 0
 
   name = "assume-role"
   role = aws_iam_role.purchaser[0].id
@@ -297,7 +297,7 @@ resource "aws_iam_role_policy" "purchaser_assume_role" {
     Statement = [{
       Effect   = "Allow"
       Action   = "sts:AssumeRole"
-      Resource = local.management_account_role_arn
+      Resource = local.lambda_purchaser_assume_role_arn
     }]
   })
 }
@@ -437,7 +437,7 @@ resource "aws_iam_role_policy" "reporter_savingsplans" {
 
 # Reporter Lambda Policy - Assume Role (conditional)
 resource "aws_iam_role_policy" "reporter_assume_role" {
-  count = local.lambda_reporter_enabled && local.management_account_role_arn != null ? 1 : 0
+  count = local.lambda_reporter_enabled && local.lambda_reporter_assume_role_arn != null ? 1 : 0
 
   name = "assume-role"
   role = aws_iam_role.reporter[0].id
@@ -447,7 +447,7 @@ resource "aws_iam_role_policy" "reporter_assume_role" {
     Statement = [{
       Effect   = "Allow"
       Action   = "sts:AssumeRole"
-      Resource = local.management_account_role_arn
+      Resource = local.lambda_reporter_assume_role_arn
     }]
   })
 }

@@ -89,18 +89,28 @@ module "savings_plans" {
     error_threshold    = 1
   }
 
-  # Lambda configuration (using defaults)
-  lambda_config = {}
+  # Lambda configuration - AWS Organizations cross-account roles
+  # Each Lambda can assume a different role in the management account
+  lambda_config = {
+    scheduler = {
+      # Role to assume for Cost Explorer and Savings Plans read operations
+      assume_role_arn = "arn:aws:iam::123456789012:role/SavingsPlansSchedulerRole"
+    }
+    purchaser = {
+      # Role to assume for Savings Plans purchase operations
+      assume_role_arn = "arn:aws:iam::123456789012:role/SavingsPlansPurchaserRole"
+    }
+    reporter = {
+      # Role to assume for Cost Explorer read operations
+      assume_role_arn = "arn:aws:iam::123456789012:role/SavingsPlansReporterRole"
+    }
+  }
 
-  # Operations - AWS Organizations integration
+  # Operations
   operations = {
     dry_run = true  # Start in dry-run mode - emails only
-    # AWS Organizations - assume role in management account
-    # This role must exist in the management account with permissions for:
-    # - ce:GetSavingsPlansPurchaseRecommendation
-    # - savingsplans:CreateSavingsPlan
-    # - savingsplans:DescribeSavingsPlans
-    management_account_role_arn = "arn:aws:iam::123456789012:role/SavingsPlansAutomationRole"
+    # DEPRECATED: Use lambda_config.*.assume_role_arn instead
+    # management_account_role_arn = "arn:aws:iam::123456789012:role/SavingsPlansAutomationRole"
   }
 
   # Tagging - organization standards
