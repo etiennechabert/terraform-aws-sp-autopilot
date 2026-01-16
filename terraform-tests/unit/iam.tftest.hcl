@@ -241,13 +241,13 @@ run "test_scheduler_sqs_policy" {
   }
 
   assert {
-    condition     = aws_iam_role_policy.scheduler_sqs.name == "sqs"
+    condition     = aws_iam_role_policy.scheduler_sqs[0].name == "sqs"
     error_message = "Scheduler SQS policy should have correct name"
   }
 
   # Note: Mock provider doesn't populate policy content
   assert {
-    condition     = aws_iam_role_policy.scheduler_sqs.policy != null
+    condition     = aws_iam_role_policy.scheduler_sqs[0].policy != null
     error_message = "Scheduler SQS policy should be set"
   }
 }
@@ -276,13 +276,13 @@ run "test_scheduler_sns_policy" {
   }
 
   assert {
-    condition     = aws_iam_role_policy.scheduler_sns.name == "sns"
+    condition     = aws_iam_role_policy.scheduler_sns[0].name == "sns"
     error_message = "Scheduler SNS policy should have correct name"
   }
 
   # Note: Mock provider doesn't populate policy content
   assert {
-    condition     = aws_iam_role_policy.scheduler_sns.policy != null
+    condition     = aws_iam_role_policy.scheduler_sns[0].policy != null
     error_message = "Scheduler SNS policy should be set"
   }
 }
@@ -311,13 +311,13 @@ run "test_scheduler_savingsplans_policy" {
   }
 
   assert {
-    condition     = aws_iam_role_policy.scheduler_savingsplans.name == "savingsplans"
+    condition     = aws_iam_role_policy.scheduler_savingsplans[0].name == "savingsplans"
     error_message = "Scheduler Savings Plans policy should have correct name"
   }
 
   # Note: Mock provider doesn't populate policy content
   assert {
-    condition     = aws_iam_role_policy.scheduler_savingsplans.policy != null
+    condition     = aws_iam_role_policy.scheduler_savingsplans[0].policy != null
     error_message = "Scheduler Savings Plans policy should be set"
   }
 }
@@ -588,12 +588,12 @@ run "test_purchaser_cloudwatch_logs_policy" {
   }
 
   assert {
-    condition     = aws_iam_role_policy.purchaser_cloudwatch_logs.name == "cloudwatch-logs"
+    condition     = aws_iam_role_policy.purchaser_cloudwatch_logs[0].name == "cloudwatch-logs"
     error_message = "Purchaser CloudWatch Logs policy should have correct name"
   }
 
   assert {
-    condition     = aws_iam_role_policy.purchaser_cloudwatch_logs.role == aws_iam_role.purchaser[0].id
+    condition     = aws_iam_role_policy.purchaser_cloudwatch_logs[0].role == aws_iam_role.purchaser[0].id
     error_message = "Purchaser CloudWatch Logs policy should be attached to purchaser role"
   }
 
@@ -626,17 +626,17 @@ run "test_purchaser_cost_explorer_policy" {
   }
 
   assert {
-    condition     = aws_iam_role_policy.purchaser_cost_explorer.name == "cost-explorer"
+    condition     = aws_iam_role_policy.purchaser_cost_explorer[0].name == "cost-explorer"
     error_message = "Purchaser Cost Explorer policy should have correct name"
   }
 
   assert {
-    condition     = can(jsondecode(aws_iam_role_policy.purchaser_cost_explorer.policy))
+    condition     = can(jsondecode(aws_iam_role_policy.purchaser_cost_explorer[0].policy))
     error_message = "Purchaser Cost Explorer policy should be valid JSON"
   }
 
   assert {
-    condition     = contains(jsondecode(aws_iam_role_policy.purchaser_cost_explorer.policy).Statement[0].Action, "ce:GetSavingsPlansPurchaseRecommendation")
+    condition     = contains(jsondecode(aws_iam_role_policy.purchaser_cost_explorer[0].policy).Statement[0].Action, "ce:GetSavingsPlansPurchaseRecommendation")
     error_message = "Purchaser Cost Explorer policy should include ce:GetSavingsPlansPurchaseRecommendation"
   }
 }
@@ -665,7 +665,7 @@ run "test_purchaser_sqs_policy" {
   }
 
   assert {
-    condition     = aws_iam_role_policy.purchaser_sqs.name == "sqs"
+    condition     = aws_iam_role_policy.purchaser_sqs[0].name == "sqs"
     error_message = "Purchaser SQS policy should have correct name"
   }
 
@@ -698,7 +698,7 @@ run "test_purchaser_sns_policy" {
   }
 
   assert {
-    condition     = aws_iam_role_policy.purchaser_sns.name == "sns"
+    condition     = aws_iam_role_policy.purchaser_sns[0].name == "sns"
     error_message = "Purchaser SNS policy should have correct name"
   }
 
@@ -730,22 +730,22 @@ run "test_purchaser_savingsplans_policy" {
   }
 
   assert {
-    condition     = aws_iam_role_policy.purchaser_savingsplans.name == "savingsplans"
+    condition     = aws_iam_role_policy.purchaser_savingsplans[0].name == "savingsplans"
     error_message = "Purchaser Savings Plans policy should have correct name"
   }
 
   assert {
-    condition     = can(jsondecode(aws_iam_role_policy.purchaser_savingsplans.policy))
+    condition     = can(jsondecode(aws_iam_role_policy.purchaser_savingsplans[0].policy))
     error_message = "Purchaser Savings Plans policy should be valid JSON"
   }
 
   assert {
-    condition     = contains(jsondecode(aws_iam_role_policy.purchaser_savingsplans.policy).Statement[0].Action, "savingsplans:DescribeSavingsPlans")
+    condition     = contains(jsondecode(aws_iam_role_policy.purchaser_savingsplans[0].policy).Statement[0].Action, "savingsplans:DescribeSavingsPlans")
     error_message = "Purchaser Savings Plans policy should include savingsplans:DescribeSavingsPlans"
   }
 
   assert {
-    condition     = contains(jsondecode(aws_iam_role_policy.purchaser_savingsplans.policy).Statement[0].Action, "savingsplans:CreateSavingsPlan")
+    condition     = contains(jsondecode(aws_iam_role_policy.purchaser_savingsplans[0].policy).Statement[0].Action, "savingsplans:CreateSavingsPlan")
     error_message = "Purchaser Savings Plans policy should include savingsplans:CreateSavingsPlan"
   }
 }
@@ -999,7 +999,7 @@ run "test_reporter_cloudwatch_logs_policy" {
   }
 
   assert {
-    condition     = aws_iam_role_policy.reporter_cloudwatch_logs.name == "cloudwatch-logs"
+    condition     = aws_iam_role_policy.reporter_cloudwatch_logs[0].name == "cloudwatch-logs"
     error_message = "Reporter CloudWatch Logs policy should have correct name"
   }
 
@@ -1031,17 +1031,17 @@ run "test_reporter_cost_explorer_policy" {
   }
 
   assert {
-    condition     = aws_iam_role_policy.reporter_cost_explorer.name == "cost-explorer"
+    condition     = aws_iam_role_policy.reporter_cost_explorer[0].name == "cost-explorer"
     error_message = "Reporter Cost Explorer policy should have correct name"
   }
 
   assert {
-    condition     = can(jsondecode(aws_iam_role_policy.reporter_cost_explorer.policy))
+    condition     = can(jsondecode(aws_iam_role_policy.reporter_cost_explorer[0].policy))
     error_message = "Reporter Cost Explorer policy should be valid JSON"
   }
 
   assert {
-    condition     = contains(jsondecode(aws_iam_role_policy.reporter_cost_explorer.policy).Statement[0].Action, "ce:GetSavingsPlansPurchaseRecommendation")
+    condition     = contains(jsondecode(aws_iam_role_policy.reporter_cost_explorer[0].policy).Statement[0].Action, "ce:GetSavingsPlansPurchaseRecommendation")
     error_message = "Reporter Cost Explorer policy should include ce:GetSavingsPlansPurchaseRecommendation"
   }
 }
@@ -1070,7 +1070,7 @@ run "test_reporter_s3_policy" {
   }
 
   assert {
-    condition     = aws_iam_role_policy.reporter_s3.name == "s3"
+    condition     = aws_iam_role_policy.reporter_s3[0].name == "s3"
     error_message = "Reporter S3 policy should have correct name"
   }
 
@@ -1102,7 +1102,7 @@ run "test_reporter_sns_policy" {
   }
 
   assert {
-    condition     = aws_iam_role_policy.reporter_sns.name == "sns"
+    condition     = aws_iam_role_policy.reporter_sns[0].name == "sns"
     error_message = "Reporter SNS policy should have correct name"
   }
 
@@ -1134,17 +1134,17 @@ run "test_reporter_savingsplans_policy" {
   }
 
   assert {
-    condition     = aws_iam_role_policy.reporter_savingsplans.name == "savingsplans"
+    condition     = aws_iam_role_policy.reporter_savingsplans[0].name == "savingsplans"
     error_message = "Reporter Savings Plans policy should have correct name"
   }
 
   assert {
-    condition     = can(jsondecode(aws_iam_role_policy.reporter_savingsplans.policy))
+    condition     = can(jsondecode(aws_iam_role_policy.reporter_savingsplans[0].policy))
     error_message = "Reporter Savings Plans policy should be valid JSON"
   }
 
   assert {
-    condition     = contains(jsondecode(aws_iam_role_policy.reporter_savingsplans.policy).Statement[0].Action, "savingsplans:DescribeSavingsPlans")
+    condition     = contains(jsondecode(aws_iam_role_policy.reporter_savingsplans[0].policy).Statement[0].Action, "savingsplans:DescribeSavingsPlans")
     error_message = "Reporter Savings Plans policy should include savingsplans:DescribeSavingsPlans"
   }
 }

@@ -773,14 +773,16 @@ run "test_reporter_eventbridge_target_disabled" {
     notifications = {
       emails = ["test@example.com"]
     }
-    reporting = {
-      enabled = false
+    lambda_config = {
+      reporter = {
+        enabled = false
+      }
     }
   }
 
   assert {
     condition     = length(aws_cloudwatch_event_target.reporter) == 0
-    error_message = "Reporter EventBridge target should not be created when enable_reports is false"
+    error_message = "Reporter EventBridge target should not be created when reporter Lambda is disabled"
   }
 }
 
@@ -812,22 +814,22 @@ run "test_scheduler_lambda_permission_eventbridge" {
   }
 
   assert {
-    condition     = aws_lambda_permission.scheduler_eventbridge.statement_id == "AllowExecutionFromEventBridge"
+    condition     = aws_lambda_permission.scheduler_eventbridge[0].statement_id == "AllowExecutionFromEventBridge"
     error_message = "Scheduler Lambda permission should have correct statement_id"
   }
 
   assert {
-    condition     = aws_lambda_permission.scheduler_eventbridge.action == "lambda:InvokeFunction"
+    condition     = aws_lambda_permission.scheduler_eventbridge[0].action == "lambda:InvokeFunction"
     error_message = "Scheduler Lambda permission should allow InvokeFunction action"
   }
 
   assert {
-    condition     = aws_lambda_permission.scheduler_eventbridge.function_name == "sp-autopilot-scheduler"
+    condition     = aws_lambda_permission.scheduler_eventbridge[0].function_name == "sp-autopilot-scheduler"
     error_message = "Scheduler Lambda permission should reference correct function name"
   }
 
   assert {
-    condition     = aws_lambda_permission.scheduler_eventbridge.principal == "events.amazonaws.com"
+    condition     = aws_lambda_permission.scheduler_eventbridge[0].principal == "events.amazonaws.com"
     error_message = "Scheduler Lambda permission should have events.amazonaws.com as principal"
   }
 
