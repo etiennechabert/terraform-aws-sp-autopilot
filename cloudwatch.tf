@@ -55,7 +55,7 @@ resource "aws_cloudwatch_log_group" "reporter" {
 
 # Scheduler Lambda - Error Alarm
 resource "aws_cloudwatch_metric_alarm" "scheduler_error_alarm" {
-  count = local.lambda_scheduler_enabled && local.enable_lambda_error_alarm ? 1 : 0
+  count = local.lambda_scheduler_enabled && local.lambda_scheduler_error_alarm_enabled ? 1 : 0
 
   alarm_name          = "${local.module_name}-scheduler-errors"
   alarm_description   = "Triggers when Scheduler Lambda function errors exceed threshold, indicating failures in usage analysis"
@@ -84,7 +84,7 @@ resource "aws_cloudwatch_metric_alarm" "scheduler_error_alarm" {
 
 # Purchaser Lambda - Error Alarm
 resource "aws_cloudwatch_metric_alarm" "purchaser_error_alarm" {
-  count = local.lambda_purchaser_enabled && local.enable_lambda_error_alarm ? 1 : 0
+  count = local.lambda_purchaser_enabled && local.lambda_purchaser_error_alarm_enabled ? 1 : 0
 
   alarm_name          = "${local.module_name}-purchaser-errors"
   alarm_description   = "Triggers when Purchaser Lambda function errors exceed threshold, indicating failures in Savings Plans purchases"
@@ -113,7 +113,7 @@ resource "aws_cloudwatch_metric_alarm" "purchaser_error_alarm" {
 
 # Reporter Lambda - Error Alarm
 resource "aws_cloudwatch_metric_alarm" "reporter_error_alarm" {
-  count = local.lambda_reporter_enabled && local.enable_lambda_error_alarm ? 1 : 0
+  count = local.lambda_reporter_enabled && local.lambda_reporter_error_alarm_enabled ? 1 : 0
 
   alarm_name          = "${local.module_name}-reporter-errors"
   alarm_description   = "Triggers when Reporter Lambda function errors exceed threshold, indicating failures in report generation"

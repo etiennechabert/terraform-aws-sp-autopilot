@@ -84,13 +84,16 @@ module "savings_plans" {
 
   # Monitoring (for infrastructure health only)
   monitoring = {
-    lambda_error_alarm = true
-    dlq_alarm          = true
-    error_threshold    = 1
+    dlq_alarm       = true
+    error_threshold = 1
   }
 
-  # Lambda configuration (using defaults)
-  lambda_config = {}
+  # Lambda configuration (using defaults with error alarms)
+  lambda_config = {
+    scheduler = { error_alarm = true }
+    purchaser = { error_alarm = true }
+    reporter  = { error_alarm = true }
+  }
 
   # DRY-RUN MODE - THE CRITICAL SETTING
   operations = {

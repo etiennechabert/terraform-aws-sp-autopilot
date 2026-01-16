@@ -6,13 +6,14 @@
 # ============================================================================
 
 variable "lambda_config" {
-  description = "Lambda function configuration including enable/disable controls, performance settings, and cross-account role ARNs"
+  description = "Lambda function configuration including enable/disable controls, performance settings, cross-account role ARNs, and error alarms"
   type = object({
     scheduler = optional(object({
       enabled         = optional(bool, true)
       memory_mb       = optional(number, 256)
       timeout         = optional(number, 300)
       assume_role_arn = optional(string)  # Role to assume for Cost Explorer and Savings Plans APIs (AWS Orgs)
+      error_alarm     = optional(bool, true)  # Enable CloudWatch error alarm for this Lambda
     }), {})
 
     purchaser = optional(object({
@@ -20,6 +21,7 @@ variable "lambda_config" {
       memory_mb       = optional(number, 256)
       timeout         = optional(number, 300)
       assume_role_arn = optional(string)  # Role to assume for Savings Plans purchase APIs (AWS Orgs)
+      error_alarm     = optional(bool, true)  # Enable CloudWatch error alarm for this Lambda
     }), {})
 
     reporter = optional(object({
@@ -27,6 +29,7 @@ variable "lambda_config" {
       memory_mb       = optional(number, 256)
       timeout         = optional(number, 300)
       assume_role_arn = optional(string)  # Role to assume for Cost Explorer and Savings Plans APIs (AWS Orgs)
+      error_alarm     = optional(bool, true)  # Enable CloudWatch error alarm for this Lambda
     }), {})
   })
   default = {}
@@ -337,9 +340,8 @@ variable "reporting" {
 variable "monitoring" {
   description = "CloudWatch monitoring and alarm configuration"
   type = object({
-    lambda_error_alarm = optional(bool, true)
-    dlq_alarm          = optional(bool, true)
-    error_threshold    = optional(number, 1)
+    dlq_alarm       = optional(bool, true)
+    error_threshold = optional(number, 1)  # Threshold for Lambda error alarms (configured per-Lambda in lambda_config)
   })
   default = {}
 }

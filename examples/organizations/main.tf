@@ -84,25 +84,27 @@ module "savings_plans" {
 
   # Monitoring - critical for organization-level automation
   monitoring = {
-    lambda_error_alarm = true
-    dlq_alarm          = true
-    error_threshold    = 1
+    dlq_alarm       = true
+    error_threshold = 1
   }
 
-  # Lambda configuration - AWS Organizations cross-account roles
+  # Lambda configuration - AWS Organizations cross-account roles with error alarms
   # Each Lambda can assume a different role in the management account
   lambda_config = {
     scheduler = {
       # Role to assume for Cost Explorer and Savings Plans read operations
       assume_role_arn = "arn:aws:iam::123456789012:role/SavingsPlansSchedulerRole"
+      error_alarm     = true
     }
     purchaser = {
       # Role to assume for Savings Plans purchase operations
       assume_role_arn = "arn:aws:iam::123456789012:role/SavingsPlansPurchaserRole"
+      error_alarm     = true
     }
     reporter = {
       # Role to assume for Cost Explorer read operations
       assume_role_arn = "arn:aws:iam::123456789012:role/SavingsPlansReporterRole"
+      error_alarm     = true
     }
   }
 

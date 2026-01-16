@@ -38,6 +38,11 @@ locals {
   lambda_purchaser_enabled = try(var.lambda_config.purchaser.enabled, true)
   lambda_reporter_enabled  = try(var.lambda_config.reporter.enabled, true)
 
+  # Per-Lambda error alarm flags
+  lambda_scheduler_error_alarm_enabled = try(var.lambda_config.scheduler.error_alarm, true)
+  lambda_purchaser_error_alarm_enabled = try(var.lambda_config.purchaser.error_alarm, true)
+  lambda_reporter_error_alarm_enabled  = try(var.lambda_config.reporter.error_alarm, true)
+
   # ==========================================================================
   # Compute SP Configuration
   # ==========================================================================
@@ -181,9 +186,8 @@ locals {
   # Monitoring Settings
   # ==========================================================================
 
-  enable_lambda_error_alarm = try(var.monitoring.lambda_error_alarm, true)
-  enable_dlq_alarm          = try(var.monitoring.dlq_alarm, true)
-  lambda_error_threshold    = try(var.monitoring.error_threshold, 1)
+  enable_dlq_alarm       = try(var.monitoring.dlq_alarm, true)
+  lambda_error_threshold = try(var.monitoring.error_threshold, 1)
 
   # ==========================================================================
   # Scheduling (null = disabled)
