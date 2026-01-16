@@ -152,6 +152,8 @@ split_by_term = purchase_module.split_by_term
 
 
 # Backward-compatible imports for configuration and AWS utils
+from config import load_configuration
+from shared.aws_utils import get_assumed_role_session, get_clients
 
 
 def send_error_email(error_msg: str, sns_topic_arn: str = None) -> None:
