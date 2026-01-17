@@ -187,7 +187,8 @@ def calculate_purchase_need_conservative(
             )
         else:
             logger.info(
-                f"Database SP has coverage gap ({coverage_gap}%) but no AWS recommendation available"
+                f"Database SP has coverage gap ({coverage_gap}%) "
+                f"but no AWS recommendation available"
             )
 
     # Process SageMaker SP if enabled
@@ -251,7 +252,8 @@ def calculate_purchase_need_conservative(
             )
         else:
             logger.info(
-                f"SageMaker SP has coverage gap ({coverage_gap}%) but no AWS recommendation available"
+                f"SageMaker SP has coverage gap ({coverage_gap}%) "
+                f"but no AWS recommendation available"
             )
 
     logger.info(f"Conservative strategy purchase need calculated: {len(purchase_plans)} plans")
