@@ -38,6 +38,7 @@ jobs:
         with:
           soft_fail: false
           format: default
+          github_token: ${{ secrets.GITHUB_TOKEN }}
           additional_args: --minimum-severity HIGH
 
       - name: Run tfsec with SARIF output
@@ -47,6 +48,7 @@ jobs:
           soft_fail: true
           format: sarif
           output: tfsec-results.sarif
+          github_token: ${{ secrets.GITHUB_TOKEN }}
           additional_args: --minimum-severity HIGH
         continue-on-error: true
 

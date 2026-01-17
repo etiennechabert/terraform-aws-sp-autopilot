@@ -24,8 +24,7 @@ provider "aws" {
 }
 
 module "savings_plans" {
-  source  = "etiennechabert/sp-autopilot/aws"
-  version = "~> 2.0"
+  source = "etiennechabert/sp-autopilot/aws"
 
   # Purchase strategy - production targets for organization
   purchase_strategy = {

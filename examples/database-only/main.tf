@@ -23,8 +23,10 @@ provider "aws" {
 }
 
 module "savings_plans" {
-  source  = "etiennechabert/sp-autopilot/aws"
-  version = "~> 2.0"
+  source = "etiennechabert/sp-autopilot/aws"
+
+  # Resource naming (can be overridden for testing)
+  name_prefix = var.name_prefix
 
   # Purchase strategy - conservative targets
   purchase_strategy = {
@@ -55,11 +57,11 @@ module "savings_plans" {
     }
   }
 
-  # Scheduling - spread evenly across the month
+  # Scheduling - spread evenly across the month (can be overridden for testing)
   scheduler = {
-    scheduler = "cron(0 8 1 * ? *)"  # 1st of month at 8:00 AM UTC
-    purchaser = "cron(0 8 10 * ? *)" # 10th of month at 8:00 AM UTC (9-day review window)
-    reporter  = "cron(0 9 20 * ? *)" # 20th of month at 9:00 AM UTC
+    scheduler = try(var.scheduler.scheduler, "cron(0 8 1 * ? *)")  # 1st of month at 8:00 AM UTC
+    purchaser = try(var.scheduler.purchaser, "cron(0 8 10 * ? *)") # 10th of month at 8:00 AM UTC (9-day review window)
+    reporter  = try(var.scheduler.reporter, "cron(0 9 20 * ? *)")  # 20th of month at 9:00 AM UTC
   }
 
   # Notifications
@@ -81,10 +83,10 @@ module "savings_plans" {
     error_threshold = 1
   }
 
-  # Lambda configuration (using defaults with error alarms)
+  # Lambda configuration (using defaults with error alarms, can be overridden for testing)
   lambda_config = {
     scheduler = {
-      dry_run     = true # Start in dry-run mode - emails only
+      dry_run     = try(var.lambda_config.scheduler.dry_run, true) # Start in dry-run mode - emails only
       error_alarm = true
     }
     purchaser = { error_alarm = true }
