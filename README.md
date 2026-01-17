@@ -8,7 +8,7 @@
 [![Security Scan](https://github.com/etiennechabert/terraform-aws-sp-autopilot/actions/workflows/security-scan.yml/badge.svg)](https://github.com/etiennechabert/terraform-aws-sp-autopilot/actions/workflows/security-scan.yml)
 [![codecov](https://codecov.io/gh/etiennechabert/terraform-aws-sp-autopilot/branch/main/graph/badge.svg)](https://codecov.io/gh/etiennechabert/terraform-aws-sp-autopilot)
 
-An open-source Terraform module that automates AWS Savings Plans purchases based on usage analysis. The module maintains consistent coverage while limiting financial exposure through incremental, spread-out commitments.
+Automates AWS Savings Plans purchases based on usage analysis, maintaining consistent coverage while limiting financial exposure through incremental commitments.
 
 ## Table of Contents
 
@@ -30,12 +30,12 @@ An open-source Terraform module that automates AWS Savings Plans purchases based
 
 ## Features
 
-- **Automated Savings Plans purchasing** — Maintains target coverage levels without manual intervention
-- **Triple SP type support** — Supports Compute, Database, and SageMaker Savings Plans independently
+- **Automated Savings Plans purchasing** — Maintains target coverage without manual intervention
+- **Three Savings Plans types supported** — Compute, Database, and SageMaker independently tracked
 - **Human review window** — Configurable delay between scheduling and purchasing allows cancellation
-- **Risk management** — Spread financial commitments over time with configurable purchase limits
+- **Risk management** — Spreads financial commitments over time with configurable purchase limits
 - **Coverage cap enforcement** — Hard ceiling prevents over-commitment if usage shrinks
-- **Email notifications** — SNS-based alerts for all scheduling and purchasing activities
+- **Email notifications** — SNS-based alerts for scheduling and purchasing activities
 - **Auditable and transparent** — All decisions logged, all purchases tracked with idempotency
 
 ## Supported Savings Plan Types
@@ -99,8 +99,6 @@ The module consists of two Lambda functions with an SQS queue between them:
    - Sends aggregated email summary of all purchases
 
 ## Quick Start
-
-> **💡 Module Source:** This module is published to the [Terraform Registry](https://registry.terraform.io/modules/etiennechabert/sp-autopilot/aws). Use the registry source format shown below for automatic version management.
 
 ### Basic Usage
 
@@ -347,78 +345,11 @@ module "savings_plans" {
 
 ## Configuration Variables
 
-### Savings Plan Types
+For complete variable documentation including `lambda_config`, `purchase_strategy`, `sp_plans`, `scheduler`, `notifications`, `monitoring`, and `reporting` configuration objects, see:
 
-| Variable | Type | Default | Description |
-|----------|------|---------|-------------|
-| `enable_compute_sp` | `bool` | `true` | Enable Compute Savings Plans automation |
-| `enable_database_sp` | `bool` | `false` | Enable Database Savings Plans automation (see [Supported Savings Plan Types](#supported-savings-plan-types) for coverage and constraints) |
-| `enable_sagemaker_sp` | `bool` | `false` | Enable SageMaker Savings Plans automation for ML/AI workloads |
-
-> **Note:** At least one of `enable_compute_sp`, `enable_database_sp`, or `enable_sagemaker_sp` must be `true`.
-
-### Coverage Strategy
-
-| Variable | Type | Default | Description |
-|----------|------|---------|-------------|
-| `coverage_target_percent` | `number` | `90` | Target hourly coverage percentage (applies to each SP type separately) |
-| `max_coverage_cap` | `number` | `95` | Hard cap — never exceed this coverage (enforced separately per SP type) |
-| `lookback_days` | `number` | `30` | Days of usage history for AWS recommendations |
-
-### Risk Management
-
-| Variable | Type | Default | Description |
-|----------|------|---------|-------------|
-| `max_purchase_percent` | `number` | `10` | Maximum purchase as percentage of current monthly on-demand spend |
-| `min_data_days` | `number` | `14` | Skip recommendations if insufficient usage history |
-| `min_commitment_per_plan` | `number` | `0.001` | Minimum commitment per SP (AWS minimum: $0.001/hr) |
-
-### Expiring Plans
-
-| Variable | Type | Default | Description |
-|----------|------|---------|-------------|
-| `renewal_window_days` | `number` | `7` | Savings Plans expiring within X days are excluded from coverage calculation (forces renewal) |
-
-### Compute SP Options
-
-| Variable | Type | Default | Description |
-|----------|------|---------|-------------|
-| `compute_sp_term_mix` | `object` | `{three_year: 0.67, one_year: 0.33}` | Split of commitment between 3-year and 1-year terms (must sum to 1.0) |
-| `compute_sp_payment_option` | `string` | `"ALL_UPFRONT"` | Payment option: `ALL_UPFRONT`, `PARTIAL_UPFRONT`, `NO_UPFRONT` |
-| `partial_upfront_percent` | `number` | `50` | Percentage paid upfront for `PARTIAL_UPFRONT` option |
-
-### Database SP Options
-
-| Variable | Type | Default | Description |
-|----------|------|---------|-------------|
-| `database_sp_term` | `string` | `"ONE_YEAR"` | Must be `ONE_YEAR` (AWS constraint — validation only) |
-| `database_sp_payment_option` | `string` | `"NO_UPFRONT"` | Must be `NO_UPFRONT` (AWS constraint — validation only) |
-
-> **Note:** These variables exist for validation only. See [Database Savings Plans](#database-savings-plans) for AWS constraint details.
-
-### SageMaker SP Options
-
-| Variable | Type | Default | Description |
-|----------|------|---------|-------------|
-| `sagemaker_sp_term_mix` | `object` | `{three_year: 0.67, one_year: 0.33}` | Split of commitment between 3-year and 1-year terms (must sum to 1.0) |
-| `sagemaker_sp_payment_option` | `string` | `"ALL_UPFRONT"` | Payment option: `ALL_UPFRONT`, `PARTIAL_UPFRONT`, `NO_UPFRONT` |
-
-### Scheduling
-
-| Variable | Type | Default | Description |
-|----------|------|---------|-------------|
-| `scheduler_schedule` | `string` | `"cron(0 8 1 * ? *)"` | When scheduler runs (EventBridge cron expression) — Default: 1st of month |
-| `purchaser_schedule` | `string` | `"cron(0 8 4 * ? *)"` | When purchaser runs (EventBridge cron expression) — Default: 4th of month |
-
-> **Tip:** Set different schedules to create a review window. Set same schedule for immediate purchases (no review).
-
-### Tagging
-
-| Variable | Type | Default | Description |
-|----------|------|---------|-------------|
-| `tags` | `map(string)` | `{}` | Additional tags to apply to all resources |
-
-**Note:** For complete variable documentation including `lambda_config`, `purchase_strategy`, `sp_plans`, `scheduler`, `notifications`, `monitoring`, and `reporting` nested objects, see the [variables.tf](variables.tf) file or the [examples](examples/) directory.
+- **[variables.tf](variables.tf)** — Full variable definitions with types, defaults, and validation rules
+- **[examples/](examples/)** — Working examples for common deployment scenarios
+- **[MIGRATION.md](MIGRATION.md)** — Migration guide for v1.x users
 
 ## Supported Services
 
@@ -588,17 +519,15 @@ To cancel a scheduled purchase before it executes:
 
 1. Go to `https://[workspace].slack.com/apps` → "Incoming Webhooks" → "Add to Slack"
 2. Select channel and copy webhook URL
-3. Configure: `slack_webhook_url = "https://hooks.slack.com/services/..."`
-
-**Security:** Store webhook URLs in AWS Secrets Manager — never commit to version control.
+3. Configure: `notifications.slack_webhook = "https://hooks.slack.com/services/..."`
 
 ### Microsoft Teams Webhooks
 
 1. Teams channel → **•••** → **Connectors** → "Incoming Webhook" → **Configure**
 2. Copy webhook URL (only shown once)
-3. Configure: `teams_webhook_url = "https://[org].webhook.office.com/webhookb2/..."`
+3. Configure: `notifications.teams_webhook = "https://[org].webhook.office.com/webhookb2/..."`
 
-**Security:** Store webhook URLs in AWS Secrets Manager — never commit to version control.
+**Security:** Store webhook URLs in AWS Secrets Manager or HashiCorp Vault. Mark variables as `sensitive = true` to prevent exposure in Terraform logs. Never commit webhook URLs to version control.
 
 ## Cross-Account Setup for AWS Organizations
 
@@ -753,7 +682,3 @@ Contributions are welcome! Please open an issue or pull request on GitHub.
 ## Support
 
 For questions, issues, or feature requests, please open a GitHub issue.
-
----
-
-**Generated with ❤️ by the AWS Savings Plans Autopilot Team**

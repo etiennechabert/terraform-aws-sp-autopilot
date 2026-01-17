@@ -14,10 +14,12 @@ Simplest deployment scenario: single AWS account, Compute Savings Plans only (EC
 
 ### 1. Configure
 
-Update `notification_emails` in `main.tf`:
+Update `notifications.emails` in `main.tf`:
 
 ```hcl
-notification_emails = ["your-email@example.com"]
+notifications = {
+  emails = ["your-email@example.com"]
+}
 ```
 
 ### 2. Deploy
@@ -36,7 +38,7 @@ Check email for SNS confirmation and click the link.
 
 ### Dry-Run Mode (Default)
 
-Module starts with `dry_run = true`:
+Module starts with `lambda_config.scheduler.dry_run = true`:
 - Scheduler analyzes usage monthly
 - Sends email with recommendations
 - **Does NOT queue purchases**
@@ -60,7 +62,11 @@ Expected email includes current coverage, recommended purchases, and "DRY RUN" n
 Edit `main.tf`:
 
 ```hcl
-dry_run = false
+lambda_config = {
+  scheduler = {
+    dry_run = false
+  }
+}
 ```
 
 ### 2. Apply and Monitor
@@ -80,30 +86,34 @@ After enabling:
 ### Adjust Coverage Targets
 
 ```hcl
-coverage_target_percent = 80  # Lower = more conservative
-max_coverage_cap        = 90  # Hard ceiling
-```
-
-### Control Spending Velocity
-
-```hcl
-max_purchase_percent = 5  # Lower = slower commitment growth
+purchase_strategy = {
+  coverage_target_percent = 80  # Lower = more conservative
+  max_coverage_cap        = 90  # Hard ceiling
+  simple = {
+    max_purchase_percent = 5  # Lower = slower commitment growth
+  }
+}
 ```
 
 ### Balance Discount vs Flexibility
 
 ```hcl
-compute_sp_term_mix = {
-  three_year = 0.70  # Higher = more discount, less flexibility
-  one_year   = 0.30
+sp_plans = {
+  compute = {
+    enabled                = true
+    all_upfront_three_year = 0.70  # Higher = more discount, less flexibility
+    all_upfront_one_year   = 0.30
+  }
 }
 ```
 
 ### Adjust Review Window
 
 ```hcl
-scheduler_schedule = "cron(0 8 1 * ? *)"   # 1st of month
-purchaser_schedule = "cron(0 8 10 * ? *)"  # 10th = 9-day window
+scheduler = {
+  scheduler = "cron(0 8 1 * ? *)"   # 1st of month
+  purchaser = "cron(0 8 10 * ? *)"  # 10th = 9-day window
+}
 ```
 
 ## Monitoring
@@ -132,8 +142,8 @@ terraform destroy
 
 ## Next Steps
 
-- Add Database SP: `enable_database_sp = true`
-- AWS Organizations: Set `management_account_role_arn`
+- Add Database SP: `sp_plans.database.enabled = true`
+- AWS Organizations: Set per-Lambda `assume_role_arn` in `lambda_config`
 - Increase targets as confidence grows
 
 See [main README](../../README.md) for complete documentation.

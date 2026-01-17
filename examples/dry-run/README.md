@@ -4,7 +4,7 @@
 
 ## What is Dry-Run Mode?
 
-When `dry_run = true`, the module operates in **evaluation-only mode**:
+When `lambda_config.scheduler.dry_run = true`, the module operates in **evaluation-only mode**:
 
 ✅ **What It Does:**
 - Analyzes EC2, Lambda, and Fargate usage
@@ -34,10 +34,12 @@ Perfect for:
 
 ### 1. Configure
 
-Update `notification_emails` in `main.tf`:
+Update `notifications.emails` in `main.tf`:
 
 ```hcl
-notification_emails = ["your-email@example.com"]
+notifications = {
+  emails = ["your-email@example.com"]
+}
 ```
 
 ### 2. Deploy
@@ -88,7 +90,7 @@ Run for 2-3 monthly cycles before enabling purchases. Watch for:
 - No dramatic month-to-month swings
 
 ⚠️ **Red Flags:**
-- Recommendations vastly exceed comfort level → Lower `max_purchase_percent`
+- Recommendations vastly exceed comfort level → Lower `purchase_strategy.simple.max_purchase_percent`
 - No recommendations despite known usage → Check IAM permissions
 - Wildly varying recommendations → Usage too variable for automation
 
@@ -97,7 +99,11 @@ Run for 2-3 monthly cycles before enabling purchases. Watch for:
 Once confident:
 
 ```hcl
-dry_run = false
+lambda_config = {
+  scheduler = {
+    dry_run = false
+  }
+}
 ```
 
 Then `terraform apply` and monitor first cycle (see [single-account-compute example](../single-account-compute/README.md#monitoring)).
@@ -112,13 +118,9 @@ terraform destroy
 
 ## Next Steps
 
-- Enable purchases with `dry_run = false`
-- Add Database SP: `enable_database_sp = true`
+- Enable purchases with `lambda_config.scheduler.dry_run = false`
+- Add Database SP: `sp_plans.database.enabled = true`
 - Increase targets as confidence grows
-- AWS Organizations: Set `management_account_role_arn`
+- AWS Organizations: Set per-Lambda `assume_role_arn` in `lambda_config`
 
 See [main README](../../README.md) for complete documentation.
-
----
-
-**💡 Pro Tip:** Run in dry-run mode for at least 2-3 monthly cycles before enabling purchases.

@@ -111,16 +111,30 @@ aws iam get-role --role-name SavingsPlansAutomationRole --query 'Role.Arn' --out
 Update `main.tf`:
 
 ```hcl
-management_account_role_arn = "arn:aws:iam::123456789012:role/SavingsPlansAutomationRole"
+lambda_config = {
+  scheduler = {
+    assume_role_arn = "arn:aws:iam::123456789012:role/SavingsPlansAutomationRole"
+  }
+  purchaser = {
+    assume_role_arn = "arn:aws:iam::123456789012:role/SavingsPlansAutomationRole"
+  }
+}
 
-notification_emails = [
-  "finops@your-company.com",
-  "cloud-governance@your-company.com",
-  "aws-admins@your-company.com"
-]
+notifications = {
+  emails = [
+    "finops@your-company.com",
+    "cloud-governance@your-company.com",
+    "aws-admins@your-company.com"
+  ]
+}
 
-coverage_target_percent = 85
-max_coverage_cap        = 95
+purchase_strategy = {
+  coverage_target_percent = 85
+  max_coverage_cap        = 95
+  simple = {
+    max_purchase_percent = 8
+  }
+}
 ```
 
 ### 2. Deploy
@@ -167,7 +181,11 @@ Look for: `Successfully assumed role in management account`
 ### 1. Update Configuration
 
 ```hcl
-dry_run = false
+lambda_config = {
+  scheduler = {
+    dry_run = false
+  }
+}
 ```
 
 ### 2. Apply and Monitor
@@ -189,21 +207,22 @@ After enabling:
 ### Coverage Targets
 
 ```hcl
-coverage_target_percent = 85  # Higher for stable orgs
-max_coverage_cap        = 95  # Hard ceiling
-```
-
-### Purchase Limits
-
-```hcl
-max_purchase_percent = 8  # % of monthly on-demand spend
+purchase_strategy = {
+  coverage_target_percent = 85  # Higher for stable orgs
+  max_coverage_cap        = 95  # Hard ceiling
+  simple = {
+    max_purchase_percent = 8  # % of monthly on-demand spend
+  }
+}
 ```
 
 ### Review Window
 
 ```hcl
-scheduler_schedule = "cron(0 8 1 * ? *)"   # 1st of month
-purchaser_schedule = "cron(0 8 10 * ? *)"  # 10th = 9-day window
+scheduler = {
+  scheduler = "cron(0 8 1 * ? *)"   # 1st of month
+  purchaser = "cron(0 8 10 * ? *)"  # 10th = 9-day window
+}
 ```
 
 ## Monitoring
@@ -277,7 +296,7 @@ aws savingsplans describe-savings-plans --filters name=scope,values=organization
 ## Next Steps
 
 - Optimize coverage targets based on usage patterns
-- Fine-tune term mix: adjust `compute_sp_term_mix`
+- Fine-tune term mix in `sp_plans.compute`
 - Implement cost allocation tags for chargeback
 - Create dashboards for SP coverage trends
 - Formalize multi-team review procedures
@@ -287,7 +306,7 @@ See [main README](../../README.md) for complete documentation.
 ---
 
 **⚠️ Important:**
-- Start with `dry_run = true` and validate org-wide recommendations
+- Start with `lambda_config.scheduler.dry_run = true` and validate org-wide recommendations
 - Coordinate with FinOps, governance, and finance teams before enabling
 - Establish review process for purchase queue during review window
 - Org-level SPs automatically benefit all member accounts
