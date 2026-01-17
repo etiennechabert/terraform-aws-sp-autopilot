@@ -11,7 +11,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
-import local_mode
+from . import local_mode
 
 
 logger = logging.getLogger(__name__)

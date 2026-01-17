@@ -197,6 +197,10 @@ data "archive_file" "scheduler" {
     content  = file("${path.module}/lambda/shared/notifications.py")
     filename = "shared/notifications.py"
   }
+  source {
+    content  = file("${path.module}/lambda/shared/__init__.py")
+    filename = "shared/__init__.py"
+  }
 }
 
 # Purchaser Lambda deployment package
@@ -240,6 +244,10 @@ data "archive_file" "purchaser" {
     content  = file("${path.module}/lambda/shared/notifications.py")
     filename = "shared/notifications.py"
   }
+  source {
+    content  = file("${path.module}/lambda/shared/__init__.py")
+    filename = "shared/__init__.py"
+  }
 }
 
 # Reporter Lambda deployment package
@@ -278,6 +286,10 @@ data "archive_file" "reporter" {
   source {
     content  = file("${path.module}/lambda/shared/notifications.py")
     filename = "shared/notifications.py"
+  }
+  source {
+    content  = file("${path.module}/lambda/shared/__init__.py")
+    filename = "shared/__init__.py"
   }
 }
 

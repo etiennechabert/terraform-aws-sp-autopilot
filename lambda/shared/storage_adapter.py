@@ -10,7 +10,7 @@ import logging
 from datetime import datetime, timezone
 from typing import Any, Dict, Optional
 
-import local_mode
+from . import local_mode
 
 
 logger = logging.getLogger(__name__)
