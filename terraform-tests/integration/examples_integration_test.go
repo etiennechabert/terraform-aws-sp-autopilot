@@ -22,12 +22,12 @@ func TestExampleSingleAccountCompute(t *testing.T) {
 	// Generate unique name prefix
 	uniquePrefix := fmt.Sprintf("sp-test-sac-%s", time.Now().Format("0102-150405"))
 
-	// Create a temporary copy of the example with local source
-	tempDir := prepareExampleForTesting(t, exampleDir, uniquePrefix)
-	defer os.RemoveAll(tempDir)
+	// Create a test copy of the example with local source
+	testDir := prepareExampleForTesting(t, exampleDir, uniquePrefix)
+	defer os.RemoveAll(testDir)
 
 	terraformOptions := terraform.WithDefaultRetryableErrors(t, &terraform.Options{
-		TerraformDir: tempDir,
+		TerraformDir: testDir,
 		Vars: map[string]interface{}{
 			"name_prefix": uniquePrefix,
 			"scheduler": map[string]interface{}{
@@ -59,11 +59,11 @@ func TestExampleDatabaseOnly(t *testing.T) {
 	exampleDir := "../../examples/database-only"
 
 	uniquePrefix := fmt.Sprintf("sp-test-db-%s", time.Now().Format("0102-150405"))
-	tempDir := prepareExampleForTesting(t, exampleDir, uniquePrefix)
-	defer os.RemoveAll(tempDir)
+	testDir := prepareExampleForTesting(t, exampleDir, uniquePrefix)
+	defer os.RemoveAll(testDir)
 
 	terraformOptions := terraform.WithDefaultRetryableErrors(t, &terraform.Options{
-		TerraformDir: tempDir,
+		TerraformDir: testDir,
 		Vars: map[string]interface{}{
 			"name_prefix": uniquePrefix,
 			"scheduler": map[string]interface{}{
@@ -94,11 +94,11 @@ func TestExampleDichotomyStrategy(t *testing.T) {
 	exampleDir := "../../examples/dichotomy-strategy"
 
 	uniquePrefix := fmt.Sprintf("sp-test-dich-%s", time.Now().Format("0102-150405"))
-	tempDir := prepareExampleForTesting(t, exampleDir, uniquePrefix)
-	defer os.RemoveAll(tempDir)
+	testDir := prepareExampleForTesting(t, exampleDir, uniquePrefix)
+	defer os.RemoveAll(testDir)
 
 	terraformOptions := terraform.WithDefaultRetryableErrors(t, &terraform.Options{
-		TerraformDir: tempDir,
+		TerraformDir: testDir,
 		Vars: map[string]interface{}{
 			"name_prefix": uniquePrefix,
 			"scheduler": map[string]interface{}{
@@ -125,16 +125,13 @@ func TestExampleDichotomyStrategy(t *testing.T) {
 // prepareExampleForTesting creates a temporary copy of an example directory
 // and modifies the module source to point to the local codebase instead of the registry.
 func prepareExampleForTesting(t *testing.T, exampleDir string, namePrefix string) string {
-	// Get absolute path to module root (../../ from terraform-tests/integration/)
-	moduleRoot, err := filepath.Abs("../../")
-	require.NoError(t, err, "Failed to get module root path")
+	// Use the fixtures approach - copy to integration test directory instead of temp
+	// This allows us to use relative paths like the fixture tests do
+	testDir := filepath.Join("./test-examples", namePrefix)
+	err := os.MkdirAll(testDir, 0755)
+	require.NoError(t, err, "Failed to create test directory")
 
-	// Create a temp directory for this test
-	tempDir, err := os.MkdirTemp("", "terratest-example-*")
-	require.NoError(t, err, "Failed to create temp directory")
-
-	t.Logf("Module root: %s", moduleRoot)
-	t.Logf("Temp directory: %s", tempDir)
+	t.Logf("Test directory: %s", testDir)
 
 	// Copy all .tf files from the example
 	err = filepath.Walk(exampleDir, func(path string, info os.FileInfo, err error) error {
@@ -160,10 +157,11 @@ func prepareExampleForTesting(t *testing.T, exampleDir string, namePrefix string
 		// Modify the module source to point to local codebase
 		contentStr := string(content)
 
-		// Replace registry source with absolute path to module root
+		// Replace registry source with relative path (like fixtures do)
+		// From test-examples/<name>/ to module root is ../../
 		contentStr = strings.ReplaceAll(contentStr,
 			`source  = "etiennechabert/sp-autopilot/aws"`,
-			fmt.Sprintf(`source = "%s"`, filepath.ToSlash(moduleRoot)))
+			`source = "../../"`)
 
 		// Remove version constraint (not needed for local source)
 		lines := strings.Split(contentStr, "\n")
@@ -175,8 +173,8 @@ func prepareExampleForTesting(t *testing.T, exampleDir string, namePrefix string
 		}
 		contentStr = strings.Join(newLines, "\n")
 
-		// Write to temp directory
-		destPath := filepath.Join(tempDir, filepath.Base(path))
+		// Write to test directory
+		destPath := filepath.Join(testDir, filepath.Base(path))
 		err = os.WriteFile(destPath, []byte(contentStr), 0644)
 		if err != nil {
 			return fmt.Errorf("failed to write %s: %w", destPath, err)
@@ -187,5 +185,5 @@ func prepareExampleForTesting(t *testing.T, exampleDir string, namePrefix string
 	})
 	require.NoError(t, err, "Failed to prepare example for testing")
 
-	return tempDir
+	return testDir
 }

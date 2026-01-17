@@ -28,3 +28,4 @@ terraform-debug.log
 *.swp
 *.swo
 *~
+test-examples/
