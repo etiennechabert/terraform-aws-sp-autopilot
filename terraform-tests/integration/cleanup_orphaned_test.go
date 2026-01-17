@@ -6,6 +6,7 @@ import (
 	"testing"
 
 	"github.com/aws/aws-sdk-go/aws"
+	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/aws/aws-sdk-go/service/cloudwatchevents"
 	"github.com/aws/aws-sdk-go/service/cloudwatchlogs"
 	"github.com/aws/aws-sdk-go/service/iam"
@@ -62,7 +63,7 @@ func TestCleanupAllOrphanedResources(t *testing.T) {
 	t.Log("========================================")
 }
 
-func cleanupAllLogGroups(t *testing.T, sess *terratest_aws.Session) {
+func cleanupAllLogGroups(t *testing.T, sess *session.Session) {
 	t.Log("\n[CloudWatch Log Groups]")
 	cwlClient := cloudwatchlogs.New(sess)
 
@@ -92,7 +93,7 @@ func cleanupAllLogGroups(t *testing.T, sess *terratest_aws.Session) {
 	}
 }
 
-func cleanupAllLambdaFunctions(t *testing.T, sess *terratest_aws.Session) {
+func cleanupAllLambdaFunctions(t *testing.T, sess *session.Session) {
 	t.Log("\n[Lambda Functions]")
 	lambdaClient := lambda.New(sess)
 
@@ -124,7 +125,7 @@ func cleanupAllLambdaFunctions(t *testing.T, sess *terratest_aws.Session) {
 	}
 }
 
-func cleanupAllEventBridgeRules(t *testing.T, sess *terratest_aws.Session) {
+func cleanupAllEventBridgeRules(t *testing.T, sess *session.Session) {
 	t.Log("\n[EventBridge Rules]")
 	eventsClient := cloudwatchevents.New(sess)
 
@@ -173,7 +174,7 @@ func cleanupAllEventBridgeRules(t *testing.T, sess *terratest_aws.Session) {
 	}
 }
 
-func cleanupAllSQSQueues(t *testing.T, sess *terratest_aws.Session) {
+func cleanupAllSQSQueues(t *testing.T, sess *session.Session) {
 	t.Log("\n[SQS Queues]")
 	sqsClient := sqs.New(sess)
 
@@ -203,7 +204,7 @@ func cleanupAllSQSQueues(t *testing.T, sess *terratest_aws.Session) {
 	}
 }
 
-func cleanupAllSNSTopics(t *testing.T, sess *terratest_aws.Session) {
+func cleanupAllSNSTopics(t *testing.T, sess *session.Session) {
 	t.Log("\n[SNS Topics]")
 	snsClient := sns.New(sess)
 
@@ -235,7 +236,7 @@ func cleanupAllSNSTopics(t *testing.T, sess *terratest_aws.Session) {
 	}
 }
 
-func cleanupAllIAMRoles(t *testing.T, sess *terratest_aws.Session) {
+func cleanupAllIAMRoles(t *testing.T, sess *session.Session) {
 	t.Log("\n[IAM Roles]")
 	iamClient := iam.New(sess)
 
@@ -296,7 +297,7 @@ func cleanupAllIAMRoles(t *testing.T, sess *terratest_aws.Session) {
 	}
 }
 
-func cleanupAllS3Buckets(t *testing.T, sess *terratest_aws.Session) {
+func cleanupAllS3Buckets(t *testing.T, sess *session.Session) {
 	t.Log("\n[S3 Buckets]")
 	s3Client := s3.New(sess)
 

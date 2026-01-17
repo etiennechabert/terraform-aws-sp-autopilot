@@ -6,6 +6,7 @@ import (
 	"testing"
 
 	"github.com/aws/aws-sdk-go/aws"
+	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/aws/aws-sdk-go/service/cloudwatchlogs"
 	"github.com/aws/aws-sdk-go/service/iam"
 	"github.com/aws/aws-sdk-go/service/s3"
@@ -35,7 +36,7 @@ func CleanupOrphanedResources(t *testing.T, awsRegion string, namePrefix string)
 	t.Logf("Cleanup complete for prefix: %s", namePrefix)
 }
 
-func cleanupLogGroups(t *testing.T, sess *terratest_aws.Session, namePrefix string) {
+func cleanupLogGroups(t *testing.T, sess *session.Session, namePrefix string) {
 	cwlClient := cloudwatchlogs.New(sess)
 
 	logGroupNames := []string{
@@ -60,7 +61,7 @@ func cleanupLogGroups(t *testing.T, sess *terratest_aws.Session, namePrefix stri
 	}
 }
 
-func cleanupIAMRoles(t *testing.T, sess *terratest_aws.Session, namePrefix string) {
+func cleanupIAMRoles(t *testing.T, sess *session.Session, namePrefix string) {
 	iamClient := iam.New(sess)
 
 	roleNames := []string{
@@ -127,7 +128,7 @@ func cleanupIAMRoles(t *testing.T, sess *terratest_aws.Session, namePrefix strin
 	}
 }
 
-func cleanupS3Buckets(t *testing.T, sess *terratest_aws.Session, namePrefix string) {
+func cleanupS3Buckets(t *testing.T, sess *session.Session, namePrefix string) {
 	s3Client := s3.New(sess)
 
 	// Get AWS account ID for bucket name
