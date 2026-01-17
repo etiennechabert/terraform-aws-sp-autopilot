@@ -4,7 +4,6 @@ Covers CSV format generation, structure validation, and data accuracy.
 """
 
 import csv
-import io
 import os
 import sys
 
@@ -30,11 +29,41 @@ import handler
 def sample_coverage_history():
     """Sample coverage history data."""
     return [
-        {"date": "2026-01-10", "coverage_percentage": 65.5, "on_demand_hours": 100.0, "covered_hours": 155.5, "total_hours": 255.5},
-        {"date": "2026-01-11", "coverage_percentage": 67.2, "on_demand_hours": 95.0, "covered_hours": 160.0, "total_hours": 255.0},
-        {"date": "2026-01-12", "coverage_percentage": 68.8, "on_demand_hours": 90.0, "covered_hours": 165.0, "total_hours": 255.0},
-        {"date": "2026-01-13", "coverage_percentage": 70.1, "on_demand_hours": 85.0, "covered_hours": 170.0, "total_hours": 255.0},
-        {"date": "2026-01-14", "coverage_percentage": 72.3, "on_demand_hours": 80.0, "covered_hours": 175.0, "total_hours": 255.0},
+        {
+            "date": "2026-01-10",
+            "coverage_percentage": 65.5,
+            "on_demand_hours": 100.0,
+            "covered_hours": 155.5,
+            "total_hours": 255.5,
+        },
+        {
+            "date": "2026-01-11",
+            "coverage_percentage": 67.2,
+            "on_demand_hours": 95.0,
+            "covered_hours": 160.0,
+            "total_hours": 255.0,
+        },
+        {
+            "date": "2026-01-12",
+            "coverage_percentage": 68.8,
+            "on_demand_hours": 90.0,
+            "covered_hours": 165.0,
+            "total_hours": 255.0,
+        },
+        {
+            "date": "2026-01-13",
+            "coverage_percentage": 70.1,
+            "on_demand_hours": 85.0,
+            "covered_hours": 170.0,
+            "total_hours": 255.0,
+        },
+        {
+            "date": "2026-01-14",
+            "coverage_percentage": 72.3,
+            "on_demand_hours": 80.0,
+            "covered_hours": 175.0,
+            "total_hours": 255.0,
+        },
     ]
 
 
@@ -157,10 +186,16 @@ def test_generate_csv_report_active_plans_data(sample_coverage_history, sample_s
     result = handler.generate_csv_report(sample_coverage_history, sample_savings_data)
 
     # Verify first plan details
-    assert "sp-12345,ComputeSavingsPlans,All Upfront,94608000,10.5000,2025-01-01T00:00:00Z,2028-01-01T00:00:00Z" in result
+    assert (
+        "sp-12345,ComputeSavingsPlans,All Upfront,94608000,10.5000,2025-01-01T00:00:00Z,2028-01-01T00:00:00Z"
+        in result
+    )
 
     # Verify second plan details
-    assert "sp-67890,DatabaseSavingsPlans,No Upfront,94608000,5.2500,2025-06-01T00:00:00Z,2028-06-01T00:00:00Z" in result
+    assert (
+        "sp-67890,DatabaseSavingsPlans,No Upfront,94608000,5.2500,2025-06-01T00:00:00Z,2028-06-01T00:00:00Z"
+        in result
+    )
 
 
 def test_generate_csv_report_with_empty_data():
