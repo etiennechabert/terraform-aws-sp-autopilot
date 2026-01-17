@@ -93,6 +93,8 @@ def handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
         # Step 3: Generate report based on format
         if config["report_format"] == "json":
             report_content = generate_json_report(coverage_history, savings_data)
+        elif config["report_format"] == "csv":
+            report_content = generate_csv_report(coverage_history, savings_data)
         else:
             report_content = generate_html_report(coverage_history, savings_data)
 
