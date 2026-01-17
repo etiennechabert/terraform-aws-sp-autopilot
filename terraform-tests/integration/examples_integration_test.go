@@ -2,10 +2,8 @@ package test
 
 import (
 	"fmt"
-	"io"
 	"os"
 	"path/filepath"
-	"regexp"
 	"strings"
 	"testing"
 	"time"
@@ -16,24 +14,21 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// cleanWriter strips the "TestName timestamp file:line:" prefix from log lines
-type cleanWriter struct {
-	output io.Writer
-}
+// cleanLogger implements logger.TestLogger interface to strip verbose prefixes
+type cleanLogger struct{}
 
-func (w *cleanWriter) Write(p []byte) (n int, err error) {
-	// Pattern: "TestName YYYY-MM-DDTHH:MM:SSZ file.go:123: "
-	// Example: "TestExampleSingleAccountCompute 2026-01-17T08:32:32Z logger.go:66: "
-	pattern := regexp.MustCompile(`^[A-Za-z0-9_]+ \d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z [a-z]+\.go:\d+: `)
+func (l *cleanLogger) Logf(t logger.TestingT, format string, args ...interface{}) {
+	// Format the message
+	msg := fmt.Sprintf(format, args...)
 
-	line := string(p)
-	cleaned := pattern.ReplaceAllString(line, "")
-
-	return w.output.Write([]byte(cleaned))
+	// Pattern to match: "TestName YYYY-MM-DDTHH:MM:SSZ file.go:123: "
+	// This gets added by terratest's default logger
+	// We just print the message directly without the prefix
+	fmt.Println(msg)
 }
 
 func getCleanLogger() *logger.Logger {
-	return logger.New(&cleanWriter{output: os.Stdout})
+	return logger.New(&cleanLogger{})
 }
 
 // TestExampleSingleAccountCompute validates the single-account-compute example
