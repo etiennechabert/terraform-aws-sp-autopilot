@@ -24,15 +24,7 @@ from botocore.exceptions import ClientError
 from validation import validate_purchase_intent
 
 from shared import handler_utils
-
-# Import queue adapter for local/AWS mode support
-try:
-    # Try importing from shared package (Lambda deployment structure)
-    from shared.queue_adapter import QueueAdapter
-except ImportError:
-    # Fall back to direct import for local development
-    sys.path.insert(0, str(Path(__file__).parent.parent / "shared"))
-    from queue_adapter import QueueAdapter
+from shared.queue_adapter import QueueAdapter
 
 
 # Configure logging

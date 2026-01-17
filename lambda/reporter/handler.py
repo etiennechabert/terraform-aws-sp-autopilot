@@ -27,15 +27,7 @@ from shared.handler_utils import (
     load_config_from_env,
     send_error_notification,
 )
-
-# Import storage adapter for local/AWS mode support
-try:
-    # Try importing from shared package (Lambda deployment structure)
-    from shared.storage_adapter import StorageAdapter
-except ImportError:
-    # Fall back to direct import for local development
-    sys.path.insert(0, str(Path(__file__).parent.parent / "shared"))
-    from storage_adapter import StorageAdapter
+from shared.storage_adapter import StorageAdapter
 
 
 # Configure logging
