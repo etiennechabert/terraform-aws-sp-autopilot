@@ -182,9 +182,7 @@ def calculate_purchase_need_conservative(
                 f"({min_gap_threshold}%) - skipping purchase"
             )
         elif coverage_gap < 0:
-            logger.info(
-                "Database SP coverage already meets or exceeds target - no purchase needed"
-            )
+            logger.info("Database SP coverage already meets or exceeds target - no purchase needed")
         else:
             logger.info(
                 f"Database SP has coverage gap ({coverage_gap}%) "
