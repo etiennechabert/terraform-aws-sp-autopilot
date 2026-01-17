@@ -8,20 +8,10 @@ import (
 	"testing"
 	"time"
 
-	"github.com/gruntwork-io/terratest/modules/logger"
 	"github.com/gruntwork-io/terratest/modules/terraform"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
-
-// cleanLogger outputs log messages without test name/timestamp prefix
-type cleanLogger struct{}
-
-func (l *cleanLogger) Logf(t logger.TestingT, format string, args ...interface{}) {
-	// Output directly to stdout without the "TestName timestamp file:line:" prefix
-	msg := fmt.Sprintf(format, args...)
-	fmt.Println(msg)
-}
 
 // TestExampleSingleAccountCompute validates the single-account-compute example
 // Focus: Compute SP with mixed term/payment options (3-year + 1-year, all-upfront)
@@ -54,7 +44,6 @@ func TestExampleSingleAccountCompute(t *testing.T) {
 			},
 		},
 		NoColor: true,
-		Logger:  &cleanLogger{},
 	})
 
 	defer terraform.Destroy(t, terraformOptions)
@@ -96,7 +85,6 @@ func TestExampleDatabaseOnly(t *testing.T) {
 			},
 		},
 		NoColor: true,
-		Logger:  &cleanLogger{},
 	})
 
 	defer terraform.Destroy(t, terraformOptions)
@@ -135,7 +123,6 @@ func TestExampleDichotomyStrategy(t *testing.T) {
 			},
 		},
 		NoColor: true,
-		Logger:  &cleanLogger{},
 	})
 
 	defer terraform.Destroy(t, terraformOptions)
