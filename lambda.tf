@@ -161,11 +161,11 @@ data "archive_file" "scheduler" {
 # Copy shared module into scheduler package
 resource "null_resource" "scheduler_add_shared" {
   triggers = {
-    zip_changed           = data.archive_file.scheduler.output_base64sha256
-    handler_utils_changed = filemd5("${path.module}/lambda/shared/handler_utils.py")
-    aws_utils_changed     = filemd5("${path.module}/lambda/shared/aws_utils.py")
-    local_mode_changed    = filemd5("${path.module}/lambda/shared/local_mode.py")
-    queue_adapter_changed = filemd5("${path.module}/lambda/shared/queue_adapter.py")
+    zip_changed             = data.archive_file.scheduler.output_base64sha256
+    handler_utils_changed   = filemd5("${path.module}/lambda/shared/handler_utils.py")
+    aws_utils_changed       = filemd5("${path.module}/lambda/shared/aws_utils.py")
+    local_mode_changed      = filemd5("${path.module}/lambda/shared/local_mode.py")
+    queue_adapter_changed   = filemd5("${path.module}/lambda/shared/queue_adapter.py")
     storage_adapter_changed = filemd5("${path.module}/lambda/shared/storage_adapter.py")
   }
 
@@ -201,11 +201,11 @@ data "archive_file" "purchaser" {
 # Copy shared module into purchaser package
 resource "null_resource" "purchaser_add_shared" {
   triggers = {
-    zip_changed           = data.archive_file.purchaser.output_base64sha256
-    handler_utils_changed = filemd5("${path.module}/lambda/shared/handler_utils.py")
-    aws_utils_changed     = filemd5("${path.module}/lambda/shared/aws_utils.py")
-    local_mode_changed    = filemd5("${path.module}/lambda/shared/local_mode.py")
-    queue_adapter_changed = filemd5("${path.module}/lambda/shared/queue_adapter.py")
+    zip_changed             = data.archive_file.purchaser.output_base64sha256
+    handler_utils_changed   = filemd5("${path.module}/lambda/shared/handler_utils.py")
+    aws_utils_changed       = filemd5("${path.module}/lambda/shared/aws_utils.py")
+    local_mode_changed      = filemd5("${path.module}/lambda/shared/local_mode.py")
+    queue_adapter_changed   = filemd5("${path.module}/lambda/shared/queue_adapter.py")
     storage_adapter_changed = filemd5("${path.module}/lambda/shared/storage_adapter.py")
   }
 
@@ -241,11 +241,11 @@ data "archive_file" "reporter" {
 # Copy shared module into reporter package
 resource "null_resource" "reporter_add_shared" {
   triggers = {
-    zip_changed           = data.archive_file.reporter.output_base64sha256
-    handler_utils_changed = filemd5("${path.module}/lambda/shared/handler_utils.py")
-    aws_utils_changed     = filemd5("${path.module}/lambda/shared/aws_utils.py")
-    local_mode_changed    = filemd5("${path.module}/lambda/shared/local_mode.py")
-    queue_adapter_changed = filemd5("${path.module}/lambda/shared/queue_adapter.py")
+    zip_changed             = data.archive_file.reporter.output_base64sha256
+    handler_utils_changed   = filemd5("${path.module}/lambda/shared/handler_utils.py")
+    aws_utils_changed       = filemd5("${path.module}/lambda/shared/aws_utils.py")
+    local_mode_changed      = filemd5("${path.module}/lambda/shared/local_mode.py")
+    queue_adapter_changed   = filemd5("${path.module}/lambda/shared/queue_adapter.py")
     storage_adapter_changed = filemd5("${path.module}/lambda/shared/storage_adapter.py")
   }
 
