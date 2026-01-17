@@ -23,10 +23,13 @@ Automates AWS Savings Plans purchases based on usage analysis, maintaining consi
 - [Advanced Usage](#advanced-usage)
 - [Cross-Account Setup for AWS Organizations](#cross-account-setup-for-aws-organizations)
 - [Requirements](#requirements)
-- [Error Reference](ERROR_REFERENCE.md)
 - [License](#license)
 - [Contributing](#contributing)
 - [Support](#support)
+
+**Additional Guides:**
+- [Error Patterns & Troubleshooting](ERROR_PATTERNS.md)
+- [Testing Guide](TESTING.md)
 
 ## Features
 
