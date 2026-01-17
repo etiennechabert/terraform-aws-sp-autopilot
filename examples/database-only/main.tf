@@ -23,8 +23,7 @@ provider "aws" {
 }
 
 module "savings_plans" {
-  source  = "etiennechabert/sp-autopilot/aws"
-  version = "~> 1.0"
+  source = "etiennechabert/sp-autopilot/aws"
 
   # Resource naming (can be overridden for testing)
   name_prefix = var.name_prefix

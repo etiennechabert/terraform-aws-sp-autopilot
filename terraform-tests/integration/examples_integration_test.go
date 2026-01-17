@@ -160,7 +160,7 @@ func prepareExampleForTesting(t *testing.T, exampleDir string, namePrefix string
 		// Replace registry source with relative path (like fixtures do)
 		// From test-examples/<name>/ to module root is ../../../../
 		contentStr = strings.ReplaceAll(contentStr,
-			`source  = "etiennechabert/sp-autopilot/aws"`,
+			`source = "etiennechabert/sp-autopilot/aws"`,
 			`source = "../../../../"`)
 
 		// Remove version constraint (not needed for local source)

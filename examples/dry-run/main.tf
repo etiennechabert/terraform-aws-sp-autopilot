@@ -28,8 +28,7 @@ provider "aws" {
 }
 
 module "savings_plans" {
-  source  = "etiennechabert/sp-autopilot/aws"
-  version = "~> 2.0"
+  source = "etiennechabert/sp-autopilot/aws"
 
   # Purchase strategy - ultra-conservative for evaluation
   purchase_strategy = {
