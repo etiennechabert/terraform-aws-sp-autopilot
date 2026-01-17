@@ -4,13 +4,14 @@ Tests critical validation logic and error paths.
 """
 
 import pytest
-from config_validation import (
+
+from shared.config_validation import (
     VALID_PAYMENT_OPTIONS,
     VALID_PURCHASE_STRATEGIES,
     VALID_REPORT_FORMATS,
-    validate_scheduler_config,
-    validate_reporter_config,
     validate_purchaser_config,
+    validate_reporter_config,
+    validate_scheduler_config,
 )
 
 

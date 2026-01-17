@@ -75,7 +75,8 @@ def _validate_term_mix(term_mix: Any, field_name: str) -> None:
     Validate that a term mix dictionary has valid structure and values sum to ~1.0.
 
     Args:
-        term_mix: Dictionary containing term percentages (e.g., {'three_year': 0.67, 'one_year': 0.33})
+        term_mix: Dictionary containing term percentages
+            (e.g., {'three_year': 0.67, 'one_year': 0.33})
         field_name: Name of the field being validated (for error messages)
 
     Returns:
@@ -154,7 +155,8 @@ def validate_scheduler_config(config: dict[str, Any]) -> None:
     if "min_purchase_percent" in config and "max_purchase_percent" in config:
         if config["min_purchase_percent"] >= config["max_purchase_percent"]:
             raise ValueError(
-                f"Field 'min_purchase_percent' ({config['min_purchase_percent']}) must be less than 'max_purchase_percent' ({config['max_purchase_percent']})"
+                f"Field 'min_purchase_percent' ({config['min_purchase_percent']}) "
+                f"must be less than 'max_purchase_percent' ({config['max_purchase_percent']})"
             )
 
     # Validate positive integer fields
@@ -162,39 +164,47 @@ def validate_scheduler_config(config: dict[str, Any]) -> None:
         _validate_positive_number(config["renewal_window_days"], "renewal_window_days")
         if not isinstance(config["renewal_window_days"], int):
             raise ValueError(
-                f"Field 'renewal_window_days' must be an integer, got {type(config['renewal_window_days']).__name__}: {config['renewal_window_days']}"
+                f"Field 'renewal_window_days' must be an integer, "
+                f"got {type(config['renewal_window_days']).__name__}: "
+                f"{config['renewal_window_days']}"
             )
 
     if "lookback_days" in config:
         _validate_positive_number(config["lookback_days"], "lookback_days")
         if not isinstance(config["lookback_days"], int):
             raise ValueError(
-                f"Field 'lookback_days' must be an integer, got {type(config['lookback_days']).__name__}: {config['lookback_days']}"
+                f"Field 'lookback_days' must be an integer, "
+                f"got {type(config['lookback_days']).__name__}: {config['lookback_days']}"
             )
 
     if "min_data_days" in config:
         _validate_positive_number(config["min_data_days"], "min_data_days")
         if not isinstance(config["min_data_days"], int):
             raise ValueError(
-                f"Field 'min_data_days' must be an integer, got {type(config['min_data_days']).__name__}: {config['min_data_days']}"
+                f"Field 'min_data_days' must be an integer, "
+                f"got {type(config['min_data_days']).__name__}: {config['min_data_days']}"
             )
 
     # Validate lookback_days >= min_data_days
     if "lookback_days" in config and "min_data_days" in config:
         if config["lookback_days"] < config["min_data_days"]:
             raise ValueError(
-                f"Field 'lookback_days' ({config['lookback_days']}) must be greater than or equal to 'min_data_days' ({config['min_data_days']})"
+                f"Field 'lookback_days' ({config['lookback_days']}) must be greater than "
+                f"or equal to 'min_data_days' ({config['min_data_days']})"
             )
 
     # Validate min_commitment_per_plan is non-negative
     if "min_commitment_per_plan" in config:
         if not isinstance(config["min_commitment_per_plan"], (int, float)):
             raise ValueError(
-                f"Field 'min_commitment_per_plan' must be a number, got {type(config['min_commitment_per_plan']).__name__}: {config['min_commitment_per_plan']}"
+                f"Field 'min_commitment_per_plan' must be a number, "
+                f"got {type(config['min_commitment_per_plan']).__name__}: "
+                f"{config['min_commitment_per_plan']}"
             )
         if config["min_commitment_per_plan"] < 0:
             raise ValueError(
-                f"Field 'min_commitment_per_plan' must be greater than or equal to 0, got {config['min_commitment_per_plan']}"
+                f"Field 'min_commitment_per_plan' must be greater than or equal to 0, "
+                f"got {config['min_commitment_per_plan']}"
             )
 
     # Validate term mix dictionaries
@@ -209,14 +219,16 @@ def validate_scheduler_config(config: dict[str, Any]) -> None:
         payment_option = config["compute_sp_payment_option"]
         if payment_option not in VALID_PAYMENT_OPTIONS:
             raise ValueError(
-                f"Invalid compute_sp_payment_option: '{payment_option}'. Must be one of: {', '.join(VALID_PAYMENT_OPTIONS)}"
+                f"Invalid compute_sp_payment_option: '{payment_option}'. "
+                f"Must be one of: {', '.join(VALID_PAYMENT_OPTIONS)}"
             )
 
     if "sagemaker_sp_payment_option" in config:
         payment_option = config["sagemaker_sp_payment_option"]
         if payment_option not in VALID_PAYMENT_OPTIONS:
             raise ValueError(
-                f"Invalid sagemaker_sp_payment_option: '{payment_option}'. Must be one of: {', '.join(VALID_PAYMENT_OPTIONS)}"
+                f"Invalid sagemaker_sp_payment_option: '{payment_option}'. "
+                f"Must be one of: {', '.join(VALID_PAYMENT_OPTIONS)}"
             )
 
     # Validate purchase strategy type
@@ -224,7 +236,8 @@ def validate_scheduler_config(config: dict[str, Any]) -> None:
         strategy_type = config["purchase_strategy_type"]
         if strategy_type not in VALID_PURCHASE_STRATEGIES:
             raise ValueError(
-                f"Invalid purchase_strategy_type: '{strategy_type}'. Must be one of: {', '.join(VALID_PURCHASE_STRATEGIES)}"
+                f"Invalid purchase_strategy_type: '{strategy_type}'. "
+                f"Must be one of: {', '.join(VALID_PURCHASE_STRATEGIES)}"
             )
 
 
@@ -257,7 +270,8 @@ def validate_reporter_config(config: dict[str, Any]) -> None:
         report_format = config["report_format"]
         if report_format not in VALID_REPORT_FORMATS:
             raise ValueError(
-                f"Invalid report_format: '{report_format}'. Must be one of: {', '.join(VALID_REPORT_FORMATS)}"
+                f"Invalid report_format: '{report_format}'. "
+                f"Must be one of: {', '.join(VALID_REPORT_FORMATS)}"
             )
 
     # Validate email_reports is a boolean
@@ -265,7 +279,8 @@ def validate_reporter_config(config: dict[str, Any]) -> None:
         email_reports = config["email_reports"]
         if not isinstance(email_reports, bool):
             raise ValueError(
-                f"Field 'email_reports' must be a boolean, got {type(email_reports).__name__}: {email_reports}"
+                f"Field 'email_reports' must be a boolean, "
+                f"got {type(email_reports).__name__}: {email_reports}"
             )
 
     # Validate tags is a dictionary
@@ -290,7 +305,8 @@ def validate_reporter_config(config: dict[str, Any]) -> None:
             field_value = config[field_name]
             if not isinstance(field_value, str) or not field_value.strip():
                 raise ValueError(
-                    f"Field '{field_name}' must be a non-empty string, got {type(field_value).__name__}"
+                    f"Field '{field_name}' must be a non-empty string, "
+                    f"got {type(field_value).__name__}"
                 )
 
 
@@ -327,7 +343,9 @@ def validate_purchaser_config(config: dict[str, Any]) -> None:
         _validate_positive_number(config["renewal_window_days"], "renewal_window_days")
         if not isinstance(config["renewal_window_days"], int):
             raise ValueError(
-                f"Field 'renewal_window_days' must be an integer, got {type(config['renewal_window_days']).__name__}: {config['renewal_window_days']}"
+                f"Field 'renewal_window_days' must be an integer, "
+                f"got {type(config['renewal_window_days']).__name__}: "
+                f"{config['renewal_window_days']}"
             )
 
     # Validate tags is a dictionary
@@ -352,5 +370,6 @@ def validate_purchaser_config(config: dict[str, Any]) -> None:
             field_value = config[field_name]
             if not isinstance(field_value, str) or not field_value.strip():
                 raise ValueError(
-                    f"Field '{field_name}' must be a non-empty string, got {type(field_value).__name__}"
+                    f"Field '{field_name}' must be a non-empty string, "
+                    f"got {type(field_value).__name__}"
                 )
