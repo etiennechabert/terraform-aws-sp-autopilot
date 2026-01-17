@@ -4,14 +4,38 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"regexp"
 	"strings"
 	"testing"
 	"time"
 
+	"github.com/gruntwork-io/terratest/modules/logger"
 	"github.com/gruntwork-io/terratest/modules/terraform"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
+
+// cleanLogger wraps the default logger and strips verbose test prefixes
+type cleanLogger struct {
+	*logger.Logger
+	prefixPattern *regexp.Regexp
+}
+
+func newCleanLogger(t *testing.T) *cleanLogger {
+	// Pattern matches: "TestName YYYY-MM-DDTHH:MM:SSZ logger.go:66: "
+	pattern := regexp.MustCompile(`^Test\w+\s+\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z\s+logger\.go:\d+:\s+`)
+	return &cleanLogger{
+		Logger:        logger.New(t),
+		prefixPattern: pattern,
+	}
+}
+
+func (l *cleanLogger) Logf(t *testing.T, format string, args ...interface{}) {
+	message := fmt.Sprintf(format, args...)
+	// Strip the verbose prefix if present
+	message = l.prefixPattern.ReplaceAllString(message, "")
+	t.Log(message)
+}
 
 // TestExampleSingleAccountCompute validates the single-account-compute example
 // Focus: Compute SP with mixed term/payment options (3-year + 1-year, all-upfront)
@@ -42,6 +66,7 @@ func TestExampleSingleAccountCompute(t *testing.T) {
 			},
 		},
 		NoColor: true,
+		Logger:  newCleanLogger(t),
 	})
 
 	defer terraform.Destroy(t, terraformOptions)
@@ -78,6 +103,7 @@ func TestExampleDatabaseOnly(t *testing.T) {
 			},
 		},
 		NoColor: true,
+		Logger:  newCleanLogger(t),
 	})
 
 	defer terraform.Destroy(t, terraformOptions)
@@ -113,6 +139,7 @@ func TestExampleDichotomyStrategy(t *testing.T) {
 			},
 		},
 		NoColor: true,
+		Logger:  newCleanLogger(t),
 	})
 
 	defer terraform.Destroy(t, terraformOptions)
