@@ -12,10 +12,10 @@ This Lambda:
 
 import json
 import logging
-from datetime import datetime, timedelta, timezone
-from typing import Any, Dict, List
 import sys
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
+from typing import Any, Dict, List
 
 import boto3
 from botocore.exceptions import ClientError
@@ -27,6 +27,7 @@ from shared.handler_utils import (
     load_config_from_env,
     send_error_notification,
 )
+
 
 # Import storage adapter for local/AWS mode support
 sys.path.insert(0, str(Path(__file__).parent.parent / "shared"))
@@ -1092,8 +1093,7 @@ def upload_report_to_s3(
         # Use storage adapter for both local and AWS modes
         storage_adapter = StorageAdapter(s3_client=s3_client, bucket_name=bucket_name)
         object_key = storage_adapter.upload_report(
-            report_content=report_content,
-            report_format=report_format
+            report_content=report_content, report_format=report_format
         )
 
         logger.info(f"Report uploaded successfully: {object_key}")
@@ -1102,9 +1102,7 @@ def upload_report_to_s3(
     except ClientError as e:
         error_code = e.response.get("Error", {}).get("Code", "Unknown")
         error_message = e.response.get("Error", {}).get("Message", str(e))
-        logger.error(
-            f"Failed to upload report - Code: {error_code}, Message: {error_message}"
-        )
+        logger.error(f"Failed to upload report - Code: {error_code}, Message: {error_message}")
         raise
 
 

@@ -5,16 +5,17 @@ Handles purging the queue and queuing purchase intents.
 Supports both AWS SQS and local filesystem modes.
 """
 
-import json
 import logging
+
+# Import queue adapter for local/AWS mode support
+import sys
 from datetime import datetime, timezone
+from pathlib import Path
 from typing import Any, Dict, List
 
 from botocore.exceptions import ClientError
 
-# Import queue adapter for local/AWS mode support
-import sys
-from pathlib import Path
+
 sys.path.insert(0, str(Path(__file__).parent.parent / "shared"))
 from queue_adapter import QueueAdapter
 

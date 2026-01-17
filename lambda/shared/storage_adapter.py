@@ -7,11 +7,11 @@ Lambdas to work with either real S3 buckets or local filesystem storage.
 
 import json
 import logging
-from pathlib import Path
-from typing import Any, Dict, Optional
 from datetime import datetime, timezone
+from typing import Any, Dict, Optional
 
-from .local_mode import is_local_mode, get_reports_dir
+from .local_mode import get_reports_dir, is_local_mode
+
 
 logger = logging.getLogger(__name__)
 
@@ -38,7 +38,9 @@ class StorageAdapter:
 
         if self.is_local:
             self.reports_dir = get_reports_dir()
-            logger.info(f"Storage adapter initialized in LOCAL mode (directory: {self.reports_dir})")
+            logger.info(
+                f"Storage adapter initialized in LOCAL mode (directory: {self.reports_dir})"
+            )
         else:
             logger.info(f"Storage adapter initialized in AWS mode (bucket: {bucket_name})")
 
@@ -46,7 +48,7 @@ class StorageAdapter:
         self,
         report_content: str,
         report_format: str = "html",
-        metadata: Optional[Dict[str, str]] = None
+        metadata: Optional[Dict[str, str]] = None,
     ) -> str:
         """
         Upload a report to storage.
@@ -64,14 +66,10 @@ class StorageAdapter:
         """
         if self.is_local:
             return self._upload_report_local(report_content, report_format, metadata)
-        else:
-            return self._upload_report_aws(report_content, report_format, metadata)
+        return self._upload_report_aws(report_content, report_format, metadata)
 
     def _upload_report_local(
-        self,
-        report_content: str,
-        report_format: str,
-        metadata: Optional[Dict[str, str]]
+        self, report_content: str, report_format: str, metadata: Optional[Dict[str, str]]
     ) -> str:
         """Upload report in local mode by writing to a file."""
         timestamp = datetime.now(timezone.utc).strftime("%Y-%m-%d_%H-%M-%S")
@@ -91,7 +89,7 @@ class StorageAdapter:
                 "generated-at": datetime.now(timezone.utc).isoformat(),
                 "generator": "sp-autopilot-reporter",
                 "format": report_format,
-                **metadata
+                **metadata,
             }
 
             metadata_file = file_path.with_suffix(f".{report_format}.meta.json")
@@ -105,10 +103,7 @@ class StorageAdapter:
             raise
 
     def _upload_report_aws(
-        self,
-        report_content: str,
-        report_format: str,
-        metadata: Optional[Dict[str, str]]
+        self, report_content: str, report_format: str, metadata: Optional[Dict[str, str]]
     ) -> str:
         """Upload report in AWS mode using S3 API."""
         timestamp = datetime.now(timezone.utc).strftime("%Y-%m-%d_%H-%M-%S")
@@ -124,7 +119,7 @@ class StorageAdapter:
         metadata_with_defaults = {
             "generated-at": datetime.now(timezone.utc).isoformat(),
             "generator": "sp-autopilot-reporter",
-            **metadata
+            **metadata,
         }
 
         try:
@@ -134,7 +129,7 @@ class StorageAdapter:
                 Body=report_content.encode("utf-8"),
                 ContentType=content_type,
                 ServerSideEncryption="AES256",
-                Metadata=metadata_with_defaults
+                Metadata=metadata_with_defaults,
             )
 
             logger.info(f"Uploaded report to S3: s3://{self.bucket_name}/{object_key}")
@@ -155,8 +150,7 @@ class StorageAdapter:
         """
         if self.is_local:
             return object_key  # Already a file path
-        else:
-            return f"s3://{self.bucket_name}/{object_key}"
+        return f"s3://{self.bucket_name}/{object_key}"
 
     def list_reports(self, max_items: int = 100) -> list:
         """
@@ -170,8 +164,7 @@ class StorageAdapter:
         """
         if self.is_local:
             return self._list_reports_local(max_items)
-        else:
-            return self._list_reports_aws(max_items)
+        return self._list_reports_aws(max_items)
 
     def _list_reports_local(self, max_items: int) -> list:
         """List reports in local mode."""
@@ -179,9 +172,7 @@ class StorageAdapter:
         # Look for HTML and JSON reports, exclude metadata files
         for pattern in ["*.html", "*.json"]:
             for file_path in sorted(
-                self.reports_dir.glob(pattern),
-                key=lambda p: p.stat().st_mtime,
-                reverse=True
+                self.reports_dir.glob(pattern), key=lambda p: p.stat().st_mtime, reverse=True
             ):
                 # Skip metadata files
                 if ".meta.json" not in file_path.name:
@@ -198,9 +189,7 @@ class StorageAdapter:
         """List reports in AWS mode using S3 API."""
         try:
             response = self.s3_client.list_objects_v2(
-                Bucket=self.bucket_name,
-                Prefix="savings-plans-report_",
-                MaxKeys=max_items
+                Bucket=self.bucket_name, Prefix="savings-plans-report_", MaxKeys=max_items
             )
 
             reports = [obj["Key"] for obj in response.get("Contents", [])]

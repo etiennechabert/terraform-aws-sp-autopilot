@@ -14,16 +14,17 @@ This Lambda:
 
 import json
 import logging
-from datetime import date, datetime, timedelta, timezone
-from typing import Any
 import sys
+from datetime import date, datetime, timedelta, timezone
 from pathlib import Path
+from typing import Any
 
 import boto3
 from botocore.exceptions import ClientError
 from validation import validate_purchase_intent
 
 from shared import handler_utils
+
 
 # Import queue adapter for local/AWS mode support
 sys.path.insert(0, str(Path(__file__).parent.parent / "shared"))

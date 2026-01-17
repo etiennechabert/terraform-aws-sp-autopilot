@@ -7,11 +7,12 @@ Lambdas to work with either real SQS queues or local filesystem-based queues.
 
 import json
 import logging
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Dict, List, Optional
-from datetime import datetime, timezone
 
-from .local_mode import is_local_mode, get_queue_dir
+from .local_mode import get_queue_dir, is_local_mode
+
 
 logger = logging.getLogger(__name__)
 
@@ -91,13 +92,14 @@ class QueueAdapter:
         """
         if self.is_local:
             return self._send_message_local(message_body)
-        else:
-            return self._send_message_aws(message_body)
+        return self._send_message_aws(message_body)
 
     def _send_message_local(self, message_body: Dict[str, Any]) -> str:
         """Send message in local mode by writing to a JSON file."""
         # Generate a unique filename from client_token or timestamp
-        client_token = message_body.get("client_token", f"msg-{datetime.now(timezone.utc).timestamp()}")
+        client_token = message_body.get(
+            "client_token", f"msg-{datetime.now(timezone.utc).timestamp()}"
+        )
         # Sanitize filename
         safe_filename = client_token.replace("/", "-").replace(":", "-")
         file_path = self.queue_dir / f"{safe_filename}.json"
@@ -116,8 +118,7 @@ class QueueAdapter:
         """Send message in AWS mode using SQS API."""
         try:
             response = self.sqs_client.send_message(
-                QueueUrl=self.queue_url,
-                MessageBody=json.dumps(message_body, default=str)
+                QueueUrl=self.queue_url, MessageBody=json.dumps(message_body, default=str)
             )
             message_id = response["MessageId"]
             logger.info(f"Sent SQS message: {message_id}")
@@ -126,7 +127,9 @@ class QueueAdapter:
             logger.error(f"Failed to send SQS message: {e}")
             raise
 
-    def receive_messages(self, max_messages: int = 10, wait_time_seconds: int = 5) -> List[Dict[str, Any]]:
+    def receive_messages(
+        self, max_messages: int = 10, wait_time_seconds: int = 5
+    ) -> List[Dict[str, Any]]:
         """
         Receive messages from the queue.
 
@@ -139,29 +142,27 @@ class QueueAdapter:
         """
         if self.is_local:
             return self._receive_messages_local(max_messages)
-        else:
-            return self._receive_messages_aws(max_messages, wait_time_seconds)
+        return self._receive_messages_aws(max_messages, wait_time_seconds)
 
     def _receive_messages_local(self, max_messages: int) -> List[Dict[str, Any]]:
         """Receive messages in local mode by reading JSON files."""
         messages = []
 
         # Get all message files sorted by modification time (oldest first)
-        message_files = sorted(
-            self.queue_dir.glob("*.json"),
-            key=lambda p: p.stat().st_mtime
-        )
+        message_files = sorted(self.queue_dir.glob("*.json"), key=lambda p: p.stat().st_mtime)
 
         for file_path in message_files[:max_messages]:
             try:
-                with open(file_path, "r") as f:
+                with open(file_path) as f:
                     message_body = json.load(f)
 
-                messages.append({
-                    "MessageId": file_path.stem,
-                    "Body": json.dumps(message_body),
-                    "ReceiptHandle": str(file_path)  # Use file path as receipt handle
-                })
+                messages.append(
+                    {
+                        "MessageId": file_path.stem,
+                        "Body": json.dumps(message_body),
+                        "ReceiptHandle": str(file_path),  # Use file path as receipt handle
+                    }
+                )
                 logger.debug(f"Received local queue message: {file_path.name}")
             except Exception as e:
                 logger.error(f"Failed to read queue file {file_path}: {e}")
@@ -169,13 +170,15 @@ class QueueAdapter:
         logger.info(f"Received {len(messages)} message(s) from local queue")
         return messages
 
-    def _receive_messages_aws(self, max_messages: int, wait_time_seconds: int) -> List[Dict[str, Any]]:
+    def _receive_messages_aws(
+        self, max_messages: int, wait_time_seconds: int
+    ) -> List[Dict[str, Any]]:
         """Receive messages in AWS mode using SQS API."""
         try:
             response = self.sqs_client.receive_message(
                 QueueUrl=self.queue_url,
                 MaxNumberOfMessages=max_messages,
-                WaitTimeSeconds=wait_time_seconds
+                WaitTimeSeconds=wait_time_seconds,
             )
 
             messages = response.get("Messages", [])
@@ -213,10 +216,7 @@ class QueueAdapter:
     def _delete_message_aws(self, receipt_handle: str) -> None:
         """Delete message in AWS mode using SQS API."""
         try:
-            self.sqs_client.delete_message(
-                QueueUrl=self.queue_url,
-                ReceiptHandle=receipt_handle
-            )
+            self.sqs_client.delete_message(QueueUrl=self.queue_url, ReceiptHandle=receipt_handle)
             logger.info("Deleted SQS message")
         except Exception as e:
             logger.error(f"Failed to delete SQS message: {e}")
