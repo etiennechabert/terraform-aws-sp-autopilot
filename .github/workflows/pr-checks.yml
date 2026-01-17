@@ -49,7 +49,7 @@ jobs:
         continue-on-error: false
 
       - name: Comment PR with Results
-        if: github.event_name == 'pull_request' && failure()
+        if: false # Disabled: github.event_name == 'pull_request' && failure()
         uses: actions/github-script@v7
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
@@ -102,7 +102,7 @@ jobs:
           category: tfsec
 
       - name: Comment PR with Security Issues
-        if: github.event_name == 'pull_request' && failure()
+        if: false # Disabled: github.event_name == 'pull_request' && failure()
         uses: actions/github-script@v7
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
@@ -156,7 +156,7 @@ jobs:
           ruff format --check lambda/
 
       - name: Comment PR with Linting Results
-        if: github.event_name == 'pull_request' && failure()
+        if: false # Disabled: github.event_name == 'pull_request' && failure()
         uses: actions/github-script@v7
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
@@ -219,7 +219,7 @@ jobs:
           fail_ci_if_error: false
 
       - name: Comment PR with Test Results
-        if: github.event_name == 'pull_request' && failure()
+        if: false # Disabled: github.event_name == 'pull_request' && failure()
         uses: actions/github-script@v7
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
@@ -279,7 +279,7 @@ jobs:
           fail_ci_if_error: false
 
       - name: Comment PR with Test Results
-        if: github.event_name == 'pull_request' && failure()
+        if: false # Disabled: github.event_name == 'pull_request' && failure()
         uses: actions/github-script@v7
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
@@ -339,7 +339,7 @@ jobs:
           fail_ci_if_error: false
 
       - name: Comment PR with Test Results
-        if: github.event_name == 'pull_request' && failure()
+        if: false # Disabled: github.event_name == 'pull_request' && failure()
         uses: actions/github-script@v7
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
@@ -359,11 +359,11 @@ jobs:
               body: output
             });
 
-  # Stage 2: Terraform unit tests (runs in parallel with Lambda tests after Stage 1 passes)
+  # Stage 2: Terraform unit tests (runs after Lambda tests complete successfully)
   terraform-unit-tests:
     name: Terraform Unit Tests
     runs-on: ubuntu-latest
-    needs: [terraform-validation, tfsec-scan, lint]
+    needs: [terraform-validation, tfsec-scan, lint, scheduler-tests, purchaser-tests, reporter-tests]
 
     steps:
       - name: Checkout code
@@ -500,7 +500,7 @@ jobs:
           go test -v -timeout 10m -run TestCleanupAllOrphanedResources || true
 
       - name: Comment PR with Test Results
-        if: github.event_name == 'pull_request' && failure()
+        if: false # Disabled: github.event_name == 'pull_request' && failure()
         uses: actions/github-script@v7
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}

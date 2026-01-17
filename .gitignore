@@ -136,6 +136,7 @@ celerybeat.pid
 
 # Environments
 .env
+.env.local
 .envrc
 .venv
 env/
@@ -249,3 +250,6 @@ MIGRATION.md
 scheduler.zip
 purchaser.zip
 reporter.zip
+
+# Local development data
+local_data/
