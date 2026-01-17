@@ -340,10 +340,16 @@ variable "reporting" {
 variable "monitoring" {
   description = "CloudWatch monitoring and alarm configuration"
   type = object({
-    dlq_alarm       = optional(bool, true)
-    error_threshold = optional(number, 1) # Threshold for Lambda error alarms (configured per-Lambda in lambda_config)
+    dlq_alarm                = optional(bool, true)
+    error_threshold          = optional(number, 1)  # Threshold for Lambda error alarms (configured per-Lambda in lambda_config)
+    low_utilization_threshold = optional(number, 70) # Alert when Savings Plans utilization falls below this percentage
   })
   default = {}
+
+  validation {
+    condition     = var.monitoring.low_utilization_threshold >= 1 && var.monitoring.low_utilization_threshold <= 100
+    error_message = "low_utilization_threshold must be between 1 and 100."
+  }
 }
 
 # ============================================================================
