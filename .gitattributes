@@ -1,0 +1,24 @@
+# Terraform files should always use LF (required by terraform fmt)
+*.tf text eol=lf
+*.tfvars text eol=lf
+*.hcl text eol=lf
+
+# Python files should use LF
+*.py text eol=lf
+
+# Go files should use LF
+*.go text eol=lf
+
+# Markdown and documentation
+*.md text eol=lf
+*.txt text eol=lf
+
+# Shell scripts must use LF
+*.sh text eol=lf
+
+# YAML files
+*.yml text eol=lf
+*.yaml text eol=lf
+
+# JSON files
+*.json text eol=lf

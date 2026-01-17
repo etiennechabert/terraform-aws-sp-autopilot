@@ -484,6 +484,13 @@ jobs:
           go mod download
           go mod verify
 
+      - name: Cleanup Orphaned Resources from Previous Runs
+        working-directory: terraform-tests/integration
+        run: |
+          echo "Cleaning up any orphaned test resources from previous failed runs..."
+          go test -v -timeout 10m -run TestCleanupAllOrphanedResources || true
+          echo "Cleanup complete. Proceeding with integration tests..."
+
       - name: Run Terratest Integration Tests
         working-directory: terraform-tests/integration
         run: |
@@ -496,8 +503,8 @@ jobs:
         if: failure()
         working-directory: terraform-tests/integration
         run: |
-          echo "Cleaning up any remaining test resources..."
-          go test -v -timeout 10m -run TestCleanup || true
+          echo "Cleaning up any remaining test resources after failure..."
+          go test -v -timeout 10m -run TestCleanupAllOrphanedResources || true
 
       - name: Comment PR with Test Results
         if: github.event_name == 'pull_request' && failure()
