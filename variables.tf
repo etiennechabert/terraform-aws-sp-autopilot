@@ -352,7 +352,7 @@ variable "monitoring" {
 # ============================================================================
 
 variable "name_prefix" {
-  description = "Prefix for all resource names. Allows deploying the module multiple times in the same AWS account with different configurations (e.g., 'sp-compute' and 'sp-database' for separate compute-only and database-only deployments)"
+  description = "Prefix for all resource names. Allows multiple module deployments in the same AWS account."
   type        = string
   default     = "sp-autopilot"
 

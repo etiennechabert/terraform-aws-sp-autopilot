@@ -19,9 +19,11 @@ Organization-wide Savings Plans automation with centralized purchasing and multi
 - At least one member account with eligible workloads
 - Management account accessible for role creation
 
-### 2. IAM Role in Management Account
+### 2. IAM Roles in Management Account
 
-Create role `SavingsPlansAutomationRole` in **management account**:
+Create two roles for least privilege access:
+
+#### Read-Only Role (Scheduler and Reporter)
 
 **Trust Policy:**
 
@@ -30,11 +32,13 @@ Create role `SavingsPlansAutomationRole` in **management account**:
   "Version": "2012-10-17",
   "Statement": [{
     "Effect": "Allow",
-    "Principal": {"AWS": "arn:aws:iam::DELEGATED_ACCOUNT_ID:root"},
-    "Action": "sts:AssumeRole",
-    "Condition": {
-      "StringEquals": {"sts:ExternalId": "savings-plans-automation"}
-    }
+    "Principal": {
+      "AWS": [
+        "arn:aws:iam::DELEGATED_ACCOUNT_ID:role/sp-autopilot-scheduler-role",
+        "arn:aws:iam::DELEGATED_ACCOUNT_ID:role/sp-autopilot-reporter-role"
+      ]
+    },
+    "Action": "sts:AssumeRole"
   }]
 }
 ```
@@ -49,8 +53,42 @@ Create role `SavingsPlansAutomationRole` in **management account**:
     "Action": [
       "ce:GetSavingsPlansPurchaseRecommendation",
       "ce:GetSavingsPlansCoverage",
-      "savingsplans:CreateSavingsPlan",
+      "ce:GetSavingsPlansUtilization",
       "savingsplans:DescribeSavingsPlans"
+    ],
+    "Resource": "*"
+  }]
+}
+```
+
+#### Purchaser Role (Write Permissions)
+
+**Trust Policy:**
+
+```json
+{
+  "Version": "2012-10-17",
+  "Statement": [{
+    "Effect": "Allow",
+    "Principal": {
+      "AWS": "arn:aws:iam::DELEGATED_ACCOUNT_ID:role/sp-autopilot-purchaser-role"
+    },
+    "Action": "sts:AssumeRole"
+  }]
+}
+```
+
+**Permissions Policy:**
+
+```json
+{
+  "Version": "2012-10-17",
+  "Statement": [{
+    "Effect": "Allow",
+    "Action": [
+      "savingsplans:CreateSavingsPlan",
+      "savingsplans:DescribeSavingsPlans",
+      "ce:GetSavingsPlansCoverage"
     ],
     "Resource": "*"
   }]
@@ -61,21 +99,25 @@ Create role `SavingsPlansAutomationRole` in **management account**:
 
 ```bash
 # In management account
-cat > trust-policy.json <<EOF
+
+# 1. Create Read-Only Role
+cat > readonly-trust.json <<EOF
 {
   "Version": "2012-10-17",
   "Statement": [{
     "Effect": "Allow",
-    "Principal": {"AWS": "arn:aws:iam::DELEGATED_ACCOUNT_ID:root"},
-    "Action": "sts:AssumeRole",
-    "Condition": {
-      "StringEquals": {"sts:ExternalId": "savings-plans-automation"}
-    }
+    "Principal": {
+      "AWS": [
+        "arn:aws:iam::DELEGATED_ACCOUNT_ID:role/sp-autopilot-scheduler-role",
+        "arn:aws:iam::DELEGATED_ACCOUNT_ID:role/sp-autopilot-reporter-role"
+      ]
+    },
+    "Action": "sts:AssumeRole"
   }]
 }
 EOF
 
-cat > permissions-policy.json <<EOF
+cat > readonly-permissions.json <<EOF
 {
   "Version": "2012-10-17",
   "Statement": [{
@@ -83,7 +125,7 @@ cat > permissions-policy.json <<EOF
     "Action": [
       "ce:GetSavingsPlansPurchaseRecommendation",
       "ce:GetSavingsPlansCoverage",
-      "savingsplans:CreateSavingsPlan",
+      "ce:GetSavingsPlansUtilization",
       "savingsplans:DescribeSavingsPlans"
     ],
     "Resource": "*"
@@ -92,16 +134,55 @@ cat > permissions-policy.json <<EOF
 EOF
 
 aws iam create-role \
-  --role-name SavingsPlansAutomationRole \
-  --assume-role-policy-document file://trust-policy.json
+  --role-name SavingsPlansReadOnlyRole \
+  --assume-role-policy-document file://readonly-trust.json
 
 aws iam put-role-policy \
-  --role-name SavingsPlansAutomationRole \
-  --policy-name SavingsPlansPermissions \
-  --policy-document file://permissions-policy.json
+  --role-name SavingsPlansReadOnlyRole \
+  --policy-name ReadOnlyPermissions \
+  --policy-document file://readonly-permissions.json
 
-# Get role ARN for Terraform
-aws iam get-role --role-name SavingsPlansAutomationRole --query 'Role.Arn' --output text
+# 2. Create Purchaser Role
+cat > purchaser-trust.json <<EOF
+{
+  "Version": "2012-10-17",
+  "Statement": [{
+    "Effect": "Allow",
+    "Principal": {
+      "AWS": "arn:aws:iam::DELEGATED_ACCOUNT_ID:role/sp-autopilot-purchaser-role"
+    },
+    "Action": "sts:AssumeRole"
+  }]
+}
+EOF
+
+cat > purchaser-permissions.json <<EOF
+{
+  "Version": "2012-10-17",
+  "Statement": [{
+    "Effect": "Allow",
+    "Action": [
+      "savingsplans:CreateSavingsPlan",
+      "savingsplans:DescribeSavingsPlans",
+      "ce:GetSavingsPlansCoverage"
+    ],
+    "Resource": "*"
+  }]
+}
+EOF
+
+aws iam create-role \
+  --role-name SavingsPlansPurchaserRole \
+  --assume-role-policy-document file://purchaser-trust.json
+
+aws iam put-role-policy \
+  --role-name SavingsPlansPurchaserRole \
+  --policy-name PurchaserPermissions \
+  --policy-document file://purchaser-permissions.json
+
+# Get role ARNs for Terraform
+aws iam get-role --role-name SavingsPlansReadOnlyRole --query 'Role.Arn' --output text
+aws iam get-role --role-name SavingsPlansPurchaserRole --query 'Role.Arn' --output text
 ```
 
 ## Deployment
@@ -111,16 +192,33 @@ aws iam get-role --role-name SavingsPlansAutomationRole --query 'Role.Arn' --out
 Update `main.tf`:
 
 ```hcl
-management_account_role_arn = "arn:aws:iam::123456789012:role/SavingsPlansAutomationRole"
+lambda_config = {
+  scheduler = {
+    assume_role_arn = "arn:aws:iam::123456789012:role/SavingsPlansReadOnlyRole"
+  }
+  purchaser = {
+    assume_role_arn = "arn:aws:iam::123456789012:role/SavingsPlansPurchaserRole"
+  }
+  reporter = {
+    assume_role_arn = "arn:aws:iam::123456789012:role/SavingsPlansReadOnlyRole"
+  }
+}
 
-notification_emails = [
-  "finops@your-company.com",
-  "cloud-governance@your-company.com",
-  "aws-admins@your-company.com"
-]
+notifications = {
+  emails = [
+    "finops@your-company.com",
+    "cloud-governance@your-company.com",
+    "aws-admins@your-company.com"
+  ]
+}
 
-coverage_target_percent = 85
-max_coverage_cap        = 95
+purchase_strategy = {
+  coverage_target_percent = 85
+  max_coverage_cap        = 95
+  simple = {
+    max_purchase_percent = 8
+  }
+}
 ```
 
 ### 2. Deploy
@@ -167,7 +265,11 @@ Look for: `Successfully assumed role in management account`
 ### 1. Update Configuration
 
 ```hcl
-dry_run = false
+lambda_config = {
+  scheduler = {
+    dry_run = false
+  }
+}
 ```
 
 ### 2. Apply and Monitor
@@ -189,21 +291,22 @@ After enabling:
 ### Coverage Targets
 
 ```hcl
-coverage_target_percent = 85  # Higher for stable orgs
-max_coverage_cap        = 95  # Hard ceiling
-```
-
-### Purchase Limits
-
-```hcl
-max_purchase_percent = 8  # % of monthly on-demand spend
+purchase_strategy = {
+  coverage_target_percent = 85  # Higher for stable orgs
+  max_coverage_cap        = 95  # Hard ceiling
+  simple = {
+    max_purchase_percent = 8  # % of monthly on-demand spend
+  }
+}
 ```
 
 ### Review Window
 
 ```hcl
-scheduler_schedule = "cron(0 8 1 * ? *)"   # 1st of month
-purchaser_schedule = "cron(0 8 10 * ? *)"  # 10th = 9-day window
+scheduler = {
+  scheduler = "cron(0 8 1 * ? *)"   # 1st of month
+  purchaser = "cron(0 8 10 * ? *)"  # 10th = 9-day window
+}
 ```
 
 ## Monitoring
@@ -277,7 +380,7 @@ aws savingsplans describe-savings-plans --filters name=scope,values=organization
 ## Next Steps
 
 - Optimize coverage targets based on usage patterns
-- Fine-tune term mix: adjust `compute_sp_term_mix`
+- Fine-tune term mix in `sp_plans.compute`
 - Implement cost allocation tags for chargeback
 - Create dashboards for SP coverage trends
 - Formalize multi-team review procedures
@@ -287,7 +390,7 @@ See [main README](../../README.md) for complete documentation.
 ---
 
 **⚠️ Important:**
-- Start with `dry_run = true` and validate org-wide recommendations
+- Start with `lambda_config.scheduler.dry_run = true` and validate org-wide recommendations
 - Coordinate with FinOps, governance, and finance teams before enabling
 - Establish review process for purchase queue during review window
 - Org-level SPs automatically benefit all member accounts

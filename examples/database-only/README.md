@@ -25,10 +25,12 @@ Database Savings Plans automation for RDS, Aurora, DynamoDB, ElastiCache, Docume
 
 ### 1. Configure
 
-Update `notification_emails` in `main.tf`:
+Update `notifications.emails` in `main.tf`:
 
 ```hcl
-notification_emails = ["your-email@example.com"]
+notifications = {
+  emails = ["your-email@example.com"]
+}
 ```
 
 ### 2. Deploy
@@ -61,7 +63,11 @@ Expected email: current Database SP coverage, recommended purchase, "DRY RUN" no
 Edit `main.tf`:
 
 ```hcl
-dry_run = false
+lambda_config = {
+  scheduler = {
+    dry_run = false
+  }
+}
 ```
 
 Then `terraform apply` and monitor first cycle.
@@ -96,8 +102,8 @@ terraform destroy
 
 ## Next Steps
 
-- Add Compute SP: `enable_compute_sp = true`
-- AWS Organizations: Set `management_account_role_arn`
-- Increase `coverage_target_percent` as confidence grows
+- Add Compute SP: `sp_plans.compute.enabled = true`
+- AWS Organizations: Set per-Lambda `assume_role_arn` in `lambda_config`
+- Increase `purchase_strategy.coverage_target_percent` as confidence grows
 
 See [main README](../../README.md) for complete documentation.

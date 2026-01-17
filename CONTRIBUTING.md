@@ -440,7 +440,3 @@ module "savings_plans" {
 - **Feature requests** — Open a GitHub issue with `enhancement` label
 - **Questions** — Open a GitHub discussion or issue with `question` label
 - **Security issues** — Email security@example.com (do not open public issues)
-
----
-
-Thank you for contributing to the AWS Savings Plans Automation Module! 🎉
