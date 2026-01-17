@@ -1199,12 +1199,20 @@ def upload_report_to_s3(
     logger.info(f"Uploading report to S3: s3://{bucket_name}/{object_key}")
 
     try:
+        # Determine ContentType based on report format
+        if report_format == "json":
+            content_type = "application/json"
+        elif report_format == "csv":
+            content_type = "text/csv"
+        else:
+            content_type = "text/html"
+
         # Upload to S3
         s3_client.put_object(
             Bucket=bucket_name,
             Key=object_key,
             Body=report_content.encode("utf-8"),
-            ContentType="application/json" if report_format == "json" else "text/html",
+            ContentType=content_type,
             ServerSideEncryption="AES256",
             Metadata={
                 "generated-at": datetime.now(timezone.utc).isoformat(),
