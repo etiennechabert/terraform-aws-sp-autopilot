@@ -359,11 +359,11 @@ jobs:
               body: output
             });
 
-  # Stage 2: Terraform unit tests (runs in parallel with Lambda tests after Stage 1 passes)
+  # Stage 2: Terraform unit tests (runs after Lambda tests complete successfully)
   terraform-unit-tests:
     name: Terraform Unit Tests
     runs-on: ubuntu-latest
-    needs: [terraform-validation, tfsec-scan, lint]
+    needs: [terraform-validation, tfsec-scan, lint, scheduler-tests, purchaser-tests, reporter-tests]
 
     steps:
       - name: Checkout code
