@@ -131,7 +131,10 @@ def test_generate_csv_report_basic_structure(sample_coverage_history, sample_sav
     assert "date,coverage_percentage,on_demand_hours,covered_hours,total_hours" in result
 
     # Verify active savings plans section has correct header
-    assert "plan_id,plan_type,payment_option,term_years,hourly_commitment,start_date,end_date" in result
+    assert (
+        "plan_id,plan_type,payment_option,term_years,hourly_commitment,start_date,end_date"
+        in result
+    )
 
 
 def test_generate_csv_report_summary_metrics(sample_coverage_history, sample_savings_data):
