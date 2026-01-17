@@ -38,13 +38,7 @@ func TestFullDeploymentAndCleanup(t *testing.T) {
 	// Format: sp-autopilot-test-YYYYMMDD-HHMMSS (e.g., sp-autopilot-test-20260117-143055)
 	uniquePrefix := fmt.Sprintf("sp-autopilot-test-%s", time.Now().Format("20060102-150405"))
 	t.Logf("Using unique name prefix: %s", uniquePrefix)
-
-	// Cleanup any orphaned resources from previous failed runs with the same prefix
-	// This prevents "resource already exists" errors
-	t.Log("========================================")
-	t.Log("Phase 0: Pre-Test Cleanup")
-	t.Log("========================================")
-	CleanupOrphanedResources(t, awsRegion, uniquePrefix)
+	t.Log("Note: Orphaned resources from previous runs should be cleaned by TestCleanupAllOrphanedResources")
 
 	// Configure Terraform options with comprehensive settings
 	terraformOptions := terraform.WithDefaultRetryableErrors(t, &terraform.Options{
