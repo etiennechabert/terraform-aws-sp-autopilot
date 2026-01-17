@@ -35,6 +35,7 @@ provider "aws" {
 module "sp_autopilot" {
   source = "../../../.."
 
+  name_prefix       = var.name_prefix
   purchase_strategy = var.purchase_strategy
   sp_plans          = var.sp_plans
   scheduler         = var.scheduler

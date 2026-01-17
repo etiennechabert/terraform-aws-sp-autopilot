@@ -216,6 +216,16 @@ variable "lambda_config" {
 }
 
 # ============================================================================
+# Resource Naming
+# ============================================================================
+
+variable "name_prefix" {
+  description = "Prefix for all resource names (enables unique names per test run to avoid collisions)"
+  type        = string
+  default     = "sp-autopilot-test"
+}
+
+# ============================================================================
 # Tagging
 # ============================================================================
 

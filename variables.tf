@@ -351,6 +351,22 @@ variable "monitoring" {
 # Simple Top-Level Variables
 # ============================================================================
 
+variable "name_prefix" {
+  description = "Prefix for all resource names. Allows deploying the module multiple times in the same AWS account with different configurations (e.g., 'sp-compute' and 'sp-database' for separate compute-only and database-only deployments)"
+  type        = string
+  default     = "sp-autopilot"
+
+  validation {
+    condition     = can(regex("^[a-z0-9-]+$", var.name_prefix))
+    error_message = "name_prefix must contain only lowercase letters, numbers, and hyphens."
+  }
+
+  validation {
+    condition     = length(var.name_prefix) <= 32
+    error_message = "name_prefix must be 32 characters or less."
+  }
+}
+
 variable "tags" {
   description = "Additional tags to apply to all resources"
   type        = map(string)

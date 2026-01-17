@@ -27,8 +27,8 @@ locals {
     var.tags
   )
 
-  # Module name for resource naming
-  module_name = "sp-autopilot"
+  # Module name for resource naming (from name_prefix variable)
+  module_name = var.name_prefix
 
   # ==========================================================================
   # Lambda Enable Flags

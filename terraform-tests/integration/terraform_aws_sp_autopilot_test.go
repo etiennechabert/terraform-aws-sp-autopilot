@@ -2,8 +2,10 @@ package test
 
 import (
 	"encoding/json"
+	"fmt"
 	"strconv"
 	"testing"
+	"time"
 
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/service/cloudwatchevents"
@@ -32,6 +34,18 @@ func TestFullDeploymentAndCleanup(t *testing.T) {
 	// The GitHub Actions IAM policy only allows operations in us-east-1
 	awsRegion := "us-east-1"
 
+	// Generate unique name prefix using timestamp to avoid collisions between test runs
+	// Format: sp-autopilot-test-YYYYMMDD-HHMMSS (e.g., sp-autopilot-test-20260117-143055)
+	uniquePrefix := fmt.Sprintf("sp-autopilot-test-%s", time.Now().Format("20060102-150405"))
+	t.Logf("Using unique name prefix: %s", uniquePrefix)
+
+	// Cleanup any orphaned resources from previous failed runs with the same prefix
+	// This prevents "resource already exists" errors
+	t.Log("========================================")
+	t.Log("Phase 0: Pre-Test Cleanup")
+	t.Log("========================================")
+	CleanupOrphanedResources(t, awsRegion, uniquePrefix)
+
 	// Configure Terraform options with comprehensive settings
 	terraformOptions := terraform.WithDefaultRetryableErrors(t, &terraform.Options{
 		// Path to the Terraform code to test
@@ -39,7 +53,8 @@ func TestFullDeploymentAndCleanup(t *testing.T) {
 
 		// Variables to pass to the Terraform code (v2.0 nested structure)
 		Vars: map[string]interface{}{
-			"aws_region": awsRegion,
+			"aws_region":  awsRegion,
+			"name_prefix": uniquePrefix,
 			// Purchase strategy configuration
 			"purchase_strategy": map[string]interface{}{
 				"coverage_target_percent": 80,
@@ -129,8 +144,8 @@ func TestFullDeploymentAndCleanup(t *testing.T) {
 	require.NotEmpty(t, queueARN, "Queue ARN should not be empty")
 	require.NotEmpty(t, dlqARN, "DLQ ARN should not be empty")
 
-	assert.Contains(t, queueURL, "sp-autopilot-purchase-intents", "Queue URL should contain expected queue name")
-	assert.Contains(t, dlqURL, "sp-autopilot-purchase-intents-dlq", "DLQ URL should contain expected queue name")
+	assert.Contains(t, queueURL, uniquePrefix+"-purchase-intents", "Queue URL should contain expected queue name")
+	assert.Contains(t, dlqURL, uniquePrefix+"-purchase-intents-dlq", "DLQ URL should contain expected queue name")
 
 	t.Log("✓ SQS queues validated")
 
@@ -142,7 +157,7 @@ func TestFullDeploymentAndCleanup(t *testing.T) {
 
 	snsTopicARN := terraform.Output(t, terraformOptions, "sns_topic_arn")
 	require.NotEmpty(t, snsTopicARN, "SNS topic ARN should not be empty")
-	assert.Contains(t, snsTopicARN, "sp-autopilot-notifications", "SNS topic ARN should contain expected topic name")
+	assert.Contains(t, snsTopicARN, uniquePrefix+"-notifications", "SNS topic ARN should contain expected topic name")
 
 	t.Log("✓ SNS topic validated")
 
@@ -162,8 +177,8 @@ func TestFullDeploymentAndCleanup(t *testing.T) {
 	require.NotEmpty(t, schedulerLambdaARN, "Scheduler Lambda ARN should not be empty")
 	require.NotEmpty(t, purchaserLambdaARN, "Purchaser Lambda ARN should not be empty")
 
-	assert.Contains(t, schedulerLambdaName, "sp-autopilot-scheduler", "Scheduler Lambda name should contain expected function name")
-	assert.Contains(t, purchaserLambdaName, "sp-autopilot-purchaser", "Purchaser Lambda name should contain expected function name")
+	assert.Contains(t, schedulerLambdaName, uniquePrefix+"-scheduler", "Scheduler Lambda name should contain expected function name")
+	assert.Contains(t, purchaserLambdaName, uniquePrefix+"-purchaser", "Purchaser Lambda name should contain expected function name")
 
 	// Validate Lambda function configuration
 	lambdaClient := terratest_aws.NewLambdaClient(t, awsRegion)
@@ -192,8 +207,8 @@ func TestFullDeploymentAndCleanup(t *testing.T) {
 	require.NotEmpty(t, schedulerRoleARN, "Scheduler Lambda role ARN should not be empty")
 	require.NotEmpty(t, purchaserRoleARN, "Purchaser Lambda role ARN should not be empty")
 
-	assert.Contains(t, schedulerRoleARN, "sp-autopilot-scheduler", "Scheduler role ARN should contain expected role name")
-	assert.Contains(t, purchaserRoleARN, "sp-autopilot-purchaser", "Purchaser role ARN should contain expected role name")
+	assert.Contains(t, schedulerRoleARN, uniquePrefix+"-scheduler", "Scheduler role ARN should contain expected role name")
+	assert.Contains(t, purchaserRoleARN, uniquePrefix+"-purchaser", "Purchaser role ARN should contain expected role name")
 
 	t.Log("✓ IAM roles validated")
 
@@ -213,8 +228,8 @@ func TestFullDeploymentAndCleanup(t *testing.T) {
 	require.NotEmpty(t, schedulerRuleARN, "Scheduler rule ARN should not be empty")
 	require.NotEmpty(t, purchaserRuleARN, "Purchaser rule ARN should not be empty")
 
-	assert.Contains(t, schedulerRuleName, "sp-autopilot-scheduler", "Scheduler rule name should contain expected rule name")
-	assert.Contains(t, purchaserRuleName, "sp-autopilot-purchaser", "Purchaser rule name should contain expected rule name")
+	assert.Contains(t, schedulerRuleName, uniquePrefix+"-scheduler", "Scheduler rule name should contain expected rule name")
+	assert.Contains(t, purchaserRuleName, uniquePrefix+"-purchaser", "Purchaser rule name should contain expected rule name")
 
 	// Validate EventBridge rule details
 	sess, err := terratest_aws.NewAuthenticatedSession(awsRegion)
