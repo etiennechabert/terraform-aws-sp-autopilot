@@ -14,49 +14,13 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// quietLogger reduces log verbosity by filtering out verbose terraform output
-type quietLogger struct {
-	*logger.Logger
-}
+// cleanLogger outputs log messages without test name/timestamp prefix
+type cleanLogger struct{}
 
-func (l *quietLogger) Logf(t logger.TestingT, format string, args ...interface{}) {
+func (l *cleanLogger) Logf(t logger.TestingT, format string, args ...interface{}) {
+	// Output directly to stdout without the "TestName timestamp file:line:" prefix
 	msg := fmt.Sprintf(format, args...)
-
-	// Skip verbose terraform output lines
-	skipPatterns := []string{
-		"Running command terraform with args",
-		"Initializing the backend",
-		"Initializing provider plugins",
-		"Terraform has been successfully initialized",
-		"You may now begin working with Terraform",
-		"If you ever set or change modules",
-		"Finding hashicorp/",
-		"Installing hashicorp/",
-		"Installed hashicorp/",
-		"Terraform has created a lock file",
-		"Reading...",
-		"Read complete after",
-		"Still creating...",
-		"Still destroying...",
-		"Creation complete after",
-		"Destruction complete after",
-		"Refreshing state...",
-		"data.archive_file.",
-		"data.aws_region.",
-		"data.aws_caller_identity.",
-		"null_resource.",
-		"aws_cloudwatch_log_group.",
-		"aws_s3_bucket_",
-	}
-
-	for _, pattern := range skipPatterns {
-		if strings.Contains(msg, pattern) {
-			return
-		}
-	}
-
-	// Log important messages
-	l.Logger.Logf(t, format, args...)
+	fmt.Println(msg)
 }
 
 // TestExampleSingleAccountCompute validates the single-account-compute example
@@ -90,7 +54,7 @@ func TestExampleSingleAccountCompute(t *testing.T) {
 			},
 		},
 		NoColor: true,
-		Logger:  &quietLogger{Logger: logger.New(logger.Discard)},
+		Logger:  &cleanLogger{},
 	})
 
 	defer terraform.Destroy(t, terraformOptions)
@@ -132,7 +96,7 @@ func TestExampleDatabaseOnly(t *testing.T) {
 			},
 		},
 		NoColor: true,
-		Logger:  &quietLogger{Logger: logger.New(logger.Discard)},
+		Logger:  &cleanLogger{},
 	})
 
 	defer terraform.Destroy(t, terraformOptions)
@@ -171,7 +135,7 @@ func TestExampleDichotomyStrategy(t *testing.T) {
 			},
 		},
 		NoColor: true,
-		Logger:  &quietLogger{Logger: logger.New(logger.Discard)},
+		Logger:  &cleanLogger{},
 	})
 
 	defer terraform.Destroy(t, terraformOptions)
