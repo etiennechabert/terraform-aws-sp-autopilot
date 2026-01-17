@@ -172,6 +172,10 @@ data "archive_file" "scheduler" {
     content  = file("${path.module}/lambda/scheduler/simple_strategy.py")
     filename = "simple_strategy.py"
   }
+  source {
+    content  = file("${path.module}/lambda/scheduler/conservative_strategy.py")
+    filename = "conservative_strategy.py"
+  }
 
   # Include shared module
   source {
