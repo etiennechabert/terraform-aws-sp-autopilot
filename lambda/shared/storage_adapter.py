@@ -110,7 +110,12 @@ class StorageAdapter:
         object_key = f"savings-plans-report_{timestamp}.{report_format}"
 
         # Determine content type
-        content_type = "text/html" if report_format == "html" else "application/json"
+        if report_format == "html":
+            content_type = "text/html"
+        elif report_format == "csv":
+            content_type = "text/csv"
+        else:
+            content_type = "application/json"
 
         # Prepare metadata
         if metadata is None:
@@ -169,8 +174,8 @@ class StorageAdapter:
     def _list_reports_local(self, max_items: int) -> list:
         """List reports in local mode."""
         reports = []
-        # Look for HTML and JSON reports, exclude metadata files
-        for pattern in ["*.html", "*.json"]:
+        # Look for HTML, JSON, and CSV reports, exclude metadata files
+        for pattern in ["*.html", "*.json", "*.csv"]:
             for file_path in sorted(
                 self.reports_dir.glob(pattern), key=lambda p: p.stat().st_mtime, reverse=True
             ):
