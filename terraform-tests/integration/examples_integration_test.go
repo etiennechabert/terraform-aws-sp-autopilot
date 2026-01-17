@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/gruntwork-io/terratest/modules/logger"
+	terratesting "github.com/gruntwork-io/terratest/modules/testing"
 	"github.com/gruntwork-io/terratest/modules/terraform"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -17,13 +18,9 @@ import (
 // cleanLogger implements logger.TestLogger interface to strip verbose prefixes
 type cleanLogger struct{}
 
-func (l *cleanLogger) Logf(t logger.TestingT, format string, args ...interface{}) {
-	// Format the message
+func (l *cleanLogger) Logf(_ terratesting.TestingT, format string, args ...interface{}) {
+	// Format the message and print directly without test name/timestamp prefix
 	msg := fmt.Sprintf(format, args...)
-
-	// Pattern to match: "TestName YYYY-MM-DDTHH:MM:SSZ file.go:123: "
-	// This gets added by terratest's default logger
-	// We just print the message directly without the prefix
 	fmt.Println(msg)
 }
 
