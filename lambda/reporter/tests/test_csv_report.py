@@ -77,24 +77,22 @@ def sample_savings_data():
         "average_utilization": 92.5,
         "plans": [
             {
-                "savingsPlanId": "sp-12345",
-                "savingsPlanType": "ComputeSavingsPlans",
-                "paymentOption": "All Upfront",
-                "termDurationInSeconds": 94608000,
-                "commitment": "10.50",
-                "state": "active",
-                "start": "2025-01-01T00:00:00Z",
-                "end": "2028-01-01T00:00:00Z",
+                "plan_id": "sp-12345",
+                "plan_type": "ComputeSavingsPlans",
+                "payment_option": "All Upfront",
+                "term_years": 3,
+                "hourly_commitment": 10.50,
+                "start_date": "2025-01-01T00:00:00Z",
+                "end_date": "2028-01-01T00:00:00Z",
             },
             {
-                "savingsPlanId": "sp-67890",
-                "savingsPlanType": "DatabaseSavingsPlans",
-                "paymentOption": "No Upfront",
-                "termDurationInSeconds": 94608000,
-                "commitment": "5.25",
-                "state": "active",
-                "start": "2025-06-01T00:00:00Z",
-                "end": "2028-06-01T00:00:00Z",
+                "plan_id": "sp-67890",
+                "plan_type": "DatabaseSavingsPlans",
+                "payment_option": "No Upfront",
+                "term_years": 3,
+                "hourly_commitment": 5.25,
+                "start_date": "2025-06-01T00:00:00Z",
+                "end_date": "2028-06-01T00:00:00Z",
             },
         ],
         "actual_savings": {
@@ -133,7 +131,7 @@ def test_generate_csv_report_basic_structure(sample_coverage_history, sample_sav
     assert "date,coverage_percentage,on_demand_hours,covered_hours,total_hours" in result
 
     # Verify active savings plans section has correct header
-    assert "plan_id,plan_type,payment_option,term_duration,commitment,start_date,end_date" in result
+    assert "plan_id,plan_type,payment_option,term_years,hourly_commitment,start_date,end_date" in result
 
 
 def test_generate_csv_report_summary_metrics(sample_coverage_history, sample_savings_data):
@@ -187,13 +185,13 @@ def test_generate_csv_report_active_plans_data(sample_coverage_history, sample_s
 
     # Verify first plan details
     assert (
-        "sp-12345,ComputeSavingsPlans,All Upfront,94608000,10.5000,2025-01-01T00:00:00Z,2028-01-01T00:00:00Z"
+        "sp-12345,ComputeSavingsPlans,All Upfront,3,10.5000,2025-01-01T00:00:00Z,2028-01-01T00:00:00Z"
         in result
     )
 
     # Verify second plan details
     assert (
-        "sp-67890,DatabaseSavingsPlans,No Upfront,94608000,5.2500,2025-06-01T00:00:00Z,2028-06-01T00:00:00Z"
+        "sp-67890,DatabaseSavingsPlans,No Upfront,3,5.2500,2025-06-01T00:00:00Z,2028-06-01T00:00:00Z"
         in result
     )
 
@@ -336,7 +334,7 @@ def test_generate_csv_report_plans_with_missing_fields():
         "total_commitment": 5.0,
         "plans": [
             {
-                "savingsPlanId": "sp-minimal",
+                "plan_id": "sp-minimal",
                 # Missing most fields
             }
         ],
