@@ -23,10 +23,13 @@ Automates AWS Savings Plans purchases based on usage analysis, maintaining consi
 - [Advanced Usage](#advanced-usage)
 - [Cross-Account Setup for AWS Organizations](#cross-account-setup-for-aws-organizations)
 - [Requirements](#requirements)
-- [Error Reference](ERROR_REFERENCE.md)
 - [License](#license)
 - [Contributing](#contributing)
 - [Support](#support)
+
+**Additional Guides:**
+- [Error Patterns & Troubleshooting](ERROR_PATTERNS.md)
+- [Testing Guide](TESTING.md)
 
 ## Features
 
@@ -349,7 +352,6 @@ For complete variable documentation including `lambda_config`, `purchase_strateg
 
 - **[variables.tf](variables.tf)** — Full variable definitions with types, defaults, and validation rules
 - **[examples/](examples/)** — Working examples for common deployment scenarios
-- **[MIGRATION.md](MIGRATION.md)** — Migration guide for v1.x users
 
 ## Supported Services
 
@@ -645,7 +647,22 @@ See [Organizations example](examples/organizations/README.md) for detailed setup
 
 ## License
 
-This module is open-source software licensed under the MIT License.
+This module is open-source software licensed under the Apache License 2.0.
+
+## Used By
+
+Using this module in production? We'd love to hear from you!
+
+**Add your company logo:**
+1. Fork this repo
+2. Add your logo to `docs/users/` (PNG/SVG, max 200px width)
+3. Submit a PR updating this section
+
+Your company here:
+<!-- Add your company logo and link below -->
+<!-- Example: [![Company Name](docs/users/company-logo.png)](https://company.com) -->
+
+*Be the first to showcase your use of terraform-aws-sp-autopilot!*
 
 ## Contributing
 

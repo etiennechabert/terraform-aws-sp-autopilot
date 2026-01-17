@@ -1,5 +1,4 @@
 # AWS Savings Plans Automation Module - Configuration Variables
-# Version: 2.0 - Refactored to nested structure
 
 # ============================================================================
 # Lambda Control & Configuration

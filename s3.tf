@@ -1,5 +1,4 @@
 # AWS Savings Plans Automation Module
-# Version: 1.0
 # Purpose: S3 bucket for report storage
 
 # ============================================================================
