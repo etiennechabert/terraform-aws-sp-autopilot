@@ -90,6 +90,9 @@ def handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
         savings_data = get_savings_data(savingsplans_client, ce_client)
         logger.info(f"Savings data collected: {savings_data.get('plans_count', 0)} active plans")
 
+        # Step 2.5: Check for low utilization and send alert if needed
+        check_and_alert_low_utilization(sns_client, config, savings_data)
+
         # Step 3: Generate report based on format
         if config["report_format"] == "json":
             report_content = generate_json_report(coverage_history, savings_data)
@@ -190,6 +193,12 @@ def load_configuration() -> Dict[str, Any]:
         "tags": {"required": False, "type": "json", "default": "{}", "env_var": "TAGS"},
         "slack_webhook_url": {"required": False, "type": "str", "env_var": "SLACK_WEBHOOK_URL"},
         "teams_webhook_url": {"required": False, "type": "str", "env_var": "TEAMS_WEBHOOK_URL"},
+        "low_utilization_threshold": {
+            "required": False,
+            "type": "float",
+            "default": "70",
+            "env_var": "LOW_UTILIZATION_THRESHOLD",
+        },
     }
 
     return load_config_from_env(schema)
@@ -557,6 +566,105 @@ def get_savings_data(savingsplans_client: Any = None, ce_client: Any = None) -> 
         error_message = e.response.get("Error", {}).get("Message", str(e))
         logger.error(f"Failed to get savings data - Code: {error_code}, Message: {error_message}")
         raise
+
+
+def check_and_alert_low_utilization(
+    sns_client: Any, config: Dict[str, Any], savings_data: Dict[str, Any]
+) -> None:
+    """
+    Check if Savings Plans utilization is below threshold and send alert if needed.
+
+    Args:
+        sns_client: Boto3 SNS client
+        config: Configuration dictionary with threshold and notification settings
+        savings_data: Savings Plans data including average_utilization
+
+    Returns:
+        None: Sends alert notifications if utilization is below threshold
+    """
+    # Get threshold from config (defaults to 70%)
+    threshold = config.get("low_utilization_threshold", 70.0)
+
+    # Get average utilization from savings data
+    average_utilization = savings_data.get("average_utilization", 0.0)
+
+    # Get active plans count
+    plans_count = savings_data.get("plans_count", 0)
+
+    # Skip alert if no active plans
+    if plans_count == 0:
+        logger.info("No active Savings Plans - skipping low utilization check")
+        return
+
+    # Check if utilization is below threshold
+    if average_utilization < threshold:
+        logger.warning(
+            f"Low utilization detected: {average_utilization:.2f}% (threshold: {threshold:.2f}%)"
+        )
+
+        # Build alert subject
+        subject = (
+            f"Low Savings Plans Utilization Alert: {average_utilization:.1f}% "
+            f"(threshold: {threshold:.0f}%)"
+        )
+
+        # Build alert body
+        body_lines = [
+            f"Savings Plans utilization has fallen below the configured threshold.",
+            "",
+            f"Current Utilization: {average_utilization:.2f}%",
+            f"Alert Threshold: {threshold:.2f}%",
+            f"Active Plans: {plans_count}",
+            f"Total Commitment: ${savings_data.get('total_commitment', 0.0):.4f}/hour",
+            "",
+            "This may indicate:",
+            "• Decreased compute usage requiring plan adjustment",
+            "• Over-commitment relative to actual usage",
+            "• Opportunity to optimize Savings Plans portfolio",
+            "",
+            "Review your Savings Plans inventory and usage patterns to optimize costs.",
+        ]
+
+        # Send SNS notification
+        try:
+            message_body = "\n".join(body_lines)
+            sns_client.publish(
+                TopicArn=config["sns_topic_arn"], Subject=subject, Message=message_body
+            )
+            logger.info("Low utilization alert sent via SNS")
+        except ClientError as e:
+            logger.error(f"Failed to send SNS alert: {e!s}")
+            raise
+
+        # Send Slack notification (non-fatal if it fails)
+        try:
+            slack_webhook_url = config.get("slack_webhook_url")
+            if slack_webhook_url:
+                slack_message = notifications.format_slack_message(
+                    subject, body_lines, severity="warning"
+                )
+                if notifications.send_slack_notification(slack_webhook_url, slack_message):
+                    logger.info("Low utilization alert sent via Slack")
+                else:
+                    logger.warning("Slack notification failed (non-fatal)")
+        except Exception as e:
+            logger.warning(f"Slack notification error (non-fatal): {e!s}")
+
+        # Send Teams notification (non-fatal if it fails)
+        try:
+            teams_webhook_url = config.get("teams_webhook_url")
+            if teams_webhook_url:
+                teams_message = notifications.format_teams_message(subject, body_lines)
+                if notifications.send_teams_notification(teams_webhook_url, teams_message):
+                    logger.info("Low utilization alert sent via Teams")
+                else:
+                    logger.warning("Teams notification failed (non-fatal)")
+        except Exception as e:
+            logger.warning(f"Teams notification error (non-fatal): {e!s}")
+    else:
+        logger.info(
+            f"Utilization {average_utilization:.2f}% is above threshold {threshold:.2f}% - no alert needed"
+        )
 
 
 def generate_html_report(
