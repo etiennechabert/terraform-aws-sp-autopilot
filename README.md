@@ -669,7 +669,23 @@ Your company here:
 
 ### Local Development and Debugging
 
-You can run and debug the Lambda functions locally on your development machine using the local runner:
+You can run and debug the Lambda functions locally on your development machine using the local runner.
+
+**Quick start using Make:**
+
+```bash
+# Setup local environment
+make setup-local
+
+# Edit .env.local with your AWS credentials
+
+# Run Lambdas
+make run-scheduler    # Analyzes coverage, queues intents (dry-run)
+make run-purchaser    # Processes queued intents
+make run-reporter     # Generates HTML report
+```
+
+**Or use Python directly:**
 
 ```bash
 # Install development dependencies
