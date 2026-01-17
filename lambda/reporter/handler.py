@@ -12,7 +12,9 @@ This Lambda:
 
 import json
 import logging
+import sys
 from datetime import datetime, timedelta, timezone
+from pathlib import Path
 from typing import Any, Dict, List
 
 import boto3
@@ -25,6 +27,7 @@ from shared.handler_utils import (
     load_config_from_env,
     send_error_notification,
 )
+from shared.storage_adapter import StorageAdapter
 
 
 # Configure logging
@@ -1112,7 +1115,7 @@ def generate_csv_report(
     csv_parts = []
 
     # Header
-    csv_parts.append(f"# Savings Plans Coverage & Savings Report")
+    csv_parts.append("# Savings Plans Coverage & Savings Report")
     csv_parts.append(f"# Generated: {report_timestamp}")
     csv_parts.append("")
 
@@ -1124,9 +1127,7 @@ def generate_csv_report(
     csv_parts.append(f"trend_direction,{trend_direction}")
     csv_parts.append(f"trend_value,{trend_value:.2f}")
     csv_parts.append(f"active_plans_count,{savings_data.get('plans_count', 0)}")
-    csv_parts.append(
-        f"total_hourly_commitment,{savings_data.get('total_commitment', 0.0):.4f}"
-    )
+    csv_parts.append(f"total_hourly_commitment,{savings_data.get('total_commitment', 0.0):.4f}")
     csv_parts.append(
         f"total_monthly_commitment,{savings_data.get('total_commitment', 0.0) * 730:.2f}"
     )
@@ -1155,16 +1156,21 @@ def generate_csv_report(
 
     # Active Savings Plans section
     csv_parts.append("## Active Savings Plans")
-    csv_parts.append("plan_id,plan_type,payment_option,term_duration,commitment,start_date,end_date")
+    csv_parts.append(
+        "plan_id,plan_type,payment_option,term_years,hourly_commitment,start_date,end_date"
+    )
     for plan in savings_data.get("plans", []):
+        plan_id = plan.get("plan_id", "")
+        plan_type = plan.get("plan_type", "")
+        payment_option = plan.get("payment_option", "")
+        term_years = plan.get("term_years", 0)
+        hourly_commitment = plan.get("hourly_commitment", 0.0)
+        start_date = plan.get("start_date", "")
+        end_date = plan.get("end_date", "")
+
         csv_parts.append(
-            f"{plan.get('savingsPlanId', '')},"
-            f"{plan.get('savingsPlanType', '')},"
-            f"{plan.get('paymentOption', '')},"
-            f"{plan.get('termDurationInSeconds', 0)},"
-            f"{plan.get('commitment', 0.0):.4f},"
-            f"{plan.get('start', '')},"
-            f"{plan.get('end', '')}"
+            f"{plan_id},{plan_type},{payment_option},{term_years},{hourly_commitment:.4f},"
+            f"{start_date},{end_date}"
         )
 
     csv_content = "\n".join(csv_parts)
@@ -1177,7 +1183,8 @@ def upload_report_to_s3(
     config: Dict[str, Any], report_content: str, report_format: str = "html"
 ) -> str:
     """
-    Upload report to S3 with timestamp-based key.
+    Upload report to storage.
+    Supports both AWS S3 and local filesystem modes.
 
     Uses module-level s3_client for S3 operations.
 
@@ -1187,37 +1194,19 @@ def upload_report_to_s3(
         report_format: Report format (default: 'html')
 
     Returns:
-        str: S3 object key for the uploaded report
+        str: S3 object key (AWS mode) or file path (local mode)
 
     Raises:
-        ClientError: If S3 upload fails
+        ClientError: If upload fails
     """
     bucket_name = config["reports_bucket"]
-    timestamp = datetime.now(timezone.utc).strftime("%Y-%m-%d_%H-%M-%S")
-    object_key = f"savings-plans-report_{timestamp}.{report_format}"
-
-    logger.info(f"Uploading report to S3: s3://{bucket_name}/{object_key}")
+    logger.info(f"Uploading report to storage: {bucket_name}")
 
     try:
-        # Determine ContentType based on report format
-        if report_format == "json":
-            content_type = "application/json"
-        elif report_format == "csv":
-            content_type = "text/csv"
-        else:
-            content_type = "text/html"
-
-        # Upload to S3
-        s3_client.put_object(
-            Bucket=bucket_name,
-            Key=object_key,
-            Body=report_content.encode("utf-8"),
-            ContentType=content_type,
-            ServerSideEncryption="AES256",
-            Metadata={
-                "generated-at": datetime.now(timezone.utc).isoformat(),
-                "generator": "sp-autopilot-reporter",
-            },
+        # Use storage adapter for both local and AWS modes
+        storage_adapter = StorageAdapter(s3_client=s3_client, bucket_name=bucket_name)
+        object_key = storage_adapter.upload_report(
+            report_content=report_content, report_format=report_format
         )
 
         logger.info(f"Report uploaded successfully: {object_key}")
@@ -1226,9 +1215,7 @@ def upload_report_to_s3(
     except ClientError as e:
         error_code = e.response.get("Error", {}).get("Code", "Unknown")
         error_message = e.response.get("Error", {}).get("Message", str(e))
-        logger.error(
-            f"Failed to upload report to S3 - Code: {error_code}, Message: {error_message}"
-        )
+        logger.error(f"Failed to upload report - Code: {error_code}, Message: {error_message}")
         raise
 
 
