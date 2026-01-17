@@ -226,3 +226,69 @@ def validate_scheduler_config(config: dict[str, Any]) -> None:
             raise ValueError(
                 f"Invalid purchase_strategy_type: '{strategy_type}'. Must be one of: {', '.join(VALID_PURCHASE_STRATEGIES)}"
             )
+
+
+def validate_reporter_config(config: dict[str, Any]) -> None:
+    """
+    Validate reporter configuration schema and data types.
+
+    Validates:
+    - report_format is a valid format (html or json)
+    - email_reports is a boolean
+    - tags is a dictionary
+    - String fields are non-empty strings
+
+    Args:
+        config: Dictionary containing reporter configuration
+
+    Returns:
+        None (validation passes silently)
+
+    Raises:
+        ValueError: If validation fails with descriptive error message
+    """
+    if not isinstance(config, dict):
+        raise ValueError(
+            f"Configuration must be a dictionary, got {type(config).__name__}"
+        )
+
+    # Validate report_format is valid
+    if "report_format" in config:
+        report_format = config["report_format"]
+        if report_format not in VALID_REPORT_FORMATS:
+            raise ValueError(
+                f"Invalid report_format: '{report_format}'. Must be one of: {', '.join(VALID_REPORT_FORMATS)}"
+            )
+
+    # Validate email_reports is a boolean
+    if "email_reports" in config:
+        email_reports = config["email_reports"]
+        if not isinstance(email_reports, bool):
+            raise ValueError(
+                f"Field 'email_reports' must be a boolean, got {type(email_reports).__name__}: {email_reports}"
+            )
+
+    # Validate tags is a dictionary
+    if "tags" in config:
+        tags = config["tags"]
+        if not isinstance(tags, dict):
+            raise ValueError(
+                f"Field 'tags' must be a dictionary, got {type(tags).__name__}: {tags}"
+            )
+
+    # Validate string fields are non-empty strings
+    string_fields = [
+        "reports_bucket",
+        "sns_topic_arn",
+        "management_account_role_arn",
+        "slack_webhook_url",
+        "teams_webhook_url",
+    ]
+
+    for field_name in string_fields:
+        if field_name in config:
+            field_value = config[field_name]
+            if not isinstance(field_value, str) or not field_value.strip():
+                raise ValueError(
+                    f"Field '{field_name}' must be a non-empty string, got {type(field_value).__name__}"
+                )
