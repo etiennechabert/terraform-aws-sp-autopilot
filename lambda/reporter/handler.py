@@ -717,6 +717,170 @@ def generate_html_report(
             color: #6c757d;
             font-style: italic;
         }}
+
+        /* Print-friendly styles */
+        @media print {{
+            /* Reset body for print */
+            body {{
+                background-color: white;
+                color: black;
+                font-size: 10pt;
+                line-height: 1.4;
+                padding: 0;
+                margin: 0;
+            }}
+
+            /* Remove container shadows and make full-width */
+            .container {{
+                box-shadow: none;
+                max-width: 100%;
+                padding: 10px;
+                border-radius: 0;
+            }}
+
+            /* Simplify headings for print */
+            h1 {{
+                color: black;
+                border-bottom: 2px solid black;
+                font-size: 18pt;
+                page-break-after: avoid;
+            }}
+
+            h2 {{
+                color: black;
+                border-bottom: 1px solid black;
+                font-size: 14pt;
+                page-break-after: avoid;
+                margin-top: 20px;
+            }}
+
+            h3 {{
+                color: black;
+                font-size: 12pt;
+                page-break-after: avoid;
+            }}
+
+            /* Remove gradients from summary cards, use borders instead */
+            .summary-card {{
+                background: white !important;
+                color: black !important;
+                border: 1px solid black;
+                box-shadow: none;
+                page-break-inside: avoid;
+                padding: 10px;
+            }}
+
+            .summary-card h3 {{
+                opacity: 1;
+                color: black;
+                font-size: 10pt;
+            }}
+
+            .summary-card .value {{
+                color: black;
+                font-size: 14pt;
+            }}
+
+            /* Optimize summary grid for print */
+            .summary {{
+                grid-template-columns: repeat(2, 1fr);
+                gap: 10px;
+                margin-bottom: 20px;
+                page-break-inside: avoid;
+            }}
+
+            /* Table styling for print */
+            table {{
+                page-break-inside: avoid;
+                border-collapse: collapse;
+                font-size: 9pt;
+            }}
+
+            th {{
+                background-color: #f0f0f0 !important;
+                color: black !important;
+                border: 1px solid black;
+                padding: 8px;
+                font-weight: bold;
+            }}
+
+            td {{
+                border: 1px solid black;
+                padding: 6px 8px;
+                color: black;
+            }}
+
+            tr {{
+                page-break-inside: avoid;
+            }}
+
+            tr:hover {{
+                background-color: white;
+            }}
+
+            /* Remove hover effects */
+            tr:hover {{
+                background-color: transparent;
+            }}
+
+            /* Ensure sections break properly */
+            .section {{
+                page-break-inside: avoid;
+                margin-bottom: 20px;
+            }}
+
+            /* Footer styling for print */
+            .footer {{
+                border-top: 1px solid black;
+                color: black;
+                font-size: 8pt;
+                page-break-before: avoid;
+            }}
+
+            /* Ensure subtitle is visible */
+            .subtitle {{
+                color: #666;
+                font-size: 9pt;
+            }}
+
+            /* Simplify trend indicator */
+            .trend {{
+                color: black !important;
+            }}
+
+            /* Make metrics more visible */
+            .metric {{
+                font-weight: bold;
+                color: black;
+            }}
+
+            /* Hide decorative elements not needed in print */
+            .no-data {{
+                color: #666;
+            }}
+
+            /* Ensure good page breaks */
+            h1, h2, h3 {{
+                page-break-after: avoid;
+            }}
+
+            table {{
+                page-break-before: auto;
+            }}
+
+            tr {{
+                page-break-inside: avoid;
+                page-break-after: auto;
+            }}
+
+            thead {{
+                display: table-header-group;
+            }}
+
+            tfoot {{
+                display: table-footer-group;
+            }}
+        }}
     </style>
 </head>
 <body>
