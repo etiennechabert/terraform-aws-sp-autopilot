@@ -163,6 +163,14 @@ data "archive_file" "scheduler" {
     content  = file("${path.module}/lambda/scheduler/recommendations.py")
     filename = "recommendations.py"
   }
+  source {
+    content  = file("${path.module}/lambda/scheduler/dichotomy_strategy.py")
+    filename = "dichotomy_strategy.py"
+  }
+  source {
+    content  = file("${path.module}/lambda/scheduler/simple_strategy.py")
+    filename = "simple_strategy.py"
+  }
 
   # Include shared module
   source {
@@ -244,18 +252,6 @@ data "archive_file" "reporter" {
   source {
     content  = file("${path.module}/lambda/reporter/handler.py")
     filename = "handler.py"
-  }
-  source {
-    content  = file("${path.module}/lambda/reporter/config.py")
-    filename = "config.py"
-  }
-  source {
-    content  = file("${path.module}/lambda/reporter/coverage_analyzer.py")
-    filename = "coverage_analyzer.py"
-  }
-  source {
-    content  = file("${path.module}/lambda/reporter/report_generator.py")
-    filename = "report_generator.py"
   }
 
   # Include shared module
