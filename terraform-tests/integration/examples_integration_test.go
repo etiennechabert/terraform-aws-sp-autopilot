@@ -19,8 +19,8 @@ func TestExampleSingleAccountCompute(t *testing.T) {
 	// Note: NOT using t.Parallel() to avoid IAM rate limits when creating roles
 	exampleDir := "../../examples/single-account-compute"
 
-	// Generate unique name prefix
-	uniquePrefix := fmt.Sprintf("sp-test-sac-%s", time.Now().Format("0102-150405"))
+	// Generate unique name prefix (must match CI IAM policy pattern: sp-autopilot-test-*)
+	uniquePrefix := fmt.Sprintf("sp-autopilot-test-%s", time.Now().Format("20060102-150405"))
 
 	// Create a test copy of the example with local source
 	testDir := prepareExampleForTesting(t, exampleDir, uniquePrefix)
@@ -58,7 +58,8 @@ func TestExampleDatabaseOnly(t *testing.T) {
 	// Note: NOT using t.Parallel() to avoid IAM rate limits when creating roles
 	exampleDir := "../../examples/database-only"
 
-	uniquePrefix := fmt.Sprintf("sp-test-db-%s", time.Now().Format("0102-150405"))
+	// Generate unique name prefix (must match CI IAM policy pattern: sp-autopilot-test-*)
+	uniquePrefix := fmt.Sprintf("sp-autopilot-test-%s", time.Now().Format("20060102-150405"))
 	testDir := prepareExampleForTesting(t, exampleDir, uniquePrefix)
 	defer os.RemoveAll(testDir)
 
@@ -93,7 +94,8 @@ func TestExampleDichotomyStrategy(t *testing.T) {
 	// Note: NOT using t.Parallel() to avoid IAM rate limits when creating roles
 	exampleDir := "../../examples/dichotomy-strategy"
 
-	uniquePrefix := fmt.Sprintf("sp-test-dich-%s", time.Now().Format("0102-150405"))
+	// Generate unique name prefix (must match CI IAM policy pattern: sp-autopilot-test-*)
+	uniquePrefix := fmt.Sprintf("sp-autopilot-test-%s", time.Now().Format("20060102-150405"))
 	testDir := prepareExampleForTesting(t, exampleDir, uniquePrefix)
 	defer os.RemoveAll(testDir)
 
