@@ -292,3 +292,65 @@ def validate_reporter_config(config: dict[str, Any]) -> None:
                 raise ValueError(
                     f"Field '{field_name}' must be a non-empty string, got {type(field_value).__name__}"
                 )
+
+
+def validate_purchaser_config(config: dict[str, Any]) -> None:
+    """
+    Validate purchaser configuration schema and data types.
+
+    Validates:
+    - max_coverage_cap is within valid percentage range (0-100)
+    - renewal_window_days is a positive integer
+    - tags is a dictionary
+    - String fields are non-empty strings
+
+    Args:
+        config: Dictionary containing purchaser configuration
+
+    Returns:
+        None (validation passes silently)
+
+    Raises:
+        ValueError: If validation fails with descriptive error message
+    """
+    if not isinstance(config, dict):
+        raise ValueError(
+            f"Configuration must be a dictionary, got {type(config).__name__}"
+        )
+
+    # Validate max_coverage_cap is a valid percentage (0-100)
+    if "max_coverage_cap" in config:
+        _validate_percentage_range(config["max_coverage_cap"], "max_coverage_cap")
+
+    # Validate renewal_window_days is a positive integer
+    if "renewal_window_days" in config:
+        _validate_positive_number(config["renewal_window_days"], "renewal_window_days")
+        if not isinstance(config["renewal_window_days"], int):
+            raise ValueError(
+                f"Field 'renewal_window_days' must be an integer, got {type(config['renewal_window_days']).__name__}: {config['renewal_window_days']}"
+            )
+
+    # Validate tags is a dictionary
+    if "tags" in config:
+        tags = config["tags"]
+        if not isinstance(tags, dict):
+            raise ValueError(
+                f"Field 'tags' must be a dictionary, got {type(tags).__name__}: {tags}"
+            )
+
+    # Validate string fields are non-empty strings
+    string_fields = [
+        "queue_url",
+        "sns_topic_arn",
+        "management_account_role_arn",
+        "slack_webhook_url",
+        "teams_webhook_url",
+    ]
+
+    for field_name in string_fields:
+        if field_name in config:
+            field_value = config[field_name]
+            if not isinstance(field_value, str) or not field_value.strip():
+                raise ValueError(
+                    f"Field '{field_name}' must be a non-empty string, got {type(field_value).__name__}"
+                )
