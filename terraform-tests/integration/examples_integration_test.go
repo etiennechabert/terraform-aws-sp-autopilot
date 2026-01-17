@@ -173,6 +173,23 @@ func prepareExampleForTesting(t *testing.T, exampleDir string, namePrefix string
 		}
 		contentStr = strings.Join(newLines, "\n")
 
+		// Add default_tags to provider block for CI IAM policy compliance
+		// CI IAM policy requires ManagedBy = "terratest" tag
+		contentStr = strings.ReplaceAll(contentStr,
+			`provider "aws" {
+  region = "us-east-1"
+}`,
+			`provider "aws" {
+  region = "us-east-1"
+
+  default_tags {
+    tags = {
+      Environment = "test"
+      ManagedBy   = "terratest"
+    }
+  }
+}`)
+
 		// Write to test directory
 		destPath := filepath.Join(testDir, filepath.Base(path))
 		err = os.WriteFile(destPath, []byte(contentStr), 0644)
