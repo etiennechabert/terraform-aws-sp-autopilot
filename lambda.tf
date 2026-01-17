@@ -38,6 +38,7 @@ resource "aws_lambda_function" "scheduler" {
       PURCHASE_STRATEGY_TYPE      = local.purchase_strategy_type
       MAX_PURCHASE_PERCENT        = tostring(local.max_purchase_percent)
       MIN_PURCHASE_PERCENT        = tostring(local.min_purchase_percent)
+      MIN_GAP_THRESHOLD           = tostring(local.min_gap_threshold)
       RENEWAL_WINDOW_DAYS         = tostring(local.renewal_window_days)
       LOOKBACK_DAYS               = tostring(local.lookback_days)
       MIN_DATA_DAYS               = tostring(local.min_data_days)
