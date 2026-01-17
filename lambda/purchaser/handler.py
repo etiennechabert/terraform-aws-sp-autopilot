@@ -14,7 +14,9 @@ This Lambda:
 
 import json
 import logging
+import sys
 from datetime import date, datetime, timedelta, timezone
+from pathlib import Path
 from typing import Any
 
 import boto3
@@ -22,6 +24,7 @@ from botocore.exceptions import ClientError
 from validation import validate_purchase_intent
 
 from shared import handler_utils
+from shared.queue_adapter import QueueAdapter
 
 
 # Configure logging
@@ -155,24 +158,22 @@ def receive_messages(
     sqs_client: Any, queue_url: str, max_messages: int = 10
 ) -> list[dict[str, Any]]:
     """
-    Receive messages from SQS queue.
+    Receive messages from queue.
+    Supports both AWS SQS and local filesystem modes.
 
     Args:
-        sqs_client: Boto3 SQS client
-        queue_url: SQS queue URL
+        sqs_client: Boto3 SQS client (not used in local mode)
+        queue_url: SQS queue URL (not used in local mode)
         max_messages: Maximum number of messages to retrieve
 
     Returns:
-        list: List of SQS messages
+        list: List of messages
     """
     logger.info(f"Receiving messages from queue: {queue_url}")
 
     try:
-        response = sqs_client.receive_message(
-            QueueUrl=queue_url, MaxNumberOfMessages=max_messages, WaitTimeSeconds=5
-        )
-
-        messages = response.get("Messages", [])
+        queue_adapter = QueueAdapter(sqs_client=sqs_client, queue_url=queue_url)
+        messages = queue_adapter.receive_messages(max_messages=max_messages)
         logger.info(f"Received {len(messages)} messages from queue")
         return messages
 
@@ -613,15 +614,17 @@ def update_coverage_tracking(
 
 def delete_message(sqs_client: Any, queue_url: str, receipt_handle: str) -> None:
     """
-    Delete a message from the SQS queue.
+    Delete a message from the queue.
+    Supports both AWS SQS and local filesystem modes.
 
     Args:
-        sqs_client: Boto3 SQS client
-        queue_url: SQS queue URL
-        receipt_handle: Message receipt handle
+        sqs_client: Boto3 SQS client (not used in local mode)
+        queue_url: SQS queue URL (not used in local mode)
+        receipt_handle: Message receipt handle (file path in local mode)
     """
     try:
-        sqs_client.delete_message(QueueUrl=queue_url, ReceiptHandle=receipt_handle)
+        queue_adapter = QueueAdapter(sqs_client=sqs_client, queue_url=queue_url)
+        queue_adapter.delete_message(receipt_handle)
         logger.info("Message deleted from queue")
     except ClientError as e:
         logger.error(f"Failed to delete message: {e!s}")
