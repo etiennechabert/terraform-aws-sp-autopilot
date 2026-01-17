@@ -11,7 +11,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
-from .local_mode import get_queue_dir, is_local_mode
+import local_mode
 
 
 logger = logging.getLogger(__name__)
@@ -30,7 +30,7 @@ class QueueAdapter:
             sqs_client: Boto3 SQS client (required for AWS mode, ignored in local mode)
             queue_url: SQS queue URL (required for AWS mode, ignored in local mode)
         """
-        self.is_local = is_local_mode()
+        self.is_local = local_mode.is_local_mode()
         self.sqs_client = sqs_client
         self.queue_url = queue_url
 
@@ -38,7 +38,7 @@ class QueueAdapter:
             raise ValueError("sqs_client and queue_url are required for AWS mode")
 
         if self.is_local:
-            self.queue_dir = get_queue_dir()
+            self.queue_dir = local_mode.get_queue_dir()
             logger.info(f"Queue adapter initialized in LOCAL mode (directory: {self.queue_dir})")
         else:
             logger.info(f"Queue adapter initialized in AWS mode (queue: {queue_url})")

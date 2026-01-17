@@ -10,7 +10,7 @@ import logging
 from datetime import datetime, timezone
 from typing import Any, Dict, Optional
 
-from .local_mode import get_reports_dir, is_local_mode
+import local_mode
 
 
 logger = logging.getLogger(__name__)
@@ -29,7 +29,7 @@ class StorageAdapter:
             s3_client: Boto3 S3 client (required for AWS mode, ignored in local mode)
             bucket_name: S3 bucket name (required for AWS mode, ignored in local mode)
         """
-        self.is_local = is_local_mode()
+        self.is_local = local_mode.is_local_mode()
         self.s3_client = s3_client
         self.bucket_name = bucket_name
 
@@ -37,7 +37,7 @@ class StorageAdapter:
             raise ValueError("s3_client and bucket_name are required for AWS mode")
 
         if self.is_local:
-            self.reports_dir = get_reports_dir()
+            self.reports_dir = local_mode.get_reports_dir()
             logger.info(
                 f"Storage adapter initialized in LOCAL mode (directory: {self.reports_dir})"
             )
