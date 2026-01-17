@@ -312,72 +312,17 @@ To prevent accidental purchases or modifications:
 
 ## Makefile Commands
 
-The project includes a comprehensive Makefile for common development tasks. Run `make help` to see all available commands:
-
-### Setup and Installation
+The project includes a simple Makefile for common development tasks:
 
 ```bash
-make setup-local      # Setup local dev environment (install deps, create .env.local)
-make install-dev      # Install development dependencies only
-make install          # Install production dependencies
-```
-
-### Running Lambdas
-
-```bash
-make run-scheduler         # Run scheduler in dry-run mode
-make run-scheduler-real    # Run scheduler in real mode (prompts for confirmation)
-make run-purchaser         # Run purchaser
-make run-reporter          # Run reporter (HTML)
-make run-reporter-json     # Run reporter (JSON)
-make run-all              # Run all Lambdas in sequence
-```
-
-### Testing
-
-```bash
+make setup             # Setup local environment (venv, deps, .env.local)
 make test              # Run all tests
-make test-unit         # Run unit tests only
-make test-integration  # Run integration tests only
-make test-coverage     # Run tests with coverage report
-```
-
-### Code Quality
-
-```bash
-make lint              # Run all linters (flake8, mypy)
-make format            # Format code with black
-make check             # Check code formatting without changes
-make pre-commit        # Run all pre-commit checks (format, test, lint)
-```
-
-### Local Data Management
-
-```bash
-make list-queue           # List messages in local queue
-make show-queue           # Show content of queue messages
-make purge-queue          # Delete all messages from local queue
-make list-reports         # List generated reports
-make show-latest-report   # Open latest report in browser
-make clean-local          # Clean all local data (prompts for confirmation)
-```
-
-### Debugging
-
-```bash
-make debug-scheduler   # Run scheduler with debug logging
-make debug-purchaser   # Run purchaser with debug logging
-make debug-reporter    # Run reporter with debug logging
-```
-
-### Utilities
-
-```bash
-make info              # Show environment information
-make check-env         # Check if .env.local is configured
-make clean             # Clean up generated files and caches
-make package           # Package Lambda functions for deployment
-make ci                # Run CI checks (tests + linting)
+make lint              # Check code quality
+make format            # Format code with ruff
+make clean             # Clean generated files
+make run-scheduler     # Run scheduler in dry-run mode
+make run-purchaser     # Run purchaser
+make run-reporter      # Run reporter (HTML)
 make help              # Show all available commands
 ```
 

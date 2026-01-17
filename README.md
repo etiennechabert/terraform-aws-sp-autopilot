@@ -675,7 +675,7 @@ You can run and debug the Lambda functions locally on your development machine u
 
 ```bash
 # Setup local environment
-make setup-local
+make setup
 
 # Edit .env.local with your AWS credentials
 
