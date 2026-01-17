@@ -1037,6 +1037,14 @@ def generate_html_report(
             <h2>Coverage Trends <span class="trend" style="color: {trend_color};">{trend_symbol}</span></h2>
 """)
 
+    # Generate and include SVG chart
+    svg_chart = generate_coverage_chart_svg(coverage_history)
+    html_parts.append(f"""
+            <div style="margin: 20px 0; text-align: center;">
+                {svg_chart}
+            </div>
+""")
+
     # Coverage history table
     if coverage_history:
         html_parts.append("""
