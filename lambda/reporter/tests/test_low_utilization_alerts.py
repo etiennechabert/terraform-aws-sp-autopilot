@@ -174,7 +174,9 @@ def test_check_and_alert_default_threshold(mock_sns_client):
     assert "70%" in call_args[1]["Subject"]  # Default threshold
 
 
-def test_check_and_alert_sns_failure(mock_sns_client, sample_config, sample_savings_data_low_utilization):
+def test_check_and_alert_sns_failure(
+    mock_sns_client, sample_config, sample_savings_data_low_utilization
+):
     """Test that SNS failure raises an exception."""
     # Mock SNS to raise ClientError
     mock_sns_client.publish.side_effect = ClientError(

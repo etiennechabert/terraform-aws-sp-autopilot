@@ -107,7 +107,7 @@ variable "purchase_strategy" {
       var.purchase_strategy.dichotomy != null ?
       (var.purchase_strategy.dichotomy.min_purchase_percent > 0 &&
         var.purchase_strategy.dichotomy.max_purchase_percent <= 100 &&
-      var.purchase_strategy.dichotomy.min_purchase_percent < var.purchase_strategy.dichotomy.max_purchase_percent) :
+        var.purchase_strategy.dichotomy.min_purchase_percent < var.purchase_strategy.dichotomy.max_purchase_percent) :
       true
     )
     error_message = "For dichotomy strategy: 0 < min_purchase_percent < max_purchase_percent <= 100."
@@ -168,7 +168,7 @@ variable "sp_plans" {
         try(var.sp_plans.compute.partial_upfront_three_year, 0) +
         try(var.sp_plans.compute.partial_upfront_one_year, 0) +
         try(var.sp_plans.compute.no_upfront_three_year, 0) +
-      try(var.sp_plans.compute.no_upfront_one_year, 0)) == 1
+        try(var.sp_plans.compute.no_upfront_one_year, 0)) == 1
       : true
     )
     error_message = "Compute SP payment/term percentages must sum to 1.0 when enabled."
@@ -193,7 +193,7 @@ variable "sp_plans" {
         try(var.sp_plans.sagemaker.partial_upfront_three_year, 0) +
         try(var.sp_plans.sagemaker.partial_upfront_one_year, 0) +
         try(var.sp_plans.sagemaker.no_upfront_three_year, 0) +
-      try(var.sp_plans.sagemaker.no_upfront_one_year, 0)) == 1
+        try(var.sp_plans.sagemaker.no_upfront_one_year, 0)) == 1
       : true
     )
     error_message = "SageMaker SP payment/term percentages must sum to 1.0 when enabled."
