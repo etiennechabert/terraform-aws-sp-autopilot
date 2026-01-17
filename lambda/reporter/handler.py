@@ -19,6 +19,7 @@ import boto3
 from botocore.exceptions import ClientError
 
 from shared import notifications
+from shared.config_validation import validate_reporter_config
 from shared.handler_utils import (
     initialize_clients,
     lambda_handler_wrapper,
@@ -58,6 +59,7 @@ def handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
     try:
         # Load configuration from environment
         config = load_configuration()
+        validate_reporter_config(config)
 
         # Create error callback function
         def send_error_email(error_msg: str) -> None:
