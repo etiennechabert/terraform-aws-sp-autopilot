@@ -141,19 +141,28 @@ locals {
   purchase_strategy_type = (
     var.purchase_strategy.simple != null ? "simple" :
     var.purchase_strategy.dichotomy != null ? "dichotomy" :
+    var.purchase_strategy.conservative != null ? "conservative" :
     "simple" # default
   )
 
   max_purchase_percent = (
     local.purchase_strategy_type == "simple" ?
     var.purchase_strategy.simple.max_purchase_percent :
-    var.purchase_strategy.dichotomy.max_purchase_percent
+    local.purchase_strategy_type == "dichotomy" ?
+    var.purchase_strategy.dichotomy.max_purchase_percent :
+    var.purchase_strategy.conservative.max_purchase_percent
   )
 
   min_purchase_percent = (
     local.purchase_strategy_type == "dichotomy" ?
     var.purchase_strategy.dichotomy.min_purchase_percent :
     1.0 # default for simple strategy (not used, but included for consistency)
+  )
+
+  min_gap_threshold = (
+    local.purchase_strategy_type == "conservative" ?
+    var.purchase_strategy.conservative.min_gap_threshold :
+    0.0 # default for non-conservative strategies (not used, but included for consistency)
   )
 
   # ==========================================================================
