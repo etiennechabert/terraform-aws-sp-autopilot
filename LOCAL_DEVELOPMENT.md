@@ -16,9 +16,18 @@ Local mode allows you to run the Lambda functions without deploying to AWS. Inst
 
 1. **Python 3.11+** installed on your machine
 2. **AWS credentials** configured (the Lambdas still call AWS Cost Explorer and other APIs)
-3. **Python dependencies** installed:
+3. **Virtual environment** (recommended):
    ```bash
-   pip install boto3 python-dotenv pytest
+   # Create virtual environment
+   python -m venv .venv
+
+   # Activate it
+   source .venv/bin/activate  # On Unix/macOS
+   .venv\Scripts\activate     # On Windows
+   ```
+4. **Python dependencies** installed:
+   ```bash
+   pip install -r requirements-dev.txt
    ```
 
 ## Quick Start
@@ -26,11 +35,17 @@ Local mode allows you to run the Lambda functions without deploying to AWS. Inst
 ### Option A: Using Make (Recommended)
 
 ```bash
-# Setup everything (install deps, create .env.local, create directories)
-make setup-local
+# Create virtual environment and install everything
+make setup-venv
+
+# Activate virtual environment
+source .venv/bin/activate  # On Unix/macOS
+.venv\Scripts\activate     # On Windows
 
 # Edit .env.local with your AWS credentials
-# Then run Lambdas
+# (setup-venv already created .env.local.example → .env.local)
+
+# Run Lambdas
 make run-scheduler    # Run scheduler in dry-run mode
 make run-purchaser    # Process queued intents
 make run-reporter     # Generate HTML report
@@ -44,7 +59,19 @@ make lint
 
 ### Option B: Using Python Directly
 
-### 1. Configure Environment
+### 1. Setup Virtual Environment (Recommended)
+
+```bash
+# Create and activate virtual environment
+python -m venv .venv
+source .venv/bin/activate  # On Unix/macOS
+.venv\Scripts\activate     # On Windows
+
+# Install dependencies
+pip install -r requirements-dev.txt
+```
+
+### 2. Configure Environment
 
 Copy the example environment file and customize it:
 
@@ -60,7 +87,7 @@ AWS_PROFILE=your-profile-name
 AWS_REGION=us-east-1
 ```
 
-### 2. Run a Lambda Function
+### 3. Run a Lambda Function
 
 Use the `local_runner.py` script to execute any Lambda:
 
@@ -75,7 +102,7 @@ python local_runner.py purchaser
 python local_runner.py reporter --format html
 ```
 
-### 3. Inspect Local Data
+### 4. Inspect Local Data
 
 All local data is stored in `./local_data/`:
 

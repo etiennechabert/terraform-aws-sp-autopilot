@@ -37,6 +37,16 @@ help: ## Show this help message
 	@echo "  make format                # Format code"
 
 # Installation targets
+venv: ## Create a Python virtual environment
+	@if [ ! -d .venv ]; then \
+		echo "$(BLUE)Creating virtual environment...$(NC)"; \
+		$(PYTHON) -m venv .venv; \
+		echo "$(GREEN)✓ Virtual environment created at .venv$(NC)"; \
+		echo "$(YELLOW)Activate with: source .venv/bin/activate (Unix) or .venv\\Scripts\\activate (Windows)$(NC)"; \
+	else \
+		echo "$(YELLOW)Virtual environment already exists at .venv$(NC)"; \
+	fi
+
 install: ## Install production dependencies
 	$(PIP) install -r lambda/scheduler/requirements.txt
 	$(PIP) install -r lambda/purchaser/requirements.txt
@@ -57,6 +67,10 @@ setup-local: install-dev ## Setup local development environment
 	@mkdir -p $(LOCAL_DATA_DIR)/logs
 	@echo "$(GREEN)✓ Local data directories created$(NC)"
 	@echo "$(GREEN)✓ Local development environment ready$(NC)"
+
+setup-venv: venv install-dev ## Create venv and install dev dependencies
+	@echo "$(GREEN)✓ Virtual environment setup complete$(NC)"
+	@echo "$(YELLOW)Activate with: source .venv/bin/activate (Unix) or .venv\\Scripts\\activate (Windows)$(NC)"
 
 # Testing targets
 test: ## Run all tests
