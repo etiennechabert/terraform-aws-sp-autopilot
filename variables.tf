@@ -362,8 +362,8 @@ variable "name_prefix" {
   }
 
   validation {
-    condition     = length(var.name_prefix) <= 32
-    error_message = "name_prefix must be 32 characters or less."
+    condition     = length(var.name_prefix) <= 64
+    error_message = "name_prefix must be 64 characters or less."
   }
 }
 
