@@ -647,7 +647,22 @@ See [Organizations example](examples/organizations/README.md) for detailed setup
 
 ## License
 
-This module is open-source software licensed under the MIT License.
+This module is open-source software licensed under the Apache License 2.0.
+
+## Used By
+
+Using this module in production? We'd love to hear from you!
+
+**Add your company logo:**
+1. Fork this repo
+2. Add your logo to `docs/users/` (PNG/SVG, max 200px width)
+3. Submit a PR updating this section
+
+Your company here:
+<!-- Add your company logo and link below -->
+<!-- Example: [![Company Name](docs/users/company-logo.png)](https://company.com) -->
+
+*Be the first to showcase your use of terraform-aws-sp-autopilot!*
 
 ## Contributing
 
