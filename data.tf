@@ -189,8 +189,9 @@ locals {
   # Monitoring Settings
   # ==========================================================================
 
-  enable_dlq_alarm       = try(var.monitoring.dlq_alarm, true)
-  lambda_error_threshold = try(var.monitoring.error_threshold, 1)
+  enable_dlq_alarm          = try(var.monitoring.dlq_alarm, true)
+  lambda_error_threshold    = try(var.monitoring.error_threshold, 1)
+  low_utilization_threshold = try(var.monitoring.low_utilization_threshold, 70)
 
   # ==========================================================================
   # Scheduling (null = disabled)

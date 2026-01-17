@@ -119,6 +119,7 @@ resource "aws_lambda_function" "reporter" {
       EMAIL_REPORTS               = tostring(local.email_reports)
       SLACK_WEBHOOK_URL           = local.slack_webhook_url
       TEAMS_WEBHOOK_URL           = local.teams_webhook_url
+      LOW_UTILIZATION_THRESHOLD   = tostring(local.low_utilization_threshold)
       MANAGEMENT_ACCOUNT_ROLE_ARN = local.lambda_reporter_assume_role_arn
       TAGS                        = jsonencode(local.common_tags)
     }
