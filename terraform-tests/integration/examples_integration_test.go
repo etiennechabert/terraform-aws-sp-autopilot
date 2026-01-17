@@ -2,16 +2,39 @@ package test
 
 import (
 	"fmt"
+	"io"
 	"os"
 	"path/filepath"
+	"regexp"
 	"strings"
 	"testing"
 	"time"
 
+	"github.com/gruntwork-io/terratest/modules/logger"
 	"github.com/gruntwork-io/terratest/modules/terraform"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
+
+// cleanWriter strips the "TestName timestamp file:line:" prefix from log lines
+type cleanWriter struct {
+	output io.Writer
+}
+
+func (w *cleanWriter) Write(p []byte) (n int, err error) {
+	// Pattern: "TestName YYYY-MM-DDTHH:MM:SSZ file.go:123: "
+	// Example: "TestExampleSingleAccountCompute 2026-01-17T08:32:32Z logger.go:66: "
+	pattern := regexp.MustCompile(`^[A-Za-z0-9_]+ \d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z [a-z]+\.go:\d+: `)
+
+	line := string(p)
+	cleaned := pattern.ReplaceAllString(line, "")
+
+	return w.output.Write([]byte(cleaned))
+}
+
+func getCleanLogger() *logger.Logger {
+	return logger.New(&cleanWriter{output: os.Stdout})
+}
 
 // TestExampleSingleAccountCompute validates the single-account-compute example
 // Focus: Compute SP with mixed term/payment options (3-year + 1-year, all-upfront)
@@ -44,6 +67,7 @@ func TestExampleSingleAccountCompute(t *testing.T) {
 			},
 		},
 		NoColor: true,
+		Logger:  getCleanLogger(),
 	})
 
 	defer terraform.Destroy(t, terraformOptions)
@@ -85,6 +109,7 @@ func TestExampleDatabaseOnly(t *testing.T) {
 			},
 		},
 		NoColor: true,
+		Logger:  getCleanLogger(),
 	})
 
 	defer terraform.Destroy(t, terraformOptions)
@@ -123,6 +148,7 @@ func TestExampleDichotomyStrategy(t *testing.T) {
 			},
 		},
 		NoColor: true,
+		Logger:  getCleanLogger(),
 	})
 
 	defer terraform.Destroy(t, terraformOptions)
