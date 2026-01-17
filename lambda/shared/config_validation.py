@@ -109,3 +109,120 @@ def _validate_term_mix(term_mix: Any, field_name: str) -> None:
         raise ValueError(
             f"Field '{field_name}' values must sum to approximately 1.0, got {total}"
         )
+
+
+def validate_scheduler_config(config: dict[str, Any]) -> None:
+    """
+    Validate scheduler configuration schema and data types.
+
+    Validates:
+    - Coverage and purchase percentages are within valid ranges (0-100)
+    - Time-based fields are positive integers
+    - Minimum commitment is non-negative
+    - Term mix dictionaries sum to approximately 1.0
+    - Payment options are valid
+    - Purchase strategy type is valid
+    - Logical constraints (min < max, lookback >= min_data_days)
+
+    Args:
+        config: Dictionary containing scheduler configuration
+
+    Returns:
+        None (validation passes silently)
+
+    Raises:
+        ValueError: If validation fails with descriptive error message
+    """
+    if not isinstance(config, dict):
+        raise ValueError(
+            f"Configuration must be a dictionary, got {type(config).__name__}"
+        )
+
+    # Validate percentage fields (0-100 range)
+    if "coverage_target_percent" in config:
+        _validate_percentage_range(
+            config["coverage_target_percent"], "coverage_target_percent"
+        )
+
+    if "max_purchase_percent" in config:
+        _validate_percentage_range(config["max_purchase_percent"], "max_purchase_percent")
+
+    if "min_purchase_percent" in config:
+        _validate_percentage_range(config["min_purchase_percent"], "min_purchase_percent")
+
+    # Validate min_purchase_percent < max_purchase_percent
+    if "min_purchase_percent" in config and "max_purchase_percent" in config:
+        if config["min_purchase_percent"] >= config["max_purchase_percent"]:
+            raise ValueError(
+                f"Field 'min_purchase_percent' ({config['min_purchase_percent']}) must be less than 'max_purchase_percent' ({config['max_purchase_percent']})"
+            )
+
+    # Validate positive integer fields
+    if "renewal_window_days" in config:
+        _validate_positive_number(config["renewal_window_days"], "renewal_window_days")
+        if not isinstance(config["renewal_window_days"], int):
+            raise ValueError(
+                f"Field 'renewal_window_days' must be an integer, got {type(config['renewal_window_days']).__name__}: {config['renewal_window_days']}"
+            )
+
+    if "lookback_days" in config:
+        _validate_positive_number(config["lookback_days"], "lookback_days")
+        if not isinstance(config["lookback_days"], int):
+            raise ValueError(
+                f"Field 'lookback_days' must be an integer, got {type(config['lookback_days']).__name__}: {config['lookback_days']}"
+            )
+
+    if "min_data_days" in config:
+        _validate_positive_number(config["min_data_days"], "min_data_days")
+        if not isinstance(config["min_data_days"], int):
+            raise ValueError(
+                f"Field 'min_data_days' must be an integer, got {type(config['min_data_days']).__name__}: {config['min_data_days']}"
+            )
+
+    # Validate lookback_days >= min_data_days
+    if "lookback_days" in config and "min_data_days" in config:
+        if config["lookback_days"] < config["min_data_days"]:
+            raise ValueError(
+                f"Field 'lookback_days' ({config['lookback_days']}) must be greater than or equal to 'min_data_days' ({config['min_data_days']})"
+            )
+
+    # Validate min_commitment_per_plan is non-negative
+    if "min_commitment_per_plan" in config:
+        if not isinstance(config["min_commitment_per_plan"], (int, float)):
+            raise ValueError(
+                f"Field 'min_commitment_per_plan' must be a number, got {type(config['min_commitment_per_plan']).__name__}: {config['min_commitment_per_plan']}"
+            )
+        if config["min_commitment_per_plan"] < 0:
+            raise ValueError(
+                f"Field 'min_commitment_per_plan' must be greater than or equal to 0, got {config['min_commitment_per_plan']}"
+            )
+
+    # Validate term mix dictionaries
+    if "compute_sp_term_mix" in config:
+        _validate_term_mix(config["compute_sp_term_mix"], "compute_sp_term_mix")
+
+    if "sagemaker_sp_term_mix" in config:
+        _validate_term_mix(config["sagemaker_sp_term_mix"], "sagemaker_sp_term_mix")
+
+    # Validate payment options
+    if "compute_sp_payment_option" in config:
+        payment_option = config["compute_sp_payment_option"]
+        if payment_option not in VALID_PAYMENT_OPTIONS:
+            raise ValueError(
+                f"Invalid compute_sp_payment_option: '{payment_option}'. Must be one of: {', '.join(VALID_PAYMENT_OPTIONS)}"
+            )
+
+    if "sagemaker_sp_payment_option" in config:
+        payment_option = config["sagemaker_sp_payment_option"]
+        if payment_option not in VALID_PAYMENT_OPTIONS:
+            raise ValueError(
+                f"Invalid sagemaker_sp_payment_option: '{payment_option}'. Must be one of: {', '.join(VALID_PAYMENT_OPTIONS)}"
+            )
+
+    # Validate purchase strategy type
+    if "purchase_strategy_type" in config:
+        strategy_type = config["purchase_strategy_type"]
+        if strategy_type not in VALID_PURCHASE_STRATEGIES:
+            raise ValueError(
+                f"Invalid purchase_strategy_type: '{strategy_type}'. Must be one of: {', '.join(VALID_PURCHASE_STRATEGIES)}"
+            )
