@@ -125,9 +125,16 @@ func TestExampleDichotomyStrategy(t *testing.T) {
 // prepareExampleForTesting creates a temporary copy of an example directory
 // and modifies the module source to point to the local codebase instead of the registry.
 func prepareExampleForTesting(t *testing.T, exampleDir string, namePrefix string) string {
+	// Get absolute path to module root (../../ from terraform-tests/integration/)
+	moduleRoot, err := filepath.Abs("../../")
+	require.NoError(t, err, "Failed to get module root path")
+
 	// Create a temp directory for this test
 	tempDir, err := os.MkdirTemp("", "terratest-example-*")
 	require.NoError(t, err, "Failed to create temp directory")
+
+	t.Logf("Module root: %s", moduleRoot)
+	t.Logf("Temp directory: %s", tempDir)
 
 	// Copy all .tf files from the example
 	err = filepath.Walk(exampleDir, func(path string, info os.FileInfo, err error) error {
@@ -153,11 +160,10 @@ func prepareExampleForTesting(t *testing.T, exampleDir string, namePrefix string
 		// Modify the module source to point to local codebase
 		contentStr := string(content)
 
-		// Replace registry source with local path (relative to temp dir)
-		// The local module is at ../../../../ from the temp directory
+		// Replace registry source with absolute path to module root
 		contentStr = strings.ReplaceAll(contentStr,
 			`source  = "etiennechabert/sp-autopilot/aws"`,
-			`source = "../../../../"`)
+			fmt.Sprintf(`source = "%s"`, filepath.ToSlash(moduleRoot)))
 
 		// Remove version constraint (not needed for local source)
 		lines := strings.Split(contentStr, "\n")
