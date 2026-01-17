@@ -17,7 +17,6 @@ import (
 // Focus: Compute SP with mixed term/payment options (3-year + 1-year, all-upfront)
 func TestExampleSingleAccountCompute(t *testing.T) {
 	t.Parallel()
-	awsRegion := "us-east-1"
 	exampleDir := "../../examples/single-account-compute"
 
 	// Generate unique name prefix
@@ -57,7 +56,6 @@ func TestExampleSingleAccountCompute(t *testing.T) {
 // Focus: Database SP only (RDS/Aurora) with single payment option
 func TestExampleDatabaseOnly(t *testing.T) {
 	t.Parallel()
-	awsRegion := "us-east-1"
 	exampleDir := "../../examples/database-only"
 
 	uniquePrefix := fmt.Sprintf("sp-test-db-%s", time.Now().Format("0102-150405"))
@@ -93,7 +91,6 @@ func TestExampleDatabaseOnly(t *testing.T) {
 // Focus: Dichotomy purchase strategy with adaptive purchase sizing
 func TestExampleDichotomyStrategy(t *testing.T) {
 	t.Parallel()
-	awsRegion := "us-east-1"
 	exampleDir := "../../examples/dichotomy-strategy"
 
 	uniquePrefix := fmt.Sprintf("sp-test-dich-%s", time.Now().Format("0102-150405"))
