@@ -543,13 +543,13 @@ module "savings_plans" {
   # Per-Lambda roles for least privilege access
   lambda_config = {
     scheduler = {
-      assume_role_arn = "arn:aws:iam::123456789012:role/SavingsPlansSchedulerRole"
+      assume_role_arn = "arn:aws:iam::123456789012:role/SavingsPlansReadOnlyRole"
     }
     purchaser = {
       assume_role_arn = "arn:aws:iam::123456789012:role/SavingsPlansPurchaserRole"
     }
     reporter = {
-      assume_role_arn = "arn:aws:iam::123456789012:role/SavingsPlansReporterRole"
+      assume_role_arn = "arn:aws:iam::123456789012:role/SavingsPlansReadOnlyRole"
     }
   }
   # ... other configuration
@@ -558,9 +558,9 @@ module "savings_plans" {
 
 ### IAM Roles Setup in Management Account
 
-Each Lambda function assumes a different role with minimal permissions:
+Two roles provide least privilege access: a shared read-only role for Scheduler and Reporter, and a unique Purchaser role with write permissions.
 
-#### 1. Scheduler Role (Read-Only)
+#### 1. Read-Only Role (Scheduler and Reporter)
 
 **Trust Policy:**
 ```json
@@ -569,7 +569,10 @@ Each Lambda function assumes a different role with minimal permissions:
   "Statement": [{
     "Effect": "Allow",
     "Principal": {
-      "AWS": "arn:aws:iam::SECONDARY_ACCOUNT_ID:role/sp-autopilot-scheduler-role"
+      "AWS": [
+        "arn:aws:iam::SECONDARY_ACCOUNT_ID:role/sp-autopilot-scheduler-role",
+        "arn:aws:iam::SECONDARY_ACCOUNT_ID:role/sp-autopilot-reporter-role"
+      ]
     },
     "Action": "sts:AssumeRole"
   }]
@@ -585,6 +588,7 @@ Each Lambda function assumes a different role with minimal permissions:
     "Action": [
       "ce:GetSavingsPlansPurchaseRecommendation",
       "ce:GetSavingsPlansCoverage",
+      "ce:GetSavingsPlansUtilization",
       "savingsplans:DescribeSavingsPlans"
     ],
     "Resource": "*"
@@ -592,7 +596,7 @@ Each Lambda function assumes a different role with minimal permissions:
 }
 ```
 
-#### 2. Purchaser Role (Purchase Permissions)
+#### 2. Purchaser Role (Write Permissions)
 
 **Trust Policy:**
 ```json
@@ -624,39 +628,7 @@ Each Lambda function assumes a different role with minimal permissions:
 }
 ```
 
-#### 3. Reporter Role (Read-Only)
-
-**Trust Policy:**
-```json
-{
-  "Version": "2012-10-17",
-  "Statement": [{
-    "Effect": "Allow",
-    "Principal": {
-      "AWS": "arn:aws:iam::SECONDARY_ACCOUNT_ID:role/sp-autopilot-reporter-role"
-    },
-    "Action": "sts:AssumeRole"
-  }]
-}
-```
-
-**Permissions Policy:**
-```json
-{
-  "Version": "2012-10-17",
-  "Statement": [{
-    "Effect": "Allow",
-    "Action": [
-      "ce:GetSavingsPlansCoverage",
-      "ce:GetSavingsPlansUtilization",
-      "savingsplans:DescribeSavingsPlans"
-    ],
-    "Resource": "*"
-  }]
-}
-```
-
-**Security Note:** Only the purchaser Lambda has `CreateSavingsPlan` permissions, following the principle of least privilege.
+**Security Note:** Only the Purchaser Lambda has `CreateSavingsPlan` permissions. Scheduler and Reporter share a read-only role, simplifying management while maintaining least privilege.
 
 See [Organizations example](examples/organizations/README.md) for detailed setup instructions.
 
