@@ -16,7 +16,7 @@ import (
 // TestExampleSingleAccountCompute validates the single-account-compute example
 // Focus: Compute SP with mixed term/payment options (3-year + 1-year, all-upfront)
 func TestExampleSingleAccountCompute(t *testing.T) {
-	t.Parallel()
+	// Note: NOT using t.Parallel() to avoid IAM rate limits when creating roles
 	exampleDir := "../../examples/single-account-compute"
 
 	// Generate unique name prefix
@@ -55,7 +55,7 @@ func TestExampleSingleAccountCompute(t *testing.T) {
 // TestExampleDatabaseOnly validates the database-only example
 // Focus: Database SP only (RDS/Aurora) with single payment option
 func TestExampleDatabaseOnly(t *testing.T) {
-	t.Parallel()
+	// Note: NOT using t.Parallel() to avoid IAM rate limits when creating roles
 	exampleDir := "../../examples/database-only"
 
 	uniquePrefix := fmt.Sprintf("sp-test-db-%s", time.Now().Format("0102-150405"))
@@ -90,7 +90,7 @@ func TestExampleDatabaseOnly(t *testing.T) {
 // TestExampleDichotomyStrategy validates the dichotomy-strategy example
 // Focus: Dichotomy purchase strategy with adaptive purchase sizing
 func TestExampleDichotomyStrategy(t *testing.T) {
-	t.Parallel()
+	// Note: NOT using t.Parallel() to avoid IAM rate limits when creating roles
 	exampleDir := "../../examples/dichotomy-strategy"
 
 	uniquePrefix := fmt.Sprintf("sp-test-dich-%s", time.Now().Format("0102-150405"))
