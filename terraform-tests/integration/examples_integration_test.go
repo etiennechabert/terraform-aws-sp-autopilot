@@ -8,10 +8,56 @@ import (
 	"testing"
 	"time"
 
+	"github.com/gruntwork-io/terratest/modules/logger"
 	"github.com/gruntwork-io/terratest/modules/terraform"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
+
+// quietLogger reduces log verbosity by filtering out verbose terraform output
+type quietLogger struct {
+	*logger.Logger
+}
+
+func (l *quietLogger) Logf(t logger.TestingT, format string, args ...interface{}) {
+	msg := fmt.Sprintf(format, args...)
+
+	// Skip verbose terraform output lines
+	skipPatterns := []string{
+		"Running command terraform with args",
+		"Initializing the backend",
+		"Initializing provider plugins",
+		"Terraform has been successfully initialized",
+		"You may now begin working with Terraform",
+		"If you ever set or change modules",
+		"Finding hashicorp/",
+		"Installing hashicorp/",
+		"Installed hashicorp/",
+		"Terraform has created a lock file",
+		"Reading...",
+		"Read complete after",
+		"Still creating...",
+		"Still destroying...",
+		"Creation complete after",
+		"Destruction complete after",
+		"Refreshing state...",
+		"data.archive_file.",
+		"data.aws_region.",
+		"data.aws_caller_identity.",
+		"null_resource.",
+		"aws_cloudwatch_log_group.",
+		"aws_s3_bucket_",
+	}
+
+	for _, pattern := range skipPatterns {
+		if strings.Contains(msg, pattern) {
+			return
+		}
+	}
+
+	// Log important messages
+	l.Logger.Logf(t, format, args...)
+}
 
 // TestExampleSingleAccountCompute validates the single-account-compute example
 // Focus: Compute SP with mixed term/payment options (3-year + 1-year, all-upfront)
@@ -26,6 +72,8 @@ func TestExampleSingleAccountCompute(t *testing.T) {
 	testDir := prepareExampleForTesting(t, exampleDir, uniquePrefix)
 	defer os.RemoveAll(testDir)
 
+	t.Logf("Testing example: %s", exampleDir)
+
 	terraformOptions := terraform.WithDefaultRetryableErrors(t, &terraform.Options{
 		TerraformDir: testDir,
 		Vars: map[string]interface{}{
@@ -42,6 +90,7 @@ func TestExampleSingleAccountCompute(t *testing.T) {
 			},
 		},
 		NoColor: true,
+		Logger:  &quietLogger{Logger: logger.New(logger.Discard)},
 	})
 
 	defer terraform.Destroy(t, terraformOptions)
@@ -50,6 +99,8 @@ func TestExampleSingleAccountCompute(t *testing.T) {
 	// Validate compute SP is enabled with the expected term mix
 	schedulerLambdaName := terraform.Output(t, terraformOptions, "scheduler_lambda_name")
 	assert.Contains(t, schedulerLambdaName, uniquePrefix+"-scheduler")
+
+	t.Logf("✓ Example validation passed: %s", exampleDir)
 }
 
 // TestExampleDatabaseOnly validates the database-only example
@@ -63,6 +114,8 @@ func TestExampleDatabaseOnly(t *testing.T) {
 	testDir := prepareExampleForTesting(t, exampleDir, uniquePrefix)
 	defer os.RemoveAll(testDir)
 
+	t.Logf("Testing example: %s", exampleDir)
+
 	terraformOptions := terraform.WithDefaultRetryableErrors(t, &terraform.Options{
 		TerraformDir: testDir,
 		Vars: map[string]interface{}{
@@ -79,6 +132,7 @@ func TestExampleDatabaseOnly(t *testing.T) {
 			},
 		},
 		NoColor: true,
+		Logger:  &quietLogger{Logger: logger.New(logger.Discard)},
 	})
 
 	defer terraform.Destroy(t, terraformOptions)
@@ -99,6 +153,8 @@ func TestExampleDichotomyStrategy(t *testing.T) {
 	testDir := prepareExampleForTesting(t, exampleDir, uniquePrefix)
 	defer os.RemoveAll(testDir)
 
+	t.Logf("Testing example: %s", exampleDir)
+
 	terraformOptions := terraform.WithDefaultRetryableErrors(t, &terraform.Options{
 		TerraformDir: testDir,
 		Vars: map[string]interface{}{
@@ -115,6 +171,7 @@ func TestExampleDichotomyStrategy(t *testing.T) {
 			},
 		},
 		NoColor: true,
+		Logger:  &quietLogger{Logger: logger.New(logger.Discard)},
 	})
 
 	defer terraform.Destroy(t, terraformOptions)
@@ -133,7 +190,7 @@ func prepareExampleForTesting(t *testing.T, exampleDir string, namePrefix string
 	err := os.MkdirAll(testDir, 0755)
 	require.NoError(t, err, "Failed to create test directory")
 
-	t.Logf("Test directory: %s", testDir)
+	fileCount := 0
 
 	// Copy all .tf files from the example
 	err = filepath.Walk(exampleDir, func(path string, info os.FileInfo, err error) error {
@@ -199,10 +256,12 @@ func prepareExampleForTesting(t *testing.T, exampleDir string, namePrefix string
 			return fmt.Errorf("failed to write %s: %w", destPath, err)
 		}
 
-		t.Logf("Copied and modified: %s -> %s", path, destPath)
+		fileCount++
 		return nil
 	})
 	require.NoError(t, err, "Failed to prepare example for testing")
+
+	t.Logf("Prepared example with %d files in %s", fileCount, testDir)
 
 	return testDir
 }
