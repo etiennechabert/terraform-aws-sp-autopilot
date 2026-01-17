@@ -14,6 +14,8 @@ import json
 import logging
 from datetime import datetime, timedelta, timezone
 from typing import Any, Dict, List
+import sys
+from pathlib import Path
 
 import boto3
 from botocore.exceptions import ClientError
@@ -25,6 +27,10 @@ from shared.handler_utils import (
     load_config_from_env,
     send_error_notification,
 )
+
+# Import storage adapter for local/AWS mode support
+sys.path.insert(0, str(Path(__file__).parent.parent / "shared"))
+from storage_adapter import StorageAdapter
 
 
 # Configure logging
@@ -1063,7 +1069,8 @@ def upload_report_to_s3(
     config: Dict[str, Any], report_content: str, report_format: str = "html"
 ) -> str:
     """
-    Upload report to S3 with timestamp-based key.
+    Upload report to storage.
+    Supports both AWS S3 and local filesystem modes.
 
     Uses module-level s3_client for S3 operations.
 
@@ -1073,29 +1080,20 @@ def upload_report_to_s3(
         report_format: Report format (default: 'html')
 
     Returns:
-        str: S3 object key for the uploaded report
+        str: S3 object key (AWS mode) or file path (local mode)
 
     Raises:
-        ClientError: If S3 upload fails
+        ClientError: If upload fails
     """
     bucket_name = config["reports_bucket"]
-    timestamp = datetime.now(timezone.utc).strftime("%Y-%m-%d_%H-%M-%S")
-    object_key = f"savings-plans-report_{timestamp}.{report_format}"
-
-    logger.info(f"Uploading report to S3: s3://{bucket_name}/{object_key}")
+    logger.info(f"Uploading report to storage: {bucket_name}")
 
     try:
-        # Upload to S3
-        s3_client.put_object(
-            Bucket=bucket_name,
-            Key=object_key,
-            Body=report_content.encode("utf-8"),
-            ContentType="application/json" if report_format == "json" else "text/html",
-            ServerSideEncryption="AES256",
-            Metadata={
-                "generated-at": datetime.now(timezone.utc).isoformat(),
-                "generator": "sp-autopilot-reporter",
-            },
+        # Use storage adapter for both local and AWS modes
+        storage_adapter = StorageAdapter(s3_client=s3_client, bucket_name=bucket_name)
+        object_key = storage_adapter.upload_report(
+            report_content=report_content,
+            report_format=report_format
         )
 
         logger.info(f"Report uploaded successfully: {object_key}")
@@ -1105,7 +1103,7 @@ def upload_report_to_s3(
         error_code = e.response.get("Error", {}).get("Code", "Unknown")
         error_message = e.response.get("Error", {}).get("Message", str(e))
         logger.error(
-            f"Failed to upload report to S3 - Code: {error_code}, Message: {error_message}"
+            f"Failed to upload report - Code: {error_code}, Message: {error_message}"
         )
         raise
 

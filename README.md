@@ -24,6 +24,7 @@ Automates AWS Savings Plans purchases based on usage analysis, maintaining consi
 - [Cross-Account Setup for AWS Organizations](#cross-account-setup-for-aws-organizations)
 - [Requirements](#requirements)
 - [License](#license)
+- [Development](#development)
 - [Contributing](#contributing)
 - [Support](#support)
 
@@ -663,6 +664,52 @@ Your company here:
 <!-- Example: [![Company Name](docs/users/company-logo.png)](https://company.com) -->
 
 *Be the first to showcase your use of terraform-aws-sp-autopilot!*
+
+## Development
+
+### Local Development and Debugging
+
+You can run and debug the Lambda functions locally on your development machine using the local runner:
+
+```bash
+# Install development dependencies
+pip install -r requirements-dev.txt
+
+# Configure local environment
+cp .env.local.example .env.local
+# Edit .env.local with your AWS credentials
+
+# Run Lambdas locally with filesystem I/O
+python local_runner.py scheduler --dry-run
+python local_runner.py purchaser
+python local_runner.py reporter --format html
+```
+
+In local mode:
+- **SQS messages** → JSON files in `local_data/queue/`
+- **S3 reports** → Files in `local_data/reports/`
+- **AWS APIs** → Real Cost Explorer and Savings Plans APIs (read-only unless purchasing)
+
+This enables:
+- Fast iteration without AWS deployments
+- IDE breakpoint debugging
+- Inspection of queue messages and reports
+- Testing without AWS costs
+
+**See [LOCAL_DEVELOPMENT.md](LOCAL_DEVELOPMENT.md) for detailed instructions.**
+
+### Running Tests
+
+```bash
+# Run all tests
+pytest tests/ -v
+
+# Run local mode tests
+pytest tests/test_local_mode.py tests/test_local_runner.py -v
+
+# Run with coverage
+pytest tests/ --cov=lambda --cov-report=html
+```
 
 ## Contributing
 
