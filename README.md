@@ -349,7 +349,6 @@ For complete variable documentation including `lambda_config`, `purchase_strateg
 
 - **[variables.tf](variables.tf)** — Full variable definitions with types, defaults, and validation rules
 - **[examples/](examples/)** — Working examples for common deployment scenarios
-- **[MIGRATION.md](MIGRATION.md)** — Migration guide for v1.x users
 
 ## Supported Services
 

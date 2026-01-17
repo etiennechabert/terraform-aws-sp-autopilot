@@ -1,6 +1,5 @@
 # AWS Savings Plans Automation Module
-# Version: 2.0 - Refactored with transformation locals
-# Purpose: Data sources and local variables
+# Data sources and local variables
 
 # ============================================================================
 # Data Sources

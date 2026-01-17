@@ -1,5 +1,4 @@
 # AWS Savings Plans Automation Module - EventBridge Schedules
-# Version: 2.0
 # Purpose: Defines EventBridge schedules for automated Lambda function triggers
 
 # ============================================================================
