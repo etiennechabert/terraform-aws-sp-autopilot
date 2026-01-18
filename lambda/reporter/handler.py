@@ -28,6 +28,17 @@ from shared.handler_utils import (
 )
 from shared.storage_adapter import StorageAdapter
 
+# Import new modular components
+# Import with aliases to avoid shadowing when we create backward-compatible wrappers
+from config import CONFIG_SCHEMA
+
+import alerts as alerts_module
+import csv_report as csv_module
+import data_collector as data_module
+import email_notifications as email_module
+import html_report as html_module
+import json_report as json_module
+
 
 # Configure logging
 logger = logging.getLogger()
@@ -174,39 +185,10 @@ def handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
 
 
 def load_configuration() -> Dict[str, Any]:
-    """Load and validate configuration from environment variables."""
-    schema = {
-        "reports_bucket": {"required": True, "type": "str", "env_var": "REPORTS_BUCKET"},
-        "sns_topic_arn": {"required": True, "type": "str", "env_var": "SNS_TOPIC_ARN"},
-        "report_format": {
-            "required": False,
-            "type": "str",
-            "default": "html",
-            "env_var": "REPORT_FORMAT",
-        },
-        "email_reports": {
-            "required": False,
-            "type": "bool",
-            "default": "false",
-            "env_var": "EMAIL_REPORTS",
-        },
-        "management_account_role_arn": {
-            "required": False,
-            "type": "str",
-            "env_var": "MANAGEMENT_ACCOUNT_ROLE_ARN",
-        },
-        "tags": {"required": False, "type": "json", "default": "{}", "env_var": "TAGS"},
-        "slack_webhook_url": {"required": False, "type": "str", "env_var": "SLACK_WEBHOOK_URL"},
-        "teams_webhook_url": {"required": False, "type": "str", "env_var": "TEAMS_WEBHOOK_URL"},
-        "low_utilization_threshold": {
-            "required": False,
-            "type": "float",
-            "default": "70",
-            "env_var": "LOW_UTILIZATION_THRESHOLD",
-        },
-    }
+    """Load configuration - backward compatible wrapper."""
+    from config import load_configuration as config_load
 
-    return load_config_from_env(schema)
+    return config_load()
 
 
 def get_coverage_history(ce_client: Any = None, lookback_days: int = 30) -> List[Dict[str, Any]]:
