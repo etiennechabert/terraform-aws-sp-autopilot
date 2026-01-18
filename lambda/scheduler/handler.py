@@ -20,7 +20,8 @@ import importlib.util
 import json
 import logging
 import os as _os_for_import
-from typing import Any
+from concurrent.futures import ThreadPoolExecutor, as_completed
+from typing import Any, Dict
 
 from mypy_boto3_ce.client import CostExplorerClient
 from mypy_boto3_savingsplans.client import SavingsPlansClient
@@ -263,16 +264,26 @@ def handler(event: dict[str, Any], context: Any) -> dict[str, Any]:
         # Step 1: Purge existing queue
         queue_module.purge_queue(sqs_client, config["queue_url"])
 
-        # Step 2: Calculate current coverage
-        coverage = coverage_module.calculate_current_coverage(
-            savingsplans_client, ce_client, config
-        )
+        # Step 2 & 3: Calculate coverage and get recommendations in parallel
+        with ThreadPoolExecutor(max_workers=2) as executor:
+            # Submit both tasks for parallel execution
+            coverage_future = executor.submit(
+                coverage_module.calculate_current_coverage,
+                savingsplans_client,
+                ce_client,
+                config,
+            )
+            recommendations_future = executor.submit(
+                recommendations_module.get_aws_recommendations, ce_client, config
+            )
+
+            # Wait for results
+            coverage = coverage_future.result()
+            recommendations = recommendations_future.result()
+
         logger.info(
             f"Current coverage - Compute: {coverage.get('compute', 0)}%, Database: {coverage.get('database', 0)}%, SageMaker: {coverage.get('sagemaker', 0)}%"
         )
-
-        # Step 3: Get AWS recommendations
-        recommendations = recommendations_module.get_aws_recommendations(ce_client, config)
 
         # Step 4: Calculate purchase need
         purchase_plans = purchase_module.calculate_purchase_need(config, coverage, recommendations)

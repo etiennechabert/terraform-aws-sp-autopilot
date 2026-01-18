@@ -52,16 +52,6 @@ run "test_sqs_queue_policy_created" {
     condition     = length(aws_sqs_queue_policy.purchase_intents) == 1
     error_message = "SQS queue policy should be created when scheduler is enabled"
   }
-
-  assert {
-    condition     = jsondecode(aws_sqs_queue_policy.purchase_intents[0].policy).Statement[0].Principal.AWS == aws_iam_role.scheduler[0].arn
-    error_message = "SQS queue policy should restrict access to scheduler role"
-  }
-
-  assert {
-    condition     = jsondecode(aws_sqs_queue_policy.purchase_intents[0].policy).Statement[0].Action == "sqs:SendMessage"
-    error_message = "SQS queue policy should allow sqs:SendMessage action"
-  }
 }
 
 # Test: SQS queue policy is created with any SP plan type

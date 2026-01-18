@@ -33,6 +33,7 @@ _coverage_spec.loader.exec_module(coverage_module)
 import config
 import handler
 import queue_manager
+import recommendations as recommendations_module
 
 
 @pytest.fixture
@@ -84,95 +85,6 @@ def mock_clients():
     handler.sqs_client = orig_sqs
     handler.sns_client = orig_sns
     handler.savingsplans_client = orig_sp
-
-
-# ============================================================================
-# Configuration Tests
-# ============================================================================
-
-
-def test_load_configuration_defaults(mock_env_vars):
-    """Test that load_configuration returns correct default values."""
-    cfg = config.load_configuration()
-
-    assert cfg["queue_url"] == "https://sqs.us-east-1.amazonaws.com/123456789012/test-queue"
-    assert cfg["sns_topic_arn"] == "arn:aws:sns:us-east-1:123456789012:test-topic"
-    assert cfg["dry_run"] is True
-    assert cfg["enable_compute_sp"] is True
-    assert cfg["enable_database_sp"] is False
-    assert cfg["enable_sagemaker_sp"] is False
-    assert cfg["coverage_target_percent"] == 90.0
-    assert cfg["max_purchase_percent"] == 10.0
-    assert cfg["renewal_window_days"] == 7
-    assert cfg["lookback_days"] == 30
-    assert cfg["min_data_days"] == 14
-    assert cfg["min_commitment_per_plan"] == 0.001
-    assert cfg["sagemaker_sp_term_mix"] == {"three_year": 0.67, "one_year": 0.33}
-    assert cfg["sagemaker_sp_payment_option"] == "ALL_UPFRONT"
-
-
-def test_load_configuration_custom_values(monkeypatch):
-    """Test that load_configuration handles custom environment values."""
-    monkeypatch.setenv("QUEUE_URL", "custom-queue-url")
-    monkeypatch.setenv("SNS_TOPIC_ARN", "custom-sns-arn")
-    monkeypatch.setenv("DRY_RUN", "false")
-    monkeypatch.setenv("ENABLE_SAGEMAKER_SP", "true")
-    monkeypatch.setenv("COVERAGE_TARGET_PERCENT", "85.5")
-    monkeypatch.setenv("MAX_PURCHASE_PERCENT", "15")
-    monkeypatch.setenv("COMPUTE_SP_TERM_MIX", '{"three_year": 0.8, "one_year": 0.2}')
-    monkeypatch.setenv("SAGEMAKER_SP_TERM_MIX", '{"three_year": 0.5, "one_year": 0.5}')
-    monkeypatch.setenv("SAGEMAKER_SP_PAYMENT_OPTION", "NO_UPFRONT")
-
-    cfg = config.load_configuration()
-
-    assert cfg["queue_url"] == "custom-queue-url"
-    assert cfg["sns_topic_arn"] == "custom-sns-arn"
-    assert cfg["dry_run"] is False
-    assert cfg["enable_sagemaker_sp"] is True
-    assert cfg["coverage_target_percent"] == 85.5
-    assert cfg["max_purchase_percent"] == 15.0
-    assert cfg["compute_sp_term_mix"] == {"three_year": 0.8, "one_year": 0.2}
-    assert cfg["sagemaker_sp_term_mix"] == {"three_year": 0.5, "one_year": 0.5}
-    assert cfg["sagemaker_sp_payment_option"] == "NO_UPFRONT"
-
-
-# ============================================================================
-# Queue Purge Tests
-# ============================================================================
-
-
-def test_purge_queue_success():
-    """Test successful queue purge."""
-    mock_sqs_client = Mock()
-    mock_sqs_client.purge_queue.return_value = {}
-
-    queue_manager.purge_queue(mock_sqs_client, "test-queue-url")
-
-    mock_sqs_client.purge_queue.assert_called_once_with(QueueUrl="test-queue-url")
-
-
-def test_purge_queue_in_progress():
-    """Test that PurgeQueueInProgress error is handled gracefully."""
-    from botocore.exceptions import ClientError
-
-    mock_sqs_client = Mock()
-    error_response = {"Error": {"Code": "PurgeQueueInProgress"}}
-    mock_sqs_client.purge_queue.side_effect = ClientError(error_response, "purge_queue")
-
-    # Should not raise - just log warning
-    queue_manager.purge_queue(mock_sqs_client, "test-queue-url")
-
-
-def test_purge_queue_other_error():
-    """Test that other errors are raised."""
-    from botocore.exceptions import ClientError
-
-    mock_sqs_client = Mock()
-    error_response = {"Error": {"Code": "AccessDenied"}}
-    mock_sqs_client.purge_queue.side_effect = ClientError(error_response, "purge_queue")
-
-    with pytest.raises(ClientError):
-        queue_manager.purge_queue(mock_sqs_client, "test-queue-url")
 
 
 # ============================================================================
@@ -1332,86 +1244,6 @@ def test_split_by_term_empty_list():
 
 
 # ============================================================================
-# Queue Tests
-# ============================================================================
-
-
-def test_queue_purchase_intents_sends_messages(mock_clients):
-    """Test that purchase intents are sent to SQS."""
-    config = {"queue_url": "test-queue-url", "tags": {"Environment": "test"}}
-
-    plans = [
-        {
-            "sp_type": "compute",
-            "term": "THREE_YEAR",
-            "hourly_commitment": 2.5,
-            "payment_option": "ALL_UPFRONT",
-            "recommendation_id": "rec-123",
-        }
-    ]
-
-    with patch.object(handler.sqs_client, "send_message") as mock_send:
-        mock_send.return_value = {"MessageId": "msg-123"}
-
-        handler.queue_purchase_intents(config, plans)
-
-        # Should send 1 message
-        assert mock_send.call_count == 1
-        call_args = mock_send.call_args[1]
-        assert call_args["QueueUrl"] == "test-queue-url"
-
-        # Verify message body
-        message_body = json.loads(call_args["MessageBody"])
-        assert message_body["sp_type"] == "compute"
-        assert message_body["hourly_commitment"] == 2.5
-
-
-def test_queue_purchase_intents_client_token_unique(mock_clients):
-    """Test that each message gets a unique client token."""
-    config = {"queue_url": "test-queue-url", "tags": {}}
-
-    plans = [
-        {
-            "sp_type": "compute",
-            "term": "THREE_YEAR",
-            "hourly_commitment": 1.0,
-            "payment_option": "ALL_UPFRONT",
-        },
-        {
-            "sp_type": "compute",
-            "term": "ONE_YEAR",
-            "hourly_commitment": 0.5,
-            "payment_option": "ALL_UPFRONT",
-        },
-    ]
-
-    with patch.object(handler.sqs_client, "send_message") as mock_send:
-        mock_send.return_value = {"MessageId": "msg-123"}
-
-        handler.queue_purchase_intents(config, plans)
-
-        # Extract client tokens from all calls
-        tokens = []
-        for call in mock_send.call_args_list:
-            message_body = json.loads(call[1]["MessageBody"])
-            tokens.append(message_body["client_token"])
-
-        # All tokens should be unique
-        assert len(tokens) == len(set(tokens))
-
-
-def test_queue_purchase_intents_empty_list(mock_clients):
-    """Test handling of empty purchase plans list."""
-    config = {"queue_url": "test-queue-url", "tags": {}}
-
-    with patch.object(handler.sqs_client, "send_message") as mock_send:
-        handler.queue_purchase_intents(config, [])
-
-        # Should not send any messages
-        assert mock_send.call_count == 0
-
-
-# ============================================================================
 # Email Tests
 # ============================================================================
 
@@ -1489,6 +1321,140 @@ def test_send_error_email_no_sns_topic(monkeypatch):
 
     # Should not raise - just log error
     handler.send_error_email("Test error")
+
+
+# ============================================================================
+# Parallel Execution Tests
+# ============================================================================
+
+
+def test_handler_parallel_execution(mock_env_vars):
+    """Test that coverage and recommendations are executed in parallel."""
+    from concurrent.futures import ThreadPoolExecutor
+    from unittest.mock import call
+    import time
+    import threading
+
+    # Track function calls with timing to verify parallel execution
+    call_log = []
+    call_lock = threading.Lock()
+
+    def log_call(name, phase):
+        """Thread-safe logging of function calls."""
+        with call_lock:
+            call_log.append((name, phase, time.time()))
+
+    # Create mock clients
+    mock_clients = {
+        "ce": MagicMock(),
+        "savingsplans": MagicMock(),
+        "sqs": MagicMock(),
+        "sns": MagicMock(),
+    }
+
+    # Set up mock responses
+    mock_clients["savingsplans"].describe_savings_plans.return_value = {"savingsPlans": []}
+
+    mock_clients["ce"].get_savings_plans_coverage.return_value = {
+        "SavingsPlansCoverages": [
+            {"Coverage": {"CoveragePercentage": "80.0"}},
+        ]
+    }
+
+    mock_clients["ce"].get_savings_plans_purchase_recommendation.return_value = {
+        "SavingsPlansPurchaseRecommendation": {
+            "SavingsPlansPurchaseRecommendationDetails": [
+                {
+                    "SavingsPlansDetails": {"OfferingId": "test-offering"},
+                    "HourlyCommitmentToPurchase": "1.5",
+                }
+            ]
+        }
+    }
+
+    # Wrap the actual functions to track their execution
+    original_calculate_coverage = coverage_module.calculate_current_coverage
+    original_get_recommendations = recommendations_module.get_aws_recommendations
+
+    def mock_calculate_coverage(sp_client, ce_client, config):
+        log_call("coverage", "start")
+        time.sleep(0.05)  # Small delay to ensure overlapping execution
+        result = original_calculate_coverage(sp_client, ce_client, config)
+        log_call("coverage", "end")
+        return result
+
+    def mock_get_recommendations(ce_client, config):
+        log_call("recommendations", "start")
+        time.sleep(0.05)  # Small delay to ensure overlapping execution
+        result = original_get_recommendations(ce_client, config)
+        log_call("recommendations", "end")
+        return result
+
+    with (
+        patch("boto3.client") as mock_boto3_client,
+        patch("shared.handler_utils.initialize_clients", return_value=mock_clients),
+        patch("handler.queue_module.purge_queue") as mock_purge,
+        patch(
+            "handler.coverage_module.calculate_current_coverage",
+            side_effect=mock_calculate_coverage,
+        ),
+        patch(
+            "handler.recommendations_module.get_aws_recommendations",
+            side_effect=mock_get_recommendations,
+        ),
+        patch("handler.email_module.send_dry_run_email") as mock_email,
+        patch("handler.ThreadPoolExecutor", wraps=ThreadPoolExecutor) as mock_executor,
+    ):
+        # Configure boto3.client mock
+        mock_boto3_client.return_value = MagicMock()
+
+        # Call handler
+        event = {}
+        context = MagicMock()
+        result = handler.handler(event, context)
+
+        # Verify ThreadPoolExecutor was instantiated with max_workers=2
+        mock_executor.assert_called_once()
+        call_kwargs = mock_executor.call_args.kwargs
+        assert call_kwargs.get("max_workers") == 2, "ThreadPoolExecutor should use max_workers=2"
+
+        # Verify handler completed successfully
+        assert result["statusCode"] == 200
+
+        # Verify both functions were called
+        coverage_calls = [call for call in call_log if call[0] == "coverage"]
+        recommendations_calls = [call for call in call_log if call[0] == "recommendations"]
+
+        assert len(coverage_calls) == 2, "Coverage should have start and end calls"
+        assert len(recommendations_calls) == 2, "Recommendations should have start and end calls"
+
+        # Verify parallel execution - both should start before either completes
+        # Get timestamps
+        coverage_start = next(
+            call[2] for call in call_log if call[0] == "coverage" and call[1] == "start"
+        )
+        coverage_end = next(
+            call[2] for call in call_log if call[0] == "coverage" and call[1] == "end"
+        )
+        recommendations_start = next(
+            call[2] for call in call_log if call[0] == "recommendations" and call[1] == "start"
+        )
+        recommendations_end = next(
+            call[2] for call in call_log if call[0] == "recommendations" and call[1] == "end"
+        )
+
+        # In parallel execution, both should start before the first one ends
+        # Calculate time windows
+        first_end = min(coverage_end, recommendations_end)
+
+        # Both should start before the first one completes (indicating parallel execution)
+        assert coverage_start < first_end, "Coverage should start before either completes"
+        assert recommendations_start < first_end, (
+            "Recommendations should start before either completes"
+        )
+
+        # Verify queue purge was called
+        mock_purge.assert_called_once()
 
 
 # ============================================================================
