@@ -26,8 +26,23 @@ def configure_logging() -> None:
     """Configure logging level from LOG_LEVEL environment variable."""
     log_level = os.getenv("LOG_LEVEL", "INFO").upper()
     level = getattr(logging, log_level, logging.INFO)
-    logger.setLevel(level)
-    logging.getLogger().setLevel(level)
+
+    # Configure root logger
+    root = logging.getLogger()
+    root.setLevel(level)
+
+    # Configure all handlers
+    if not root.handlers:
+        # Add a handler if none exists (for local development)
+        handler = logging.StreamHandler()
+        handler.setLevel(level)
+        formatter = logging.Formatter('%(levelname)s - %(name)s - %(message)s')
+        handler.setFormatter(formatter)
+        root.addHandler(handler)
+    else:
+        # Update existing handlers
+        for h in root.handlers:
+            h.setLevel(level)
 
 
 configure_logging()
