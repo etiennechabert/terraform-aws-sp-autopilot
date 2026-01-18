@@ -13,10 +13,14 @@ This Lambda:
 import json
 import logging
 from datetime import datetime, timedelta, timezone
-from typing import Any, Dict, List
+from typing import Any
 
 import boto3
 from botocore.exceptions import ClientError
+from mypy_boto3_ce.client import CostExplorerClient
+from mypy_boto3_s3.client import S3Client
+from mypy_boto3_savingsplans.client import SavingsPlansClient
+from mypy_boto3_sns.client import SNSClient
 
 from shared import notifications
 from shared.config_validation import validate_reporter_config
@@ -43,7 +47,7 @@ sns_client = boto3.client("sns")
 
 
 @lambda_handler_wrapper("Reporter")
-def handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
+def handler(event: dict[str, Any], context: Any) -> dict[str, Any]:
     """
     Main handler for Reporter Lambda.
 
@@ -173,7 +177,7 @@ def handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
         raise  # Re-raise to ensure Lambda fails visibly
 
 
-def load_configuration() -> Dict[str, Any]:
+def load_configuration() -> dict[str, Any]:
     """Load and validate configuration from environment variables."""
     schema = {
         "reports_bucket": {"required": True, "type": "str", "env_var": "REPORTS_BUCKET"},
@@ -209,7 +213,9 @@ def load_configuration() -> Dict[str, Any]:
     return load_config_from_env(schema)
 
 
-def get_coverage_history(ce_client: Any = None, lookback_days: int = 30) -> List[Dict[str, Any]]:
+def get_coverage_history(
+    ce_client: CostExplorerClient | None = None, lookback_days: int = 30
+) -> list[dict[str, Any]]:
     """
     Get Savings Plans coverage history from Cost Explorer.
 
@@ -284,7 +290,9 @@ def get_coverage_history(ce_client: Any = None, lookback_days: int = 30) -> List
         raise
 
 
-def get_actual_cost_data(ce_client: Any = None, lookback_days: int = 30) -> Dict[str, Any]:
+def get_actual_cost_data(
+    ce_client: CostExplorerClient | None = None, lookback_days: int = 30
+) -> dict[str, Any]:
     """
     Get actual Savings Plans and On-Demand costs from Cost Explorer.
 
@@ -396,7 +404,9 @@ def get_actual_cost_data(ce_client: Any = None, lookback_days: int = 30) -> Dict
         raise
 
 
-def get_savings_data(savingsplans_client: Any = None, ce_client: Any = None) -> Dict[str, Any]:
+def get_savings_data(
+    savingsplans_client: SavingsPlansClient | None = None, ce_client: CostExplorerClient | None = None
+) -> dict[str, Any]:
     """
     Get savings data from active Savings Plans.
 
@@ -574,7 +584,7 @@ def get_savings_data(savingsplans_client: Any = None, ce_client: Any = None) -> 
 
 
 def check_and_alert_low_utilization(
-    sns_client: Any, config: Dict[str, Any], savings_data: Dict[str, Any]
+    sns_client: SNSClient, config: dict[str, Any], savings_data: dict[str, Any]
 ) -> None:
     """
     Check if Savings Plans utilization is below threshold and send alert if needed.
@@ -673,7 +683,7 @@ def check_and_alert_low_utilization(
 
 
 def generate_html_report(
-    coverage_history: List[Dict[str, Any]], savings_data: Dict[str, Any]
+    coverage_history: list[dict[str, Any]], savings_data: dict[str, Any]
 ) -> str:
     """
     Generate HTML report with coverage trends and savings metrics.
@@ -1068,7 +1078,7 @@ def generate_html_report(
 
 
 def generate_json_report(
-    coverage_history: List[Dict[str, Any]], savings_data: Dict[str, Any]
+    coverage_history: list[dict[str, Any]], savings_data: dict[str, Any]
 ) -> str:
     """
     Generate JSON report with coverage trends and savings metrics.
@@ -1173,7 +1183,7 @@ def generate_json_report(
 
 
 def generate_csv_report(
-    coverage_history: List[Dict[str, Any]], savings_data: Dict[str, Any]
+    coverage_history: list[dict[str, Any]], savings_data: dict[str, Any]
 ) -> str:
     """
     Generate CSV report with coverage trends and savings metrics.
@@ -1288,7 +1298,7 @@ def generate_csv_report(
 
 
 def upload_report_to_s3(
-    config: Dict[str, Any], report_content: str, report_format: str = "html"
+    config: dict[str, Any], report_content: str, report_format: str = "html"
 ) -> str:
     """
     Upload report to storage.
@@ -1328,10 +1338,10 @@ def upload_report_to_s3(
 
 
 def send_report_email(
-    config: Dict[str, Any],
+    config: dict[str, Any],
     s3_object_key: str,
-    coverage_summary: Dict[str, Any],
-    savings_summary: Dict[str, Any],
+    coverage_summary: dict[str, Any],
+    savings_summary: dict[str, Any],
 ) -> None:
     """
     Send email notification with S3 report link and summary.
@@ -1468,7 +1478,7 @@ def send_report_email(
         logger.warning(f"Teams notification error (non-fatal): {e!s}")
 
 
-def send_error_email(config: Dict[str, Any] = None, error_msg: str = None) -> None:
+def send_error_email(config: dict[str, Any] | None = None, error_msg: str | None = None) -> None:
     """
     Send error notification email - backward compatible wrapper.
 
