@@ -1,5 +1,16 @@
 name: Auto Update PR Branches
 
+# IMPORTANT: To trigger PR checks after auto-merge, create a PAT with 'repo' scope
+# and add it as a repository secret named 'PAT_TOKEN'. Without it, the default
+# GITHUB_TOKEN will be used but won't trigger workflows (to prevent infinite loops).
+#
+# Steps to set up PAT:
+# 1. Go to GitHub Settings → Developer settings → Personal access tokens → Tokens (classic)
+# 2. Generate new token with 'repo' scope
+# 3. Add as repository secret: Settings → Secrets → Actions → New repository secret
+#    - Name: PAT_TOKEN
+#    - Value: your generated token
+
 on:
   push:
     branches:
@@ -16,12 +27,12 @@ jobs:
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
-          token: ${{ secrets.GITHUB_TOKEN }}
+          token: ${{ secrets.PAT_TOKEN || secrets.GITHUB_TOKEN }}
           persist-credentials: true
 
       - name: Update PR branches
         env:
-          GH_TOKEN: ${{ github.token }}
+          GH_TOKEN: ${{ secrets.PAT_TOKEN || github.token }}
         run: |
           # Configure git user for commits
           git config --global user.name "github-actions[bot]"
