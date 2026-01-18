@@ -62,11 +62,6 @@ resource "aws_sqs_queue_policy" "purchase_intents" {
       }
       Action   = "sqs:SendMessage"
       Resource = aws_sqs_queue.purchase_intents.arn
-      Condition = {
-        StringEquals = {
-          "aws:SourceAccount" = data.aws_caller_identity.current.account_id
-        }
-      }
     }]
   })
 }
