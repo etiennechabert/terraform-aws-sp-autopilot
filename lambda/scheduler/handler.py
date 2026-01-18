@@ -20,7 +20,12 @@ import importlib.util
 import json
 import logging
 import os as _os_for_import
-from typing import Any, Dict
+from typing import Any
+
+from mypy_boto3_ce.client import CostExplorerClient
+from mypy_boto3_savingsplans.client import SavingsPlansClient
+from mypy_boto3_sns.client import SNSClient
+from mypy_boto3_sqs.client import SQSClient
 
 # Import new modular components
 # Import with aliases to avoid shadowing when we create backward-compatible wrappers
@@ -58,13 +63,13 @@ logger.setLevel(logging.INFO)
 # Module-level boto3 clients for backward compatibility with existing tests
 # These are initialized to None and tests can assign mock objects to them
 # The wrapper functions below will use these if set, otherwise create real clients
-ce_client = None
-sqs_client = None
-sns_client = None
-savingsplans_client = None
+ce_client: CostExplorerClient | None = None
+sqs_client: SQSClient | None = None
+sns_client: SNSClient | None = None
+savingsplans_client: SavingsPlansClient | None = None
 
 
-def _ensure_ce_client():
+def _ensure_ce_client() -> CostExplorerClient:
     """Get Cost Explorer client, creating it if needed."""
     global ce_client
     if ce_client is None:
@@ -74,7 +79,7 @@ def _ensure_ce_client():
     return ce_client
 
 
-def _ensure_sqs_client():
+def _ensure_sqs_client() -> SQSClient:
     """Get SQS client, creating it if needed."""
     global sqs_client
     if sqs_client is None:
@@ -84,7 +89,7 @@ def _ensure_sqs_client():
     return sqs_client
 
 
-def _ensure_sns_client():
+def _ensure_sns_client() -> SNSClient:
     """Get SNS client, creating it if needed."""
     global sns_client
     if sns_client is None:
@@ -94,7 +99,7 @@ def _ensure_sns_client():
     return sns_client
 
 
-def _ensure_savingsplans_client():
+def _ensure_savingsplans_client() -> SavingsPlansClient:
     """Get Savings Plans client, creating it if needed."""
     global savingsplans_client
     if savingsplans_client is None:
@@ -106,21 +111,21 @@ def _ensure_savingsplans_client():
 
 # Backward-compatible wrapper functions for existing tests
 # These match the old function signatures and use lazily-initialized clients
-def load_configuration() -> Dict[str, Any]:
+def load_configuration() -> dict[str, Any]:
     """Load configuration - backward compatible wrapper."""
     from config import load_configuration as config_load
 
     return config_load()
 
 
-def calculate_current_coverage(config: Dict[str, Any]) -> Dict[str, float]:
+def calculate_current_coverage(config: dict[str, Any]) -> dict[str, float]:
     """Calculate current coverage - backward compatible wrapper."""
     return coverage_module.calculate_current_coverage(
         _ensure_savingsplans_client(), _ensure_ce_client(), config
     )
 
 
-def get_aws_recommendations(config: Dict[str, Any]) -> Dict[str, Any]:
+def get_aws_recommendations(config: dict[str, Any]) -> dict[str, Any]:
     """Get AWS recommendations - backward compatible wrapper."""
     return recommendations_module.get_aws_recommendations(_ensure_ce_client(), config)
 
@@ -132,7 +137,7 @@ def get_assumed_role_session(role_arn: str, session_name: str = "sp-autopilot-se
     return aws_assume_role(role_arn, session_name)
 
 
-def get_clients(config: Dict[str, Any]):
+def get_clients(config: dict[str, Any]):
     """Get clients - backward compatible wrapper."""
     from shared.aws_utils import get_clients as aws_get_clients
 
@@ -144,13 +149,13 @@ def purge_queue(queue_url: str) -> None:
     return queue_module.purge_queue(_ensure_sqs_client(), queue_url)
 
 
-def queue_purchase_intents(config: Dict[str, Any], purchase_plans: list) -> None:
+def queue_purchase_intents(config: dict[str, Any], purchase_plans: list) -> None:
     """Queue purchase intents - backward compatible wrapper."""
     return queue_module.queue_purchase_intents(_ensure_sqs_client(), config, purchase_plans)
 
 
 def send_scheduled_email(
-    config: Dict[str, Any], purchase_plans: list, coverage_data: Dict[str, float]
+    config: dict[str, Any], purchase_plans: list, coverage_data: dict[str, float]
 ) -> None:
     """Send scheduled email - backward compatible wrapper."""
     return email_module.send_scheduled_email(
@@ -159,7 +164,7 @@ def send_scheduled_email(
 
 
 def send_dry_run_email(
-    config: Dict[str, Any], purchase_plans: list, coverage_data: Dict[str, float]
+    config: dict[str, Any], purchase_plans: list, coverage_data: dict[str, float]
 ) -> None:
     """Send dry run email - backward compatible wrapper."""
     return email_module.send_dry_run_email(
@@ -211,7 +216,7 @@ def send_error_email(error_msg: str, sns_topic_arn: str = None) -> None:
 
 
 @lambda_handler_wrapper("Scheduler")
-def handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
+def handler(event: dict[str, Any], context: Any) -> dict[str, Any]:
     """
     Main handler for Scheduler Lambda.
 
