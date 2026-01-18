@@ -263,7 +263,7 @@ def test_get_aws_recommendations_database_enabled(aws_mock_builder, monkeypatch,
 
         # Verify Database SP recommendation was returned
         assert result["database"] is not None
-        assert result["database"]["HourlyCommitmentToPurchase"] == "1.25"
+        assert result["database"]["HourlyCommitmentToPurchase"] == "1.250"
         assert "RecommendationId" in result["database"]
 
         # Verify API was called with correct Database SP parameters
@@ -298,7 +298,7 @@ def test_get_aws_recommendations_database_insufficient_data(monkeypatch, mock_cl
 
         # min_data_days validation was removed, so recommendations are accepted
         assert result["database"] is not None
-        assert result["database"]["HourlyCommitmentToPurchase"] == "1.5"
+        assert result["database"]["HourlyCommitmentToPurchase"] == "1.500"
 
 
 def test_get_aws_recommendations_database_no_recommendations(monkeypatch, mock_clients):
@@ -341,7 +341,7 @@ def test_get_aws_recommendations_sagemaker_enabled(aws_mock_builder, monkeypatch
 
         # Verify SageMaker SP recommendation was returned
         assert result["sagemaker"] is not None
-        assert result["sagemaker"]["HourlyCommitmentToPurchase"] == "3.75"
+        assert result["sagemaker"]["HourlyCommitmentToPurchase"] == "3.750"
         assert "RecommendationId" in result["sagemaker"]
 
         # Verify API was called with correct SageMaker SP parameters
@@ -395,7 +395,7 @@ def test_get_aws_recommendations_sagemaker_insufficient_data(monkeypatch, mock_c
 
         # min_data_days validation was removed, so recommendations with any data are accepted
         assert result["sagemaker"] is not None
-        assert result["sagemaker"]["HourlyCommitmentToPurchase"] == "2.5"
+        assert result["sagemaker"]["HourlyCommitmentToPurchase"] == "2.500"
 
 
 def test_get_aws_recommendations_sagemaker_no_recommendations(monkeypatch, mock_clients):
@@ -437,7 +437,7 @@ def test_get_aws_recommendations_insufficient_data(mock_env_vars, mock_clients):
 
         # min_data_days validation was removed, so recommendations with any data are accepted
         assert result["compute"] is not None
-        assert result["compute"]["HourlyCommitmentToPurchase"] == "2.5"
+        assert result["compute"]["HourlyCommitmentToPurchase"] == "2.500"
 
 
 def test_get_aws_recommendations_no_recommendations(mock_env_vars, mock_clients):
@@ -551,8 +551,8 @@ def test_get_aws_recommendations_parallel_execution_both_enabled(monkeypatch, mo
         # Verify both recommendations were returned
         assert result["compute"] is not None
         assert result["database"] is not None
-        assert result["compute"]["HourlyCommitmentToPurchase"] == "1.5"
-        assert result["database"]["HourlyCommitmentToPurchase"] == "2.5"
+        assert result["compute"]["HourlyCommitmentToPurchase"] == "1.500"
+        assert result["database"]["HourlyCommitmentToPurchase"] == "2.500"
 
         # Verify API was called twice (once for each SP type)
         assert mock_rec.call_count == 2
@@ -685,7 +685,7 @@ def test_get_aws_recommendations_parallel_single_task(mock_env_vars, mock_client
 
         # Should still work with ThreadPoolExecutor even with single task
         assert result["compute"] is not None
-        assert result["compute"]["HourlyCommitmentToPurchase"] == "2.5"
+        assert result["compute"]["HourlyCommitmentToPurchase"] == "2.500"
         assert result["database"] is None
 
         # Verify only one API call was made
