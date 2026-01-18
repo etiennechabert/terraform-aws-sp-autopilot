@@ -1,0 +1,47 @@
+{
+    "python.testing.pytestEnabled": true,
+    "python.testing.unittestEnabled": false,
+    "python.testing.pytestArgs": [
+        "--no-cov",
+        "-v"
+    ],
+    "python.envFile": "${workspaceFolder}/.env",
+    "python.analysis.extraPaths": [
+        "${workspaceFolder}/lambda/scheduler",
+        "${workspaceFolder}/lambda/purchaser",
+        "${workspaceFolder}/lambda/reporter",
+        "${workspaceFolder}/lambda/shared"
+    ],
+    "python.analysis.typeCheckingMode": "basic",
+    "python.linting.enabled": true,
+    "python.linting.ruffEnabled": true,
+    "python.formatting.provider": "none",
+    "[python]": {
+        "editor.defaultFormatter": "charliermarsh.ruff",
+        "editor.formatOnSave": true,
+        "editor.codeActionsOnSave": {
+            "source.fixAll": "explicit",
+            "source.organizeImports": "explicit"
+        }
+    },
+    "files.exclude": {
+        "**/__pycache__": true,
+        "**/.pytest_cache": true,
+        "**/*.pyc": true,
+        "**/.coverage": true,
+        "**/htmlcov": true,
+        "**/.terraform": true,
+        "**/.terraform.lock.hcl": false
+    },
+    "search.exclude": {
+        "**/__pycache__": true,
+        "**/.pytest_cache": true,
+        "**/.terraform": true,
+        "**/htmlcov": true
+    },
+    "files.watcherExclude": {
+        "**/__pycache__": true,
+        "**/.pytest_cache": true,
+        "**/.terraform/**": true
+    }
+}
