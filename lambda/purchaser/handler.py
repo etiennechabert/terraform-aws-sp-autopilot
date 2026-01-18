@@ -144,6 +144,12 @@ def load_configuration() -> dict[str, Any]:
             "default": "7",
             "env_var": "RENEWAL_WINDOW_DAYS",
         },
+        "lookback_days": {
+            "required": False,
+            "type": "int",
+            "default": "30",
+            "env_var": "LOOKBACK_DAYS",
+        },
         "management_account_role_arn": {
             "required": False,
             "type": "str",
@@ -204,9 +210,10 @@ def get_current_coverage(clients: dict[str, Any], config: dict[str, Any]) -> dic
     logger.info("Calculating current coverage")
 
     try:
-        # Get date range for coverage query (last 7 days average for stability)
+        # Get date range for coverage query using configured lookback period
+        # Cost Explorer has 24-48 hour data lag, so we query multiple days for stability
         end_date = datetime.now(timezone.utc).date()
-        start_date = (datetime.now(timezone.utc) - timedelta(days=7)).date()
+        start_date = (datetime.now(timezone.utc) - timedelta(days=config["lookback_days"])).date()
 
         # Get raw coverage from Cost Explorer
         raw_coverage = get_ce_coverage(clients["ce"], start_date, end_date, config)
@@ -247,27 +254,76 @@ def get_ce_coverage(
     logger.info(f"Getting coverage from Cost Explorer for {start_date} to {end_date}")
 
     try:
-        # Get coverage for Compute Savings Plans
-        compute_response = ce_client.get_savings_plans_coverage(
+        # Get coverage grouped by SERVICE (EC2, Lambda, Fargate, SageMaker, etc.)
+        response = ce_client.get_savings_plans_coverage(
             TimePeriod={"Start": start_date.isoformat(), "End": end_date.isoformat()},
             Granularity="DAILY",
-            GroupBy=[{"Type": "DIMENSION", "Key": "SAVINGS_PLANS_TYPE"}],
+            GroupBy=[{"Type": "DIMENSION", "Key": "SERVICE"}],
         )
 
-        # Calculate average coverage across the period
+        # Get most recent spend data for each service
+        # When using GroupBy, AWS flattens the response: each item represents one service for one day
+        # Iterate backwards to find the latest data point for each service
+        service_latest_spend = {}
+
+        for item in reversed(response.get("SavingsPlansCoverages", [])):
+            service_name = item.get("Attributes", {}).get("SERVICE", "").lower()
+
+            # Skip if we already found this service's latest data
+            if service_name in service_latest_spend:
+                continue
+
+            coverage_data = item.get("Coverage", {})
+
+            # When using GroupBy, AWS returns spend amounts, not percentages
+            spend_covered = float(coverage_data.get("SpendCoveredBySavingsPlans", 0))
+            on_demand_cost = float(coverage_data.get("OnDemandCost", 0))
+
+            service_latest_spend[service_name] = {
+                "covered": spend_covered,
+                "on_demand": on_demand_cost,
+            }
+
+        # Aggregate spend amounts by SP type, then calculate coverage percentage
+        sp_type_spend = {
+            "compute": {"covered": 0.0, "on_demand": 0.0},
+            "database": {"covered": 0.0, "on_demand": 0.0},
+            "sagemaker": {"covered": 0.0, "on_demand": 0.0},
+        }
+
+        for service_name, spend in service_latest_spend.items():
+            # Compute Savings Plans cover: EC2, Lambda, Fargate, ECS, EKS
+            if any(
+                svc in service_name
+                for svc in [
+                    "ec2",
+                    "elastic compute cloud",
+                    "lambda",
+                    "fargate",
+                    "elastic container service",
+                ]
+            ):
+                sp_type_spend["compute"]["covered"] += spend["covered"]
+                sp_type_spend["compute"]["on_demand"] += spend["on_demand"]
+            # SageMaker Savings Plans cover: SageMaker
+            elif "sagemaker" in service_name:
+                sp_type_spend["sagemaker"]["covered"] += spend["covered"]
+                sp_type_spend["sagemaker"]["on_demand"] += spend["on_demand"]
+            # Database: RDS, DynamoDB, Database Migration Service
+            elif any(
+                svc in service_name
+                for svc in ["rds", "relational database", "dynamodb", "database migration"]
+            ):
+                sp_type_spend["database"]["covered"] += spend["covered"]
+                sp_type_spend["database"]["on_demand"] += spend["on_demand"]
+
+        # Calculate coverage percentages from aggregated spend
         coverage = {"compute": 0.0, "database": 0.0, "sagemaker": 0.0}
 
-        for result in compute_response.get("SavingsPlansCoverages", []):
-            for group in result.get("Groups", []):
-                sp_type = group.get("Attributes", {}).get("SAVINGS_PLANS_TYPE", "")
-                coverage_pct = float(group.get("Coverage", {}).get("CoveragePercentage", "0"))
-
-                if sp_type == "ComputeSavingsPlans":
-                    coverage["compute"] = max(coverage["compute"], coverage_pct)
-                elif sp_type == "DatabaseSavingsPlans":
-                    coverage["database"] = max(coverage["database"], coverage_pct)
-                elif sp_type == "SageMakerSavingsPlans":
-                    coverage["sagemaker"] = max(coverage["sagemaker"], coverage_pct)
+        for sp_type, spend in sp_type_spend.items():
+            total_spend = spend["covered"] + spend["on_demand"]
+            if total_spend > 0:
+                coverage[sp_type] = (spend["covered"] / total_spend) * 100
 
         logger.info(
             f"Raw coverage from CE: Compute={coverage['compute']:.2f}%, Database={coverage['database']:.2f}%, SageMaker={coverage['sagemaker']:.2f}%"
