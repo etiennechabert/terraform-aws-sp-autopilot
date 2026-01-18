@@ -45,13 +45,21 @@ Example Usage:
 import json
 import logging
 from typing import Any
-from urllib.error import HTTPError, URLError
-from urllib.request import Request, urlopen
+
+import urllib3
 
 
 # Configure logging
 logger = logging.getLogger()
 logger.setLevel(logging.INFO)
+
+# Initialize connection pool for HTTP requests with keep-alive
+# This reuses connections for better performance when sending multiple notifications
+http = urllib3.PoolManager(
+    num_pools=1,
+    maxsize=2,
+    timeout=urllib3.Timeout(connect=5.0, read=10.0),
+)
 
 
 def format_slack_message(
@@ -171,23 +179,24 @@ def send_slack_notification(webhook_url: str, message_data: dict[str, Any]) -> b
         return False
 
     try:
-        # Prepare request
+        # Prepare request data
         data = json.dumps(message_data).encode("utf-8")
-        request = Request(webhook_url, data=data, headers={"Content-Type": "application/json"})
+        headers = {"Content-Type": "application/json"}
 
-        # Send request
-        with urlopen(request, timeout=10) as response:
-            if response.status == 200:
-                logger.info("Slack notification sent successfully")
-                return True
-            logger.error(f"Slack notification failed with status {response.status}")
-            return False
+        # Send request using connection pool
+        response = http.request("POST", webhook_url, body=data, headers=headers)
 
-    except HTTPError as e:
-        logger.error(f"Slack webhook HTTP error: {e.code} - {e.reason}")
+        if response.status == 200:
+            logger.info("Slack notification sent successfully")
+            return True
+        logger.error(f"Slack notification failed with status {response.status}")
         return False
-    except URLError as e:
-        logger.error(f"Slack webhook URL error: {e.reason!s}")
+
+    except urllib3.exceptions.HTTPError as e:
+        logger.error(f"Slack webhook HTTP error: {e!s}")
+        return False
+    except urllib3.exceptions.TimeoutError as e:
+        logger.error(f"Slack webhook timeout error: {e!s}")
         return False
     except Exception as e:
         logger.error(f"Slack notification failed: {e!s}")
@@ -210,23 +219,24 @@ def send_teams_notification(webhook_url: str, message_data: dict[str, Any]) -> b
         return False
 
     try:
-        # Prepare request
+        # Prepare request data
         data = json.dumps(message_data).encode("utf-8")
-        request = Request(webhook_url, data=data, headers={"Content-Type": "application/json"})
+        headers = {"Content-Type": "application/json"}
 
-        # Send request
-        with urlopen(request, timeout=10) as response:
-            if response.status == 200:
-                logger.info("Teams notification sent successfully")
-                return True
-            logger.error(f"Teams notification failed with status {response.status}")
-            return False
+        # Send request using connection pool
+        response = http.request("POST", webhook_url, body=data, headers=headers)
 
-    except HTTPError as e:
-        logger.error(f"Teams webhook HTTP error: {e.code} - {e.reason}")
+        if response.status == 200:
+            logger.info("Teams notification sent successfully")
+            return True
+        logger.error(f"Teams notification failed with status {response.status}")
         return False
-    except URLError as e:
-        logger.error(f"Teams webhook URL error: {e.reason!s}")
+
+    except urllib3.exceptions.HTTPError as e:
+        logger.error(f"Teams webhook HTTP error: {e!s}")
+        return False
+    except urllib3.exceptions.TimeoutError as e:
+        logger.error(f"Teams webhook timeout error: {e!s}")
         return False
     except Exception as e:
         logger.error(f"Teams notification failed: {e!s}")
