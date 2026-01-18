@@ -642,7 +642,10 @@ def delete_message(sqs_client: SQSClient, queue_url: str, receipt_handle: str) -
 
 
 def send_summary_email(
-    sns_client: SNSClient, config: dict[str, Any], results: dict[str, Any], coverage: dict[str, float]
+    sns_client: SNSClient,
+    config: dict[str, Any],
+    results: dict[str, Any],
+    coverage: dict[str, float],
 ) -> None:
     """
     Send aggregated summary email for all purchases.

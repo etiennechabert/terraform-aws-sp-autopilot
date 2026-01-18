@@ -405,7 +405,8 @@ def get_actual_cost_data(
 
 
 def get_savings_data(
-    savingsplans_client: SavingsPlansClient | None = None, ce_client: CostExplorerClient | None = None
+    savingsplans_client: SavingsPlansClient | None = None,
+    ce_client: CostExplorerClient | None = None,
 ) -> dict[str, Any]:
     """
     Get savings data from active Savings Plans.

@@ -244,7 +244,9 @@ def _fetch_sagemaker_sp_recommendation(
         raise
 
 
-def get_aws_recommendations(ce_client: CostExplorerClient, config: dict[str, Any]) -> dict[str, Any]:
+def get_aws_recommendations(
+    ce_client: CostExplorerClient, config: dict[str, Any]
+) -> dict[str, Any]:
     """
     Get Savings Plans purchase recommendations from AWS Cost Explorer.
 
