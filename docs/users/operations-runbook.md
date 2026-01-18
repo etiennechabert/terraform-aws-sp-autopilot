@@ -64,6 +64,7 @@ Day-to-day operational procedures for managing AWS Savings Plans Autopilot after
   - [Investigating Coverage Trends Workflow](#investigating-coverage-trends-workflow)
   - [Emergency Pause Workflow](#emergency-pause-workflow)
   - [Strategy Adjustment Workflow](#strategy-adjustment-workflow)
+  - [Recovering from Failed Purchases Workflow](#recovering-from-failed-purchases-workflow)
 
 ## Overview
 
@@ -2501,6 +2502,164 @@ aws lambda invoke \
   --payload '{}' \
   output.json
 ```
+
+### Recovering from Failed Purchases Workflow
+
+**Objective:** Restore failed purchases and ensure coverage gap is addressed
+
+**When:** Purchaser Lambda failed, CloudWatch alarm triggered, or messages in DLQ
+
+**Workflow:**
+
+```
+Failure Detected (Alarm or Email)
+  ↓
+[1] Identify failure type and location
+  ↓
+[2] Check CloudWatch Logs for error details
+  ↓
+[3] Determine message location:
+  |
+  ├─ Main Queue → Go to [4]
+  └─ Dead Letter Queue → Go to [6]
+  ↓
+[4] Messages in Main Queue (Partial Failure)
+  ↓
+  • Fix underlying issue (IAM, quota, etc.)
+  ↓
+  • Messages will auto-retry on next Purchaser schedule
+  ↓
+  • OR invoke Purchaser manually for immediate retry
+  ↓
+  Go to [10]
+  ↓
+[6] Messages in DLQ (Complete Failure After Retries)
+  ↓
+[7] Fix root cause:
+  |
+  ├─ IAM Permissions → Add missing policies
+  ├─ Service Quota → Request increase or cleanup
+  ├─ Invalid Parameters → Fix configuration
+  └─ Duplicate Purchase → No action (idempotency success)
+  ↓
+[8] Move messages from DLQ back to main queue
+  ↓
+[9] Invoke Purchaser Lambda to process recovered messages
+  ↓
+[10] Verify purchases completed successfully
+  ↓
+[11] Check coverage increased as expected
+  ↓
+[12] Clear DLQ if recovery successful
+  ↓
+✅ Recovery Complete
+```
+
+**Commands:**
+
+```bash
+# [1-2] Identify failure and check logs
+aws logs tail /aws/lambda/$(terraform output -raw purchaser_function_name) \
+  --since 2h --filter ERROR
+
+# [3] Check main queue
+aws sqs get-queue-attributes \
+  --queue-url $(terraform output -raw queue_url) \
+  --attribute-names ApproximateNumberOfMessages
+
+# [3] Check DLQ
+aws sqs get-queue-attributes \
+  --queue-url $(terraform output -raw dlq_url) \
+  --attribute-names ApproximateNumberOfMessages
+
+# [4] Manual Purchaser invocation (if messages in main queue)
+aws lambda invoke \
+  --function-name $(terraform output -raw purchaser_function_name) \
+  --payload '{}' \
+  output.json
+
+# [7] Example: Add IAM permission
+aws iam attach-role-policy \
+  --role-name $(terraform output -raw purchaser_role_name) \
+  --policy-arn arn:aws:iam::aws:policy/AWSSavingsPlansFullAccess
+
+# [8] Move messages from DLQ to main queue
+aws sqs receive-message \
+  --queue-url $(terraform output -raw dlq_url) \
+  --max-number-of-messages 10 \
+  | jq -r '.Messages[] | @json' \
+  | while read msg; do
+      body=$(echo $msg | jq -r '.Body')
+      aws sqs send-message \
+        --queue-url $(terraform output -raw queue_url) \
+        --message-body "$body"
+      receipt=$(echo $msg | jq -r '.ReceiptHandle')
+      aws sqs delete-message \
+        --queue-url $(terraform output -raw dlq_url) \
+        --receipt-handle "$receipt"
+    done
+
+# [9] Invoke Purchaser to process recovered messages
+aws lambda invoke \
+  --function-name $(terraform output -raw purchaser_function_name) \
+  --payload '{}' \
+  output.json
+
+# [10] Verify new Savings Plans
+aws savingsplans describe-savings-plans \
+  --filters name=start,values=$(date -u +%Y-%m-%d) \
+  | jq -r '.savingsPlans[] | "\(.savingsPlanType): \(.commitment) USD/hour"'
+
+# [11] Check coverage
+aws ce get-savings-plans-coverage \
+  --time-period Start=$(date -u -d '1 day ago' +%Y-%m-%d),End=$(date -u +%Y-%m-%d) \
+  --granularity DAILY \
+  | jq -r '.Total.CoveragePercentage'
+
+# [12] Clear DLQ (if all recovered successfully)
+aws sqs purge-queue --queue-url $(terraform output -raw dlq_url)
+```
+
+**Decision Tree:**
+
+| Error Type | Root Cause | Fix | Retry Location |
+|------------|-----------|-----|----------------|
+| **AccessDeniedException** | Missing IAM permission | Add `savingsplans:CreateSavingsPlan` to Purchaser role | Main queue (auto-retry) or DLQ (manual) |
+| **ServiceQuotaExceededException** | AWS Savings Plans limit reached | Request quota increase or cleanup expired plans | DLQ → Main queue after fix |
+| **ValidationException** | Invalid purchase parameters | Fix configuration and redeploy | DLQ → Main queue after fix |
+| **DuplicateSavingsPlanException** | Idempotency token reused (success) | None - purchase already exists | Delete from DLQ (already successful) |
+| **ThrottlingException** | AWS API rate limit | Wait or reduce call frequency | Main queue (auto-retry with backoff) |
+| **InternalServerException** | AWS service temporary issue | Wait for AWS recovery | Main queue (auto-retry) |
+
+**Common Scenarios:**
+
+1. **IAM Permission Missing (Most Common):**
+   - **Symptom**: `AccessDeniedException` in logs
+   - **Fix**: Add missing permission to Purchaser IAM role
+   - **Recovery**: Messages auto-retry from main queue or move from DLQ
+
+2. **Service Quota Exceeded:**
+   - **Symptom**: `ServiceQuotaExceededException` in logs
+   - **Fix**: Request quota increase via AWS Support or cleanup expired plans
+   - **Recovery**: After quota increased, move messages from DLQ and retry
+
+3. **Transient AWS Errors:**
+   - **Symptom**: `InternalServerException` or `ThrottlingException`
+   - **Fix**: Wait for AWS service recovery (no code changes needed)
+   - **Recovery**: Messages auto-retry from main queue
+
+4. **Configuration Issues:**
+   - **Symptom**: `ValidationException` for invalid commitment or term
+   - **Fix**: Update Terraform configuration and redeploy
+   - **Recovery**: After fix, move messages from DLQ and retry
+
+**⚠️ Important Notes:**
+
+- **Always fix root cause before retrying** - repeated failures waste API calls and delay recovery
+- **Idempotency protection**: Duplicate purchase errors are success (plan already exists), not failures
+- **DLQ messages don't expire by default** - must be manually cleared after recovery
+- **Next Scheduler run will re-queue** similar purchases if coverage gap persists
+- **Don't retry invalid purchases indefinitely** - if configuration is wrong, cancel and wait for next month
 
 ---
 
