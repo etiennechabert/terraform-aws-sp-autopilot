@@ -5,6 +5,8 @@ Provides email formatting and sending functionality for both scheduled
 purchase notifications and dry run analysis results.
 """
 
+from __future__ import annotations
+
 import logging
 from typing import TYPE_CHECKING, Any, Dict, List
 

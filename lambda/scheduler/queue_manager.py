@@ -5,6 +5,8 @@ Handles purging the queue and queuing purchase intents.
 Supports both AWS SQS and local filesystem modes.
 """
 
+from __future__ import annotations
+
 import logging
 
 # Import queue adapter for local/AWS mode support

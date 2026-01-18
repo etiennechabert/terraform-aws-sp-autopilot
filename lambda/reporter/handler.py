@@ -10,6 +10,8 @@ This Lambda:
 6. Optionally sends email notification with S3 link
 """
 
+from __future__ import annotations
+
 import json
 import logging
 from datetime import datetime, timedelta, timezone

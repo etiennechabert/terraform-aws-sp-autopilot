@@ -14,6 +14,8 @@ This Lambda:
 8. Sends notification email with analysis results
 """
 
+from __future__ import annotations
+
 # Special handling for coverage module to avoid conflict with pytest-cov
 # Import it explicitly to avoid naming conflicts with pytest-cov's coverage module
 import importlib.util

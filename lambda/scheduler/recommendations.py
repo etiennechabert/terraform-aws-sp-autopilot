@@ -6,6 +6,8 @@ for Compute, Database, and SageMaker Savings Plans. It uses ThreadPoolExecutor
 to fetch multiple recommendation types in parallel for improved performance.
 """
 
+from __future__ import annotations
+
 import logging
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from typing import TYPE_CHECKING, Any, Optional

@@ -5,6 +5,8 @@ Provides shared utilities for configuration loading, client initialization,
 error handling, and standardized handler patterns across all Lambda functions.
 """
 
+from __future__ import annotations
+
 import json
 import logging
 import os
