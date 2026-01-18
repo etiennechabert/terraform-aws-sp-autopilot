@@ -1004,20 +1004,29 @@ aws sqs receive-message \
 ```
 
 **Message Contents:**
-- `savingsPlanType`: "COMPUTE_SP" | "DATABASE_SP" | "SAGEMAKER_SP"
-- `commitment`: Hourly commitment in USD (e.g., "1.234")
-- `term`: "ONE_YEAR" | "THREE_YEARS"
-- `paymentOption`: "ALL_UPFRONT" | "PARTIAL_UPFRONT" | "NO_UPFRONT"
-- `clientToken`: Idempotency token for purchase
+- `client_token`: Idempotency token for purchase (format: `scheduler-{sp_type}-{term}-{timestamp}`)
+- `sp_type`: "compute" | "database" | "sagemaker"
+- `term`: "ONE_YEAR" | "THREE_YEAR"
+- `hourly_commitment`: Hourly commitment in USD (e.g., 1.234)
+- `payment_option`: "ALL_UPFRONT" | "PARTIAL_UPFRONT" | "NO_UPFRONT"
+- `recommendation_id`: AWS recommendation ID (or "unknown")
+- `queued_at`: ISO 8601 timestamp when queued
+- `tags`: Resource tags to apply to the Savings Plan
 
 **Example Output:**
 ```json
 {
-  "savingsPlanType": "COMPUTE_SP",
-  "commitment": "5.67",
-  "term": "THREE_YEARS",
-  "paymentOption": "NO_UPFRONT",
-  "clientToken": "sp-autopilot-compute-2024-01-01-abc123"
+  "client_token": "scheduler-compute-THREE_YEAR-2024-01-01T08:00:00+00:00",
+  "sp_type": "compute",
+  "term": "THREE_YEAR",
+  "hourly_commitment": 5.67,
+  "payment_option": "NO_UPFRONT",
+  "recommendation_id": "12345678-1234-1234-1234-123456789012",
+  "queued_at": "2024-01-01T08:00:00+00:00",
+  "tags": {
+    "ManagedBy": "sp-autopilot",
+    "Environment": "production"
+  }
 }
 ```
 
@@ -1101,7 +1110,7 @@ module "savings_plans" {
       "MessageId": "12345678-1234-1234-1234-123456789012",
       "ReceiptHandle": "AQEB...long-receipt-handle...",
       "MD5OfBody": "abc123...",
-      "Body": "{\"savingsPlanType\":\"COMPUTE_SP\",\"commitment\":\"5.67\",\"term\":\"THREE_YEARS\",\"paymentOption\":\"NO_UPFRONT\",\"clientToken\":\"sp-autopilot-compute-2024-01-01-abc123\"}",
+      "Body": "{\"client_token\":\"scheduler-compute-THREE_YEAR-2024-01-01T08:00:00+00:00\",\"sp_type\":\"compute\",\"term\":\"THREE_YEAR\",\"hourly_commitment\":5.67,\"payment_option\":\"NO_UPFRONT\",\"recommendation_id\":\"12345678-1234-1234-1234-123456789012\",\"queued_at\":\"2024-01-01T08:00:00+00:00\",\"tags\":{\"ManagedBy\":\"sp-autopilot\"}}",
       "Attributes": {
         "SentTimestamp": "1704096000000",
         "ApproximateReceiveCount": "0",
@@ -1112,12 +1121,22 @@ module "savings_plans" {
 }
 ```
 
-**Key Fields:**
+**SQS Wrapper Fields:**
 - **MessageId**: Unique SQS message identifier
 - **ReceiptHandle**: Required for deleting message (canceling purchase)
-- **Body**: JSON string containing purchase details
-- **SentTimestamp**: When Scheduler queued the purchase
+- **Body**: JSON string containing purchase intent details (see below)
+- **SentTimestamp**: Unix epoch when Scheduler queued the purchase
 - **ApproximateReceiveCount**: How many times message was received (0 = not processed)
+
+**Body (Purchase Intent) Fields:**
+- **client_token**: Idempotency token preventing duplicate purchases
+- **sp_type**: Savings Plan type ("compute", "database", or "sagemaker")
+- **term**: Commitment term ("ONE_YEAR" or "THREE_YEAR")
+- **hourly_commitment**: Dollar amount per hour to commit
+- **payment_option**: Payment structure for the commitment
+- **recommendation_id**: AWS-generated recommendation identifier
+- **queued_at**: ISO 8601 timestamp when intent was queued
+- **tags**: Key-value pairs to tag the Savings Plan resource
 
 ---
 
