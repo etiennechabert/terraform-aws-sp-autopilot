@@ -116,12 +116,20 @@ def _validate_field_types(purchase_intent: dict[str, Any]) -> None:
         raise ValueError(
             f"Field 'client_token' must be a non-empty string, got {type(client_token).__name__}"
         )
+    if len(client_token) > MAX_CLIENT_TOKEN_LENGTH:
+        raise ValueError(
+            f"Field 'client_token' exceeds maximum length of {MAX_CLIENT_TOKEN_LENGTH} characters, got {len(client_token)}"
+        )
 
     # Validate offering_id is a string
     offering_id = purchase_intent.get("offering_id")
     if not isinstance(offering_id, str) or not offering_id.strip():
         raise ValueError(
             f"Field 'offering_id' must be a non-empty string, got {type(offering_id).__name__}"
+        )
+    if len(offering_id) > MAX_OFFERING_ID_LENGTH:
+        raise ValueError(
+            f"Field 'offering_id' exceeds maximum length of {MAX_OFFERING_ID_LENGTH} characters, got {len(offering_id)}"
         )
 
     # Validate upfront_amount if present (optional field, can be None)
