@@ -59,7 +59,6 @@ import recommendations as recommendations_module
 
 # Configure logging
 logger = logging.getLogger()
-logger.setLevel(logging.INFO)
 
 # Module-level boto3 clients for backward compatibility with existing tests
 # These are initialized to None and tests can assign mock objects to them
