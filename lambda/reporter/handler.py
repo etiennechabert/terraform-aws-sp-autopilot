@@ -25,6 +25,7 @@ from shared.handler_utils import (
     load_config_from_env,
     send_error_notification,
 )
+from shared.storage_adapter import StorageAdapter
 
 
 # Configure logging
@@ -90,9 +91,14 @@ def handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
         savings_data = get_savings_data(savingsplans_client, ce_client)
         logger.info(f"Savings data collected: {savings_data.get('plans_count', 0)} active plans")
 
+        # Step 2.5: Check for low utilization and send alert if needed
+        check_and_alert_low_utilization(sns_client, config, savings_data)
+
         # Step 3: Generate report based on format
         if config["report_format"] == "json":
             report_content = generate_json_report(coverage_history, savings_data)
+        elif config["report_format"] == "csv":
+            report_content = generate_csv_report(coverage_history, savings_data)
         else:
             report_content = generate_html_report(coverage_history, savings_data)
 
@@ -190,6 +196,12 @@ def load_configuration() -> Dict[str, Any]:
         "tags": {"required": False, "type": "json", "default": "{}", "env_var": "TAGS"},
         "slack_webhook_url": {"required": False, "type": "str", "env_var": "SLACK_WEBHOOK_URL"},
         "teams_webhook_url": {"required": False, "type": "str", "env_var": "TEAMS_WEBHOOK_URL"},
+        "low_utilization_threshold": {
+            "required": False,
+            "type": "float",
+            "default": "70",
+            "env_var": "LOW_UTILIZATION_THRESHOLD",
+        },
     }
 
     return load_config_from_env(schema)
@@ -679,6 +691,105 @@ def generate_coverage_chart_svg(coverage_data: List[Dict[str, Any]]) -> str:
     svg_parts.append('</svg>')
 
     return "\n".join(svg_parts)
+
+
+def check_and_alert_low_utilization(
+    sns_client: Any, config: Dict[str, Any], savings_data: Dict[str, Any]
+) -> None:
+    """
+    Check if Savings Plans utilization is below threshold and send alert if needed.
+
+    Args:
+        sns_client: Boto3 SNS client
+        config: Configuration dictionary with threshold and notification settings
+        savings_data: Savings Plans data including average_utilization
+
+    Returns:
+        None: Sends alert notifications if utilization is below threshold
+    """
+    # Get threshold from config (defaults to 70%)
+    threshold = config.get("low_utilization_threshold", 70.0)
+
+    # Get average utilization from savings data
+    average_utilization = savings_data.get("average_utilization", 0.0)
+
+    # Get active plans count
+    plans_count = savings_data.get("plans_count", 0)
+
+    # Skip alert if no active plans
+    if plans_count == 0:
+        logger.info("No active Savings Plans - skipping low utilization check")
+        return
+
+    # Check if utilization is below threshold
+    if average_utilization < threshold:
+        logger.warning(
+            f"Low utilization detected: {average_utilization:.2f}% (threshold: {threshold:.2f}%)"
+        )
+
+        # Build alert subject
+        subject = (
+            f"Low Savings Plans Utilization Alert: {average_utilization:.1f}% "
+            f"(threshold: {threshold:.0f}%)"
+        )
+
+        # Build alert body
+        body_lines = [
+            f"Savings Plans utilization has fallen below the configured threshold.",
+            "",
+            f"Current Utilization: {average_utilization:.2f}%",
+            f"Alert Threshold: {threshold:.2f}%",
+            f"Active Plans: {plans_count}",
+            f"Total Commitment: ${savings_data.get('total_commitment', 0.0):.4f}/hour",
+            "",
+            "This may indicate:",
+            "• Decreased compute usage requiring plan adjustment",
+            "• Over-commitment relative to actual usage",
+            "• Opportunity to optimize Savings Plans portfolio",
+            "",
+            "Review your Savings Plans inventory and usage patterns to optimize costs.",
+        ]
+
+        # Send SNS notification
+        try:
+            message_body = "\n".join(body_lines)
+            sns_client.publish(
+                TopicArn=config["sns_topic_arn"], Subject=subject, Message=message_body
+            )
+            logger.info("Low utilization alert sent via SNS")
+        except ClientError as e:
+            logger.error(f"Failed to send SNS alert: {e!s}")
+            raise
+
+        # Send Slack notification (non-fatal if it fails)
+        try:
+            slack_webhook_url = config.get("slack_webhook_url")
+            if slack_webhook_url:
+                slack_message = notifications.format_slack_message(
+                    subject, body_lines, severity="warning"
+                )
+                if notifications.send_slack_notification(slack_webhook_url, slack_message):
+                    logger.info("Low utilization alert sent via Slack")
+                else:
+                    logger.warning("Slack notification failed (non-fatal)")
+        except Exception as e:
+            logger.warning(f"Slack notification error (non-fatal): {e!s}")
+
+        # Send Teams notification (non-fatal if it fails)
+        try:
+            teams_webhook_url = config.get("teams_webhook_url")
+            if teams_webhook_url:
+                teams_message = notifications.format_teams_message(subject, body_lines)
+                if notifications.send_teams_notification(teams_webhook_url, teams_message):
+                    logger.info("Low utilization alert sent via Teams")
+                else:
+                    logger.warning("Teams notification failed (non-fatal)")
+        except Exception as e:
+            logger.warning(f"Teams notification error (non-fatal): {e!s}")
+    else:
+        logger.info(
+            f"Utilization {average_utilization:.2f}% is above threshold {threshold:.2f}% - no alert needed"
+        )
 
 
 def generate_html_report(
@@ -1353,11 +1464,127 @@ def generate_json_report(
     return json_content
 
 
+def generate_csv_report(
+    coverage_history: List[Dict[str, Any]], savings_data: Dict[str, Any]
+) -> str:
+    """
+    Generate CSV report with coverage trends and savings metrics.
+
+    Args:
+        coverage_history: List of coverage data points by day
+        savings_data: Savings Plans data including commitment and estimated savings
+
+    Returns:
+        str: CSV report content
+    """
+    logger.info("Generating CSV report")
+
+    # Calculate report timestamp
+    report_timestamp = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S UTC")
+
+    # Calculate coverage summary
+    avg_coverage = 0.0
+    if coverage_history:
+        total_coverage = sum(item.get("coverage_percentage", 0.0) for item in coverage_history)
+        avg_coverage = total_coverage / len(coverage_history)
+
+    current_coverage = (
+        coverage_history[-1].get("coverage_percentage", 0.0) if coverage_history else 0.0
+    )
+
+    # Calculate trend direction
+    trend_direction = "stable"
+    trend_value = 0.0
+    if len(coverage_history) >= 2:
+        first_coverage = coverage_history[0].get("coverage_percentage", 0.0)
+        last_coverage = coverage_history[-1].get("coverage_percentage", 0.0)
+        trend_value = last_coverage - first_coverage
+        if trend_value > 0:
+            trend_direction = "increasing"
+        elif trend_value < 0:
+            trend_direction = "decreasing"
+
+    # Extract actual savings data
+    actual_savings = savings_data.get("actual_savings", {})
+    actual_sp_cost = actual_savings.get("actual_sp_cost", 0.0)
+    on_demand_equivalent_cost = actual_savings.get("on_demand_equivalent_cost", 0.0)
+    net_savings = actual_savings.get("net_savings", 0.0)
+    savings_percentage = actual_savings.get("savings_percentage", 0.0)
+
+    # Build CSV content
+    csv_parts = []
+
+    # Header
+    csv_parts.append("# Savings Plans Coverage & Savings Report")
+    csv_parts.append(f"# Generated: {report_timestamp}")
+    csv_parts.append("")
+
+    # Summary section
+    csv_parts.append("## Summary")
+    csv_parts.append("metric,value")
+    csv_parts.append(f"current_coverage_percentage,{current_coverage:.2f}")
+    csv_parts.append(f"average_coverage_percentage,{avg_coverage:.2f}")
+    csv_parts.append(f"trend_direction,{trend_direction}")
+    csv_parts.append(f"trend_value,{trend_value:.2f}")
+    csv_parts.append(f"active_plans_count,{savings_data.get('plans_count', 0)}")
+    csv_parts.append(f"total_hourly_commitment,{savings_data.get('total_commitment', 0.0):.4f}")
+    csv_parts.append(
+        f"total_monthly_commitment,{savings_data.get('total_commitment', 0.0) * 730:.2f}"
+    )
+    csv_parts.append(
+        f"estimated_monthly_savings,{savings_data.get('estimated_monthly_savings', 0.0):.2f}"
+    )
+    csv_parts.append(
+        f"average_utilization_percentage,{savings_data.get('average_utilization', 0.0):.2f}"
+    )
+    csv_parts.append(f"actual_sp_cost,{actual_sp_cost:.2f}")
+    csv_parts.append(f"on_demand_equivalent_cost,{on_demand_equivalent_cost:.2f}")
+    csv_parts.append(f"net_savings,{net_savings:.2f}")
+    csv_parts.append(f"savings_percentage,{savings_percentage:.2f}")
+    csv_parts.append("")
+
+    # Coverage history section
+    csv_parts.append("## Coverage History")
+    csv_parts.append("date,coverage_percentage,on_demand_hours,covered_hours,total_hours")
+    for item in coverage_history:
+        csv_parts.append(
+            f"{item.get('date', '')},{item.get('coverage_percentage', 0.0):.2f},"
+            f"{item.get('on_demand_hours', 0.0):.2f},{item.get('covered_hours', 0.0):.2f},"
+            f"{item.get('total_hours', 0.0):.2f}"
+        )
+    csv_parts.append("")
+
+    # Active Savings Plans section
+    csv_parts.append("## Active Savings Plans")
+    csv_parts.append(
+        "plan_id,plan_type,payment_option,term_years,hourly_commitment,start_date,end_date"
+    )
+    for plan in savings_data.get("plans", []):
+        plan_id = plan.get("plan_id", "")
+        plan_type = plan.get("plan_type", "")
+        payment_option = plan.get("payment_option", "")
+        term_years = plan.get("term_years", 0)
+        hourly_commitment = plan.get("hourly_commitment", 0.0)
+        start_date = plan.get("start_date", "")
+        end_date = plan.get("end_date", "")
+
+        csv_parts.append(
+            f"{plan_id},{plan_type},{payment_option},{term_years},{hourly_commitment:.4f},"
+            f"{start_date},{end_date}"
+        )
+
+    csv_content = "\n".join(csv_parts)
+
+    logger.info(f"CSV report generated ({len(csv_content)} bytes)")
+    return csv_content
+
+
 def upload_report_to_s3(
     config: Dict[str, Any], report_content: str, report_format: str = "html"
 ) -> str:
     """
-    Upload report to S3 with timestamp-based key.
+    Upload report to storage.
+    Supports both AWS S3 and local filesystem modes.
 
     Uses module-level s3_client for S3 operations.
 
@@ -1367,29 +1594,19 @@ def upload_report_to_s3(
         report_format: Report format (default: 'html')
 
     Returns:
-        str: S3 object key for the uploaded report
+        str: S3 object key (AWS mode) or file path (local mode)
 
     Raises:
-        ClientError: If S3 upload fails
+        ClientError: If upload fails
     """
     bucket_name = config["reports_bucket"]
-    timestamp = datetime.now(timezone.utc).strftime("%Y-%m-%d_%H-%M-%S")
-    object_key = f"savings-plans-report_{timestamp}.{report_format}"
-
-    logger.info(f"Uploading report to S3: s3://{bucket_name}/{object_key}")
+    logger.info(f"Uploading report to storage: {bucket_name}")
 
     try:
-        # Upload to S3
-        s3_client.put_object(
-            Bucket=bucket_name,
-            Key=object_key,
-            Body=report_content.encode("utf-8"),
-            ContentType="application/json" if report_format == "json" else "text/html",
-            ServerSideEncryption="AES256",
-            Metadata={
-                "generated-at": datetime.now(timezone.utc).isoformat(),
-                "generator": "sp-autopilot-reporter",
-            },
+        # Use storage adapter for both local and AWS modes
+        storage_adapter = StorageAdapter(s3_client=s3_client, bucket_name=bucket_name)
+        object_key = storage_adapter.upload_report(
+            report_content=report_content, report_format=report_format
         )
 
         logger.info(f"Report uploaded successfully: {object_key}")
@@ -1398,9 +1615,7 @@ def upload_report_to_s3(
     except ClientError as e:
         error_code = e.response.get("Error", {}).get("Code", "Unknown")
         error_message = e.response.get("Error", {}).get("Message", str(e))
-        logger.error(
-            f"Failed to upload report to S3 - Code: {error_code}, Message: {error_message}"
-        )
+        logger.error(f"Failed to upload report - Code: {error_code}, Message: {error_message}")
         raise
 
 
