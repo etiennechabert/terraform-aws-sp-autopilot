@@ -6,9 +6,11 @@ Calculates current Savings Plans coverage, excluding plans expiring soon.
 
 import logging
 from datetime import datetime, timedelta, timezone
-from typing import Any, Dict
+from typing import Any
 
 from botocore.exceptions import ClientError
+from mypy_boto3_ce.client import CostExplorerClient
+from mypy_boto3_savingsplans.client import SavingsPlansClient
 
 
 # Configure logging
@@ -16,8 +18,8 @@ logger = logging.getLogger()
 
 
 def calculate_current_coverage(
-    savingsplans_client: Any, ce_client: Any, config: Dict[str, Any]
-) -> Dict[str, float]:
+    savingsplans_client: SavingsPlansClient, ce_client: CostExplorerClient, config: dict[str, Any]
+) -> dict[str, float]:
     """
     Calculate current Savings Plans coverage, excluding plans expiring soon.
 
