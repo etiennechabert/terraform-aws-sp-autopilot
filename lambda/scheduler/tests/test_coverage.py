@@ -446,3 +446,198 @@ def test_calculate_current_coverage_zero_coverage(
     )
 
     assert result["compute"] == 0.0
+
+
+def test_calculate_current_coverage_with_groupby_multiple_types(
+    mock_savingsplans_client, mock_ce_client, mock_config
+):
+    """Test coverage calculation with GroupBy returning multiple SP types."""
+    now = datetime.now(timezone.utc)
+    expiring_later = now + timedelta(days=30)
+
+    mock_savingsplans_client.describe_savings_plans.return_value = {
+        "savingsPlans": [
+            {"savingsPlanId": "sp-compute", "state": "active", "end": expiring_later.isoformat()},
+            {"savingsPlanId": "sp-sagemaker", "state": "active", "end": expiring_later.isoformat()},
+        ]
+    }
+
+    # Mock GroupBy response with separate coverage per SP type
+    mock_ce_client.get_savings_plans_coverage.return_value = {
+        "SavingsPlansCoverages": [
+            {
+                "TimePeriod": {"Start": "2026-01-14", "End": "2026-01-15"},
+                "Groups": [
+                    {
+                        "Attributes": {"SAVINGS_PLANS_TYPE": "ComputeSP"},
+                        "Coverage": {"CoveragePercentage": "75.5"},
+                    },
+                    {
+                        "Attributes": {"SAVINGS_PLANS_TYPE": "SageMakerSP"},
+                        "Coverage": {"CoveragePercentage": "60.0"},
+                    },
+                ],
+            }
+        ]
+    }
+
+    result = coverage_module.calculate_current_coverage(
+        mock_savingsplans_client, mock_ce_client, mock_config
+    )
+
+    assert result["compute"] == 75.5
+    assert result["sagemaker"] == 60.0
+    assert result["database"] == 0.0
+
+
+def test_calculate_current_coverage_with_groupby_ec2_instance_sp(
+    mock_savingsplans_client, mock_ce_client, mock_config
+):
+    """Test coverage calculation with EC2InstanceSP type."""
+    now = datetime.now(timezone.utc)
+    expiring_later = now + timedelta(days=30)
+
+    mock_savingsplans_client.describe_savings_plans.return_value = {
+        "savingsPlans": [
+            {"savingsPlanId": "sp-ec2", "state": "active", "end": expiring_later.isoformat()}
+        ]
+    }
+
+    # EC2InstanceSP should map to compute coverage
+    mock_ce_client.get_savings_plans_coverage.return_value = {
+        "SavingsPlansCoverages": [
+            {
+                "TimePeriod": {"Start": "2026-01-14", "End": "2026-01-15"},
+                "Groups": [
+                    {
+                        "Attributes": {"SAVINGS_PLANS_TYPE": "EC2InstanceSP"},
+                        "Coverage": {"CoveragePercentage": "85.0"},
+                    }
+                ],
+            }
+        ]
+    }
+
+    result = coverage_module.calculate_current_coverage(
+        mock_savingsplans_client, mock_ce_client, mock_config
+    )
+
+    assert result["compute"] == 85.0
+    assert result["sagemaker"] == 0.0
+    assert result["database"] == 0.0
+
+
+def test_calculate_current_coverage_with_groupby_rds_instance(
+    mock_savingsplans_client, mock_ce_client, mock_config
+):
+    """Test coverage calculation with RDSInstance SP type."""
+    now = datetime.now(timezone.utc)
+    expiring_later = now + timedelta(days=30)
+
+    mock_savingsplans_client.describe_savings_plans.return_value = {
+        "savingsPlans": [
+            {"savingsPlanId": "sp-rds", "state": "active", "end": expiring_later.isoformat()}
+        ]
+    }
+
+    # RDSInstance should map to database coverage
+    mock_ce_client.get_savings_plans_coverage.return_value = {
+        "SavingsPlansCoverages": [
+            {
+                "TimePeriod": {"Start": "2026-01-14", "End": "2026-01-15"},
+                "Groups": [
+                    {
+                        "Attributes": {"SAVINGS_PLANS_TYPE": "RDSInstance"},
+                        "Coverage": {"CoveragePercentage": "90.0"},
+                    }
+                ],
+            }
+        ]
+    }
+
+    result = coverage_module.calculate_current_coverage(
+        mock_savingsplans_client, mock_ce_client, mock_config
+    )
+
+    assert result["compute"] == 0.0
+    assert result["sagemaker"] == 0.0
+    assert result["database"] == 90.0
+
+
+def test_calculate_current_coverage_with_groupby_all_types(
+    mock_savingsplans_client, mock_ce_client, mock_config
+):
+    """Test coverage calculation with all SP types present."""
+    now = datetime.now(timezone.utc)
+    expiring_later = now + timedelta(days=30)
+
+    mock_savingsplans_client.describe_savings_plans.return_value = {
+        "savingsPlans": [
+            {"savingsPlanId": "sp-all", "state": "active", "end": expiring_later.isoformat()}
+        ]
+    }
+
+    # All SP types with coverage
+    mock_ce_client.get_savings_plans_coverage.return_value = {
+        "SavingsPlansCoverages": [
+            {
+                "TimePeriod": {"Start": "2026-01-14", "End": "2026-01-15"},
+                "Groups": [
+                    {
+                        "Attributes": {"SAVINGS_PLANS_TYPE": "ComputeSP"},
+                        "Coverage": {"CoveragePercentage": "75.0"},
+                    },
+                    {
+                        "Attributes": {"SAVINGS_PLANS_TYPE": "SageMakerSP"},
+                        "Coverage": {"CoveragePercentage": "60.0"},
+                    },
+                    {
+                        "Attributes": {"SAVINGS_PLANS_TYPE": "RDSInstance"},
+                        "Coverage": {"CoveragePercentage": "80.0"},
+                    },
+                ],
+            }
+        ]
+    }
+
+    result = coverage_module.calculate_current_coverage(
+        mock_savingsplans_client, mock_ce_client, mock_config
+    )
+
+    assert result["compute"] == 75.0
+    assert result["sagemaker"] == 60.0
+    assert result["database"] == 80.0
+
+
+def test_calculate_current_coverage_with_groupby_no_groups_fallback(
+    mock_savingsplans_client, mock_ce_client, mock_config
+):
+    """Test fallback to aggregate coverage when GroupBy returns no groups."""
+    now = datetime.now(timezone.utc)
+    expiring_later = now + timedelta(days=30)
+
+    mock_savingsplans_client.describe_savings_plans.return_value = {
+        "savingsPlans": [
+            {"savingsPlanId": "sp-12345", "state": "active", "end": expiring_later.isoformat()}
+        ]
+    }
+
+    # GroupBy response with no groups (empty) - should fallback to aggregate
+    mock_ce_client.get_savings_plans_coverage.return_value = {
+        "SavingsPlansCoverages": [
+            {
+                "TimePeriod": {"Start": "2026-01-14", "End": "2026-01-15"},
+                "Groups": [],
+                "Coverage": {"CoveragePercentage": "70.0"},
+            }
+        ]
+    }
+
+    result = coverage_module.calculate_current_coverage(
+        mock_savingsplans_client, mock_ce_client, mock_config
+    )
+
+    # Should use aggregate coverage for compute when no groups
+    assert result["compute"] == 70.0
+    assert result["sagemaker"] == 0.0
+    assert result["database"] == 0.0
