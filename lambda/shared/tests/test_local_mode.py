@@ -7,18 +7,19 @@ in both local and AWS modes.
 
 import json
 import os
+
+# Import from parent directory (lambda/shared)
+import sys
 import tempfile
 from pathlib import Path
 from unittest import mock
 
 import pytest
 
-# Add shared module to path
-import sys
-lambda_shared_dir = Path(__file__).parent.parent / "lambda" / "shared"
-sys.path.insert(0, str(lambda_shared_dir))
 
-from local_mode import is_local_mode, get_local_data_dir, get_queue_dir, get_reports_dir
+sys.path.insert(0, str(Path(__file__).parent.parent))
+
+from local_mode import get_local_data_dir, get_queue_dir, get_reports_dir, is_local_mode
 from queue_adapter import QueueAdapter
 from storage_adapter import StorageAdapter
 
@@ -99,7 +100,7 @@ class TestQueueAdapterLocal:
         assert queue_files[0].stem == "test-123"
 
         # Verify content
-        with open(queue_files[0], "r") as f:
+        with open(queue_files[0]) as f:
             saved_message = json.load(f)
         assert saved_message == message
 
@@ -179,7 +180,7 @@ class TestQueueAdapterAWS:
                 {
                     "MessageId": "aws-msg-123",
                     "Body": '{"test": "data"}',
-                    "ReceiptHandle": "receipt-123"
+                    "ReceiptHandle": "receipt-123",
                 }
             ]
         }
@@ -188,13 +189,17 @@ class TestQueueAdapterAWS:
     def test_queue_adapter_aws_init(self, mock_sqs_client):
         """Test QueueAdapter initializes in AWS mode."""
         with mock.patch.dict(os.environ, {"LOCAL_MODE": "false"}):
-            adapter = QueueAdapter(sqs_client=mock_sqs_client, queue_url="https://sqs.example.com/queue")
+            adapter = QueueAdapter(
+                sqs_client=mock_sqs_client, queue_url="https://sqs.example.com/queue"
+            )
             assert adapter.is_local is False
 
     def test_send_message_aws(self, mock_sqs_client):
         """Test sending a message in AWS mode."""
         with mock.patch.dict(os.environ, {"LOCAL_MODE": "false"}):
-            adapter = QueueAdapter(sqs_client=mock_sqs_client, queue_url="https://sqs.example.com/queue")
+            adapter = QueueAdapter(
+                sqs_client=mock_sqs_client, queue_url="https://sqs.example.com/queue"
+            )
             message = {"client_token": "test-123", "data": "test"}
 
             message_id = adapter.send_message(message)
@@ -206,7 +211,9 @@ class TestQueueAdapterAWS:
     def test_receive_messages_aws(self, mock_sqs_client):
         """Test receiving messages in AWS mode."""
         with mock.patch.dict(os.environ, {"LOCAL_MODE": "false"}):
-            adapter = QueueAdapter(sqs_client=mock_sqs_client, queue_url="https://sqs.example.com/queue")
+            adapter = QueueAdapter(
+                sqs_client=mock_sqs_client, queue_url="https://sqs.example.com/queue"
+            )
 
             messages = adapter.receive_messages(max_messages=10)
             assert len(messages) == 1
@@ -246,14 +253,14 @@ class TestStorageAdapterLocal:
         assert report_file.suffix == ".html"
 
         # Verify content
-        with open(report_file, "r", encoding="utf-8") as f:
+        with open(report_file, encoding="utf-8") as f:
             saved_content = f.read()
         assert saved_content == report_content
 
         # Verify metadata file
         metadata_file = report_file.with_suffix(".html.meta.json")
         assert metadata_file.exists()
-        with open(metadata_file, "r") as f:
+        with open(metadata_file) as f:
             metadata = json.load(f)
         assert "generated-at" in metadata
         assert metadata["generator"] == "sp-autopilot-reporter"
@@ -293,10 +300,7 @@ class TestStorageAdapterAWS:
         client = mock.MagicMock()
         client.put_object.return_value = {"ETag": "test-etag"}
         client.list_objects_v2.return_value = {
-            "Contents": [
-                {"Key": "report1.html"},
-                {"Key": "report2.html"}
-            ]
+            "Contents": [{"Key": "report1.html"}, {"Key": "report2.html"}]
         }
         return client
 

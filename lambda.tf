@@ -204,6 +204,10 @@ data "archive_file" "scheduler" {
     filename = "shared/notifications.py"
   }
   source {
+    content  = file("${path.module}/lambda/shared/config_validation.py")
+    filename = "shared/config_validation.py"
+  }
+  source {
     content  = file("${path.module}/lambda/shared/__init__.py")
     filename = "shared/__init__.py"
   }
@@ -251,6 +255,10 @@ data "archive_file" "purchaser" {
     filename = "shared/notifications.py"
   }
   source {
+    content  = file("${path.module}/lambda/shared/config_validation.py")
+    filename = "shared/config_validation.py"
+  }
+  source {
     content  = file("${path.module}/lambda/shared/__init__.py")
     filename = "shared/__init__.py"
   }
@@ -292,6 +300,10 @@ data "archive_file" "reporter" {
   source {
     content  = file("${path.module}/lambda/shared/notifications.py")
     filename = "shared/notifications.py"
+  }
+  source {
+    content  = file("${path.module}/lambda/shared/config_validation.py")
+    filename = "shared/config_validation.py"
   }
   source {
     content  = file("${path.module}/lambda/shared/__init__.py")

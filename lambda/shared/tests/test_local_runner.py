@@ -35,7 +35,7 @@ class TestLocalRunner:
             "DRY_RUN": "true",
             "ENABLE_COMPUTE_SP": "true",
             "COVERAGE_TARGET_PERCENT": "90",
-            "REPORT_FORMAT": "html"
+            "REPORT_FORMAT": "html",
         }
         with mock.patch.dict(os.environ, env):
             yield env
@@ -43,7 +43,8 @@ class TestLocalRunner:
     def test_local_data_dir_structure(self, temp_data_dir, mock_env):
         """Test that local data directories are created correctly."""
         import sys
-        sys.path.insert(0, str(Path(__file__).parent.parent / "lambda" / "shared"))
+
+        sys.path.insert(0, str(Path(__file__).parent.parent))
         from local_mode import get_queue_dir, get_reports_dir
 
         queue_dir = get_queue_dir()
@@ -57,7 +58,8 @@ class TestLocalRunner:
     def test_queue_message_flow(self, temp_data_dir, mock_env):
         """Test complete flow: send message, receive message, delete message."""
         import sys
-        sys.path.insert(0, str(Path(__file__).parent.parent / "lambda" / "shared"))
+
+        sys.path.insert(0, str(Path(__file__).parent.parent))
         from queue_adapter import QueueAdapter
 
         adapter = QueueAdapter()
@@ -66,7 +68,7 @@ class TestLocalRunner:
         message = {
             "client_token": "test-flow-123",
             "sp_type": "ComputeSavingsPlans",
-            "hourly_commitment": 1.5
+            "hourly_commitment": 1.5,
         }
         adapter.send_message(message)
 
@@ -87,7 +89,8 @@ class TestLocalRunner:
     def test_report_upload_flow(self, temp_data_dir, mock_env):
         """Test complete flow: upload report, verify file exists."""
         import sys
-        sys.path.insert(0, str(Path(__file__).parent.parent / "lambda" / "shared"))
+
+        sys.path.insert(0, str(Path(__file__).parent.parent))
         from storage_adapter import StorageAdapter
 
         adapter = StorageAdapter()
@@ -100,7 +103,7 @@ class TestLocalRunner:
         assert Path(file_path).exists()
 
         # Verify content
-        with open(file_path, "r", encoding="utf-8") as f:
+        with open(file_path, encoding="utf-8") as f:
             saved_content = f.read()
         assert saved_content == report_content
 
@@ -108,17 +111,18 @@ class TestLocalRunner:
         metadata_file = Path(file_path).with_suffix(".html.meta.json")
         assert metadata_file.exists()
 
-        with open(metadata_file, "r") as f:
+        with open(metadata_file) as f:
             metadata = json.load(f)
         assert metadata["generator"] == "sp-autopilot-reporter"
 
     def test_mock_context_creation(self):
         """Test MockContext class from local_runner."""
-        import sys
+
         local_runner_path = Path(__file__).parent.parent / "local_runner.py"
 
         # Import local_runner module
         import importlib.util
+
         spec = importlib.util.spec_from_file_location("local_runner", local_runner_path)
         local_runner = importlib.util.module_from_spec(spec)
 
@@ -147,13 +151,13 @@ class TestQueuePersistence:
     def test_message_persistence(self, temp_data_dir):
         """Test that messages persist between adapter instances."""
         import sys
-        sys.path.insert(0, str(Path(__file__).parent.parent / "lambda" / "shared"))
+
+        sys.path.insert(0, str(Path(__file__).parent.parent))
         from queue_adapter import QueueAdapter
 
-        with mock.patch.dict(os.environ, {
-            "LOCAL_MODE": "true",
-            "LOCAL_DATA_DIR": str(temp_data_dir)
-        }):
+        with mock.patch.dict(
+            os.environ, {"LOCAL_MODE": "true", "LOCAL_DATA_DIR": str(temp_data_dir)}
+        ):
             # Create first adapter and send message
             adapter1 = QueueAdapter()
             message = {"client_token": "persist-test", "data": "test"}
@@ -180,14 +184,15 @@ class TestReportGeneration:
     def test_multiple_reports(self, temp_data_dir):
         """Test uploading multiple reports and listing them."""
         import sys
-        sys.path.insert(0, str(Path(__file__).parent.parent / "lambda" / "shared"))
-        from storage_adapter import StorageAdapter
+
+        sys.path.insert(0, str(Path(__file__).parent.parent))
         import time
 
-        with mock.patch.dict(os.environ, {
-            "LOCAL_MODE": "true",
-            "LOCAL_DATA_DIR": str(temp_data_dir)
-        }):
+        from storage_adapter import StorageAdapter
+
+        with mock.patch.dict(
+            os.environ, {"LOCAL_MODE": "true", "LOCAL_DATA_DIR": str(temp_data_dir)}
+        ):
             adapter = StorageAdapter()
 
             # Upload multiple reports with slight delays
@@ -208,13 +213,13 @@ class TestReportGeneration:
     def test_report_formats(self, temp_data_dir):
         """Test uploading reports in different formats."""
         import sys
-        sys.path.insert(0, str(Path(__file__).parent.parent / "lambda" / "shared"))
+
+        sys.path.insert(0, str(Path(__file__).parent.parent))
         from storage_adapter import StorageAdapter
 
-        with mock.patch.dict(os.environ, {
-            "LOCAL_MODE": "true",
-            "LOCAL_DATA_DIR": str(temp_data_dir)
-        }):
+        with mock.patch.dict(
+            os.environ, {"LOCAL_MODE": "true", "LOCAL_DATA_DIR": str(temp_data_dir)}
+        ):
             adapter = StorageAdapter()
 
             # Upload HTML report
