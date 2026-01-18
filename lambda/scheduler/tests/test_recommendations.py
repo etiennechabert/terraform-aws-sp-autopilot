@@ -107,14 +107,16 @@ def test_fetch_compute_sp_recommendation_api_error(mock_ce_client, mock_config):
 
 
 def test_fetch_compute_sp_recommendation_missing_metadata(mock_ce_client):
-    """Test error handling when AWS returns no Metadata."""
+    """Test error handling when AWS returns recommendations but no Metadata."""
     mock_ce_client.get_savings_plans_purchase_recommendation.return_value = {
         "SavingsPlansPurchaseRecommendation": {
             "SavingsPlansPurchaseRecommendationDetails": [{"HourlyCommitmentToPurchase": "5.50"}]
         }
     }
 
-    with pytest.raises(ValueError, match="AWS returned no Metadata in response"):
+    with pytest.raises(
+        ValueError, match="AWS returned recommendations but no Metadata in response"
+    ):
         recommendations._fetch_compute_sp_recommendation(mock_ce_client, "THIRTY_DAYS")
 
 
@@ -199,14 +201,16 @@ def test_fetch_database_sp_recommendation_api_error(mock_ce_client, mock_config)
 
 
 def test_fetch_database_sp_recommendation_missing_metadata(mock_ce_client):
-    """Test error handling when AWS returns no Metadata for Database SP."""
+    """Test error handling when AWS returns recommendations but no Metadata for Database SP."""
     mock_ce_client.get_savings_plans_purchase_recommendation.return_value = {
         "SavingsPlansPurchaseRecommendation": {
             "SavingsPlansPurchaseRecommendationDetails": [{"HourlyCommitmentToPurchase": "2.75"}]
         }
     }
 
-    with pytest.raises(ValueError, match="AWS returned no Metadata in response"):
+    with pytest.raises(
+        ValueError, match="AWS returned recommendations but no Metadata in response"
+    ):
         recommendations._fetch_database_sp_recommendation(mock_ce_client, "THIRTY_DAYS")
 
 
