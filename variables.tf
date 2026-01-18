@@ -63,6 +63,11 @@ variable "purchase_strategy" {
       max_purchase_percent = number
       min_purchase_percent = number
     }))
+
+    conservative = optional(object({
+      min_gap_threshold    = number
+      max_purchase_percent = number
+    }))
   })
 
   validation {
@@ -87,10 +92,11 @@ variable "purchase_strategy" {
 
   validation {
     condition = (
-      (var.purchase_strategy.simple != null && var.purchase_strategy.dichotomy == null) ||
-      (var.purchase_strategy.simple == null && var.purchase_strategy.dichotomy != null)
+      (var.purchase_strategy.simple != null && var.purchase_strategy.dichotomy == null && var.purchase_strategy.conservative == null) ||
+      (var.purchase_strategy.simple == null && var.purchase_strategy.dichotomy != null && var.purchase_strategy.conservative == null) ||
+      (var.purchase_strategy.simple == null && var.purchase_strategy.dichotomy == null && var.purchase_strategy.conservative != null)
     )
-    error_message = "Exactly one purchase strategy (simple or dichotomy) must be defined."
+    error_message = "Exactly one purchase strategy (simple, dichotomy, or conservative) must be defined."
   }
 
   validation {
@@ -111,6 +117,17 @@ variable "purchase_strategy" {
       true
     )
     error_message = "For dichotomy strategy: 0 < min_purchase_percent < max_purchase_percent <= 100."
+  }
+
+  validation {
+    condition = (
+      var.purchase_strategy.conservative != null ?
+      (var.purchase_strategy.conservative.min_gap_threshold > 0 &&
+        var.purchase_strategy.conservative.max_purchase_percent > 0 &&
+      var.purchase_strategy.conservative.max_purchase_percent <= 100) :
+      true
+    )
+    error_message = "For conservative strategy: min_gap_threshold must be > 0 and 0 < max_purchase_percent <= 100."
   }
 }
 
