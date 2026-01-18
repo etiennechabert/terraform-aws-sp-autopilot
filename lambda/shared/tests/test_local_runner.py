@@ -43,7 +43,7 @@ class TestLocalRunner:
     def test_local_data_dir_structure(self, temp_data_dir, mock_env):
         """Test that local data directories are created correctly."""
         import sys
-        sys.path.insert(0, str(Path(__file__).parent.parent / "lambda" / "shared"))
+        sys.path.insert(0, str(Path(__file__).parent.parent))
         from local_mode import get_queue_dir, get_reports_dir
 
         queue_dir = get_queue_dir()
@@ -57,7 +57,7 @@ class TestLocalRunner:
     def test_queue_message_flow(self, temp_data_dir, mock_env):
         """Test complete flow: send message, receive message, delete message."""
         import sys
-        sys.path.insert(0, str(Path(__file__).parent.parent / "lambda" / "shared"))
+        sys.path.insert(0, str(Path(__file__).parent.parent))
         from queue_adapter import QueueAdapter
 
         adapter = QueueAdapter()
@@ -87,7 +87,7 @@ class TestLocalRunner:
     def test_report_upload_flow(self, temp_data_dir, mock_env):
         """Test complete flow: upload report, verify file exists."""
         import sys
-        sys.path.insert(0, str(Path(__file__).parent.parent / "lambda" / "shared"))
+        sys.path.insert(0, str(Path(__file__).parent.parent))
         from storage_adapter import StorageAdapter
 
         adapter = StorageAdapter()
@@ -147,7 +147,7 @@ class TestQueuePersistence:
     def test_message_persistence(self, temp_data_dir):
         """Test that messages persist between adapter instances."""
         import sys
-        sys.path.insert(0, str(Path(__file__).parent.parent / "lambda" / "shared"))
+        sys.path.insert(0, str(Path(__file__).parent.parent))
         from queue_adapter import QueueAdapter
 
         with mock.patch.dict(os.environ, {
@@ -180,7 +180,7 @@ class TestReportGeneration:
     def test_multiple_reports(self, temp_data_dir):
         """Test uploading multiple reports and listing them."""
         import sys
-        sys.path.insert(0, str(Path(__file__).parent.parent / "lambda" / "shared"))
+        sys.path.insert(0, str(Path(__file__).parent.parent))
         from storage_adapter import StorageAdapter
         import time
 
@@ -208,7 +208,7 @@ class TestReportGeneration:
     def test_report_formats(self, temp_data_dir):
         """Test uploading reports in different formats."""
         import sys
-        sys.path.insert(0, str(Path(__file__).parent.parent / "lambda" / "shared"))
+        sys.path.insert(0, str(Path(__file__).parent.parent))
         from storage_adapter import StorageAdapter
 
         with mock.patch.dict(os.environ, {

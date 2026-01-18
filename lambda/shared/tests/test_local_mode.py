@@ -13,10 +13,9 @@ from unittest import mock
 
 import pytest
 
-# Add shared module to path
+# Import from parent directory (lambda/shared)
 import sys
-lambda_shared_dir = Path(__file__).parent.parent / "lambda" / "shared"
-sys.path.insert(0, str(lambda_shared_dir))
+sys.path.insert(0, str(Path(__file__).parent.parent))
 
 from local_mode import is_local_mode, get_local_data_dir, get_queue_dir, get_reports_dir
 from queue_adapter import QueueAdapter
