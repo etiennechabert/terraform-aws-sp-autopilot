@@ -152,12 +152,15 @@ def validate_scheduler_config(config: dict[str, Any]) -> None:
         _validate_percentage_range(config["min_purchase_percent"], "min_purchase_percent")
 
     # Validate min_purchase_percent < max_purchase_percent
-    if "min_purchase_percent" in config and "max_purchase_percent" in config:
-        if config["min_purchase_percent"] >= config["max_purchase_percent"]:
-            raise ValueError(
-                f"Field 'min_purchase_percent' ({config['min_purchase_percent']}) "
-                f"must be less than 'max_purchase_percent' ({config['max_purchase_percent']})"
-            )
+    if (
+        "min_purchase_percent" in config
+        and "max_purchase_percent" in config
+        and config["min_purchase_percent"] >= config["max_purchase_percent"]
+    ):
+        raise ValueError(
+            f"Field 'min_purchase_percent' ({config['min_purchase_percent']}) "
+            f"must be less than 'max_purchase_percent' ({config['max_purchase_percent']})"
+        )
 
     # Validate positive integer fields
     if "renewal_window_days" in config:
@@ -186,12 +189,15 @@ def validate_scheduler_config(config: dict[str, Any]) -> None:
             )
 
     # Validate lookback_days >= min_data_days
-    if "lookback_days" in config and "min_data_days" in config:
-        if config["lookback_days"] < config["min_data_days"]:
-            raise ValueError(
-                f"Field 'lookback_days' ({config['lookback_days']}) must be greater than "
-                f"or equal to 'min_data_days' ({config['min_data_days']})"
-            )
+    if (
+        "lookback_days" in config
+        and "min_data_days" in config
+        and config["lookback_days"] < config["min_data_days"]
+    ):
+        raise ValueError(
+            f"Field 'lookback_days' ({config['lookback_days']}) must be greater than "
+            f"or equal to 'min_data_days' ({config['min_data_days']})"
+        )
 
     # Validate min_commitment_per_plan is non-negative
     if "min_commitment_per_plan" in config:
