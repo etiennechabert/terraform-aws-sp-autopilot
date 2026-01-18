@@ -218,7 +218,7 @@ def test_get_aws_recommendations_compute_enabled(aws_mock_builder, mock_env_vars
     with patch.object(handler.ce_client, "get_savings_plans_purchase_recommendation") as mock_rec:
         # Use real AWS response structure with custom commitment
         # Note: Using database recommendation as template since compute fixture is empty
-        mock_rec.return_value = aws_mock_builder.recommendation('database', hourly_commitment=2.5)
+        mock_rec.return_value = aws_mock_builder.recommendation("database", hourly_commitment=2.5)
 
         result = handler.get_aws_recommendations(config)
 
@@ -257,7 +257,7 @@ def test_get_aws_recommendations_database_enabled(aws_mock_builder, monkeypatch,
 
     with patch.object(handler.ce_client, "get_savings_plans_purchase_recommendation") as mock_rec:
         # Use real AWS response structure for Database SP
-        mock_rec.return_value = aws_mock_builder.recommendation('database', hourly_commitment=1.25)
+        mock_rec.return_value = aws_mock_builder.recommendation("database", hourly_commitment=1.25)
 
         result = handler.get_aws_recommendations(config)
 
@@ -335,7 +335,7 @@ def test_get_aws_recommendations_sagemaker_enabled(aws_mock_builder, monkeypatch
 
     with patch.object(handler.ce_client, "get_savings_plans_purchase_recommendation") as mock_rec:
         # Use real AWS response structure for SageMaker SP
-        mock_rec.return_value = aws_mock_builder.recommendation('sagemaker', hourly_commitment=3.75)
+        mock_rec.return_value = aws_mock_builder.recommendation("sagemaker", hourly_commitment=3.75)
 
         result = handler.get_aws_recommendations(config)
 

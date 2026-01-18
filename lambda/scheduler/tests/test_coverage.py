@@ -90,8 +90,8 @@ def test_calculate_current_coverage_filters_expiring_plans(
 
     # Use real AWS structure but customize expiration dates for this specific test
     plans_response = aws_mock_builder.describe_savings_plans(plans_count=2)
-    plans_response['savingsPlans'][0]['end'] = expiring_soon.isoformat()
-    plans_response['savingsPlans'][1]['end'] = expiring_later.isoformat()
+    plans_response["savingsPlans"][0]["end"] = expiring_soon.isoformat()
+    plans_response["savingsPlans"][1]["end"] = expiring_later.isoformat()
     mock_savingsplans_client.describe_savings_plans.return_value = plans_response
 
     mock_ce_client.get_savings_plans_coverage.return_value = aws_mock_builder.coverage(
