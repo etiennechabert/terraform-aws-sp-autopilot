@@ -11,6 +11,8 @@ from typing import Any, Dict, List
 from botocore.exceptions import ClientError
 from mypy_boto3_sns.client import SNSClient
 
+from shared import local_mode
+
 
 # Configure logging
 logger = logging.getLogger()
@@ -93,6 +95,14 @@ def send_scheduled_email(
     )
 
     message = "\n".join(email_lines)
+
+    # Skip SNS publishing in local mode
+    if local_mode.is_local_mode():
+        logger.info("LOCAL MODE: Skipping SNS publish. Email content:")
+        logger.info("=" * 60)
+        logger.info(message)
+        logger.info("=" * 60)
+        return
 
     # Publish to SNS
     try:
@@ -188,6 +198,14 @@ def send_dry_run_email(
     )
 
     message = "\n".join(email_lines)
+
+    # Skip SNS publishing in local mode
+    if local_mode.is_local_mode():
+        logger.info("LOCAL MODE: Skipping SNS publish. Dry run email content:")
+        logger.info("=" * 60)
+        logger.info(message)
+        logger.info("=" * 60)
+        return
 
     # Publish to SNS
     try:
