@@ -205,11 +205,13 @@ def validate_scheduler_config(config: dict[str, Any]) -> None:
                 f"got {config['min_commitment_per_plan']}"
             )
 
-    # Validate term mix dictionaries
-    if "compute_sp_term_mix" in config:
+    # Validate term mix dictionaries (only if SP type is enabled)
+    # Only validate term mix if Compute SP is enabled (default to True for backward compatibility)
+    if "compute_sp_term_mix" in config and config.get("enable_compute_sp", True):
         _validate_term_mix(config["compute_sp_term_mix"], "compute_sp_term_mix")
 
-    if "sagemaker_sp_term_mix" in config:
+    # Only validate term mix if SageMaker SP is enabled (default to True for backward compatibility)
+    if "sagemaker_sp_term_mix" in config and config.get("enable_sagemaker_sp", True):
         _validate_term_mix(config["sagemaker_sp_term_mix"], "sagemaker_sp_term_mix")
 
     # Validate payment options

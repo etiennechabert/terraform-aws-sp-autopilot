@@ -45,6 +45,9 @@ func TestFullDeploymentAndCleanup(t *testing.T) {
 		// Path to the Terraform code to test
 		TerraformDir: "./fixtures/basic",
 
+		// Use clean logger to avoid verbose prefixes
+		Logger: getCleanLogger(),
+
 		// Variables to pass to the Terraform code (v2.0 nested structure)
 		Vars: map[string]interface{}{
 			"aws_region":  awsRegion,
