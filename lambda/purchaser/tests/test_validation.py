@@ -161,3 +161,33 @@ def test_invalid_upfront_amount():
     }
     with pytest.raises(ValueError, match=r"upfront_amount.*must be numeric"):
         validate_purchase_intent(purchase_intent)
+
+
+def test_client_token_too_long():
+    """Test that client_token exceeding maximum length raises ValueError."""
+    purchase_intent = {
+        "client_token": "a" * 257,  # Exceeds 256 character limit
+        "offering_id": "offering-abc-456",
+        "commitment": "10.50",
+        "sp_type": "ComputeSavingsPlans",
+        "term_seconds": 94608000,
+        "payment_option": "NO_UPFRONT",
+        "projected_coverage_after": 85.5,
+    }
+    with pytest.raises(ValueError, match=r"client_token.*exceeds maximum length"):
+        validate_purchase_intent(purchase_intent)
+
+
+def test_offering_id_too_long():
+    """Test that offering_id exceeding maximum length raises ValueError."""
+    purchase_intent = {
+        "client_token": "test-token-123",
+        "offering_id": "a" * 257,  # Exceeds 256 character limit
+        "commitment": "10.50",
+        "sp_type": "ComputeSavingsPlans",
+        "term_seconds": 94608000,
+        "payment_option": "NO_UPFRONT",
+        "projected_coverage_after": 85.5,
+    }
+    with pytest.raises(ValueError, match=r"offering_id.*exceeds maximum length"):
+        validate_purchase_intent(purchase_intent)
