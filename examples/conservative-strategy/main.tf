@@ -5,10 +5,12 @@
 # for stable workloads.
 #
 # Strategy Behavior (min_gap_threshold = 5%, max_purchase_percent = 50%):
-# - Month 1: At 0% → Gap: 90% (>5%) → Purchase 50% of AWS recommendation
-# - Month 2: At 87% → Gap: 3% (<5%) → No purchase (below threshold)
-# - Month 3: At 84% → Gap: 6% (>5%) → Purchase 50% of AWS recommendation
-# - Month 4: At 89% → Gap: 1% (<5%) → No purchase (below threshold)
+# - Month 1: At 0% → Gap: 90% (>5%) → Purchase 50% of AWS recommendation → New coverage: 50%
+# - Month 2: At 50% → Gap: 40% (>5%) → Purchase 50% of AWS recommendation → New coverage: 75%
+# - Month 3: At 75% → Gap: 15% (>5%) → Purchase 50% of AWS recommendation → New coverage: 87%
+# - Month 4: At 87% → Gap: 3% (<5%) → No purchase (below threshold) → Coverage: 87%
+# - Month 5: At 84% → Gap: 6% (>5%) → Purchase 50% of AWS recommendation → New coverage: 89%
+# - Month 6: At 89% → Gap: 1% (<5%) → No purchase (below threshold) → Coverage: 89%
 #
 # Benefits:
 # - Reduces purchase churn when coverage is close to target
