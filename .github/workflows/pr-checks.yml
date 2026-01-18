@@ -50,7 +50,7 @@ jobs:
 
       - name: Comment PR with Results
         if: false # Disabled: github.event_name == 'pull_request' && failure()
-        uses: actions/github-script@v7
+        uses: actions/github-script@v8
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
           script: |
@@ -103,7 +103,7 @@ jobs:
 
       - name: Comment PR with Security Issues
         if: false # Disabled: github.event_name == 'pull_request' && failure()
-        uses: actions/github-script@v7
+        uses: actions/github-script@v8
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
           script: |
@@ -157,7 +157,7 @@ jobs:
 
       - name: Comment PR with Linting Results
         if: false # Disabled: github.event_name == 'pull_request' && failure()
-        uses: actions/github-script@v7
+        uses: actions/github-script@v8
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
           script: |
@@ -220,7 +220,7 @@ jobs:
 
       - name: Comment PR with Test Results
         if: false # Disabled: github.event_name == 'pull_request' && failure()
-        uses: actions/github-script@v7
+        uses: actions/github-script@v8
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
           script: |
@@ -280,7 +280,7 @@ jobs:
 
       - name: Comment PR with Test Results
         if: false # Disabled: github.event_name == 'pull_request' && failure()
-        uses: actions/github-script@v7
+        uses: actions/github-script@v8
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
           script: |
@@ -340,7 +340,7 @@ jobs:
 
       - name: Comment PR with Test Results
         if: false # Disabled: github.event_name == 'pull_request' && failure()
-        uses: actions/github-script@v7
+        uses: actions/github-script@v8
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
           script: |
@@ -501,7 +501,7 @@ jobs:
 
       - name: Comment PR with Test Results
         if: false # Disabled: github.event_name == 'pull_request' && failure()
-        uses: actions/github-script@v7
+        uses: actions/github-script@v8
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
           script: |
