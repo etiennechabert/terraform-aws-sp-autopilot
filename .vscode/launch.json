@@ -1,0 +1,162 @@
+{
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "name": "Debug Scheduler Lambda",
+            "type": "debugpy",
+            "request": "launch",
+            "module": "lambda.scheduler.handler",
+            "justMyCode": false,
+            "env": {
+                "PYTHONPATH": "${workspaceFolder}",
+                "AWS_REGION": "us-east-1",
+                "AWS_DEFAULT_REGION": "us-east-1",
+                // Required environment variables
+                "QUEUE_URL": "https://sqs.us-east-1.amazonaws.com/123456789012/test-queue",
+                "SNS_TOPIC_ARN": "arn:aws:sns:us-east-1:123456789012:test-topic",
+                "DRY_RUN": "true",
+                "ENABLE_COMPUTE_SP": "true",
+                "ENABLE_SAGEMAKER_SP": "false",
+                "COVERAGE_TARGET_PERCENT": "90",
+                "MAX_COVERAGE_CAP": "95",
+                "PURCHASE_STRATEGY_TYPE": "simple",
+                "SIMPLE_MAX_PURCHASE_PERCENT": "10",
+                "COMPUTE_SP_TERM_MIX_THREE_YEAR": "0.3",
+                "COMPUTE_SP_TERM_MIX_ONE_YEAR": "0.7",
+                "RENEWAL_WINDOW_DAYS": "7",
+                "MIN_COMMITMENT_PER_PLAN": "0",
+                "COMPUTE_SP_PAYMENT_OPTION": "NO_UPFRONT"
+            },
+            "console": "integratedTerminal",
+            "cwd": "${workspaceFolder}/lambda/scheduler"
+        },
+        {
+            "name": "Debug Purchaser Lambda",
+            "type": "debugpy",
+            "request": "launch",
+            "module": "lambda.purchaser.handler",
+            "justMyCode": false,
+            "env": {
+                "PYTHONPATH": "${workspaceFolder}",
+                "AWS_REGION": "us-east-1",
+                "AWS_DEFAULT_REGION": "us-east-1",
+                // Required environment variables
+                "QUEUE_URL": "https://sqs.us-east-1.amazonaws.com/123456789012/test-queue",
+                "SNS_TOPIC_ARN": "arn:aws:sns:us-east-1:123456789012:test-topic",
+                "DRY_RUN": "true",
+                "MAX_COVERAGE_CAP": "95"
+            },
+            "console": "integratedTerminal",
+            "cwd": "${workspaceFolder}/lambda/purchaser"
+        },
+        {
+            "name": "Debug Reporter Lambda",
+            "type": "debugpy",
+            "request": "launch",
+            "module": "lambda.reporter.handler",
+            "justMyCode": false,
+            "env": {
+                "PYTHONPATH": "${workspaceFolder}",
+                "AWS_REGION": "us-east-1",
+                "AWS_DEFAULT_REGION": "us-east-1",
+                // Required environment variables
+                "REPORTS_BUCKET": "test-reports-bucket",
+                "SNS_TOPIC_ARN": "arn:aws:sns:us-east-1:123456789012:test-topic",
+                "REPORT_FORMAT": "html",
+                "EMAIL_REPORTS": "false",
+                "LOW_UTILIZATION_THRESHOLD": "70"
+            },
+            "console": "integratedTerminal",
+            "cwd": "${workspaceFolder}/lambda/reporter"
+        },
+        {
+            "name": "Debug Local Mode Runner",
+            "type": "debugpy",
+            "request": "launch",
+            "program": "${workspaceFolder}/lambda/shared/local_runner.py",
+            "args": [
+                "scheduler"
+            ],
+            "justMyCode": false,
+            "env": {
+                "PYTHONPATH": "${workspaceFolder}",
+                "AWS_REGION": "us-east-1",
+                "AWS_DEFAULT_REGION": "us-east-1"
+            },
+            "console": "integratedTerminal",
+            "cwd": "${workspaceFolder}"
+        },
+        {
+            "name": "Run Scheduler Tests",
+            "type": "debugpy",
+            "request": "launch",
+            "module": "pytest",
+            "args": [
+                "tests/",
+                "-v",
+                "--no-cov"
+            ],
+            "justMyCode": false,
+            "env": {
+                "PYTHONPATH": "${workspaceFolder}",
+                "AWS_REGION": "us-east-1"
+            },
+            "console": "integratedTerminal",
+            "cwd": "${workspaceFolder}/lambda/scheduler"
+        },
+        {
+            "name": "Run Purchaser Tests",
+            "type": "debugpy",
+            "request": "launch",
+            "module": "pytest",
+            "args": [
+                "tests/",
+                "-v",
+                "--no-cov"
+            ],
+            "justMyCode": false,
+            "env": {
+                "PYTHONPATH": "${workspaceFolder}",
+                "AWS_REGION": "us-east-1"
+            },
+            "console": "integratedTerminal",
+            "cwd": "${workspaceFolder}/lambda/purchaser"
+        },
+        {
+            "name": "Run Reporter Tests",
+            "type": "debugpy",
+            "request": "launch",
+            "module": "pytest",
+            "args": [
+                "tests/",
+                "-v",
+                "--no-cov"
+            ],
+            "justMyCode": false,
+            "env": {
+                "PYTHONPATH": "${workspaceFolder}",
+                "AWS_REGION": "us-east-1"
+            },
+            "console": "integratedTerminal",
+            "cwd": "${workspaceFolder}/lambda/reporter"
+        },
+        {
+            "name": "Run Shared Module Tests",
+            "type": "debugpy",
+            "request": "launch",
+            "module": "pytest",
+            "args": [
+                "tests/",
+                "-v",
+                "--no-cov"
+            ],
+            "justMyCode": false,
+            "env": {
+                "PYTHONPATH": "${workspaceFolder}",
+                "AWS_REGION": "us-east-1"
+            },
+            "console": "integratedTerminal",
+            "cwd": "${workspaceFolder}/lambda/shared"
+        }
+    ]
+}
