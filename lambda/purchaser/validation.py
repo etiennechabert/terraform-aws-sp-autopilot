@@ -14,6 +14,10 @@ VALID_SP_TYPES = ["ComputeSavingsPlans", "DatabaseSavingsPlans", "SageMakerSavin
 # Valid values for payment_option field
 VALID_PAYMENT_OPTIONS = ["NO_UPFRONT", "ALL_UPFRONT", "PARTIAL_UPFRONT"]
 
+# Maximum length for string fields
+MAX_CLIENT_TOKEN_LENGTH = 256
+MAX_OFFERING_ID_LENGTH = 256
+
 # Required fields in purchase intent message
 REQUIRED_FIELDS = [
     "client_token",
