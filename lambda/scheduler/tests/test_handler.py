@@ -223,7 +223,7 @@ def test_get_aws_recommendations_compute_enabled(aws_mock_builder, mock_env_vars
         result = handler.get_aws_recommendations(config)
 
         assert result["compute"] is not None
-        assert result["compute"]["HourlyCommitmentToPurchase"] == "2.5"
+        assert result["compute"]["HourlyCommitmentToPurchase"] == "2.500"
         assert "RecommendationId" in result["compute"]
 
 

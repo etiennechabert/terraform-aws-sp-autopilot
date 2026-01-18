@@ -53,7 +53,7 @@ def test_fetch_compute_sp_recommendation_success(aws_mock_builder, mock_ce_clien
     result = recommendations._fetch_compute_sp_recommendation(mock_ce_client, "THIRTY_DAYS")
 
     assert result is not None
-    assert result["HourlyCommitmentToPurchase"] == "5.50"
+    assert result["HourlyCommitmentToPurchase"] == "5.500"
     assert "RecommendationId" in result
     assert "GenerationTimestamp" in result
     assert "Details" in result

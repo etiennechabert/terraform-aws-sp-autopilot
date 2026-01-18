@@ -233,9 +233,9 @@ def aws_mock_builder(aws_response):
                 rec = data.get("SavingsPlansPurchaseRecommendation", {})
                 details = rec.get("SavingsPlansPurchaseRecommendationDetails", [])
                 if details:
-                    # Format as string with 2 decimal places if numeric
+                    # Format as string with 3 decimal places to match AWS API format
                     formatted_commitment = (
-                        f"{hourly_commitment:.2f}"
+                        f"{hourly_commitment:.3f}"
                         if isinstance(hourly_commitment, (int, float))
                         else str(hourly_commitment)
                     )
