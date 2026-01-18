@@ -1,0 +1,56 @@
+name: Auto Update PR Branches
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  auto-update-prs:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Update PR branches
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          # Get all open PRs
+          prs=$(gh pr list --state open --json number,headRefName --jq '.[] | "\(.number):\(.headRefName)"')
+
+          if [ -z "$prs" ]; then
+            echo "No open PRs found"
+            exit 0
+          fi
+
+          # Update each PR branch with main
+          echo "$prs" | while IFS=: read -r pr_number branch_name; do
+            echo "Processing PR #$pr_number (branch: $branch_name)"
+
+            # Check if branch is behind main
+            git fetch origin "$branch_name"
+
+            behind_count=$(git rev-list --count "origin/$branch_name..origin/main" 2>/dev/null || echo "0")
+
+            if [ "$behind_count" -gt 0 ]; then
+              echo "PR #$pr_number is $behind_count commits behind main, updating..."
+
+              # Checkout the PR branch
+              git checkout -B "$branch_name" "origin/$branch_name"
+
+              # Merge main into the branch
+              if git merge origin/main --no-edit -m "chore: auto-merge main to keep PR up to date"; then
+                # Push the updated branch
+                git push origin "$branch_name"
+                echo "✓ Successfully updated PR #$pr_number"
+              else
+                echo "✗ Merge conflict in PR #$pr_number - skipping automatic update"
+                git merge --abort
+              fi
+            else
+              echo "PR #$pr_number is up to date with main"
+            fi
+          done
