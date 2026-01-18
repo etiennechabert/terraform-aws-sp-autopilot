@@ -81,9 +81,7 @@ def test_fetch_compute_sp_recommendation_no_recommendations(mock_ce_client, mock
         "SavingsPlansPurchaseRecommendation": {"SavingsPlansPurchaseRecommendationDetails": []},
     }
 
-    result = recommendations._fetch_compute_sp_recommendation(
-        mock_ce_client, "THIRTY_DAYS"
-    )
+    result = recommendations._fetch_compute_sp_recommendation(mock_ce_client, "THIRTY_DAYS")
 
     assert result is None
 
@@ -145,9 +143,7 @@ def test_fetch_database_sp_recommendation_success(mock_ce_client, mock_config):
         },
     }
 
-    result = recommendations._fetch_database_sp_recommendation(
-        mock_ce_client, "THIRTY_DAYS"
-    )
+    result = recommendations._fetch_database_sp_recommendation(mock_ce_client, "THIRTY_DAYS")
 
     assert result is not None
     assert result["HourlyCommitmentToPurchase"] == "2.75"
@@ -165,9 +161,7 @@ def test_fetch_database_sp_recommendation_no_recommendations(mock_ce_client, moc
         "SavingsPlansPurchaseRecommendation": {"SavingsPlansPurchaseRecommendationDetails": []},
     }
 
-    result = recommendations._fetch_database_sp_recommendation(
-        mock_ce_client, "THIRTY_DAYS"
-    )
+    result = recommendations._fetch_database_sp_recommendation(mock_ce_client, "THIRTY_DAYS")
 
     assert result is None
 
@@ -202,9 +196,7 @@ def test_fetch_database_sp_recommendation_api_error(mock_ce_client, mock_config)
     )
 
     with pytest.raises(ClientError):
-        recommendations._fetch_database_sp_recommendation(
-            mock_ce_client, "THIRTY_DAYS"
-        )
+        recommendations._fetch_database_sp_recommendation(mock_ce_client, "THIRTY_DAYS")
 
 
 # ============================================================================
@@ -231,9 +223,7 @@ def test_fetch_sagemaker_sp_recommendation_success(mock_ce_client, mock_config):
         },
     }
 
-    result = recommendations._fetch_sagemaker_sp_recommendation(
-        mock_ce_client, "THIRTY_DAYS"
-    )
+    result = recommendations._fetch_sagemaker_sp_recommendation(mock_ce_client, "THIRTY_DAYS")
 
     assert result is not None
     assert result["HourlyCommitmentToPurchase"] == "3.25"
@@ -251,9 +241,7 @@ def test_fetch_sagemaker_sp_recommendation_no_recommendations(mock_ce_client, mo
         "SavingsPlansPurchaseRecommendation": {"SagingsPlansPurchaseRecommendationDetails": []},
     }
 
-    result = recommendations._fetch_sagemaker_sp_recommendation(
-        mock_ce_client, "THIRTY_DAYS"
-    )
+    result = recommendations._fetch_sagemaker_sp_recommendation(mock_ce_client, "THIRTY_DAYS")
 
     assert result is None
 
@@ -288,9 +276,7 @@ def test_fetch_sagemaker_sp_recommendation_api_error(mock_ce_client, mock_config
     )
 
     with pytest.raises(ClientError):
-        recommendations._fetch_sagemaker_sp_recommendation(
-            mock_ce_client, "THIRTY_DAYS"
-        )
+        recommendations._fetch_sagemaker_sp_recommendation(mock_ce_client, "THIRTY_DAYS")
 
 
 # ============================================================================
