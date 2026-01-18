@@ -41,7 +41,7 @@ def configure_logging() -> None:
         # Add a handler if none exists (for local development)
         handler = logging.StreamHandler()
         handler.setLevel(level)
-        formatter = logging.Formatter('%(levelname)s - %(name)s - %(message)s')
+        formatter = logging.Formatter("%(levelname)s - %(name)s - %(message)s")
         handler.setFormatter(formatter)
         root.addHandler(handler)
     else:

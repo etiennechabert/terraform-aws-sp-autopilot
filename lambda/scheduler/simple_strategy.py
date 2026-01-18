@@ -91,7 +91,9 @@ def calculate_purchase_need_simple(
 
         recommendation = recommendations.get(key)
         if not recommendation:
-            logger.info(f"{sp_type['name']} SP has coverage gap but no AWS recommendation available")
+            logger.info(
+                f"{sp_type['name']} SP has coverage gap but no AWS recommendation available"
+            )
             continue
 
         hourly_commitment_float = float(recommendation.get("HourlyCommitmentToPurchase", "0"))
