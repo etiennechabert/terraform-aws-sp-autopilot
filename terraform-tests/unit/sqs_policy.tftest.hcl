@@ -95,7 +95,7 @@ run "test_sqs_queue_policy_created_with_only_database_enabled" {
 
 # Test: SQS queue policy targets correct queue
 run "test_sqs_queue_policy_targets_correct_queue" {
-  command = plan
+  command = apply
 
   variables {
     purchase_strategy = {
