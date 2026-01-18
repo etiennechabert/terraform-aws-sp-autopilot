@@ -27,7 +27,7 @@ mock_provider "aws" {
 
 # Test: SQS queue policy is created when scheduler is enabled
 run "test_sqs_queue_policy_created" {
-  command = plan
+  command = apply
 
   variables {
     purchase_strategy = {
