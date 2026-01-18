@@ -54,8 +54,8 @@ run "test_sqs_queue_policy_created_when_scheduler_enabled" {
   }
 }
 
-# Test: SQS queue policy is NOT created when scheduler is disabled
-run "test_sqs_queue_policy_not_created_when_scheduler_disabled" {
+# Test: SQS queue policy is created even with only database SP enabled
+run "test_sqs_queue_policy_created_with_only_database_enabled" {
   command = plan
 
   variables {
@@ -71,7 +71,8 @@ run "test_sqs_queue_policy_not_created_when_scheduler_disabled" {
         enabled = false
       }
       database = {
-        enabled = false
+        enabled             = true
+        no_upfront_one_year = 1
       }
       sagemaker = {
         enabled = false
@@ -83,8 +84,8 @@ run "test_sqs_queue_policy_not_created_when_scheduler_disabled" {
   }
 
   assert {
-    condition     = length(aws_sqs_queue_policy.purchase_intents) == 0
-    error_message = "SQS queue policy should NOT be created when scheduler is disabled (all SP plans disabled)"
+    condition     = length(aws_sqs_queue_policy.purchase_intents) == 1
+    error_message = "SQS queue policy should be created when any SP plan is enabled (scheduler active)"
   }
 }
 
