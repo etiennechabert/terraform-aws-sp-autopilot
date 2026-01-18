@@ -50,7 +50,7 @@ jobs:
 
       - name: Comment PR with Results
         if: false # Disabled: github.event_name == 'pull_request' && failure()
-        uses: actions/github-script@v7
+        uses: actions/github-script@v8
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
           script: |
@@ -96,14 +96,14 @@ jobs:
 
       - name: Upload SARIF file
         if: always() && hashFiles('tfsec-results.sarif') != ''
-        uses: github/codeql-action/upload-sarif@v3
+        uses: github/codeql-action/upload-sarif@v4
         with:
           sarif_file: tfsec-results.sarif
           category: tfsec
 
       - name: Comment PR with Security Issues
         if: false # Disabled: github.event_name == 'pull_request' && failure()
-        uses: actions/github-script@v7
+        uses: actions/github-script@v8
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
           script: |
@@ -138,7 +138,7 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Set up Python
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@v6
         with:
           python-version: '3.11'
 
@@ -157,7 +157,7 @@ jobs:
 
       - name: Comment PR with Linting Results
         if: false # Disabled: github.event_name == 'pull_request' && failure()
-        uses: actions/github-script@v7
+        uses: actions/github-script@v8
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
           script: |
@@ -189,7 +189,7 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Set up Python
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@v6
         with:
           python-version: '3.11'
           cache: 'pip'
@@ -220,7 +220,7 @@ jobs:
 
       - name: Comment PR with Test Results
         if: false # Disabled: github.event_name == 'pull_request' && failure()
-        uses: actions/github-script@v7
+        uses: actions/github-script@v8
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
           script: |
@@ -249,7 +249,7 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Set up Python
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@v6
         with:
           python-version: '3.11'
           cache: 'pip'
@@ -280,7 +280,7 @@ jobs:
 
       - name: Comment PR with Test Results
         if: false # Disabled: github.event_name == 'pull_request' && failure()
-        uses: actions/github-script@v7
+        uses: actions/github-script@v8
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
           script: |
@@ -309,7 +309,7 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Set up Python
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@v6
         with:
           python-version: '3.11'
           cache: 'pip'
@@ -340,7 +340,7 @@ jobs:
 
       - name: Comment PR with Test Results
         if: false # Disabled: github.event_name == 'pull_request' && failure()
-        uses: actions/github-script@v7
+        uses: actions/github-script@v8
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
           script: |
@@ -471,7 +471,7 @@ jobs:
           terraform_wrapper: false
 
       - name: Configure AWS Credentials
-        uses: aws-actions/configure-aws-credentials@v4
+        uses: aws-actions/configure-aws-credentials@v5
         with:
           aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
@@ -501,7 +501,7 @@ jobs:
 
       - name: Comment PR with Test Results
         if: false # Disabled: github.event_name == 'pull_request' && failure()
-        uses: actions/github-script@v7
+        uses: actions/github-script@v8
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
           script: |
