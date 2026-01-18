@@ -206,15 +206,13 @@ def validate_scheduler_config(config: dict[str, Any]) -> None:
             )
 
     # Validate term mix dictionaries (only if SP type is enabled)
-    if "compute_sp_term_mix" in config:
-        # Only validate term mix if Compute SP is enabled
-        if config.get("compute_sp_enabled", True):  # Default to True for backward compatibility
-            _validate_term_mix(config["compute_sp_term_mix"], "compute_sp_term_mix")
+    # Only validate term mix if Compute SP is enabled (default to True for backward compatibility)
+    if "compute_sp_term_mix" in config and config.get("compute_sp_enabled", True):
+        _validate_term_mix(config["compute_sp_term_mix"], "compute_sp_term_mix")
 
-    if "sagemaker_sp_term_mix" in config:
-        # Only validate term mix if SageMaker SP is enabled
-        if config.get("sagemaker_sp_enabled", True):  # Default to True for backward compatibility
-            _validate_term_mix(config["sagemaker_sp_term_mix"], "sagemaker_sp_term_mix")
+    # Only validate term mix if SageMaker SP is enabled (default to True for backward compatibility)
+    if "sagemaker_sp_term_mix" in config and config.get("sagemaker_sp_enabled", True):
+        _validate_term_mix(config["sagemaker_sp_term_mix"], "sagemaker_sp_term_mix")
 
     # Validate payment options
     if "compute_sp_payment_option" in config:
