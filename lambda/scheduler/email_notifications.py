@@ -9,6 +9,7 @@ import logging
 from typing import Any, Dict, List
 
 from botocore.exceptions import ClientError
+from mypy_boto3_sns.client import SNSClient
 
 
 # Configure logging
@@ -17,7 +18,7 @@ logger.setLevel(logging.INFO)
 
 
 def send_scheduled_email(
-    sns_client: Any,
+    sns_client: SNSClient,
     config: Dict[str, Any],
     purchase_plans: List[Dict[str, Any]],
     coverage: Dict[str, float],
@@ -107,7 +108,7 @@ def send_scheduled_email(
 
 
 def send_dry_run_email(
-    sns_client: Any,
+    sns_client: SNSClient,
     config: Dict[str, Any],
     purchase_plans: List[Dict[str, Any]],
     coverage: Dict[str, float],

@@ -12,6 +12,7 @@ from datetime import datetime, timezone
 from typing import Any, Dict, List
 
 from botocore.exceptions import ClientError
+from mypy_boto3_sqs.client import SQSClient
 
 from shared.queue_adapter import QueueAdapter
 
@@ -20,7 +21,7 @@ from shared.queue_adapter import QueueAdapter
 logger = logging.getLogger()
 
 
-def purge_queue(sqs_client: Any, queue_url: str) -> None:
+def purge_queue(sqs_client: SQSClient, queue_url: str) -> None:
     """
     Purge all existing messages from the queue.
     Supports both AWS SQS and local filesystem modes.
@@ -42,7 +43,7 @@ def purge_queue(sqs_client: Any, queue_url: str) -> None:
 
 
 def queue_purchase_intents(
-    sqs_client: Any, config: Dict[str, Any], purchase_plans: List[Dict[str, Any]]
+    sqs_client: SQSClient, config: Dict[str, Any], purchase_plans: List[Dict[str, Any]]
 ) -> None:
     """
     Queue purchase intents to queue.

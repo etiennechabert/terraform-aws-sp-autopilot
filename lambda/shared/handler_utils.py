@@ -12,6 +12,7 @@ from datetime import datetime, timezone
 from typing import Any, Callable, Optional
 
 from botocore.exceptions import ClientError
+from mypy_boto3_sns.client import SNSClient
 
 from shared import notifications
 from shared.aws_utils import get_clients
@@ -267,7 +268,7 @@ def lambda_handler_wrapper(lambda_name: str) -> Callable:
 
 
 def send_error_notification(
-    sns_client: Any,
+    sns_client: SNSClient,
     sns_topic_arn: str,
     error_message: str,
     lambda_name: str = "Lambda",
