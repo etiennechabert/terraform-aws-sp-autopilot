@@ -1613,9 +1613,8 @@ def test_handler_parallel_execution(mock_env_vars):
         first_end = min(coverage_end, recommendations_end)
 
         # Both should start before the first one completes (indicating parallel execution)
-        assert (
-            coverage_start < first_end and recommendations_start < first_end
-        ), "Both functions should start before either completes (parallel execution)"
+        assert coverage_start < first_end, "Coverage should start before either completes"
+        assert recommendations_start < first_end, "Recommendations should start before either completes"
 
         # Verify queue purge was called
         mock_purge.assert_called_once()
