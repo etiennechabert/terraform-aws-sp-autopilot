@@ -28,6 +28,17 @@ from shared.handler_utils import (
 )
 from shared.storage_adapter import StorageAdapter
 
+# Import new modular components
+# Import with aliases to avoid shadowing when we create backward-compatible wrappers
+from config import CONFIG_SCHEMA
+
+import alerts as alerts_module
+import csv_report as csv_module
+import data_collector as data_module
+import email_notifications as email_module
+import html_report as html_module
+import json_report as json_module
+
 
 # Configure logging
 logger = logging.getLogger()
