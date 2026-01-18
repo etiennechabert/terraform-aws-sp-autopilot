@@ -235,7 +235,9 @@ def test_get_aws_recommendations_database_disabled(mock_env_vars, mock_clients):
         mock_rec.return_value = {
             "Metadata": {"RecommendationId": "rec-123", "LookbackPeriodInDays": "30"},
             "SavingsPlansPurchaseRecommendation": {
-                "SavingsPlansPurchaseRecommendationDetails": [{"HourlyCommitmentToPurchase": "2.5"}]
+                "SavingsPlansPurchaseRecommendationDetails": [
+                    {"HourlyCommitmentToPurchase": "2.500"}
+                ]
             },
         }
 
@@ -290,7 +292,9 @@ def test_get_aws_recommendations_database_insufficient_data(monkeypatch, mock_cl
         mock_rec.return_value = {
             "Metadata": {"RecommendationId": "rec-db-789", "LookbackPeriodInDays": "10"},
             "SavingsPlansPurchaseRecommendation": {
-                "SavingsPlansPurchaseRecommendationDetails": [{"HourlyCommitmentToPurchase": "1.5"}]
+                "SavingsPlansPurchaseRecommendationDetails": [
+                    {"HourlyCommitmentToPurchase": "1.500"}
+                ]
             },
         }
 
@@ -361,7 +365,9 @@ def test_get_aws_recommendations_sagemaker_disabled(mock_env_vars, mock_clients)
         mock_rec.return_value = {
             "Metadata": {"RecommendationId": "rec-123", "LookbackPeriodInDays": "30"},
             "SavingsPlansPurchaseRecommendation": {
-                "SavingsPlansPurchaseRecommendationDetails": [{"HourlyCommitmentToPurchase": "2.5"}]
+                "SavingsPlansPurchaseRecommendationDetails": [
+                    {"HourlyCommitmentToPurchase": "2.500"}
+                ]
             },
         }
 
@@ -387,7 +393,9 @@ def test_get_aws_recommendations_sagemaker_insufficient_data(monkeypatch, mock_c
         mock_rec.return_value = {
             "Metadata": {"RecommendationId": "rec-sm-789", "LookbackPeriodInDays": "10"},
             "SavingsPlansPurchaseRecommendation": {
-                "SavingsPlansPurchaseRecommendationDetails": [{"HourlyCommitmentToPurchase": "2.5"}]
+                "SavingsPlansPurchaseRecommendationDetails": [
+                    {"HourlyCommitmentToPurchase": "2.500"}
+                ]
             },
         }
 
@@ -429,7 +437,9 @@ def test_get_aws_recommendations_insufficient_data(mock_env_vars, mock_clients):
         mock_rec.return_value = {
             "Metadata": {"RecommendationId": "rec-123", "LookbackPeriodInDays": "10"},
             "SavingsPlansPurchaseRecommendation": {
-                "SavingsPlansPurchaseRecommendationDetails": [{"HourlyCommitmentToPurchase": "2.5"}]
+                "SavingsPlansPurchaseRecommendationDetails": [
+                    {"HourlyCommitmentToPurchase": "2.500"}
+                ]
             },
         }
 
@@ -515,7 +525,9 @@ def test_get_aws_recommendations_parallel_execution_both_enabled(monkeypatch, mo
                 "LookbackPeriodInDays": "30",
             },
             "SavingsPlansPurchaseRecommendation": {
-                "SavingsPlansPurchaseRecommendationDetails": [{"HourlyCommitmentToPurchase": "1.5"}]
+                "SavingsPlansPurchaseRecommendationDetails": [
+                    {"HourlyCommitmentToPurchase": "1.500"}
+                ]
             },
         }
 
@@ -532,7 +544,9 @@ def test_get_aws_recommendations_parallel_execution_both_enabled(monkeypatch, mo
                 "LookbackPeriodInDays": "30",
             },
             "SavingsPlansPurchaseRecommendation": {
-                "SavingsPlansPurchaseRecommendationDetails": [{"HourlyCommitmentToPurchase": "2.5"}]
+                "SavingsPlansPurchaseRecommendationDetails": [
+                    {"HourlyCommitmentToPurchase": "2.500"}
+                ]
             },
         }
 
@@ -588,7 +602,9 @@ def test_get_aws_recommendations_parallel_execution_uses_threadpool(monkeypatch,
         mock_rec.return_value = {
             "Metadata": {"RecommendationId": "rec-123", "LookbackPeriodInDays": "30"},
             "SavingsPlansPurchaseRecommendation": {
-                "SavingsPlansPurchaseRecommendationDetails": [{"HourlyCommitmentToPurchase": "1.0"}]
+                "SavingsPlansPurchaseRecommendationDetails": [
+                    {"HourlyCommitmentToPurchase": "1.000"}
+                ]
             },
         }
 
@@ -601,13 +617,13 @@ def test_get_aws_recommendations_parallel_execution_uses_threadpool(monkeypatch,
             mock_future1 = MagicMock()
             mock_future2 = MagicMock()
             mock_future1.result.return_value = {
-                "HourlyCommitmentToPurchase": "1.5",
+                "HourlyCommitmentToPurchase": "1.500",
                 "RecommendationId": "rec-compute",
                 "GenerationTimestamp": "2026-01-13T00:00:00Z",
                 "Details": {},
             }
             mock_future2.result.return_value = {
-                "HourlyCommitmentToPurchase": "2.5",
+                "HourlyCommitmentToPurchase": "2.500",
                 "RecommendationId": "rec-database",
                 "GenerationTimestamp": "2026-01-13T00:00:00Z",
                 "Details": {},
@@ -651,7 +667,7 @@ def test_get_aws_recommendations_parallel_execution_error_handling(monkeypatch, 
                     "Metadata": {"RecommendationId": "rec-compute", "LookbackPeriodInDays": "30"},
                     "SavingsPlansPurchaseRecommendation": {
                         "SavingsPlansPurchaseRecommendationDetails": [
-                            {"HourlyCommitmentToPurchase": "1.5"}
+                            {"HourlyCommitmentToPurchase": "1.500"}
                         ]
                     },
                 }
@@ -677,7 +693,9 @@ def test_get_aws_recommendations_parallel_single_task(mock_env_vars, mock_client
                 "LookbackPeriodInDays": "30",
             },
             "SavingsPlansPurchaseRecommendation": {
-                "SavingsPlansPurchaseRecommendationDetails": [{"HourlyCommitmentToPurchase": "2.5"}]
+                "SavingsPlansPurchaseRecommendationDetails": [
+                    {"HourlyCommitmentToPurchase": "2.500"}
+                ]
             },
         }
 
@@ -730,7 +748,7 @@ def test_calculate_purchase_need_positive_gap():
     coverage = {"compute": 70.0, "database": 0.0}
 
     recommendations = {
-        "compute": {"HourlyCommitmentToPurchase": "1.5", "RecommendationId": "test-rec-123"},
+        "compute": {"HourlyCommitmentToPurchase": "1.500", "RecommendationId": "test-rec-123"},
         "database": None,
     }
 
@@ -755,7 +773,7 @@ def test_calculate_purchase_need_no_gap():
     coverage = {"compute": 90.0, "database": 0.0}
 
     recommendations = {
-        "compute": {"HourlyCommitmentToPurchase": "1.5", "RecommendationId": "test-rec-123"},
+        "compute": {"HourlyCommitmentToPurchase": "1.500", "RecommendationId": "test-rec-123"},
         "database": None,
     }
 
@@ -796,7 +814,7 @@ def test_calculate_purchase_need_zero_commitment():
     coverage = {"compute": 70.0, "database": 0.0}
 
     recommendations = {
-        "compute": {"HourlyCommitmentToPurchase": "0", "RecommendationId": "test-rec-123"},
+        "compute": {"HourlyCommitmentToPurchase": "0.000", "RecommendationId": "test-rec-123"},
         "database": None,
     }
 
@@ -818,7 +836,7 @@ def test_calculate_purchase_need_database_sp():
 
     recommendations = {
         "compute": None,
-        "database": {"HourlyCommitmentToPurchase": "2.5", "RecommendationId": "test-db-rec-456"},
+        "database": {"HourlyCommitmentToPurchase": "2.500", "RecommendationId": "test-db-rec-456"},
     }
 
     result = handler.calculate_purchase_need(config, coverage, recommendations)
@@ -845,7 +863,7 @@ def test_calculate_purchase_need_database_no_gap():
 
     recommendations = {
         "compute": None,
-        "database": {"HourlyCommitmentToPurchase": "2.5", "RecommendationId": "test-db-rec-789"},
+        "database": {"HourlyCommitmentToPurchase": "2.500", "RecommendationId": "test-db-rec-789"},
     }
 
     result = handler.calculate_purchase_need(config, coverage, recommendations)
@@ -867,7 +885,7 @@ def test_calculate_purchase_need_database_zero_commitment():
 
     recommendations = {
         "compute": None,
-        "database": {"HourlyCommitmentToPurchase": "0", "RecommendationId": "test-db-rec-zero"},
+        "database": {"HourlyCommitmentToPurchase": "0.000", "RecommendationId": "test-db-rec-zero"},
     }
 
     result = handler.calculate_purchase_need(config, coverage, recommendations)
@@ -909,7 +927,7 @@ def test_calculate_purchase_need_sagemaker_sp():
     recommendations = {
         "compute": None,
         "database": None,
-        "sagemaker": {"HourlyCommitmentToPurchase": "3.75", "RecommendationId": "test-sm-rec-456"},
+        "sagemaker": {"HourlyCommitmentToPurchase": "3.750", "RecommendationId": "test-sm-rec-456"},
     }
 
     result = handler.calculate_purchase_need(config, coverage, recommendations)
@@ -936,7 +954,7 @@ def test_calculate_purchase_need_sagemaker_no_gap():
     recommendations = {
         "compute": None,
         "database": None,
-        "sagemaker": {"HourlyCommitmentToPurchase": "3.75", "RecommendationId": "test-sm-rec-789"},
+        "sagemaker": {"HourlyCommitmentToPurchase": "3.750", "RecommendationId": "test-sm-rec-789"},
     }
 
     result = handler.calculate_purchase_need(config, coverage, recommendations)
@@ -959,7 +977,10 @@ def test_calculate_purchase_need_sagemaker_zero_commitment():
     recommendations = {
         "compute": None,
         "database": None,
-        "sagemaker": {"HourlyCommitmentToPurchase": "0", "RecommendationId": "test-sm-rec-zero"},
+        "sagemaker": {
+            "HourlyCommitmentToPurchase": "0.000",
+            "RecommendationId": "test-sm-rec-zero",
+        },
     }
 
     result = handler.calculate_purchase_need(config, coverage, recommendations)
@@ -1337,7 +1358,7 @@ def test_handler_parallel_execution(mock_env_vars):
             "SavingsPlansPurchaseRecommendationDetails": [
                 {
                     "SavingsPlansDetails": {"OfferingId": "test-offering"},
-                    "HourlyCommitmentToPurchase": "1.5",
+                    "HourlyCommitmentToPurchase": "1.500",
                 }
             ]
         }
@@ -1457,7 +1478,7 @@ def test_handler_dry_run_mode(mock_env_vars):
 
         mock_coverage.return_value = {"compute": 70.0, "database": 0.0}
         mock_recs.return_value = {
-            "compute": {"HourlyCommitmentToPurchase": "1.0", "RecommendationId": "rec-123"},
+            "compute": {"HourlyCommitmentToPurchase": "1.000", "RecommendationId": "rec-123"},
             "database": None,
         }
 
@@ -1497,7 +1518,7 @@ def test_handler_production_mode(mock_env_vars, monkeypatch):
 
         mock_coverage.return_value = {"compute": 70.0, "database": 0.0}
         mock_recs.return_value = {
-            "compute": {"HourlyCommitmentToPurchase": "1.0", "RecommendationId": "rec-123"},
+            "compute": {"HourlyCommitmentToPurchase": "1.000", "RecommendationId": "rec-123"},
             "database": None,
         }
 
