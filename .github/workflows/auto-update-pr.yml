@@ -18,6 +18,10 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
+          # Configure git user for commits
+          git config --global user.name "github-actions[bot]"
+          git config --global user.email "github-actions[bot]@users.noreply.github.com"
+
           # Get all open PRs
           prs=$(gh pr list --state open --json number,headRefName --jq '.[] | "\(.number):\(.headRefName)"')
 
