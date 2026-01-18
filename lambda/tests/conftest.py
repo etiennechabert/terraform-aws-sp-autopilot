@@ -116,7 +116,6 @@ def aws_mock_builder(aws_response):
             )
     """
     import copy
-    from datetime import datetime, timedelta, timezone
 
     class AwsMockBuilder:
         """Builder for AWS API responses with customization support."""
@@ -144,10 +143,7 @@ def aws_mock_builder(aws_response):
 
             # Apply state filter
             for plan in data['savingsPlans']:
-                if 'state' in overrides:
-                    plan['state'] = overrides['state']
-                else:
-                    plan['state'] = state
+                plan['state'] = overrides.get('state', state)
 
             return data
 

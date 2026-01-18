@@ -80,7 +80,6 @@ def test_calculate_current_coverage_filters_expiring_plans(
     aws_mock_builder, mock_savingsplans_client, mock_ce_client, mock_config
 ):
     """Test that plans expiring within renewal_window_days are excluded."""
-    import copy
 
     now = datetime.now(timezone.utc)
 
