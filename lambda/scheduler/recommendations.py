@@ -6,12 +6,17 @@ for Compute, Database, and SageMaker Savings Plans. It uses ThreadPoolExecutor
 to fetch multiple recommendation types in parallel for improved performance.
 """
 
+from __future__ import annotations
+
 import logging
 from concurrent.futures import ThreadPoolExecutor, as_completed
-from typing import Any, Optional
+from typing import TYPE_CHECKING, Any
 
 from botocore.exceptions import ClientError
-from mypy_boto3_ce.client import CostExplorerClient
+
+
+if TYPE_CHECKING:
+    from mypy_boto3_ce.client import CostExplorerClient
 
 from shared.handler_utils import configure_logging
 
@@ -23,7 +28,7 @@ configure_logging()
 
 def _fetch_compute_sp_recommendation(
     ce_client: CostExplorerClient, lookback_period: str
-) -> Optional[dict[str, Any]]:
+) -> dict[str, Any] | None:
     """
     Fetch Compute Savings Plan recommendation from AWS Cost Explorer.
 
@@ -33,7 +38,6 @@ def _fetch_compute_sp_recommendation(
 
     Args:
         ce_client: Boto3 Cost Explorer client
-        config: Configuration dictionary
         lookback_period: AWS API lookback period value
 
     Returns:
@@ -93,7 +97,7 @@ def _fetch_compute_sp_recommendation(
 
 def _fetch_database_sp_recommendation(
     ce_client: CostExplorerClient, lookback_period: str
-) -> Optional[dict[str, Any]]:
+) -> dict[str, Any] | None:
     """
     Fetch Database Savings Plan recommendation from AWS Cost Explorer.
 
@@ -103,7 +107,6 @@ def _fetch_database_sp_recommendation(
 
     Args:
         ce_client: Boto3 Cost Explorer client
-        config: Configuration dictionary
         lookback_period: AWS API lookback period value
 
     Returns:
@@ -163,7 +166,7 @@ def _fetch_database_sp_recommendation(
 
 def _fetch_sagemaker_sp_recommendation(
     ce_client: CostExplorerClient, lookback_period: str
-) -> Optional[dict[str, Any]]:
+) -> dict[str, Any] | None:
     """
     Fetch SageMaker Savings Plan recommendation from AWS Cost Explorer.
 
@@ -173,7 +176,6 @@ def _fetch_sagemaker_sp_recommendation(
 
     Args:
         ce_client: Boto3 Cost Explorer client
-        config: Configuration dictionary
         lookback_period: AWS API lookback period value
 
     Returns:

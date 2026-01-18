@@ -4,7 +4,6 @@ Comprehensive unit tests for Scheduler Lambda handler.
 Tests cover all 12 functions with edge cases to achieve >= 80% coverage.
 """
 
-import json
 import os
 import sys
 from datetime import datetime, timedelta, timezone
@@ -32,7 +31,6 @@ _coverage_spec.loader.exec_module(coverage_module)
 
 import config
 import handler
-import queue_manager
 import recommendations as recommendations_module
 
 
@@ -1330,10 +1328,9 @@ def test_send_error_email_no_sns_topic(monkeypatch):
 
 def test_handler_parallel_execution(mock_env_vars):
     """Test that coverage and recommendations are executed in parallel."""
-    from concurrent.futures import ThreadPoolExecutor
-    from unittest.mock import call
-    import time
     import threading
+    import time
+    from concurrent.futures import ThreadPoolExecutor
 
     # Track function calls with timing to verify parallel execution
     call_log = []
