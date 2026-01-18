@@ -103,7 +103,7 @@ class TestLocalRunner:
         assert Path(file_path).exists()
 
         # Verify content
-        with open(file_path, "r", encoding="utf-8") as f:
+        with open(file_path, encoding="utf-8") as f:
             saved_content = f.read()
         assert saved_content == report_content
 
@@ -111,13 +111,12 @@ class TestLocalRunner:
         metadata_file = Path(file_path).with_suffix(".html.meta.json")
         assert metadata_file.exists()
 
-        with open(metadata_file, "r") as f:
+        with open(metadata_file) as f:
             metadata = json.load(f)
         assert metadata["generator"] == "sp-autopilot-reporter"
 
     def test_mock_context_creation(self):
         """Test MockContext class from local_runner."""
-        import sys
 
         local_runner_path = Path(__file__).parent.parent / "local_runner.py"
 
@@ -187,8 +186,9 @@ class TestReportGeneration:
         import sys
 
         sys.path.insert(0, str(Path(__file__).parent.parent))
-        from storage_adapter import StorageAdapter
         import time
+
+        from storage_adapter import StorageAdapter
 
         with mock.patch.dict(
             os.environ, {"LOCAL_MODE": "true", "LOCAL_DATA_DIR": str(temp_data_dir)}

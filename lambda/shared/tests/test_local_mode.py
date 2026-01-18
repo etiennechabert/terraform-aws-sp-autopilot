@@ -7,18 +7,19 @@ in both local and AWS modes.
 
 import json
 import os
+
+# Import from parent directory (lambda/shared)
+import sys
 import tempfile
 from pathlib import Path
 from unittest import mock
 
 import pytest
 
-# Import from parent directory (lambda/shared)
-import sys
 
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
-from local_mode import is_local_mode, get_local_data_dir, get_queue_dir, get_reports_dir
+from local_mode import get_local_data_dir, get_queue_dir, get_reports_dir, is_local_mode
 from queue_adapter import QueueAdapter
 from storage_adapter import StorageAdapter
 
@@ -99,7 +100,7 @@ class TestQueueAdapterLocal:
         assert queue_files[0].stem == "test-123"
 
         # Verify content
-        with open(queue_files[0], "r") as f:
+        with open(queue_files[0]) as f:
             saved_message = json.load(f)
         assert saved_message == message
 
@@ -252,14 +253,14 @@ class TestStorageAdapterLocal:
         assert report_file.suffix == ".html"
 
         # Verify content
-        with open(report_file, "r", encoding="utf-8") as f:
+        with open(report_file, encoding="utf-8") as f:
             saved_content = f.read()
         assert saved_content == report_content
 
         # Verify metadata file
         metadata_file = report_file.with_suffix(".html.meta.json")
         assert metadata_file.exists()
-        with open(metadata_file, "r") as f:
+        with open(metadata_file) as f:
             metadata = json.load(f)
         assert "generated-at" in metadata
         assert metadata["generator"] == "sp-autopilot-reporter"
