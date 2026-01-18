@@ -15,6 +15,7 @@ import pytest
 
 # Import from parent directory (lambda/shared)
 import sys
+
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
 from local_mode import is_local_mode, get_local_data_dir, get_queue_dir, get_reports_dir
@@ -178,7 +179,7 @@ class TestQueueAdapterAWS:
                 {
                     "MessageId": "aws-msg-123",
                     "Body": '{"test": "data"}',
-                    "ReceiptHandle": "receipt-123"
+                    "ReceiptHandle": "receipt-123",
                 }
             ]
         }
@@ -187,13 +188,17 @@ class TestQueueAdapterAWS:
     def test_queue_adapter_aws_init(self, mock_sqs_client):
         """Test QueueAdapter initializes in AWS mode."""
         with mock.patch.dict(os.environ, {"LOCAL_MODE": "false"}):
-            adapter = QueueAdapter(sqs_client=mock_sqs_client, queue_url="https://sqs.example.com/queue")
+            adapter = QueueAdapter(
+                sqs_client=mock_sqs_client, queue_url="https://sqs.example.com/queue"
+            )
             assert adapter.is_local is False
 
     def test_send_message_aws(self, mock_sqs_client):
         """Test sending a message in AWS mode."""
         with mock.patch.dict(os.environ, {"LOCAL_MODE": "false"}):
-            adapter = QueueAdapter(sqs_client=mock_sqs_client, queue_url="https://sqs.example.com/queue")
+            adapter = QueueAdapter(
+                sqs_client=mock_sqs_client, queue_url="https://sqs.example.com/queue"
+            )
             message = {"client_token": "test-123", "data": "test"}
 
             message_id = adapter.send_message(message)
@@ -205,7 +210,9 @@ class TestQueueAdapterAWS:
     def test_receive_messages_aws(self, mock_sqs_client):
         """Test receiving messages in AWS mode."""
         with mock.patch.dict(os.environ, {"LOCAL_MODE": "false"}):
-            adapter = QueueAdapter(sqs_client=mock_sqs_client, queue_url="https://sqs.example.com/queue")
+            adapter = QueueAdapter(
+                sqs_client=mock_sqs_client, queue_url="https://sqs.example.com/queue"
+            )
 
             messages = adapter.receive_messages(max_messages=10)
             assert len(messages) == 1
@@ -292,10 +299,7 @@ class TestStorageAdapterAWS:
         client = mock.MagicMock()
         client.put_object.return_value = {"ETag": "test-etag"}
         client.list_objects_v2.return_value = {
-            "Contents": [
-                {"Key": "report1.html"},
-                {"Key": "report2.html"}
-            ]
+            "Contents": [{"Key": "report1.html"}, {"Key": "report2.html"}]
         }
         return client
 
