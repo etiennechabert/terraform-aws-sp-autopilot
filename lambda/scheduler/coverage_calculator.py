@@ -86,12 +86,12 @@ def calculate_current_coverage(
 
     # Get coverage from Cost Explorer
     try:
-        # Query Cost Explorer for the last 1 day (most recent data point)
-        # Why 1 day: Cost Explorer returns daily granularity data, and we only need the latest
-        # snapshot to determine current coverage. Using a single day minimizes API response size
-        # and ensures we get the most up-to-date coverage information available.
+        # Query Cost Explorer using configured lookback period to get most recent coverage data
+        # Cost Explorer has 24-48 hour data lag, so we query multiple days and take the most
+        # recent data point using [-1] below. Using lookback_days ensures we have enough data
+        # even with weekend delays while keeping the setting configurable.
         end_date = now.date()
-        start_date = end_date - timedelta(days=1)
+        start_date = end_date - timedelta(days=config.get("lookback_days", 7))
 
         try:
             # Call Cost Explorer API to get Savings Plans coverage metrics

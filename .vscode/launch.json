@@ -6,9 +6,10 @@
             "type": "debugpy",
             "request": "launch",
             "module": "lambda.scheduler.handler",
+            "envFile": "${workspaceFolder}/.env",
             "justMyCode": false,
             "env": {
-                "PYTHONPATH": "${workspaceFolder}",
+                "PYTHONPATH": "${workspaceFolder}/lambda:${workspaceFolder}",
                 "AWS_REGION": "us-east-1",
                 "AWS_DEFAULT_REGION": "us-east-1",
                 // Required environment variables
@@ -35,6 +36,7 @@
             "type": "debugpy",
             "request": "launch",
             "module": "lambda.purchaser.handler",
+            "envFile": "${workspaceFolder}/.env",
             "justMyCode": false,
             "env": {
                 "PYTHONPATH": "${workspaceFolder}",
@@ -54,6 +56,7 @@
             "type": "debugpy",
             "request": "launch",
             "module": "lambda.reporter.handler",
+            "envFile": "${workspaceFolder}/.env",
             "justMyCode": false,
             "env": {
                 "PYTHONPATH": "${workspaceFolder}",
@@ -77,6 +80,7 @@
             "args": [
                 "scheduler"
             ],
+            "envFile": "${workspaceFolder}/.env",
             "justMyCode": false,
             "env": {
                 "PYTHONPATH": "${workspaceFolder}",
@@ -96,6 +100,7 @@
                 "-v",
                 "--no-cov"
             ],
+            "envFile": "${workspaceFolder}/.env",
             "justMyCode": false,
             "env": {
                 "PYTHONPATH": "${workspaceFolder}",
@@ -114,6 +119,7 @@
                 "-v",
                 "--no-cov"
             ],
+            "envFile": "${workspaceFolder}/.env",
             "justMyCode": false,
             "env": {
                 "PYTHONPATH": "${workspaceFolder}",
@@ -132,6 +138,7 @@
                 "-v",
                 "--no-cov"
             ],
+            "envFile": "${workspaceFolder}/.env",
             "justMyCode": false,
             "env": {
                 "PYTHONPATH": "${workspaceFolder}",
@@ -150,6 +157,7 @@
                 "-v",
                 "--no-cov"
             ],
+            "envFile": "${workspaceFolder}/.env",
             "justMyCode": false,
             "env": {
                 "PYTHONPATH": "${workspaceFolder}",

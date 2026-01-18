@@ -2,7 +2,7 @@
 
 .DEFAULT_GOAL := help
 
-PYTHON := python
+PYTHON := python3
 PYTEST := pytest
 
 help: ## Show available commands

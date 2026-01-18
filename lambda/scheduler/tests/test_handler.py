@@ -293,18 +293,17 @@ def test_get_aws_recommendations_database_enabled(monkeypatch, mock_clients):
 
 
 def test_get_aws_recommendations_database_insufficient_data(monkeypatch, mock_clients):
-    """Test rejection of Database SP recommendations with insufficient data."""
+    """Test Database SP recommendations with limited data (now accepted)."""
     # Enable Database SP
     monkeypatch.setenv("QUEUE_URL", "https://sqs.us-east-1.amazonaws.com/123456789012/test-queue")
     monkeypatch.setenv("SNS_TOPIC_ARN", "arn:aws:sns:us-east-1:123456789012:test-topic")
     monkeypatch.setenv("ENABLE_DATABASE_SP", "true")
     monkeypatch.setenv("ENABLE_COMPUTE_SP", "false")
-    monkeypatch.setenv("MIN_DATA_DAYS", "14")
 
     config = handler.load_configuration()
 
     with patch.object(handler.ce_client, "get_savings_plans_purchase_recommendation") as mock_rec:
-        # Return only 10 days of data (less than min_data_days of 14)
+        # Return limited data (min_data_days validation was removed)
         mock_rec.return_value = {
             "Metadata": {"RecommendationId": "rec-db-789", "LookbackPeriodInDays": "10"},
             "SavingsPlansPurchaseRecommendation": {
@@ -314,8 +313,9 @@ def test_get_aws_recommendations_database_insufficient_data(monkeypatch, mock_cl
 
         result = handler.get_aws_recommendations(config)
 
-        # Should reject due to insufficient data
-        assert result["database"] is None
+        # min_data_days validation was removed, so recommendations are accepted
+        assert result["database"] is not None
+        assert result["database"]["HourlyCommitmentToPurchase"] == "1.5"
 
 
 def test_get_aws_recommendations_database_no_recommendations(monkeypatch, mock_clients):
@@ -399,19 +399,18 @@ def test_get_aws_recommendations_sagemaker_disabled(mock_env_vars, mock_clients)
 
 
 def test_get_aws_recommendations_sagemaker_insufficient_data(monkeypatch, mock_clients):
-    """Test rejection of SageMaker SP recommendations with insufficient data."""
+    """Test SageMaker SP recommendations with limited lookback data (now accepted)."""
     # Enable SageMaker SP
     monkeypatch.setenv("QUEUE_URL", "https://sqs.us-east-1.amazonaws.com/123456789012/test-queue")
     monkeypatch.setenv("SNS_TOPIC_ARN", "arn:aws:sns:us-east-1:123456789012:test-topic")
     monkeypatch.setenv("ENABLE_SAGEMAKER_SP", "true")
     monkeypatch.setenv("ENABLE_COMPUTE_SP", "false")
     monkeypatch.setenv("ENABLE_DATABASE_SP", "false")
-    monkeypatch.setenv("MIN_DATA_DAYS", "14")
 
     config = handler.load_configuration()
 
     with patch.object(handler.ce_client, "get_savings_plans_purchase_recommendation") as mock_rec:
-        # Return only 10 days of data (less than min_data_days of 14)
+        # Return only 10 days of data
         mock_rec.return_value = {
             "Metadata": {"RecommendationId": "rec-sm-789", "LookbackPeriodInDays": "10"},
             "SavingsPlansPurchaseRecommendation": {
@@ -421,8 +420,9 @@ def test_get_aws_recommendations_sagemaker_insufficient_data(monkeypatch, mock_c
 
         result = handler.get_aws_recommendations(config)
 
-        # Should reject due to insufficient data
-        assert result["sagemaker"] is None
+        # min_data_days validation was removed, so recommendations with any data are accepted
+        assert result["sagemaker"] is not None
+        assert result["sagemaker"]["HourlyCommitmentToPurchase"] == "2.5"
 
 
 def test_get_aws_recommendations_sagemaker_no_recommendations(monkeypatch, mock_clients):
@@ -448,11 +448,11 @@ def test_get_aws_recommendations_sagemaker_no_recommendations(monkeypatch, mock_
 
 
 def test_get_aws_recommendations_insufficient_data(mock_env_vars, mock_clients):
-    """Test rejection of recommendations with insufficient data."""
+    """Test Compute SP recommendations with limited lookback data (now accepted)."""
     config = handler.load_configuration()
 
     with patch.object(handler.ce_client, "get_savings_plans_purchase_recommendation") as mock_rec:
-        # Return only 10 days of data (less than min_data_days of 14)
+        # Return only 10 days of data
         mock_rec.return_value = {
             "Metadata": {"RecommendationId": "rec-123", "LookbackPeriodInDays": "10"},
             "SavingsPlansPurchaseRecommendation": {
@@ -462,8 +462,9 @@ def test_get_aws_recommendations_insufficient_data(mock_env_vars, mock_clients):
 
         result = handler.get_aws_recommendations(config)
 
-        # Should reject due to insufficient data
-        assert result["compute"] is None
+        # min_data_days validation was removed, so recommendations with any data are accepted
+        assert result["compute"] is not None
+        assert result["compute"]["HourlyCommitmentToPurchase"] == "2.5"
 
 
 def test_get_aws_recommendations_no_recommendations(mock_env_vars, mock_clients):
