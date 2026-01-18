@@ -29,6 +29,7 @@ Automates AWS Savings Plans purchases based on usage analysis, maintaining consi
 - [Support](#support)
 
 **Additional Guides:**
+- [Concepts & Glossary](CONCEPTS.md)
 - [Error Patterns & Troubleshooting](ERROR_PATTERNS.md)
 - [Testing Guide](TESTING.md)
 - [Operations Runbook](docs/users/operations-runbook.md)
