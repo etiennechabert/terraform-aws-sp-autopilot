@@ -4,13 +4,18 @@ Coverage calculation module for Scheduler Lambda.
 Calculates current Savings Plans coverage, excluding plans expiring soon.
 """
 
+from __future__ import annotations
+
 import logging
 from datetime import datetime, timedelta, timezone
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 from botocore.exceptions import ClientError
-from mypy_boto3_ce.client import CostExplorerClient
-from mypy_boto3_savingsplans.client import SavingsPlansClient
+
+
+if TYPE_CHECKING:
+    from mypy_boto3_ce.client import CostExplorerClient
+    from mypy_boto3_savingsplans.client import SavingsPlansClient
 
 
 # Configure logging
