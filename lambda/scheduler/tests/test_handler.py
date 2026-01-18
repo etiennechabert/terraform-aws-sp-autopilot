@@ -33,6 +33,7 @@ _coverage_spec.loader.exec_module(coverage_module)
 import config
 import handler
 import queue_manager
+import recommendations as recommendations_module
 
 
 @pytest.fixture
@@ -1489,6 +1490,140 @@ def test_send_error_email_no_sns_topic(monkeypatch):
 
     # Should not raise - just log error
     handler.send_error_email("Test error")
+
+
+# ============================================================================
+# Parallel Execution Tests
+# ============================================================================
+
+
+def test_handler_parallel_execution(mock_env_vars):
+    """Test that coverage and recommendations are executed in parallel."""
+    from concurrent.futures import ThreadPoolExecutor
+    from unittest.mock import call
+    import time
+    import threading
+
+    # Track function calls with timing to verify parallel execution
+    call_log = []
+    call_lock = threading.Lock()
+
+    def log_call(name, phase):
+        """Thread-safe logging of function calls."""
+        with call_lock:
+            call_log.append((name, phase, time.time()))
+
+    # Create mock clients
+    mock_clients = {
+        "ce": MagicMock(),
+        "savingsplans": MagicMock(),
+        "sqs": MagicMock(),
+        "sns": MagicMock(),
+    }
+
+    # Set up mock responses
+    mock_clients["savingsplans"].describe_savings_plans.return_value = {"savingsPlans": []}
+
+    mock_clients["ce"].get_savings_plans_coverage.return_value = {
+        "SavingsPlansCoverages": [
+            {"Coverage": {"CoveragePercentage": "80.0"}},
+        ]
+    }
+
+    mock_clients["ce"].get_savings_plans_purchase_recommendation.return_value = {
+        "SavingsPlansPurchaseRecommendation": {
+            "SavingsPlansPurchaseRecommendationDetails": [
+                {
+                    "SavingsPlansDetails": {"OfferingId": "test-offering"},
+                    "HourlyCommitmentToPurchase": "1.5",
+                }
+            ]
+        }
+    }
+
+    # Wrap the actual functions to track their execution
+    original_calculate_coverage = coverage_module.calculate_current_coverage
+    original_get_recommendations = recommendations_module.get_aws_recommendations
+
+    def mock_calculate_coverage(sp_client, ce_client, config):
+        log_call("coverage", "start")
+        time.sleep(0.05)  # Small delay to ensure overlapping execution
+        result = original_calculate_coverage(sp_client, ce_client, config)
+        log_call("coverage", "end")
+        return result
+
+    def mock_get_recommendations(ce_client, config):
+        log_call("recommendations", "start")
+        time.sleep(0.05)  # Small delay to ensure overlapping execution
+        result = original_get_recommendations(ce_client, config)
+        log_call("recommendations", "end")
+        return result
+
+    with (
+        patch("boto3.client") as mock_boto3_client,
+        patch("shared.handler_utils.initialize_clients", return_value=mock_clients),
+        patch("handler.queue_module.purge_queue") as mock_purge,
+        patch(
+            "handler.coverage_module.calculate_current_coverage",
+            side_effect=mock_calculate_coverage,
+        ),
+        patch(
+            "handler.recommendations_module.get_aws_recommendations",
+            side_effect=mock_get_recommendations,
+        ),
+        patch("handler.email_module.send_dry_run_email") as mock_email,
+        patch("handler.ThreadPoolExecutor", wraps=ThreadPoolExecutor) as mock_executor,
+    ):
+        # Configure boto3.client mock
+        mock_boto3_client.return_value = MagicMock()
+
+        # Call handler
+        event = {}
+        context = MagicMock()
+        result = handler.handler(event, context)
+
+        # Verify ThreadPoolExecutor was instantiated with max_workers=2
+        mock_executor.assert_called_once()
+        call_kwargs = mock_executor.call_args.kwargs
+        assert call_kwargs.get("max_workers") == 2, "ThreadPoolExecutor should use max_workers=2"
+
+        # Verify handler completed successfully
+        assert result["statusCode"] == 200
+
+        # Verify both functions were called
+        coverage_calls = [call for call in call_log if call[0] == "coverage"]
+        recommendations_calls = [call for call in call_log if call[0] == "recommendations"]
+
+        assert len(coverage_calls) == 2, "Coverage should have start and end calls"
+        assert len(recommendations_calls) == 2, "Recommendations should have start and end calls"
+
+        # Verify parallel execution - both should start before either completes
+        # Get timestamps
+        coverage_start = next(
+            call[2] for call in call_log if call[0] == "coverage" and call[1] == "start"
+        )
+        coverage_end = next(
+            call[2] for call in call_log if call[0] == "coverage" and call[1] == "end"
+        )
+        recommendations_start = next(
+            call[2] for call in call_log if call[0] == "recommendations" and call[1] == "start"
+        )
+        recommendations_end = next(
+            call[2] for call in call_log if call[0] == "recommendations" and call[1] == "end"
+        )
+
+        # In parallel execution, both should start before the first one ends
+        # Calculate time windows
+        first_end = min(coverage_end, recommendations_end)
+
+        # Both should start before the first one completes (indicating parallel execution)
+        assert coverage_start < first_end, "Coverage should start before either completes"
+        assert recommendations_start < first_end, (
+            "Recommendations should start before either completes"
+        )
+
+        # Verify queue purge was called
+        mock_purge.assert_called_once()
 
 
 # ============================================================================
