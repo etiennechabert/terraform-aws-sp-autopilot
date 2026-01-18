@@ -52,27 +52,17 @@ def mock_ce_client():
 # ============================================================================
 
 
-def test_calculate_current_coverage_success(mock_savingsplans_client, mock_ce_client, mock_config):
+def test_calculate_current_coverage_success(
+    aws_mock_builder, mock_savingsplans_client, mock_ce_client, mock_config
+):
     """Test successful coverage calculation with valid data."""
-    now = datetime.now(timezone.utc)
-    expiring_later = now + timedelta(days=30)
-
-    # Mock savings plans response
-    mock_savingsplans_client.describe_savings_plans.return_value = {
-        "savingsPlans": [
-            {"savingsPlanId": "sp-12345", "state": "active", "end": expiring_later.isoformat()}
-        ]
-    }
-
-    # Mock coverage response
-    mock_ce_client.get_savings_plans_coverage.return_value = {
-        "SavingsPlansCoverages": [
-            {
-                "TimePeriod": {"Start": "2026-01-14", "End": "2026-01-15"},
-                "Coverage": {"CoveragePercentage": "75.5"},
-            }
-        ]
-    }
+    # Use real AWS response structure with custom coverage percentage
+    mock_savingsplans_client.describe_savings_plans.return_value = (
+        aws_mock_builder.describe_savings_plans(plans_count=1)
+    )
+    mock_ce_client.get_savings_plans_coverage.return_value = aws_mock_builder.coverage(
+        coverage_percentage=75.5
+    )
 
     result = coverage_module.calculate_current_coverage(
         mock_savingsplans_client, mock_ce_client, mock_config
@@ -87,9 +77,10 @@ def test_calculate_current_coverage_success(mock_savingsplans_client, mock_ce_cl
 
 
 def test_calculate_current_coverage_filters_expiring_plans(
-    mock_savingsplans_client, mock_ce_client, mock_config
+    aws_mock_builder, mock_savingsplans_client, mock_ce_client, mock_config
 ):
     """Test that plans expiring within renewal_window_days are excluded."""
+
     now = datetime.now(timezone.utc)
 
     # Plan expiring in 3 days (should be excluded - within 7 day window)
@@ -97,29 +88,15 @@ def test_calculate_current_coverage_filters_expiring_plans(
     # Plan expiring in 30 days (should be included - outside 7 day window)
     expiring_later = now + timedelta(days=30)
 
-    mock_savingsplans_client.describe_savings_plans.return_value = {
-        "savingsPlans": [
-            {
-                "savingsPlanId": "sp-expiring-soon",
-                "state": "active",
-                "end": expiring_soon.isoformat(),
-            },
-            {
-                "savingsPlanId": "sp-expiring-later",
-                "state": "active",
-                "end": expiring_later.isoformat(),
-            },
-        ]
-    }
+    # Use real AWS structure but customize expiration dates for this specific test
+    plans_response = aws_mock_builder.describe_savings_plans(plans_count=2)
+    plans_response["savingsPlans"][0]["end"] = expiring_soon.isoformat()
+    plans_response["savingsPlans"][1]["end"] = expiring_later.isoformat()
+    mock_savingsplans_client.describe_savings_plans.return_value = plans_response
 
-    mock_ce_client.get_savings_plans_coverage.return_value = {
-        "SavingsPlansCoverages": [
-            {
-                "TimePeriod": {"Start": "2026-01-14", "End": "2026-01-15"},
-                "Coverage": {"CoveragePercentage": "80.0"},
-            }
-        ]
-    }
+    mock_ce_client.get_savings_plans_coverage.return_value = aws_mock_builder.coverage(
+        coverage_percentage=80.0
+    )
 
     result = coverage_module.calculate_current_coverage(
         mock_savingsplans_client, mock_ce_client, mock_config
@@ -131,13 +108,15 @@ def test_calculate_current_coverage_filters_expiring_plans(
 
 
 def test_calculate_current_coverage_no_coverage_data(
-    mock_savingsplans_client, mock_ce_client, mock_config
+    aws_mock_builder, mock_savingsplans_client, mock_ce_client, mock_config
 ):
     """Test handling when Cost Explorer returns no coverage data."""
-    mock_savingsplans_client.describe_savings_plans.return_value = {"savingsPlans": []}
+    mock_savingsplans_client.describe_savings_plans.return_value = (
+        aws_mock_builder.describe_savings_plans(plans_count=0)
+    )
 
-    # No coverage data
-    mock_ce_client.get_savings_plans_coverage.return_value = {"SavingsPlansCoverages": []}
+    # No coverage data - use the empty flag
+    mock_ce_client.get_savings_plans_coverage.return_value = aws_mock_builder.coverage(empty=True)
 
     result = coverage_module.calculate_current_coverage(
         mock_savingsplans_client, mock_ce_client, mock_config
@@ -469,11 +448,11 @@ def test_calculate_current_coverage_with_groupby_multiple_types(
                 "TimePeriod": {"Start": "2026-01-14", "End": "2026-01-15"},
                 "Groups": [
                     {
-                        "Attributes": {"SAVINGS_PLANS_TYPE": "ComputeSP"},
+                        "Attributes": {"SERVICE": "Amazon Elastic Compute Cloud - Compute"},
                         "Coverage": {"CoveragePercentage": "75.5"},
                     },
                     {
-                        "Attributes": {"SAVINGS_PLANS_TYPE": "SageMakerSP"},
+                        "Attributes": {"SERVICE": "Amazon SageMaker"},
                         "Coverage": {"CoveragePercentage": "60.0"},
                     },
                 ],
@@ -510,7 +489,7 @@ def test_calculate_current_coverage_with_groupby_ec2_instance_sp(
                 "TimePeriod": {"Start": "2026-01-14", "End": "2026-01-15"},
                 "Groups": [
                     {
-                        "Attributes": {"SAVINGS_PLANS_TYPE": "EC2InstanceSP"},
+                        "Attributes": {"SERVICE": "Amazon Elastic Compute Cloud - Compute"},
                         "Coverage": {"CoveragePercentage": "85.0"},
                     }
                 ],
@@ -547,7 +526,7 @@ def test_calculate_current_coverage_with_groupby_rds_instance(
                 "TimePeriod": {"Start": "2026-01-14", "End": "2026-01-15"},
                 "Groups": [
                     {
-                        "Attributes": {"SAVINGS_PLANS_TYPE": "RDSInstance"},
+                        "Attributes": {"SERVICE": "Amazon Relational Database Service"},
                         "Coverage": {"CoveragePercentage": "90.0"},
                     }
                 ],
@@ -584,15 +563,15 @@ def test_calculate_current_coverage_with_groupby_all_types(
                 "TimePeriod": {"Start": "2026-01-14", "End": "2026-01-15"},
                 "Groups": [
                     {
-                        "Attributes": {"SAVINGS_PLANS_TYPE": "ComputeSP"},
+                        "Attributes": {"SERVICE": "Amazon Elastic Compute Cloud - Compute"},
                         "Coverage": {"CoveragePercentage": "75.0"},
                     },
                     {
-                        "Attributes": {"SAVINGS_PLANS_TYPE": "SageMakerSP"},
+                        "Attributes": {"SERVICE": "Amazon SageMaker"},
                         "Coverage": {"CoveragePercentage": "60.0"},
                     },
                     {
-                        "Attributes": {"SAVINGS_PLANS_TYPE": "RDSInstance"},
+                        "Attributes": {"SERVICE": "Amazon Relational Database Service"},
                         "Coverage": {"CoveragePercentage": "80.0"},
                     },
                 ],

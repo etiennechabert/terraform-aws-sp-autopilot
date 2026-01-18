@@ -1,0 +1,52 @@
+{
+    "Metadata": {
+        "RecommendationId": "rec-66666666-7777-8888-9999-aaaaaaaaaaaa",
+        "GenerationTimestamp": "2026-01-15T14:00:00Z",
+        "AdditionalMetadata": "{}"
+    },
+    "SavingsPlansPurchaseRecommendation": {
+        "AccountScope": "Payer",
+        "SavingsPlansType": "SAGEMAKER_SP",
+        "TermInYears": "ONE_YEAR",
+        "PaymentOption": "NO_UPFRONT",
+        "LookbackPeriodInDays": "SEVEN_DAYS",
+        "SavingsPlansPurchaseRecommendationDetails": [
+            {
+                "SavingsPlansDetails": {
+                    "Region": "",
+                    "InstanceFamily": "",
+                    "OfferingId": "off-99999999-8888-7777-6666-555555555555"
+                },
+                "AccountId": "123456789012",
+                "UpfrontCost": "0",
+                "EstimatedROI": "35.2000000000",
+                "CurrencyCode": "USD",
+                "EstimatedSPCost": "1500.0000000000",
+                "EstimatedOnDemandCost": "400.0000000000",
+                "EstimatedOnDemandCostWithCurrentCommitment": "2300.0000000000",
+                "EstimatedSavingsAmount": "500.0000000000",
+                "EstimatedSavingsPercentage": "21.7000000000",
+                "HourlyCommitmentToPurchase": "8.950",
+                "EstimatedAverageUtilization": "92.5000000000",
+                "EstimatedMonthlySavingsAmount": "2150.0000000000",
+                "CurrentMinimumHourlyOnDemandSpend": "3.1000000000",
+                "CurrentMaximumHourlyOnDemandSpend": "32.5000000000",
+                "CurrentAverageHourlyOnDemandSpend": "14.5000000000",
+                "RecommendationDetailId": "detail-99999999-8888-7777-6666-555555555555"
+            }
+        ],
+        "SavingsPlansPurchaseRecommendationSummary": {
+            "EstimatedROI": "35.2000000000",
+            "CurrencyCode": "USD",
+            "EstimatedTotalCost": "1900.0000000000",
+            "CurrentOnDemandSpend": "2300.0000000000",
+            "EstimatedSavingsAmount": "500.0000000000",
+            "TotalRecommendationCount": "1",
+            "DailyCommitmentToPurchase": "214.8000000000",
+            "HourlyCommitmentToPurchase": "8.950",
+            "EstimatedSavingsPercentage": "21.7000000000",
+            "EstimatedMonthlySavingsAmount": "2150.0000000000",
+            "EstimatedOnDemandCostWithCurrentCommitment": "2300.0000000000"
+        }
+    }
+}

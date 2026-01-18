@@ -1,0 +1,651 @@
+{
+    "SavingsPlansUtilizationsByTime": [
+        {
+            "TimePeriod": {
+                "Start": "2025-12-19",
+                "End": "2025-12-20"
+            },
+            "Utilization": {
+                "TotalCommitment": "364.83",
+                "UsedCommitment": "360.34",
+                "UnusedCommitment": "4.49",
+                "UtilizationPercentage": "98.77"
+            },
+            "Savings": {
+                "NetSavings": "63.66",
+                "OnDemandCostEquivalent": "424.0"
+            },
+            "AmortizedCommitment": {
+                "AmortizedRecurringCommitment": "364.83",
+                "AmortizedUpfrontCommitment": "0",
+                "TotalAmortizedCommitment": "364.83"
+            }
+        },
+        {
+            "TimePeriod": {
+                "Start": "2025-12-20",
+                "End": "2025-12-21"
+            },
+            "Utilization": {
+                "TotalCommitment": "376.22",
+                "UsedCommitment": "351.84",
+                "UnusedCommitment": "24.38",
+                "UtilizationPercentage": "93.52"
+            },
+            "Savings": {
+                "NetSavings": "127.93",
+                "OnDemandCostEquivalent": "479.77"
+            },
+            "AmortizedCommitment": {
+                "AmortizedRecurringCommitment": "376.22",
+                "AmortizedUpfrontCommitment": "0",
+                "TotalAmortizedCommitment": "376.22"
+            }
+        },
+        {
+            "TimePeriod": {
+                "Start": "2025-12-21",
+                "End": "2025-12-22"
+            },
+            "Utilization": {
+                "TotalCommitment": "329.58",
+                "UsedCommitment": "283.11",
+                "UnusedCommitment": "46.47",
+                "UtilizationPercentage": "85.9"
+            },
+            "Savings": {
+                "NetSavings": "76.16",
+                "OnDemandCostEquivalent": "359.27"
+            },
+            "AmortizedCommitment": {
+                "AmortizedRecurringCommitment": "329.58",
+                "AmortizedUpfrontCommitment": "0",
+                "TotalAmortizedCommitment": "329.58"
+            }
+        },
+        {
+            "TimePeriod": {
+                "Start": "2025-12-22",
+                "End": "2025-12-23"
+            },
+            "Utilization": {
+                "TotalCommitment": "359.45",
+                "UsedCommitment": "335.01",
+                "UnusedCommitment": "24.44",
+                "UtilizationPercentage": "93.2"
+            },
+            "Savings": {
+                "NetSavings": "51.6",
+                "OnDemandCostEquivalent": "386.61"
+            },
+            "AmortizedCommitment": {
+                "AmortizedRecurringCommitment": "359.45",
+                "AmortizedUpfrontCommitment": "0",
+                "TotalAmortizedCommitment": "359.45"
+            }
+        },
+        {
+            "TimePeriod": {
+                "Start": "2025-12-23",
+                "End": "2025-12-24"
+            },
+            "Utilization": {
+                "TotalCommitment": "388.44",
+                "UsedCommitment": "383.97",
+                "UnusedCommitment": "4.47",
+                "UtilizationPercentage": "98.85"
+            },
+            "Savings": {
+                "NetSavings": "63.74",
+                "OnDemandCostEquivalent": "447.71"
+            },
+            "AmortizedCommitment": {
+                "AmortizedRecurringCommitment": "388.44",
+                "AmortizedUpfrontCommitment": "0",
+                "TotalAmortizedCommitment": "388.44"
+            }
+        },
+        {
+            "TimePeriod": {
+                "Start": "2025-12-24",
+                "End": "2025-12-25"
+            },
+            "Utilization": {
+                "TotalCommitment": "392.0",
+                "UsedCommitment": "383.18",
+                "UnusedCommitment": "8.82",
+                "UtilizationPercentage": "97.75"
+            },
+            "Savings": {
+                "NetSavings": "87.22",
+                "OnDemandCostEquivalent": "470.4"
+            },
+            "AmortizedCommitment": {
+                "AmortizedRecurringCommitment": "392.0",
+                "AmortizedUpfrontCommitment": "0",
+                "TotalAmortizedCommitment": "392.0"
+            }
+        },
+        {
+            "TimePeriod": {
+                "Start": "2025-12-25",
+                "End": "2025-12-26"
+            },
+            "Utilization": {
+                "TotalCommitment": "308.52",
+                "UsedCommitment": "281.96",
+                "UnusedCommitment": "26.56",
+                "UtilizationPercentage": "91.39"
+            },
+            "Savings": {
+                "NetSavings": "70.27",
+                "OnDemandCostEquivalent": "352.23"
+            },
+            "AmortizedCommitment": {
+                "AmortizedRecurringCommitment": "308.52",
+                "AmortizedUpfrontCommitment": "0",
+                "TotalAmortizedCommitment": "308.52"
+            }
+        },
+        {
+            "TimePeriod": {
+                "Start": "2025-12-26",
+                "End": "2025-12-27"
+            },
+            "Utilization": {
+                "TotalCommitment": "362.38",
+                "UsedCommitment": "337.23",
+                "UnusedCommitment": "25.15",
+                "UtilizationPercentage": "93.06"
+            },
+            "Savings": {
+                "NetSavings": "92.48",
+                "OnDemandCostEquivalent": "429.71"
+            },
+            "AmortizedCommitment": {
+                "AmortizedRecurringCommitment": "362.38",
+                "AmortizedUpfrontCommitment": "0",
+                "TotalAmortizedCommitment": "362.38"
+            }
+        },
+        {
+            "TimePeriod": {
+                "Start": "2025-12-27",
+                "End": "2025-12-28"
+            },
+            "Utilization": {
+                "TotalCommitment": "371.38",
+                "UsedCommitment": "337.25",
+                "UnusedCommitment": "34.13",
+                "UtilizationPercentage": "90.81"
+            },
+            "Savings": {
+                "NetSavings": "85.85",
+                "OnDemandCostEquivalent": "423.1"
+            },
+            "AmortizedCommitment": {
+                "AmortizedRecurringCommitment": "371.38",
+                "AmortizedUpfrontCommitment": "0",
+                "TotalAmortizedCommitment": "371.38"
+            }
+        },
+        {
+            "TimePeriod": {
+                "Start": "2025-12-28",
+                "End": "2025-12-29"
+            },
+            "Utilization": {
+                "TotalCommitment": "354.88",
+                "UsedCommitment": "318.86",
+                "UnusedCommitment": "36.02",
+                "UtilizationPercentage": "89.85"
+            },
+            "Savings": {
+                "NetSavings": "104.08",
+                "OnDemandCostEquivalent": "422.94"
+            },
+            "AmortizedCommitment": {
+                "AmortizedRecurringCommitment": "354.88",
+                "AmortizedUpfrontCommitment": "0",
+                "TotalAmortizedCommitment": "354.88"
+            }
+        },
+        {
+            "TimePeriod": {
+                "Start": "2025-12-29",
+                "End": "2025-12-30"
+            },
+            "Utilization": {
+                "TotalCommitment": "395.36",
+                "UsedCommitment": "381.64",
+                "UnusedCommitment": "13.72",
+                "UtilizationPercentage": "96.53"
+            },
+            "Savings": {
+                "NetSavings": "77.02",
+                "OnDemandCostEquivalent": "458.66"
+            },
+            "AmortizedCommitment": {
+                "AmortizedRecurringCommitment": "395.36",
+                "AmortizedUpfrontCommitment": "0",
+                "TotalAmortizedCommitment": "395.36"
+            }
+        },
+        {
+            "TimePeriod": {
+                "Start": "2025-12-30",
+                "End": "2025-12-31"
+            },
+            "Utilization": {
+                "TotalCommitment": "378.1",
+                "UsedCommitment": "336.36",
+                "UnusedCommitment": "41.74",
+                "UtilizationPercentage": "88.96"
+            },
+            "Savings": {
+                "NetSavings": "105.8",
+                "OnDemandCostEquivalent": "442.16"
+            },
+            "AmortizedCommitment": {
+                "AmortizedRecurringCommitment": "378.1",
+                "AmortizedUpfrontCommitment": "0",
+                "TotalAmortizedCommitment": "378.1"
+            }
+        },
+        {
+            "TimePeriod": {
+                "Start": "2025-12-31",
+                "End": "2026-01-01"
+            },
+            "Utilization": {
+                "TotalCommitment": "386.98",
+                "UsedCommitment": "371.27",
+                "UnusedCommitment": "15.71",
+                "UtilizationPercentage": "95.94"
+            },
+            "Savings": {
+                "NetSavings": "72.71",
+                "OnDemandCostEquivalent": "443.98"
+            },
+            "AmortizedCommitment": {
+                "AmortizedRecurringCommitment": "386.98",
+                "AmortizedUpfrontCommitment": "0",
+                "TotalAmortizedCommitment": "386.98"
+            }
+        },
+        {
+            "TimePeriod": {
+                "Start": "2026-01-01",
+                "End": "2026-01-02"
+            },
+            "Utilization": {
+                "TotalCommitment": "387.05",
+                "UsedCommitment": "361.62",
+                "UnusedCommitment": "25.43",
+                "UtilizationPercentage": "93.43"
+            },
+            "Savings": {
+                "NetSavings": "118.14",
+                "OnDemandCostEquivalent": "479.76"
+            },
+            "AmortizedCommitment": {
+                "AmortizedRecurringCommitment": "387.05",
+                "AmortizedUpfrontCommitment": "0",
+                "TotalAmortizedCommitment": "387.05"
+            }
+        },
+        {
+            "TimePeriod": {
+                "Start": "2026-01-02",
+                "End": "2026-01-03"
+            },
+            "Utilization": {
+                "TotalCommitment": "386.57",
+                "UsedCommitment": "382.4",
+                "UnusedCommitment": "4.17",
+                "UtilizationPercentage": "98.92"
+            },
+            "Savings": {
+                "NetSavings": "138.08",
+                "OnDemandCostEquivalent": "520.48"
+            },
+            "AmortizedCommitment": {
+                "AmortizedRecurringCommitment": "386.57",
+                "AmortizedUpfrontCommitment": "0",
+                "TotalAmortizedCommitment": "386.57"
+            }
+        },
+        {
+            "TimePeriod": {
+                "Start": "2026-01-03",
+                "End": "2026-01-04"
+            },
+            "Utilization": {
+                "TotalCommitment": "357.05",
+                "UsedCommitment": "312.53",
+                "UnusedCommitment": "44.52",
+                "UtilizationPercentage": "87.53"
+            },
+            "Savings": {
+                "NetSavings": "59.85",
+                "OnDemandCostEquivalent": "372.38"
+            },
+            "AmortizedCommitment": {
+                "AmortizedRecurringCommitment": "357.05",
+                "AmortizedUpfrontCommitment": "0",
+                "TotalAmortizedCommitment": "357.05"
+            }
+        },
+        {
+            "TimePeriod": {
+                "Start": "2026-01-04",
+                "End": "2026-01-05"
+            },
+            "Utilization": {
+                "TotalCommitment": "308.83",
+                "UsedCommitment": "270.75",
+                "UnusedCommitment": "38.08",
+                "UtilizationPercentage": "87.67"
+            },
+            "Savings": {
+                "NetSavings": "56.24",
+                "OnDemandCostEquivalent": "326.99"
+            },
+            "AmortizedCommitment": {
+                "AmortizedRecurringCommitment": "308.83",
+                "AmortizedUpfrontCommitment": "0",
+                "TotalAmortizedCommitment": "308.83"
+            }
+        },
+        {
+            "TimePeriod": {
+                "Start": "2026-01-05",
+                "End": "2026-01-06"
+            },
+            "Utilization": {
+                "TotalCommitment": "345.42",
+                "UsedCommitment": "299.93",
+                "UnusedCommitment": "45.49",
+                "UtilizationPercentage": "86.83"
+            },
+            "Savings": {
+                "NetSavings": "144.42",
+                "OnDemandCostEquivalent": "444.35"
+            },
+            "AmortizedCommitment": {
+                "AmortizedRecurringCommitment": "345.42",
+                "AmortizedUpfrontCommitment": "0",
+                "TotalAmortizedCommitment": "345.42"
+            }
+        },
+        {
+            "TimePeriod": {
+                "Start": "2026-01-06",
+                "End": "2026-01-07"
+            },
+            "Utilization": {
+                "TotalCommitment": "372.49",
+                "UsedCommitment": "362.77",
+                "UnusedCommitment": "9.72",
+                "UtilizationPercentage": "97.39"
+            },
+            "Savings": {
+                "NetSavings": "89.1",
+                "OnDemandCostEquivalent": "451.87"
+            },
+            "AmortizedCommitment": {
+                "AmortizedRecurringCommitment": "372.49",
+                "AmortizedUpfrontCommitment": "0",
+                "TotalAmortizedCommitment": "372.49"
+            }
+        },
+        {
+            "TimePeriod": {
+                "Start": "2026-01-07",
+                "End": "2026-01-08"
+            },
+            "Utilization": {
+                "TotalCommitment": "312.67",
+                "UsedCommitment": "287.16",
+                "UnusedCommitment": "25.51",
+                "UtilizationPercentage": "91.84"
+            },
+            "Savings": {
+                "NetSavings": "56.32",
+                "OnDemandCostEquivalent": "343.48"
+            },
+            "AmortizedCommitment": {
+                "AmortizedRecurringCommitment": "312.67",
+                "AmortizedUpfrontCommitment": "0",
+                "TotalAmortizedCommitment": "312.67"
+            }
+        },
+        {
+            "TimePeriod": {
+                "Start": "2026-01-08",
+                "End": "2026-01-09"
+            },
+            "Utilization": {
+                "TotalCommitment": "325.46",
+                "UsedCommitment": "308.41",
+                "UnusedCommitment": "17.05",
+                "UtilizationPercentage": "94.76"
+            },
+            "Savings": {
+                "NetSavings": "79.21",
+                "OnDemandCostEquivalent": "387.62"
+            },
+            "AmortizedCommitment": {
+                "AmortizedRecurringCommitment": "325.46",
+                "AmortizedUpfrontCommitment": "0",
+                "TotalAmortizedCommitment": "325.46"
+            }
+        },
+        {
+            "TimePeriod": {
+                "Start": "2026-01-09",
+                "End": "2026-01-10"
+            },
+            "Utilization": {
+                "TotalCommitment": "305.07",
+                "UsedCommitment": "272.0",
+                "UnusedCommitment": "33.07",
+                "UtilizationPercentage": "89.16"
+            },
+            "Savings": {
+                "NetSavings": "122.78",
+                "OnDemandCostEquivalent": "394.78"
+            },
+            "AmortizedCommitment": {
+                "AmortizedRecurringCommitment": "305.07",
+                "AmortizedUpfrontCommitment": "0",
+                "TotalAmortizedCommitment": "305.07"
+            }
+        },
+        {
+            "TimePeriod": {
+                "Start": "2026-01-10",
+                "End": "2026-01-11"
+            },
+            "Utilization": {
+                "TotalCommitment": "395.71",
+                "UsedCommitment": "390.37",
+                "UnusedCommitment": "5.34",
+                "UtilizationPercentage": "98.65"
+            },
+            "Savings": {
+                "NetSavings": "137.4",
+                "OnDemandCostEquivalent": "527.77"
+            },
+            "AmortizedCommitment": {
+                "AmortizedRecurringCommitment": "395.71",
+                "AmortizedUpfrontCommitment": "0",
+                "TotalAmortizedCommitment": "395.71"
+            }
+        },
+        {
+            "TimePeriod": {
+                "Start": "2026-01-11",
+                "End": "2026-01-12"
+            },
+            "Utilization": {
+                "TotalCommitment": "340.28",
+                "UsedCommitment": "326.87",
+                "UnusedCommitment": "13.41",
+                "UtilizationPercentage": "96.06"
+            },
+            "Savings": {
+                "NetSavings": "57.36",
+                "OnDemandCostEquivalent": "384.23"
+            },
+            "AmortizedCommitment": {
+                "AmortizedRecurringCommitment": "340.28",
+                "AmortizedUpfrontCommitment": "0",
+                "TotalAmortizedCommitment": "340.28"
+            }
+        },
+        {
+            "TimePeriod": {
+                "Start": "2026-01-12",
+                "End": "2026-01-13"
+            },
+            "Utilization": {
+                "TotalCommitment": "379.53",
+                "UsedCommitment": "326.74",
+                "UnusedCommitment": "52.79",
+                "UtilizationPercentage": "86.09"
+            },
+            "Savings": {
+                "NetSavings": "67.74",
+                "OnDemandCostEquivalent": "394.48"
+            },
+            "AmortizedCommitment": {
+                "AmortizedRecurringCommitment": "379.53",
+                "AmortizedUpfrontCommitment": "0",
+                "TotalAmortizedCommitment": "379.53"
+            }
+        },
+        {
+            "TimePeriod": {
+                "Start": "2026-01-13",
+                "End": "2026-01-14"
+            },
+            "Utilization": {
+                "TotalCommitment": "387.68",
+                "UsedCommitment": "365.16",
+                "UnusedCommitment": "22.52",
+                "UtilizationPercentage": "94.19"
+            },
+            "Savings": {
+                "NetSavings": "94.23",
+                "OnDemandCostEquivalent": "459.39"
+            },
+            "AmortizedCommitment": {
+                "AmortizedRecurringCommitment": "387.68",
+                "AmortizedUpfrontCommitment": "0",
+                "TotalAmortizedCommitment": "387.68"
+            }
+        },
+        {
+            "TimePeriod": {
+                "Start": "2026-01-14",
+                "End": "2026-01-15"
+            },
+            "Utilization": {
+                "TotalCommitment": "325.36",
+                "UsedCommitment": "293.54",
+                "UnusedCommitment": "31.82",
+                "UtilizationPercentage": "90.22"
+            },
+            "Savings": {
+                "NetSavings": "59.24",
+                "OnDemandCostEquivalent": "352.78"
+            },
+            "AmortizedCommitment": {
+                "AmortizedRecurringCommitment": "325.36",
+                "AmortizedUpfrontCommitment": "0",
+                "TotalAmortizedCommitment": "325.36"
+            }
+        },
+        {
+            "TimePeriod": {
+                "Start": "2026-01-15",
+                "End": "2026-01-16"
+            },
+            "Utilization": {
+                "TotalCommitment": "315.01",
+                "UsedCommitment": "294.28",
+                "UnusedCommitment": "20.73",
+                "UtilizationPercentage": "93.42"
+            },
+            "Savings": {
+                "NetSavings": "100.26",
+                "OnDemandCostEquivalent": "394.54"
+            },
+            "AmortizedCommitment": {
+                "AmortizedRecurringCommitment": "315.01",
+                "AmortizedUpfrontCommitment": "0",
+                "TotalAmortizedCommitment": "315.01"
+            }
+        },
+        {
+            "TimePeriod": {
+                "Start": "2026-01-16",
+                "End": "2026-01-17"
+            },
+            "Utilization": {
+                "TotalCommitment": "344.2",
+                "UsedCommitment": "292.6",
+                "UnusedCommitment": "51.6",
+                "UtilizationPercentage": "85.01"
+            },
+            "Savings": {
+                "NetSavings": "69.21",
+                "OnDemandCostEquivalent": "361.81"
+            },
+            "AmortizedCommitment": {
+                "AmortizedRecurringCommitment": "344.2",
+                "AmortizedUpfrontCommitment": "0",
+                "TotalAmortizedCommitment": "344.2"
+            }
+        },
+        {
+            "TimePeriod": {
+                "Start": "2026-01-17",
+                "End": "2026-01-18"
+            },
+            "Utilization": {
+                "TotalCommitment": "394.24",
+                "UsedCommitment": "363.61",
+                "UnusedCommitment": "30.63",
+                "UtilizationPercentage": "92.23"
+            },
+            "Savings": {
+                "NetSavings": "100.76",
+                "OnDemandCostEquivalent": "464.37"
+            },
+            "AmortizedCommitment": {
+                "AmortizedRecurringCommitment": "394.24",
+                "AmortizedUpfrontCommitment": "0",
+                "TotalAmortizedCommitment": "394.24"
+            }
+        }
+    ],
+    "Total": {
+        "Utilization": {
+            "TotalCommitment": "10750.74",
+            "UsedCommitment": "9972.76",
+            "UnusedCommitment": "777.98",
+            "UtilizationPercentage": "92.6"
+        },
+        "Savings": {
+            "NetSavings": "2628.86",
+            "OnDemandCostEquivalent": "12601.62"
+        },
+        "AmortizedCommitment": {
+            "AmortizedRecurringCommitment": "10750.74",
+            "AmortizedUpfrontCommitment": "0",
+            "TotalAmortizedCommitment": "10750.74"
+        }
+    }
+}

@@ -18,14 +18,16 @@ from botocore.exceptions import ClientError
 if TYPE_CHECKING:
     from mypy_boto3_ce.client import CostExplorerClient
 
+from shared.handler_utils import configure_logging
+
 
 # Configure logging
 logger = logging.getLogger()
-logger.setLevel(logging.INFO)
+configure_logging()
 
 
 def _fetch_compute_sp_recommendation(
-    ce_client: CostExplorerClient, config: dict[str, Any], lookback_period: str
+    ce_client: CostExplorerClient, lookback_period: str
 ) -> dict[str, Any] | None:
     """
     Fetch Compute Savings Plan recommendation from AWS Cost Explorer.
@@ -36,7 +38,6 @@ def _fetch_compute_sp_recommendation(
 
     Args:
         ce_client: Boto3 Cost Explorer client
-        config: Configuration dictionary
         lookback_period: AWS API lookback period value
 
     Returns:
@@ -54,25 +55,28 @@ def _fetch_compute_sp_recommendation(
             PaymentOption="ALL_UPFRONT",
         )
 
-        # Extract recommendation metadata
-        metadata = response.get("Metadata", {})
-        recommendation_id = metadata.get("RecommendationId", "unknown")
-        generation_timestamp = metadata.get("GenerationTimestamp", "unknown")
+        logger.debug(f"Compute SP API response: {response}")
 
-        # Validate sufficient data
-        lookback_period_days = metadata.get("LookbackPeriodInDays", "0")
-        if lookback_period_days and int(lookback_period_days) < config["min_data_days"]:
-            logger.warning(
-                f"Compute SP recommendation has insufficient data: "
-                f"{lookback_period_days} days < {config['min_data_days']} days minimum"
-            )
-            return None
-
-        # Extract recommendation details
+        # Extract recommendation details first
         recommendation_details = response.get("SavingsPlansPurchaseRecommendation", {})
         recommendation_summary = recommendation_details.get(
             "SavingsPlansPurchaseRecommendationDetails", []
         )
+
+        # If no recommendation details, AWS has no recommendation - return None
+        if not recommendation_summary:
+            logger.info("No Compute SP recommendations available from AWS")
+            return None
+
+        # Extract recommendation metadata (only present when there are recommendations)
+        metadata = response.get("Metadata")
+        if not metadata:
+            raise ValueError(
+                f"AWS returned recommendations but no Metadata in response: {response}"
+            )
+
+        recommendation_id = metadata.get("RecommendationId", "unknown")
+        generation_timestamp = metadata.get("GenerationTimestamp", "unknown")
 
         if recommendation_summary:
             # Get the first (best) recommendation
@@ -99,7 +103,7 @@ def _fetch_compute_sp_recommendation(
 
 
 def _fetch_database_sp_recommendation(
-    ce_client: CostExplorerClient, config: dict[str, Any], lookback_period: str
+    ce_client: CostExplorerClient, lookback_period: str
 ) -> dict[str, Any] | None:
     """
     Fetch Database Savings Plan recommendation from AWS Cost Explorer.
@@ -110,7 +114,6 @@ def _fetch_database_sp_recommendation(
 
     Args:
         ce_client: Boto3 Cost Explorer client
-        config: Configuration dictionary
         lookback_period: AWS API lookback period value
 
     Returns:
@@ -130,25 +133,26 @@ def _fetch_database_sp_recommendation(
             PaymentOption="NO_UPFRONT",
         )
 
-        # Extract recommendation metadata
-        metadata = response.get("Metadata", {})
-        recommendation_id = metadata.get("RecommendationId", "unknown")
-        generation_timestamp = metadata.get("GenerationTimestamp", "unknown")
-
-        # Validate sufficient data
-        lookback_period_days = metadata.get("LookbackPeriodInDays", "0")
-        if lookback_period_days and int(lookback_period_days) < config["min_data_days"]:
-            logger.warning(
-                f"Database SP recommendation has insufficient data: "
-                f"{lookback_period_days} days < {config['min_data_days']} days minimum"
-            )
-            return None
-
-        # Extract recommendation details
+        # Extract recommendation details first
         recommendation_details = response.get("SavingsPlansPurchaseRecommendation", {})
         recommendation_summary = recommendation_details.get(
             "SavingsPlansPurchaseRecommendationDetails", []
         )
+
+        # If no recommendation details, AWS has no recommendation - return None
+        if not recommendation_summary:
+            logger.info("No Database SP recommendations available from AWS")
+            return None
+
+        # Extract recommendation metadata (only present when there are recommendations)
+        metadata = response.get("Metadata")
+        if not metadata:
+            raise ValueError(
+                f"AWS returned recommendations but no Metadata in response: {response}"
+            )
+
+        recommendation_id = metadata.get("RecommendationId", "unknown")
+        generation_timestamp = metadata.get("GenerationTimestamp", "unknown")
 
         if recommendation_summary:
             # Get the first (best) recommendation
@@ -175,7 +179,7 @@ def _fetch_database_sp_recommendation(
 
 
 def _fetch_sagemaker_sp_recommendation(
-    ce_client: CostExplorerClient, config: dict[str, Any], lookback_period: str
+    ce_client: CostExplorerClient, lookback_period: str
 ) -> dict[str, Any] | None:
     """
     Fetch SageMaker Savings Plan recommendation from AWS Cost Explorer.
@@ -186,7 +190,6 @@ def _fetch_sagemaker_sp_recommendation(
 
     Args:
         ce_client: Boto3 Cost Explorer client
-        config: Configuration dictionary
         lookback_period: AWS API lookback period value
 
     Returns:
@@ -205,25 +208,26 @@ def _fetch_sagemaker_sp_recommendation(
             PaymentOption="NO_UPFRONT",
         )
 
-        # Extract recommendation metadata
-        metadata = response.get("Metadata", {})
-        recommendation_id = metadata.get("RecommendationId", "unknown")
-        generation_timestamp = metadata.get("GenerationTimestamp", "unknown")
-
-        # Validate sufficient data
-        lookback_period_days = metadata.get("LookbackPeriodInDays", "0")
-        if lookback_period_days and int(lookback_period_days) < config["min_data_days"]:
-            logger.warning(
-                f"SageMaker SP recommendation has insufficient data: "
-                f"{lookback_period_days} days < {config['min_data_days']} days minimum"
-            )
-            return None
-
-        # Extract recommendation details
+        # Extract recommendation details first
         recommendation_details = response.get("SavingsPlansPurchaseRecommendation", {})
         recommendation_summary = recommendation_details.get(
             "SavingsPlansPurchaseRecommendationDetails", []
         )
+
+        # If no recommendation details, AWS has no recommendation - return None
+        if not recommendation_summary:
+            logger.info("No SageMaker SP recommendations available from AWS")
+            return None
+
+        # Extract recommendation metadata (only present when there are recommendations)
+        metadata = response.get("Metadata")
+        if not metadata:
+            raise ValueError(
+                f"AWS returned recommendations but no Metadata in response: {response}"
+            )
+
+        recommendation_id = metadata.get("RecommendationId", "unknown")
+        generation_timestamp = metadata.get("GenerationTimestamp", "unknown")
 
         if recommendation_summary:
             # Get the first (best) recommendation
@@ -305,7 +309,6 @@ def get_aws_recommendations(
             "compute",
             _fetch_compute_sp_recommendation,
             ce_client,
-            config,
             lookback_period,
         )
     if config["enable_database_sp"]:
@@ -313,7 +316,6 @@ def get_aws_recommendations(
             "database",
             _fetch_database_sp_recommendation,
             ce_client,
-            config,
             lookback_period,
         )
     if config["enable_sagemaker_sp"]:
@@ -321,7 +323,6 @@ def get_aws_recommendations(
             "sagemaker",
             _fetch_sagemaker_sp_recommendation,
             ce_client,
-            config,
             lookback_period,
         )
 
@@ -330,8 +331,8 @@ def get_aws_recommendations(
         with ThreadPoolExecutor(max_workers=len(tasks)) as executor:
             # Submit all tasks
             futures = {}
-            for sp_type, (key, func, client, cfg, period) in tasks.items():
-                future = executor.submit(func, client, cfg, period)
+            for sp_type, (key, func, client, period) in tasks.items():
+                future = executor.submit(func, client, period)
                 futures[future] = key
 
             # Collect results as they complete
