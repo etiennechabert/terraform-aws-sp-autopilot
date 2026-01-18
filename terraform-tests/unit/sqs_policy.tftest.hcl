@@ -70,7 +70,7 @@ run "test_sqs_queue_policy_not_created_when_scheduler_disabled" {
       compute = {
         enabled = false
       }
-      ec2_instance = {
+      database = {
         enabled = false
       }
       sagemaker = {
@@ -428,8 +428,8 @@ run "test_sqs_queue_policy_account_condition_value" {
 # SQS Queue Policy with Different SP Plan Configurations
 # ============================================================================
 
-# Test: SQS queue policy created with EC2 Instance SP enabled
-run "test_sqs_queue_policy_with_ec2_instance_sp" {
+# Test: SQS queue policy created with Database SP enabled
+run "test_sqs_queue_policy_with_database_sp" {
   command = plan
 
   variables {
@@ -444,9 +444,9 @@ run "test_sqs_queue_policy_with_ec2_instance_sp" {
       compute = {
         enabled = false
       }
-      ec2_instance = {
-        enabled              = true
-        all_upfront_one_year = 1
+      database = {
+        enabled             = true
+        no_upfront_one_year = 1
       }
     }
     notifications = {
@@ -456,12 +456,12 @@ run "test_sqs_queue_policy_with_ec2_instance_sp" {
 
   assert {
     condition     = length(aws_sqs_queue_policy.purchase_intents) == 1
-    error_message = "SQS queue policy should be created when EC2 Instance SP is enabled"
+    error_message = "SQS queue policy should be created when Database SP is enabled"
   }
 
   assert {
     condition     = jsondecode(aws_sqs_queue_policy.purchase_intents[0].policy).Statement[0].Action == "sqs:SendMessage"
-    error_message = "SQS queue policy should allow sqs:SendMessage when EC2 Instance SP is enabled"
+    error_message = "SQS queue policy should allow sqs:SendMessage when Database SP is enabled"
   }
 }
 
@@ -481,7 +481,7 @@ run "test_sqs_queue_policy_with_sagemaker_sp" {
       compute = {
         enabled = false
       }
-      ec2_instance = {
+      database = {
         enabled = false
       }
       sagemaker = {
@@ -522,9 +522,9 @@ run "test_sqs_queue_policy_with_multiple_sp_plans" {
         enabled              = true
         all_upfront_one_year = 1
       }
-      ec2_instance = {
-        enabled               = true
-        all_upfront_three_year = 1
+      database = {
+        enabled             = true
+        no_upfront_one_year = 1
       }
       sagemaker = {
         enabled                 = true
