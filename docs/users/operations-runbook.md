@@ -115,7 +115,7 @@ aws cloudwatch describe-alarms \
   --alarm-name-prefix sp-autopilot
 
 # Download latest coverage report from S3
-aws s3 cp s3://$(terraform output -raw reports_bucket)/coverage-reports/latest.json ./
+aws s3 cp s3://$(terraform output -raw reports_bucket_name)/coverage-reports/latest.json ./
 ```
 
 ### Important Terraform Outputs
@@ -124,11 +124,11 @@ aws s3 cp s3://$(terraform output -raw reports_bucket)/coverage-reports/latest.j
 |--------|---------|-------|
 | `queue_url` | SQS queue for purchase intents | Review/cancel pending purchases |
 | `dlq_url` | Dead letter queue for failed messages | Investigate persistent failures |
-| `reports_bucket` | S3 bucket for coverage reports | Access detailed coverage data |
+| `reports_bucket_name` | S3 bucket for coverage reports | Access detailed coverage data |
 | `sns_topic_arn` | SNS topic for notifications | Verify subscription status |
-| `scheduler_function_name` | Scheduler Lambda name | Manual invocation, log access |
-| `purchaser_function_name` | Purchaser Lambda name | Manual invocation, log access |
-| `reporter_function_name` | Reporter Lambda name | Manual invocation, log access |
+| `scheduler_lambda_name` | Scheduler Lambda name | Manual invocation, log access |
+| `purchaser_lambda_name` | Purchaser Lambda name | Manual invocation, log access |
+| `reporter_lambda_name` | Reporter Lambda name | Manual invocation, log access |
 | `scheduler_rule_name` | EventBridge scheduler rule | Pause/resume automation |
 | `purchaser_rule_name` | EventBridge purchaser rule | Pause/resume automation |
 | `reporter_rule_name` | EventBridge reporter rule | Pause/resume automation |
@@ -241,12 +241,12 @@ aws cloudwatch describe-alarm-history \
 
 1. **List Available Reports:**
    ```bash
-   aws s3 ls s3://$(terraform output -raw reports_bucket)/coverage-reports/
+   aws s3 ls s3://$(terraform output -raw reports_bucket_name)/coverage-reports/
    ```
 
 2. **Download Latest Report:**
    ```bash
-   aws s3 cp s3://$(terraform output -raw reports_bucket)/coverage-reports/latest.json ./coverage-report.json
+   aws s3 cp s3://$(terraform output -raw reports_bucket_name)/coverage-reports/latest.json ./coverage-report.json
    ```
 
 3. **Review Report Contents:**
@@ -280,13 +280,13 @@ aws cloudwatch describe-alarm-history \
 1. **Check Recent Executions:**
    ```bash
    # Scheduler Lambda
-   aws logs tail /aws/lambda/$(terraform output -raw scheduler_function_name) --since 7d | grep ERROR
+   aws logs tail /aws/lambda/$(terraform output -raw scheduler_lambda_name) --since 7d | grep ERROR
 
    # Purchaser Lambda
-   aws logs tail /aws/lambda/$(terraform output -raw purchaser_function_name) --since 7d | grep ERROR
+   aws logs tail /aws/lambda/$(terraform output -raw purchaser_lambda_name) --since 7d | grep ERROR
 
    # Reporter Lambda
-   aws logs tail /aws/lambda/$(terraform output -raw reporter_function_name) --since 7d | grep ERROR
+   aws logs tail /aws/lambda/$(terraform output -raw reporter_lambda_name) --since 7d | grep ERROR
    ```
 
 2. **Review Lambda Metrics:**
@@ -295,7 +295,7 @@ aws cloudwatch describe-alarm-history \
    aws cloudwatch get-metric-statistics \
      --namespace AWS/Lambda \
      --metric-name Errors \
-     --dimensions Name=FunctionName,Value=$(terraform output -raw scheduler_function_name) \
+     --dimensions Name=FunctionName,Value=$(terraform output -raw scheduler_lambda_name) \
      --start-time $(date -u -d '7 days ago' +%Y-%m-%dT%H:%M:%S) \
      --end-time $(date -u +%Y-%m-%dT%H:%M:%S) \
      --period 86400 \
@@ -474,7 +474,7 @@ Comprehensive procedures for verifying the automation is working correctly and p
 
 ```bash
 # If no purchases found, check Purchaser logs
-aws logs tail /aws/lambda/$(terraform output -raw purchaser_function_name) \
+aws logs tail /aws/lambda/$(terraform output -raw purchaser_lambda_name) \
   --since 7d --filter ERROR
 
 # Check DLQ for failed purchases
@@ -599,7 +599,7 @@ aws savingsplans describe-savings-plans \
   | jq -r '.savingsPlans | length'
 
 # 3. Check Scheduler recommendations (last run)
-aws logs tail /aws/lambda/$(terraform output -raw scheduler_function_name) \
+aws logs tail /aws/lambda/$(terraform output -raw scheduler_lambda_name) \
   --since 7d | grep "recommendation\|purchase"
 
 # 4. Check configuration
@@ -624,7 +624,7 @@ terraform output -json module_configuration | jq '{
 1. **List Available Reports:**
    ```bash
    # List all coverage reports
-   aws s3 ls s3://$(terraform output -raw reports_bucket_name)/coverage-reports/
+   aws s3 ls s3://$(terraform output -raw reports_bucket_name_name)/coverage-reports/
 
    # Expected output:
    # 2024-01-15T12:00:00Z-coverage.json
@@ -636,12 +636,12 @@ terraform output -json module_configuration | jq '{
    ```bash
    # Download most recent report
    aws s3 cp \
-     s3://$(terraform output -raw reports_bucket_name)/coverage-reports/latest.json \
+     s3://$(terraform output -raw reports_bucket_name_name)/coverage-reports/latest.json \
      ./coverage-report.json
 
    # Download specific date
    aws s3 cp \
-     s3://$(terraform output -raw reports_bucket_name)/coverage-reports/2024-01-15T12:00:00Z-coverage.json \
+     s3://$(terraform output -raw reports_bucket_name_name)/coverage-reports/2024-01-15T12:00:00Z-coverage.json \
      ./coverage-report-jan.json
    ```
 
@@ -743,8 +743,8 @@ terraform output -json module_configuration | jq '{
 6. **Compare Month-over-Month:**
    ```bash
    # Download last 2 months
-   aws s3 cp s3://$(terraform output -raw reports_bucket_name)/coverage-reports/2024-01-15T12:00:00Z-coverage.json ./jan.json
-   aws s3 cp s3://$(terraform output -raw reports_bucket_name)/coverage-reports/2024-02-15T12:00:00Z-coverage.json ./feb.json
+   aws s3 cp s3://$(terraform output -raw reports_bucket_name_name)/coverage-reports/2024-01-15T12:00:00Z-coverage.json ./jan.json
+   aws s3 cp s3://$(terraform output -raw reports_bucket_name_name)/coverage-reports/2024-02-15T12:00:00Z-coverage.json ./feb.json
 
    # Compare coverage
    echo "January: $(cat jan.json | jq -r '.compute_sp.coverage_percent')%"
@@ -787,22 +787,22 @@ terraform output -json module_configuration | jq '{
 1. **Access Lambda Logs:**
    ```bash
    # Tail Scheduler logs (real-time)
-   aws logs tail /aws/lambda/$(terraform output -raw scheduler_function_name) --follow
+   aws logs tail /aws/lambda/$(terraform output -raw scheduler_lambda_name) --follow
 
    # Tail Purchaser logs
-   aws logs tail /aws/lambda/$(terraform output -raw purchaser_function_name) --follow
+   aws logs tail /aws/lambda/$(terraform output -raw purchaser_lambda_name) --follow
 
    # Tail Reporter logs
-   aws logs tail /aws/lambda/$(terraform output -raw reporter_function_name) --follow
+   aws logs tail /aws/lambda/$(terraform output -raw reporter_lambda_name) --follow
    ```
 
 2. **View Recent Logs (Last 24 Hours):**
    ```bash
    # Last 100 lines
-   aws logs tail /aws/lambda/$(terraform output -raw scheduler_function_name) --since 24h
+   aws logs tail /aws/lambda/$(terraform output -raw scheduler_lambda_name) --since 24h
 
    # Filter for specific time range
-   aws logs tail /aws/lambda/$(terraform output -raw scheduler_function_name) \
+   aws logs tail /aws/lambda/$(terraform output -raw scheduler_lambda_name) \
      --since 2024-01-01T08:00:00 \
      --until 2024-01-01T09:00:00
    ```
@@ -810,15 +810,15 @@ terraform output -json module_configuration | jq '{
 3. **Filter Logs by Level:**
    ```bash
    # Show only errors
-   aws logs tail /aws/lambda/$(terraform output -raw scheduler_function_name) \
+   aws logs tail /aws/lambda/$(terraform output -raw scheduler_lambda_name) \
      --since 7d --filter ERROR
 
    # Show warnings and errors
-   aws logs tail /aws/lambda/$(terraform output -raw scheduler_function_name) \
+   aws logs tail /aws/lambda/$(terraform output -raw scheduler_lambda_name) \
      --since 7d --filter '"WARN\|ERROR"'
 
    # Show info, warnings, and errors (exclude debug)
-   aws logs tail /aws/lambda/$(terraform output -raw scheduler_function_name) \
+   aws logs tail /aws/lambda/$(terraform output -raw scheduler_lambda_name) \
      --since 7d --filter '"INFO\|WARN\|ERROR"'
    ```
 
@@ -931,21 +931,21 @@ terraform output -json module_configuration | jq '{
 
    ```bash
    # Step 1: Check if Lambda ran recently
-   aws logs tail /aws/lambda/$(terraform output -raw scheduler_function_name) \
+   aws logs tail /aws/lambda/$(terraform output -raw scheduler_lambda_name) \
      --since 7d --filter START | tail -1
 
    # Step 2: Check for errors in last run
-   aws logs tail /aws/lambda/$(terraform output -raw scheduler_function_name) \
+   aws logs tail /aws/lambda/$(terraform output -raw scheduler_lambda_name) \
      --since 7d --filter ERROR
 
    # Step 3: If errors found, get full context
    aws logs filter-log-events \
-     --log-group-name /aws/lambda/$(terraform output -raw scheduler_function_name) \
+     --log-group-name /aws/lambda/$(terraform output -raw scheduler_lambda_name) \
      --start-time $(date -u -d '1 hour ago' +%s)000 \
      --filter-pattern "ERROR"
 
    # Step 4: Get complete execution trace
-   aws logs tail /aws/lambda/$(terraform output -raw scheduler_function_name) \
+   aws logs tail /aws/lambda/$(terraform output -raw scheduler_lambda_name) \
      --since 2h | grep "RequestId: abc-123"  # Use actual RequestId
    ```
 
@@ -959,7 +959,7 @@ terraform output -json module_configuration | jq '{
    # Search across multiple Lambda functions
    for func in scheduler purchaser reporter; do
      echo "=== $func ==="
-     aws logs tail /aws/lambda/$(terraform output -raw ${func}_function_name) \
+     aws logs tail /aws/lambda/$(terraform output -raw ${func}_lambda_name) \
        --since 24h --filter ERROR
    done
    ```
@@ -1206,7 +1206,7 @@ aws events disable-rule --name $(terraform output -raw reporter_rule_name)
 ```bash
 # Add environment variable to Lambda to skip execution
 aws lambda update-function-configuration \
-  --function-name $(terraform output -raw scheduler_function_name) \
+  --function-name $(terraform output -raw scheduler_lambda_name) \
   --environment Variables={SKIP_EXECUTION=true}
 ```
 
@@ -1415,7 +1415,7 @@ aws events describe-rule --name $(terraform output -raw reporter_rule_name) | jq
    ```bash
    # Manual invocation to test immediately
    aws lambda invoke \
-     --function-name $(terraform output -raw scheduler_function_name) \
+     --function-name $(terraform output -raw scheduler_lambda_name) \
      --payload '{}' \
      output.json
    ```
@@ -1467,7 +1467,7 @@ aws events describe-rule --name $(terraform output -raw reporter_rule_name) | jq
    ```bash
    # Check Lambda configuration
    aws lambda get-function-configuration \
-     --function-name $(terraform output -raw scheduler_function_name) \
+     --function-name $(terraform output -raw scheduler_lambda_name) \
      | jq -r '.Environment.Variables'
    ```
 
@@ -1548,13 +1548,13 @@ aws cloudwatch describe-alarm-history \
 2. **View Recent Logs:**
    ```bash
    # Tail logs in real-time
-   aws logs tail /aws/lambda/$(terraform output -raw scheduler_function_name) --follow
+   aws logs tail /aws/lambda/$(terraform output -raw scheduler_lambda_name) --follow
 
    # View last 100 lines
-   aws logs tail /aws/lambda/$(terraform output -raw scheduler_function_name) --since 1h
+   aws logs tail /aws/lambda/$(terraform output -raw scheduler_lambda_name) --since 1h
 
    # Filter for errors
-   aws logs tail /aws/lambda/$(terraform output -raw scheduler_function_name) --since 24h --filter ERROR
+   aws logs tail /aws/lambda/$(terraform output -raw scheduler_lambda_name) --since 24h --filter ERROR
    ```
 
 3. **Common Error Patterns:**
@@ -1566,7 +1566,7 @@ aws cloudwatch describe-alarm-history \
 4. **Get Full Stack Trace:**
    ```bash
    aws logs filter-log-events \
-     --log-group-name /aws/lambda/$(terraform output -raw scheduler_function_name) \
+     --log-group-name /aws/lambda/$(terraform output -raw scheduler_lambda_name) \
      --start-time $(date -u -d '1 hour ago' +%s)000 \
      --filter-pattern "ERROR"
    ```
@@ -1972,8 +1972,8 @@ START: Purchase Amount Higher/Lower Than Expected
 
 | Scenario | Command | Purpose |
 |----------|---------|---------|
-| Check if Lambda ran | `aws logs tail /aws/lambda/$(terraform output -raw scheduler_function_name) --since 24h \| grep START` | Verify Lambda execution |
-| View Lambda errors | `aws logs tail /aws/lambda/$(terraform output -raw scheduler_function_name) --since 7d --filter ERROR` | Find error messages |
+| Check if Lambda ran | `aws logs tail /aws/lambda/$(terraform output -raw scheduler_lambda_name) --since 24h \| grep START` | Verify Lambda execution |
+| View Lambda errors | `aws logs tail /aws/lambda/$(terraform output -raw scheduler_lambda_name) --since 7d --filter ERROR` | Find error messages |
 | Check queue depth | `aws sqs get-queue-attributes --queue-url $(terraform output -raw queue_url) --attribute-names ApproximateNumberOfMessages` | See pending purchases |
 | Check DLQ depth | `aws sqs get-queue-attributes --queue-url $(terraform output -raw dlq_url) --attribute-names ApproximateNumberOfMessages` | See failed purchases |
 | View current coverage | `aws ce get-savings-plans-coverage --time-period Start=$(date -u -d '1 day ago' +%Y-%m-%d),End=$(date -u +%Y-%m-%d) --granularity DAILY` | Check coverage % |
@@ -2024,7 +2024,7 @@ aws savingsplans describe-savings-plans \
   --filters name=start,values=$(date -u -d '30 days ago' +%Y-%m-%d)
 
 # 3. Check Scheduler logs for recommendations
-aws logs tail /aws/lambda/$(terraform output -raw scheduler_function_name) --since 7d
+aws logs tail /aws/lambda/$(terraform output -raw scheduler_lambda_name) --since 7d
 ```
 
 ### Unexpected Purchase Amounts
@@ -2092,7 +2092,7 @@ aws sqs receive-message \
 echo "Current coverage vs target"
 
 # Review Scheduler logs for decision reasoning
-aws logs tail /aws/lambda/$(terraform output -raw scheduler_function_name) --since 24h | grep "recommendation\|coverage\|decision"
+aws logs tail /aws/lambda/$(terraform output -raw scheduler_lambda_name) --since 24h | grep "recommendation\|coverage\|decision"
 ```
 
 ### Failed Purchase Execution
@@ -2127,7 +2127,7 @@ aws logs tail /aws/lambda/$(terraform output -raw scheduler_function_name) --sin
 aws sqs receive-message --queue-url $(terraform output -raw dlq_url)
 
 # 2. Review Purchaser logs
-aws logs tail /aws/lambda/$(terraform output -raw purchaser_function_name) --since 1h --filter ERROR
+aws logs tail /aws/lambda/$(terraform output -raw purchaser_lambda_name) --since 1h --filter ERROR
 
 # 3. Check IAM permissions
 aws iam get-role-policy \
@@ -2194,19 +2194,19 @@ aws sns list-subscriptions-by-topic \
 ```bash
 # Invoke Scheduler manually
 aws lambda invoke \
-  --function-name $(terraform output -raw scheduler_function_name) \
+  --function-name $(terraform output -raw scheduler_lambda_name) \
   --payload '{}' \
   output.json
 
 # Invoke Purchaser manually (processes current queue)
 aws lambda invoke \
-  --function-name $(terraform output -raw purchaser_function_name) \
+  --function-name $(terraform output -raw purchaser_lambda_name) \
   --payload '{}' \
   output.json
 
 # Invoke Reporter manually
 aws lambda invoke \
-  --function-name $(terraform output -raw reporter_function_name) \
+  --function-name $(terraform output -raw reporter_lambda_name) \
   --payload '{}' \
   output.json
 
@@ -2224,18 +2224,18 @@ cat output.json | jq '.'
 ```bash
 # Enable dry run before manual Scheduler invocation
 aws lambda update-function-configuration \
-  --function-name $(terraform output -raw scheduler_function_name) \
+  --function-name $(terraform output -raw scheduler_lambda_name) \
   --environment Variables={DRY_RUN=true}
 
 # Invoke safely
 aws lambda invoke \
-  --function-name $(terraform output -raw scheduler_function_name) \
+  --function-name $(terraform output -raw scheduler_lambda_name) \
   --payload '{}' \
   output.json
 
 # Disable dry run afterward
 aws lambda update-function-configuration \
-  --function-name $(terraform output -raw scheduler_function_name) \
+  --function-name $(terraform output -raw scheduler_lambda_name) \
   --environment Variables={DRY_RUN=false}
 ```
 
@@ -2330,7 +2330,7 @@ aws lambda update-function-configuration \
 4. **Manually Re-run Scheduler:**
    ```bash
    aws lambda invoke \
-     --function-name $(terraform output -raw scheduler_function_name) \
+     --function-name $(terraform output -raw scheduler_lambda_name) \
      --payload '{}' \
      output.json
    ```
@@ -2385,7 +2385,7 @@ aws lambda update-function-configuration \
 
 1. **Identify Failure Reason:**
    ```bash
-   aws logs tail /aws/lambda/$(terraform output -raw purchaser_function_name) --since 1h --filter ERROR
+   aws logs tail /aws/lambda/$(terraform output -raw purchaser_lambda_name) --since 1h --filter ERROR
    ```
 
 2. **Fix Underlying Issue:**
@@ -2400,7 +2400,7 @@ aws lambda update-function-configuration \
    # Messages will auto-retry on next Purchaser run
    # Or invoke Purchaser manually after fix
    aws lambda invoke \
-     --function-name $(terraform output -raw purchaser_function_name) \
+     --function-name $(terraform output -raw purchaser_lambda_name) \
      --payload '{}' \
      output.json
    ```
@@ -2417,7 +2417,7 @@ aws lambda update-function-configuration \
 
    # Invoke Purchaser to process
    aws lambda invoke \
-     --function-name $(terraform output -raw purchaser_function_name) \
+     --function-name $(terraform output -raw purchaser_lambda_name) \
      --payload '{}' \
      output.json
    ```
@@ -2443,7 +2443,7 @@ aws lambda update-function-configuration \
 ```bash
 # Check assume role configuration
 aws lambda get-function-configuration \
-  --function-name $(terraform output -raw scheduler_function_name) \
+  --function-name $(terraform output -raw scheduler_lambda_name) \
   | jq -r '.Environment.Variables.ASSUME_ROLE_ARN'
 
 # Test assume role
@@ -2588,7 +2588,7 @@ aws savingsplans describe-savings-plans \
 # [5] Usage trends (via Cost Explorer console)
 
 # [6] Scheduler logs
-aws logs tail /aws/lambda/$(terraform output -raw scheduler_function_name) --since 7d | grep "recommendation\|coverage"
+aws logs tail /aws/lambda/$(terraform output -raw scheduler_lambda_name) --since 7d | grep "recommendation\|coverage"
 ```
 
 ### Emergency Pause Workflow
@@ -2703,7 +2703,7 @@ terraform apply
 
 # [7] Re-run Scheduler
 aws lambda invoke \
-  --function-name $(terraform output -raw scheduler_function_name) \
+  --function-name $(terraform output -raw scheduler_lambda_name) \
   --payload '{}' \
   output.json
 
@@ -2714,7 +2714,7 @@ aws sqs receive-message \
 
 # [9] Invoke Purchaser (optional)
 aws lambda invoke \
-  --function-name $(terraform output -raw purchaser_function_name) \
+  --function-name $(terraform output -raw purchaser_lambda_name) \
   --payload '{}' \
   output.json
 ```
@@ -2775,7 +2775,7 @@ Failure Detected (Alarm or Email)
 
 ```bash
 # [1-2] Identify failure and check logs
-aws logs tail /aws/lambda/$(terraform output -raw purchaser_function_name) \
+aws logs tail /aws/lambda/$(terraform output -raw purchaser_lambda_name) \
   --since 2h --filter ERROR
 
 # [3] Check main queue
@@ -2790,7 +2790,7 @@ aws sqs get-queue-attributes \
 
 # [4] Manual Purchaser invocation (if messages in main queue)
 aws lambda invoke \
-  --function-name $(terraform output -raw purchaser_function_name) \
+  --function-name $(terraform output -raw purchaser_lambda_name) \
   --payload '{}' \
   output.json
 
@@ -2817,7 +2817,7 @@ aws sqs receive-message \
 
 # [9] Invoke Purchaser to process recovered messages
 aws lambda invoke \
-  --function-name $(terraform output -raw purchaser_function_name) \
+  --function-name $(terraform output -raw purchaser_lambda_name) \
   --payload '{}' \
   output.json
 
