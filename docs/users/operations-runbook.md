@@ -1480,16 +1480,38 @@ aws events describe-rule --name $(terraform output -raw reporter_rule_name) | jq
 
 ### CloudWatch Alarm Reference
 
-| Alarm Name | Metric | Threshold | Meaning |
-|------------|--------|-----------|---------|
-| `{name_prefix}-scheduler-errors` | Lambda Errors | ≥1 in 5 min | Scheduler Lambda failed |
-| `{name_prefix}-purchaser-errors` | Lambda Errors | ≥1 in 5 min | Purchaser Lambda failed |
-| `{name_prefix}-reporter-errors` | Lambda Errors | ≥1 in 5 min | Reporter Lambda failed |
-| `{name_prefix}-dlq-messages` | SQS Messages | ≥1 message | Purchase failed after retries |
+The module creates CloudWatch alarms to monitor Lambda function errors and DLQ depth. All alarms have:
+- **Evaluation Period**: 1 minute (period = 60 seconds)
+- **Evaluation Periods**: 1
+- **Threshold**: ≥1 error or message
+- **Actions**: SNS notification to configured emails on ALARM and OK states
 
-**Default Actions:**
-- Alarm state: SNS notification sent to configured emails
-- OK state: SNS notification sent (alarm recovered)
+**Alarm Definitions:**
+
+| Alarm Name | Metric | Description |
+|------------|--------|-------------|
+| `{name_prefix}-scheduler-errors` | Lambda Errors (AWS/Lambda) | Triggers when Scheduler Lambda function errors exceed threshold, indicating failures in usage analysis |
+| `{name_prefix}-purchaser-errors` | Lambda Errors (AWS/Lambda) | Triggers when Purchaser Lambda function errors exceed threshold, indicating failures in Savings Plans purchases |
+| `{name_prefix}-reporter-errors` | Lambda Errors (AWS/Lambda) | Triggers when Reporter Lambda function errors exceed threshold, indicating failures in report generation |
+| `{name_prefix}-purchase-intents-dlq-depth` | SQS Messages Visible (AWS/SQS) | Triggers when messages land in the purchase intents DLQ, indicating repeated processing failures |
+
+**What Each Alarm Monitors:**
+
+- **Scheduler Errors**: Indicates issues with analyzing coverage and queuing purchase recommendations
+  - **Impact**: New purchases won't be scheduled this month
+  - **Common Causes**: IAM permissions, Cost Explorer API issues, insufficient usage data
+
+- **Purchaser Errors**: Indicates issues with executing Savings Plans purchases
+  - **Impact**: Queued purchases won't complete, coverage won't increase
+  - **Common Causes**: IAM permissions, service quotas, invalid parameters, payment method issues
+
+- **Reporter Errors**: Indicates issues with generating coverage reports
+  - **Impact**: No coverage reports in S3, missing email notifications
+  - **Common Causes**: IAM permissions, S3 bucket access, Cost Explorer API issues
+
+- **DLQ Depth**: Indicates purchase messages failed after maximum retries
+  - **Impact**: Specific purchases abandoned, coverage gap persists
+  - **Common Causes**: Persistent IAM issues, invalid message format, repeated API failures
 
 **Viewing Alarms:**
 
@@ -1501,6 +1523,16 @@ aws cloudwatch describe-alarms --alarm-name-prefix sp-autopilot
 aws cloudwatch describe-alarms \
   --alarm-names sp-autopilot-scheduler-errors \
   | jq -r '.MetricAlarms[].StateValue'
+
+# View all alarm states at once
+aws cloudwatch describe-alarms --alarm-name-prefix sp-autopilot \
+  | jq -r '.MetricAlarms[] | "\(.AlarmName): \(.StateValue)"'
+
+# Check alarm history (recent state changes)
+aws cloudwatch describe-alarm-history \
+  --alarm-name sp-autopilot-scheduler-errors \
+  --max-records 10 \
+  --history-item-type StateUpdate
 ```
 
 ### Investigating Lambda Errors
@@ -1596,6 +1628,67 @@ aws cloudwatch describe-alarms \
 
 ### Interpreting SNS Notifications
 
+The SNS topic sends two types of notifications: **CloudWatch Alarms** (monitoring issues) and **Operational Notifications** (Lambda function results).
+
+---
+
+#### CloudWatch Alarm Notifications
+
+**Alarm ALARM State Notification:**
+
+```
+Subject: ALARM: "sp-autopilot-scheduler-errors" in US East (N. Virginia)
+
+You are receiving this email because your Amazon CloudWatch Alarm "sp-autopilot-scheduler-errors" in the US East (N. Virginia) region has entered the ALARM state.
+
+Alarm Details:
+- Name: sp-autopilot-scheduler-errors
+- Description: Triggers when Scheduler Lambda function errors exceed threshold, indicating failures in usage analysis
+- State Change: OK -> ALARM
+- Reason for State Change: Threshold Crossed: 1 datapoint [1.0 (18/01/26 08:05:00)] was greater than or equal to the threshold (1.0).
+
+View this alarm in the AWS Console:
+https://console.aws.amazon.com/cloudwatch/...
+```
+
+**Action:**
+- **Immediate**: Investigate Lambda function logs for error details
+- **Within 24h**: Resolve underlying issue (IAM permissions, API errors, etc.)
+- **Follow-up**: Monitor for OK state recovery notification
+
+**Alarm OK State Notification:**
+
+```
+Subject: OK: "sp-autopilot-scheduler-errors" in US East (N. Virginia)
+
+You are receiving this email because your Amazon CloudWatch Alarm "sp-autopilot-scheduler-errors" in the US East (N. Virginia) region has entered the OK state.
+
+Alarm Details:
+- Name: sp-autopilot-scheduler-errors
+- Description: Triggers when Scheduler Lambda function errors exceed threshold, indicating failures in usage analysis
+- State Change: ALARM -> OK
+- Reason for State Change: Threshold Crossed: 1 datapoint [0.0 (18/01/26 09:05:00)] was less than the threshold (1.0).
+```
+
+**Action:**
+- ✅ Issue resolved, no action needed
+- Review what fixed the issue for future reference
+
+**Alarm Interpretation Guide:**
+
+| Alarm Name | When Triggered | First Response |
+|------------|----------------|----------------|
+| `scheduler-errors` | Scheduler Lambda failed | Check CloudWatch Logs, verify IAM permissions, ensure Cost Explorer API accessible |
+| `purchaser-errors` | Purchaser Lambda failed | Check CloudWatch Logs, verify IAM permissions, check service quotas, review SQS messages |
+| `reporter-errors` | Reporter Lambda failed | Check CloudWatch Logs, verify S3 bucket access, ensure Cost Explorer API accessible |
+| `purchase-intents-dlq-depth` | Messages in DLQ | Check DLQ messages, review Purchaser logs, identify why purchases failed repeatedly |
+
+---
+
+#### Operational Notifications
+
+These notifications are sent by Lambda functions after successful execution to inform you of actions taken.
+
 **Purchase Scheduled Notification:**
 
 ```
@@ -1610,9 +1703,12 @@ Review window: Until 2024-01-04 08:00 UTC
 Queue URL: https://sqs.us-east-1.amazonaws.com/.../sp-autopilot-queue
 ```
 
+**When:** Sent by Scheduler Lambda after analyzing coverage and queuing purchases
+
 **Action:**
 - Verify amounts reasonable given coverage gap
 - Cancel unwanted purchases via SQS before Purchaser runs
+- Review coverage target alignment
 
 **Purchase Summary Notification:**
 
@@ -1626,9 +1722,12 @@ Successfully purchased 2 Savings Plans:
 Total commitment: $8.01/hour ($70,168/year)
 ```
 
+**When:** Sent by Purchaser Lambda after executing queued purchases
+
 **Action:**
 - Verify expected purchases executed
 - Confirm coverage increased in Cost Explorer
+- Cross-reference with AWS Savings Plans console
 
 **Coverage Report Notification:**
 
@@ -1642,11 +1741,26 @@ Current Coverage:
 
 Utilization: 95.2%
 On-Demand Spend: $1,234.56/day
+
+Full report available in S3: s3://sp-autopilot-reports/coverage-reports/latest.json
 ```
 
+**When:** Sent by Reporter Lambda after generating monthly coverage report
+
 **Action:**
-- Review coverage progress
+- Review coverage progress toward target
+- Check utilization percentage (should be 90-100%)
 - Investigate if coverage not trending toward target
+- Download full S3 report for detailed analysis
+
+**Notification Frequency Guide:**
+
+| Notification Type | Frequency | Expected Timing |
+|------------------|-----------|-----------------|
+| Purchase Scheduled | Monthly | 1st of month (default) after Scheduler runs |
+| Purchase Summary | Monthly | 4th of month (default) after Purchaser runs |
+| Coverage Report | Monthly | 15th of month (default) after Reporter runs |
+| CloudWatch Alarms | As needed | Only when alarms trigger or recover |
 
 ---
 
