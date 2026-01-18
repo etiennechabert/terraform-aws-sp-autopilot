@@ -6,10 +6,13 @@ purchase notifications and dry run analysis results.
 """
 
 import logging
-from typing import Any, Dict, List
+from typing import TYPE_CHECKING, Any, Dict, List
 
 from botocore.exceptions import ClientError
-from mypy_boto3_sns.client import SNSClient
+
+
+if TYPE_CHECKING:
+    from mypy_boto3_sns.client import SNSClient
 
 
 # Configure logging

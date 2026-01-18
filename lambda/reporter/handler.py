@@ -13,35 +13,29 @@ This Lambda:
 import json
 import logging
 from datetime import datetime, timedelta, timezone
-from typing import Any, Dict
+from typing import TYPE_CHECKING, Any, Dict
 
 import boto3
 from botocore.exceptions import ClientError
-from mypy_boto3_ce.client import CostExplorerClient
-from mypy_boto3_s3.client import S3Client
-from mypy_boto3_savingsplans.client import SavingsPlansClient
-from mypy_boto3_sns.client import SNSClient
+
+
+if TYPE_CHECKING:
+    from mypy_boto3_ce.client import CostExplorerClient
+    from mypy_boto3_savingsplans.client import SavingsPlansClient
+    from mypy_boto3_sns.client import SNSClient
+
+
+# Import new modular components
+# Import with aliases to avoid shadowing when we create backward-compatible wrappers
 
 from shared import notifications
 from shared.config_validation import validate_reporter_config
 from shared.handler_utils import (
     initialize_clients,
     lambda_handler_wrapper,
-    load_config_from_env,
     send_error_notification,
 )
 from shared.storage_adapter import StorageAdapter
-
-# Import new modular components
-# Import with aliases to avoid shadowing when we create backward-compatible wrappers
-from config import CONFIG_SCHEMA
-
-import alerts as alerts_module
-import csv_report as csv_module
-import data_collector as data_module
-import email_notifications as email_module
-import html_report as html_module
-import json_report as json_module
 
 
 # Configure logging
@@ -608,7 +602,7 @@ def check_and_alert_low_utilization(
 
         # Build alert body
         body_lines = [
-            f"Savings Plans utilization has fallen below the configured threshold.",
+            "Savings Plans utilization has fallen below the configured threshold.",
             "",
             f"Current Utilization: {average_utilization:.2f}%",
             f"Alert Threshold: {threshold:.2f}%",

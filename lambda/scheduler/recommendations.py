@@ -8,10 +8,13 @@ to fetch multiple recommendation types in parallel for improved performance.
 
 import logging
 from concurrent.futures import ThreadPoolExecutor, as_completed
-from typing import Any, Optional
+from typing import TYPE_CHECKING, Any, Optional
 
 from botocore.exceptions import ClientError
-from mypy_boto3_ce.client import CostExplorerClient
+
+
+if TYPE_CHECKING:
+    from mypy_boto3_ce.client import CostExplorerClient
 
 
 # Configure logging

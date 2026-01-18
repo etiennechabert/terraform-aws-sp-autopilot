@@ -15,14 +15,17 @@ This Lambda:
 import json
 import logging
 from datetime import date, datetime, timedelta, timezone
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 import boto3
 from botocore.exceptions import ClientError
-from mypy_boto3_ce.client import CostExplorerClient
-from mypy_boto3_savingsplans.client import SavingsPlansClient
-from mypy_boto3_sns.client import SNSClient
-from mypy_boto3_sqs.client import SQSClient
+
+
+if TYPE_CHECKING:
+    from mypy_boto3_ce.client import CostExplorerClient
+    from mypy_boto3_savingsplans.client import SavingsPlansClient
+    from mypy_boto3_sns.client import SNSClient
+    from mypy_boto3_sqs.client import SQSClient
 from validation import validate_purchase_intent
 
 from shared import handler_utils

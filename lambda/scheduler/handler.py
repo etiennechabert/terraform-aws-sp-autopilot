@@ -20,13 +20,15 @@ import importlib.util
 import json
 import logging
 import os as _os_for_import
-from concurrent.futures import ThreadPoolExecutor, as_completed
-from typing import Any, Dict
+from concurrent.futures import ThreadPoolExecutor
+from typing import TYPE_CHECKING, Any
 
-from mypy_boto3_ce.client import CostExplorerClient
-from mypy_boto3_savingsplans.client import SavingsPlansClient
-from mypy_boto3_sns.client import SNSClient
-from mypy_boto3_sqs.client import SQSClient
+
+if TYPE_CHECKING:
+    from mypy_boto3_ce.client import CostExplorerClient
+    from mypy_boto3_savingsplans.client import SavingsPlansClient
+    from mypy_boto3_sns.client import SNSClient
+    from mypy_boto3_sqs.client import SQSClient
 
 # Import new modular components
 # Import with aliases to avoid shadowing when we create backward-compatible wrappers

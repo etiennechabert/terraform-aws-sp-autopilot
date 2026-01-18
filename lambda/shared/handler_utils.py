@@ -9,10 +9,13 @@ import json
 import logging
 import os
 from datetime import datetime, timezone
-from typing import Any, Callable, Optional
+from typing import TYPE_CHECKING, Any, Callable, Optional
 
 from botocore.exceptions import ClientError
-from mypy_boto3_sns.client import SNSClient
+
+
+if TYPE_CHECKING:
+    from mypy_boto3_sns.client import SNSClient
 
 from shared import notifications
 from shared.aws_utils import get_clients
