@@ -20,7 +20,17 @@ from shared.aws_utils import get_clients
 
 # Configure logging
 logger = logging.getLogger()
-logger.setLevel(logging.INFO)
+
+
+def configure_logging() -> None:
+    """Configure logging level from LOG_LEVEL environment variable."""
+    log_level = os.getenv("LOG_LEVEL", "INFO").upper()
+    level = getattr(logging, log_level, logging.INFO)
+    logger.setLevel(level)
+    logging.getLogger().setLevel(level)
+
+
+configure_logging()
 
 
 def load_config_from_env(schema: dict[str, dict[str, Any]]) -> dict[str, Any]:

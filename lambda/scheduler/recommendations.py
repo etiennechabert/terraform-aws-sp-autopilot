@@ -13,10 +13,12 @@ from typing import Any, Optional
 from botocore.exceptions import ClientError
 from mypy_boto3_ce.client import CostExplorerClient
 
+from shared.handler_utils import configure_logging
+
 
 # Configure logging
 logger = logging.getLogger()
-logger.setLevel(logging.INFO)
+configure_logging()
 
 
 def _fetch_compute_sp_recommendation(
@@ -48,6 +50,8 @@ def _fetch_compute_sp_recommendation(
             TermInYears="ONE_YEAR",
             PaymentOption="ALL_UPFRONT",
         )
+
+        logger.debug(f"Compute SP API response: {response}")
 
         # Extract recommendation metadata
         metadata = response.get("Metadata", {})
