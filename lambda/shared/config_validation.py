@@ -12,10 +12,10 @@ from typing import Any
 VALID_PAYMENT_OPTIONS = ["NO_UPFRONT", "ALL_UPFRONT", "PARTIAL_UPFRONT"]
 
 # Valid values for purchase_strategy_type field
-VALID_PURCHASE_STRATEGIES = ["simple"]
+VALID_PURCHASE_STRATEGIES = ["simple", "dichotomy", "conservative"]
 
 # Valid values for report_format field
-VALID_REPORT_FORMATS = ["html", "json"]
+VALID_REPORT_FORMATS = ["html", "json", "csv"]
 
 
 def _validate_percentage_range(
