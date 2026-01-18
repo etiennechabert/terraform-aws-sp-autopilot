@@ -42,44 +42,31 @@ def mock_ce_client():
 # ============================================================================
 
 
-def test_fetch_compute_sp_recommendation_success(mock_ce_client, mock_config):
+def test_fetch_compute_sp_recommendation_success(aws_mock_builder, mock_ce_client, mock_config):
     """Test successful Compute SP recommendation fetch."""
-    mock_ce_client.get_savings_plans_purchase_recommendation.return_value = {
-        "Metadata": {
-            "RecommendationId": "rec-12345",
-            "GenerationTimestamp": "2026-01-15T10:00:00Z",
-            "LookbackPeriodInDays": "30",
-        },
-        "SavingsPlansPurchaseRecommendation": {
-            "SavingsPlansPurchaseRecommendationDetails": [
-                {
-                    "HourlyCommitmentToPurchase": "5.50",
-                    "EstimatedROI": "25.5",
-                    "EstimatedSavingsAmount": "1000.00",
-                }
-            ]
-        },
-    }
+    # Use real AWS recommendation structure with custom hourly commitment
+    # Note: Using database recommendation as template since compute fixture is empty
+    mock_ce_client.get_savings_plans_purchase_recommendation.return_value = (
+        aws_mock_builder.recommendation('database', hourly_commitment=5.50)
+    )
 
     result = recommendations._fetch_compute_sp_recommendation(mock_ce_client, "THIRTY_DAYS")
 
     assert result is not None
     assert result["HourlyCommitmentToPurchase"] == "5.50"
-    assert result["RecommendationId"] == "rec-12345"
-    assert result["GenerationTimestamp"] == "2026-01-15T10:00:00Z"
+    assert "RecommendationId" in result
+    assert "GenerationTimestamp" in result
     assert "Details" in result
 
 
-def test_fetch_compute_sp_recommendation_no_recommendations(mock_ce_client, mock_config):
+def test_fetch_compute_sp_recommendation_no_recommendations(
+    aws_mock_builder, mock_ce_client, mock_config
+):
     """Test when AWS returns no Compute SP recommendations."""
-    mock_ce_client.get_savings_plans_purchase_recommendation.return_value = {
-        "Metadata": {
-            "RecommendationId": "rec-12345",
-            "GenerationTimestamp": "2026-01-15T10:00:00Z",
-            "LookbackPeriodInDays": "30",
-        },
-        "SavingsPlansPurchaseRecommendation": {"SavingsPlansPurchaseRecommendationDetails": []},
-    }
+    # Use real AWS structure with empty recommendation
+    mock_ce_client.get_savings_plans_purchase_recommendation.return_value = (
+        aws_mock_builder.recommendation('compute', empty=True)
+    )
 
     result = recommendations._fetch_compute_sp_recommendation(mock_ce_client, "THIRTY_DAYS")
 

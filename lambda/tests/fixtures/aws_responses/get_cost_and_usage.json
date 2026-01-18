@@ -1,0 +1,1300 @@
+{
+    "GroupDefinitions": [
+        {
+            "Type": "DIMENSION",
+            "Key": "PURCHASE_TYPE"
+        }
+    ],
+    "ResultsByTime": [
+        {
+            "TimePeriod": {
+                "Start": "2025-12-19",
+                "End": "2025-12-20"
+            },
+            "Total": {},
+            "Groups": [
+                {
+                    "Keys": [
+                        "On Demand Instances"
+                    ],
+                    "Metrics": {
+                        "UnblendedCost": {
+                            "Amount": "1760.65",
+                            "Unit": "USD"
+                        }
+                    }
+                },
+                {
+                    "Keys": [
+                        "Savings Plans"
+                    ],
+                    "Metrics": {
+                        "UnblendedCost": {
+                            "Amount": "344.25",
+                            "Unit": "USD"
+                        }
+                    }
+                },
+                {
+                    "Keys": [
+                        "Standard Reserved Instances"
+                    ],
+                    "Metrics": {
+                        "UnblendedCost": {
+                            "Amount": "29.19",
+                            "Unit": "USD"
+                        }
+                    }
+                }
+            ],
+            "Estimated": false
+        },
+        {
+            "TimePeriod": {
+                "Start": "2025-12-20",
+                "End": "2025-12-21"
+            },
+            "Total": {},
+            "Groups": [
+                {
+                    "Keys": [
+                        "On Demand Instances"
+                    ],
+                    "Metrics": {
+                        "UnblendedCost": {
+                            "Amount": "1903.15",
+                            "Unit": "USD"
+                        }
+                    }
+                },
+                {
+                    "Keys": [
+                        "Savings Plans"
+                    ],
+                    "Metrics": {
+                        "UnblendedCost": {
+                            "Amount": "779.55",
+                            "Unit": "USD"
+                        }
+                    }
+                },
+                {
+                    "Keys": [
+                        "Standard Reserved Instances"
+                    ],
+                    "Metrics": {
+                        "UnblendedCost": {
+                            "Amount": "20.36",
+                            "Unit": "USD"
+                        }
+                    }
+                }
+            ],
+            "Estimated": false
+        },
+        {
+            "TimePeriod": {
+                "Start": "2025-12-21",
+                "End": "2025-12-22"
+            },
+            "Total": {},
+            "Groups": [
+                {
+                    "Keys": [
+                        "On Demand Instances"
+                    ],
+                    "Metrics": {
+                        "UnblendedCost": {
+                            "Amount": "637.98",
+                            "Unit": "USD"
+                        }
+                    }
+                },
+                {
+                    "Keys": [
+                        "Savings Plans"
+                    ],
+                    "Metrics": {
+                        "UnblendedCost": {
+                            "Amount": "746.7",
+                            "Unit": "USD"
+                        }
+                    }
+                },
+                {
+                    "Keys": [
+                        "Standard Reserved Instances"
+                    ],
+                    "Metrics": {
+                        "UnblendedCost": {
+                            "Amount": "37.81",
+                            "Unit": "USD"
+                        }
+                    }
+                }
+            ],
+            "Estimated": false
+        },
+        {
+            "TimePeriod": {
+                "Start": "2025-12-22",
+                "End": "2025-12-23"
+            },
+            "Total": {},
+            "Groups": [
+                {
+                    "Keys": [
+                        "On Demand Instances"
+                    ],
+                    "Metrics": {
+                        "UnblendedCost": {
+                            "Amount": "1242.58",
+                            "Unit": "USD"
+                        }
+                    }
+                },
+                {
+                    "Keys": [
+                        "Savings Plans"
+                    ],
+                    "Metrics": {
+                        "UnblendedCost": {
+                            "Amount": "636.31",
+                            "Unit": "USD"
+                        }
+                    }
+                },
+                {
+                    "Keys": [
+                        "Standard Reserved Instances"
+                    ],
+                    "Metrics": {
+                        "UnblendedCost": {
+                            "Amount": "28.79",
+                            "Unit": "USD"
+                        }
+                    }
+                }
+            ],
+            "Estimated": false
+        },
+        {
+            "TimePeriod": {
+                "Start": "2025-12-23",
+                "End": "2025-12-24"
+            },
+            "Total": {},
+            "Groups": [
+                {
+                    "Keys": [
+                        "On Demand Instances"
+                    ],
+                    "Metrics": {
+                        "UnblendedCost": {
+                            "Amount": "1089.7",
+                            "Unit": "USD"
+                        }
+                    }
+                },
+                {
+                    "Keys": [
+                        "Savings Plans"
+                    ],
+                    "Metrics": {
+                        "UnblendedCost": {
+                            "Amount": "757.23",
+                            "Unit": "USD"
+                        }
+                    }
+                },
+                {
+                    "Keys": [
+                        "Standard Reserved Instances"
+                    ],
+                    "Metrics": {
+                        "UnblendedCost": {
+                            "Amount": "8.2",
+                            "Unit": "USD"
+                        }
+                    }
+                }
+            ],
+            "Estimated": false
+        },
+        {
+            "TimePeriod": {
+                "Start": "2025-12-24",
+                "End": "2025-12-25"
+            },
+            "Total": {},
+            "Groups": [
+                {
+                    "Keys": [
+                        "On Demand Instances"
+                    ],
+                    "Metrics": {
+                        "UnblendedCost": {
+                            "Amount": "898.39",
+                            "Unit": "USD"
+                        }
+                    }
+                },
+                {
+                    "Keys": [
+                        "Savings Plans"
+                    ],
+                    "Metrics": {
+                        "UnblendedCost": {
+                            "Amount": "762.01",
+                            "Unit": "USD"
+                        }
+                    }
+                },
+                {
+                    "Keys": [
+                        "Standard Reserved Instances"
+                    ],
+                    "Metrics": {
+                        "UnblendedCost": {
+                            "Amount": "31.82",
+                            "Unit": "USD"
+                        }
+                    }
+                }
+            ],
+            "Estimated": false
+        },
+        {
+            "TimePeriod": {
+                "Start": "2025-12-25",
+                "End": "2025-12-26"
+            },
+            "Total": {},
+            "Groups": [
+                {
+                    "Keys": [
+                        "On Demand Instances"
+                    ],
+                    "Metrics": {
+                        "UnblendedCost": {
+                            "Amount": "970.4",
+                            "Unit": "USD"
+                        }
+                    }
+                },
+                {
+                    "Keys": [
+                        "Savings Plans"
+                    ],
+                    "Metrics": {
+                        "UnblendedCost": {
+                            "Amount": "554.31",
+                            "Unit": "USD"
+                        }
+                    }
+                },
+                {
+                    "Keys": [
+                        "Standard Reserved Instances"
+                    ],
+                    "Metrics": {
+                        "UnblendedCost": {
+                            "Amount": "40.58",
+                            "Unit": "USD"
+                        }
+                    }
+                }
+            ],
+            "Estimated": false
+        },
+        {
+            "TimePeriod": {
+                "Start": "2025-12-26",
+                "End": "2025-12-27"
+            },
+            "Total": {},
+            "Groups": [
+                {
+                    "Keys": [
+                        "On Demand Instances"
+                    ],
+                    "Metrics": {
+                        "UnblendedCost": {
+                            "Amount": "695.66",
+                            "Unit": "USD"
+                        }
+                    }
+                },
+                {
+                    "Keys": [
+                        "Savings Plans"
+                    ],
+                    "Metrics": {
+                        "UnblendedCost": {
+                            "Amount": "608.03",
+                            "Unit": "USD"
+                        }
+                    }
+                },
+                {
+                    "Keys": [
+                        "Standard Reserved Instances"
+                    ],
+                    "Metrics": {
+                        "UnblendedCost": {
+                            "Amount": "8.17",
+                            "Unit": "USD"
+                        }
+                    }
+                }
+            ],
+            "Estimated": false
+        },
+        {
+            "TimePeriod": {
+                "Start": "2025-12-27",
+                "End": "2025-12-28"
+            },
+            "Total": {},
+            "Groups": [
+                {
+                    "Keys": [
+                        "On Demand Instances"
+                    ],
+                    "Metrics": {
+                        "UnblendedCost": {
+                            "Amount": "1302.72",
+                            "Unit": "USD"
+                        }
+                    }
+                },
+                {
+                    "Keys": [
+                        "Savings Plans"
+                    ],
+                    "Metrics": {
+                        "UnblendedCost": {
+                            "Amount": "637.94",
+                            "Unit": "USD"
+                        }
+                    }
+                },
+                {
+                    "Keys": [
+                        "Standard Reserved Instances"
+                    ],
+                    "Metrics": {
+                        "UnblendedCost": {
+                            "Amount": "26.67",
+                            "Unit": "USD"
+                        }
+                    }
+                }
+            ],
+            "Estimated": false
+        },
+        {
+            "TimePeriod": {
+                "Start": "2025-12-28",
+                "End": "2025-12-29"
+            },
+            "Total": {},
+            "Groups": [
+                {
+                    "Keys": [
+                        "On Demand Instances"
+                    ],
+                    "Metrics": {
+                        "UnblendedCost": {
+                            "Amount": "1859.1",
+                            "Unit": "USD"
+                        }
+                    }
+                },
+                {
+                    "Keys": [
+                        "Savings Plans"
+                    ],
+                    "Metrics": {
+                        "UnblendedCost": {
+                            "Amount": "567.05",
+                            "Unit": "USD"
+                        }
+                    }
+                },
+                {
+                    "Keys": [
+                        "Standard Reserved Instances"
+                    ],
+                    "Metrics": {
+                        "UnblendedCost": {
+                            "Amount": "25.87",
+                            "Unit": "USD"
+                        }
+                    }
+                }
+            ],
+            "Estimated": false
+        },
+        {
+            "TimePeriod": {
+                "Start": "2025-12-29",
+                "End": "2025-12-30"
+            },
+            "Total": {},
+            "Groups": [
+                {
+                    "Keys": [
+                        "On Demand Instances"
+                    ],
+                    "Metrics": {
+                        "UnblendedCost": {
+                            "Amount": "1394.19",
+                            "Unit": "USD"
+                        }
+                    }
+                },
+                {
+                    "Keys": [
+                        "Savings Plans"
+                    ],
+                    "Metrics": {
+                        "UnblendedCost": {
+                            "Amount": "521.15",
+                            "Unit": "USD"
+                        }
+                    }
+                },
+                {
+                    "Keys": [
+                        "Standard Reserved Instances"
+                    ],
+                    "Metrics": {
+                        "UnblendedCost": {
+                            "Amount": "25.11",
+                            "Unit": "USD"
+                        }
+                    }
+                }
+            ],
+            "Estimated": false
+        },
+        {
+            "TimePeriod": {
+                "Start": "2025-12-30",
+                "End": "2025-12-31"
+            },
+            "Total": {},
+            "Groups": [
+                {
+                    "Keys": [
+                        "On Demand Instances"
+                    ],
+                    "Metrics": {
+                        "UnblendedCost": {
+                            "Amount": "768.28",
+                            "Unit": "USD"
+                        }
+                    }
+                },
+                {
+                    "Keys": [
+                        "Savings Plans"
+                    ],
+                    "Metrics": {
+                        "UnblendedCost": {
+                            "Amount": "403.42",
+                            "Unit": "USD"
+                        }
+                    }
+                },
+                {
+                    "Keys": [
+                        "Standard Reserved Instances"
+                    ],
+                    "Metrics": {
+                        "UnblendedCost": {
+                            "Amount": "8.53",
+                            "Unit": "USD"
+                        }
+                    }
+                }
+            ],
+            "Estimated": false
+        },
+        {
+            "TimePeriod": {
+                "Start": "2025-12-31",
+                "End": "2026-01-01"
+            },
+            "Total": {},
+            "Groups": [
+                {
+                    "Keys": [
+                        "On Demand Instances"
+                    ],
+                    "Metrics": {
+                        "UnblendedCost": {
+                            "Amount": "1075.89",
+                            "Unit": "USD"
+                        }
+                    }
+                },
+                {
+                    "Keys": [
+                        "Savings Plans"
+                    ],
+                    "Metrics": {
+                        "UnblendedCost": {
+                            "Amount": "553.93",
+                            "Unit": "USD"
+                        }
+                    }
+                },
+                {
+                    "Keys": [
+                        "Standard Reserved Instances"
+                    ],
+                    "Metrics": {
+                        "UnblendedCost": {
+                            "Amount": "48.88",
+                            "Unit": "USD"
+                        }
+                    }
+                }
+            ],
+            "Estimated": false
+        },
+        {
+            "TimePeriod": {
+                "Start": "2026-01-01",
+                "End": "2026-01-02"
+            },
+            "Total": {},
+            "Groups": [
+                {
+                    "Keys": [
+                        "On Demand Instances"
+                    ],
+                    "Metrics": {
+                        "UnblendedCost": {
+                            "Amount": "1532.83",
+                            "Unit": "USD"
+                        }
+                    }
+                },
+                {
+                    "Keys": [
+                        "Savings Plans"
+                    ],
+                    "Metrics": {
+                        "UnblendedCost": {
+                            "Amount": "408.1",
+                            "Unit": "USD"
+                        }
+                    }
+                },
+                {
+                    "Keys": [
+                        "Standard Reserved Instances"
+                    ],
+                    "Metrics": {
+                        "UnblendedCost": {
+                            "Amount": "49.98",
+                            "Unit": "USD"
+                        }
+                    }
+                }
+            ],
+            "Estimated": false
+        },
+        {
+            "TimePeriod": {
+                "Start": "2026-01-02",
+                "End": "2026-01-03"
+            },
+            "Total": {},
+            "Groups": [
+                {
+                    "Keys": [
+                        "On Demand Instances"
+                    ],
+                    "Metrics": {
+                        "UnblendedCost": {
+                            "Amount": "1444.34",
+                            "Unit": "USD"
+                        }
+                    }
+                },
+                {
+                    "Keys": [
+                        "Savings Plans"
+                    ],
+                    "Metrics": {
+                        "UnblendedCost": {
+                            "Amount": "602.13",
+                            "Unit": "USD"
+                        }
+                    }
+                },
+                {
+                    "Keys": [
+                        "Standard Reserved Instances"
+                    ],
+                    "Metrics": {
+                        "UnblendedCost": {
+                            "Amount": "17.33",
+                            "Unit": "USD"
+                        }
+                    }
+                }
+            ],
+            "Estimated": false
+        },
+        {
+            "TimePeriod": {
+                "Start": "2026-01-03",
+                "End": "2026-01-04"
+            },
+            "Total": {},
+            "Groups": [
+                {
+                    "Keys": [
+                        "On Demand Instances"
+                    ],
+                    "Metrics": {
+                        "UnblendedCost": {
+                            "Amount": "1277.53",
+                            "Unit": "USD"
+                        }
+                    }
+                },
+                {
+                    "Keys": [
+                        "Savings Plans"
+                    ],
+                    "Metrics": {
+                        "UnblendedCost": {
+                            "Amount": "645.33",
+                            "Unit": "USD"
+                        }
+                    }
+                },
+                {
+                    "Keys": [
+                        "Standard Reserved Instances"
+                    ],
+                    "Metrics": {
+                        "UnblendedCost": {
+                            "Amount": "21.15",
+                            "Unit": "USD"
+                        }
+                    }
+                }
+            ],
+            "Estimated": false
+        },
+        {
+            "TimePeriod": {
+                "Start": "2026-01-04",
+                "End": "2026-01-05"
+            },
+            "Total": {},
+            "Groups": [
+                {
+                    "Keys": [
+                        "On Demand Instances"
+                    ],
+                    "Metrics": {
+                        "UnblendedCost": {
+                            "Amount": "1292.34",
+                            "Unit": "USD"
+                        }
+                    }
+                },
+                {
+                    "Keys": [
+                        "Savings Plans"
+                    ],
+                    "Metrics": {
+                        "UnblendedCost": {
+                            "Amount": "488.41",
+                            "Unit": "USD"
+                        }
+                    }
+                },
+                {
+                    "Keys": [
+                        "Standard Reserved Instances"
+                    ],
+                    "Metrics": {
+                        "UnblendedCost": {
+                            "Amount": "5.81",
+                            "Unit": "USD"
+                        }
+                    }
+                }
+            ],
+            "Estimated": false
+        },
+        {
+            "TimePeriod": {
+                "Start": "2026-01-05",
+                "End": "2026-01-06"
+            },
+            "Total": {},
+            "Groups": [
+                {
+                    "Keys": [
+                        "On Demand Instances"
+                    ],
+                    "Metrics": {
+                        "UnblendedCost": {
+                            "Amount": "1512.98",
+                            "Unit": "USD"
+                        }
+                    }
+                },
+                {
+                    "Keys": [
+                        "Savings Plans"
+                    ],
+                    "Metrics": {
+                        "UnblendedCost": {
+                            "Amount": "639.81",
+                            "Unit": "USD"
+                        }
+                    }
+                },
+                {
+                    "Keys": [
+                        "Standard Reserved Instances"
+                    ],
+                    "Metrics": {
+                        "UnblendedCost": {
+                            "Amount": "40.75",
+                            "Unit": "USD"
+                        }
+                    }
+                }
+            ],
+            "Estimated": false
+        },
+        {
+            "TimePeriod": {
+                "Start": "2026-01-06",
+                "End": "2026-01-07"
+            },
+            "Total": {},
+            "Groups": [
+                {
+                    "Keys": [
+                        "On Demand Instances"
+                    ],
+                    "Metrics": {
+                        "UnblendedCost": {
+                            "Amount": "1380.81",
+                            "Unit": "USD"
+                        }
+                    }
+                },
+                {
+                    "Keys": [
+                        "Savings Plans"
+                    ],
+                    "Metrics": {
+                        "UnblendedCost": {
+                            "Amount": "485.37",
+                            "Unit": "USD"
+                        }
+                    }
+                },
+                {
+                    "Keys": [
+                        "Standard Reserved Instances"
+                    ],
+                    "Metrics": {
+                        "UnblendedCost": {
+                            "Amount": "45.18",
+                            "Unit": "USD"
+                        }
+                    }
+                }
+            ],
+            "Estimated": false
+        },
+        {
+            "TimePeriod": {
+                "Start": "2026-01-07",
+                "End": "2026-01-08"
+            },
+            "Total": {},
+            "Groups": [
+                {
+                    "Keys": [
+                        "On Demand Instances"
+                    ],
+                    "Metrics": {
+                        "UnblendedCost": {
+                            "Amount": "1456.94",
+                            "Unit": "USD"
+                        }
+                    }
+                },
+                {
+                    "Keys": [
+                        "Savings Plans"
+                    ],
+                    "Metrics": {
+                        "UnblendedCost": {
+                            "Amount": "312.88",
+                            "Unit": "USD"
+                        }
+                    }
+                },
+                {
+                    "Keys": [
+                        "Standard Reserved Instances"
+                    ],
+                    "Metrics": {
+                        "UnblendedCost": {
+                            "Amount": "47.8",
+                            "Unit": "USD"
+                        }
+                    }
+                }
+            ],
+            "Estimated": false
+        },
+        {
+            "TimePeriod": {
+                "Start": "2026-01-08",
+                "End": "2026-01-09"
+            },
+            "Total": {},
+            "Groups": [
+                {
+                    "Keys": [
+                        "On Demand Instances"
+                    ],
+                    "Metrics": {
+                        "UnblendedCost": {
+                            "Amount": "1484.94",
+                            "Unit": "USD"
+                        }
+                    }
+                },
+                {
+                    "Keys": [
+                        "Savings Plans"
+                    ],
+                    "Metrics": {
+                        "UnblendedCost": {
+                            "Amount": "549.13",
+                            "Unit": "USD"
+                        }
+                    }
+                },
+                {
+                    "Keys": [
+                        "Standard Reserved Instances"
+                    ],
+                    "Metrics": {
+                        "UnblendedCost": {
+                            "Amount": "47.53",
+                            "Unit": "USD"
+                        }
+                    }
+                }
+            ],
+            "Estimated": false
+        },
+        {
+            "TimePeriod": {
+                "Start": "2026-01-09",
+                "End": "2026-01-10"
+            },
+            "Total": {},
+            "Groups": [
+                {
+                    "Keys": [
+                        "On Demand Instances"
+                    ],
+                    "Metrics": {
+                        "UnblendedCost": {
+                            "Amount": "550.96",
+                            "Unit": "USD"
+                        }
+                    }
+                },
+                {
+                    "Keys": [
+                        "Savings Plans"
+                    ],
+                    "Metrics": {
+                        "UnblendedCost": {
+                            "Amount": "444.9",
+                            "Unit": "USD"
+                        }
+                    }
+                },
+                {
+                    "Keys": [
+                        "Standard Reserved Instances"
+                    ],
+                    "Metrics": {
+                        "UnblendedCost": {
+                            "Amount": "29.0",
+                            "Unit": "USD"
+                        }
+                    }
+                }
+            ],
+            "Estimated": false
+        },
+        {
+            "TimePeriod": {
+                "Start": "2026-01-10",
+                "End": "2026-01-11"
+            },
+            "Total": {},
+            "Groups": [
+                {
+                    "Keys": [
+                        "On Demand Instances"
+                    ],
+                    "Metrics": {
+                        "UnblendedCost": {
+                            "Amount": "1041.34",
+                            "Unit": "USD"
+                        }
+                    }
+                },
+                {
+                    "Keys": [
+                        "Savings Plans"
+                    ],
+                    "Metrics": {
+                        "UnblendedCost": {
+                            "Amount": "492.47",
+                            "Unit": "USD"
+                        }
+                    }
+                },
+                {
+                    "Keys": [
+                        "Standard Reserved Instances"
+                    ],
+                    "Metrics": {
+                        "UnblendedCost": {
+                            "Amount": "3.99",
+                            "Unit": "USD"
+                        }
+                    }
+                }
+            ],
+            "Estimated": false
+        },
+        {
+            "TimePeriod": {
+                "Start": "2026-01-11",
+                "End": "2026-01-12"
+            },
+            "Total": {},
+            "Groups": [
+                {
+                    "Keys": [
+                        "On Demand Instances"
+                    ],
+                    "Metrics": {
+                        "UnblendedCost": {
+                            "Amount": "1174.79",
+                            "Unit": "USD"
+                        }
+                    }
+                },
+                {
+                    "Keys": [
+                        "Savings Plans"
+                    ],
+                    "Metrics": {
+                        "UnblendedCost": {
+                            "Amount": "559.32",
+                            "Unit": "USD"
+                        }
+                    }
+                },
+                {
+                    "Keys": [
+                        "Standard Reserved Instances"
+                    ],
+                    "Metrics": {
+                        "UnblendedCost": {
+                            "Amount": "7.65",
+                            "Unit": "USD"
+                        }
+                    }
+                }
+            ],
+            "Estimated": false
+        },
+        {
+            "TimePeriod": {
+                "Start": "2026-01-12",
+                "End": "2026-01-13"
+            },
+            "Total": {},
+            "Groups": [
+                {
+                    "Keys": [
+                        "On Demand Instances"
+                    ],
+                    "Metrics": {
+                        "UnblendedCost": {
+                            "Amount": "1462.77",
+                            "Unit": "USD"
+                        }
+                    }
+                },
+                {
+                    "Keys": [
+                        "Savings Plans"
+                    ],
+                    "Metrics": {
+                        "UnblendedCost": {
+                            "Amount": "482.91",
+                            "Unit": "USD"
+                        }
+                    }
+                },
+                {
+                    "Keys": [
+                        "Standard Reserved Instances"
+                    ],
+                    "Metrics": {
+                        "UnblendedCost": {
+                            "Amount": "45.7",
+                            "Unit": "USD"
+                        }
+                    }
+                }
+            ],
+            "Estimated": false
+        },
+        {
+            "TimePeriod": {
+                "Start": "2026-01-13",
+                "End": "2026-01-14"
+            },
+            "Total": {},
+            "Groups": [
+                {
+                    "Keys": [
+                        "On Demand Instances"
+                    ],
+                    "Metrics": {
+                        "UnblendedCost": {
+                            "Amount": "1897.23",
+                            "Unit": "USD"
+                        }
+                    }
+                },
+                {
+                    "Keys": [
+                        "Savings Plans"
+                    ],
+                    "Metrics": {
+                        "UnblendedCost": {
+                            "Amount": "662.14",
+                            "Unit": "USD"
+                        }
+                    }
+                },
+                {
+                    "Keys": [
+                        "Standard Reserved Instances"
+                    ],
+                    "Metrics": {
+                        "UnblendedCost": {
+                            "Amount": "47.61",
+                            "Unit": "USD"
+                        }
+                    }
+                }
+            ],
+            "Estimated": false
+        },
+        {
+            "TimePeriod": {
+                "Start": "2026-01-14",
+                "End": "2026-01-15"
+            },
+            "Total": {},
+            "Groups": [
+                {
+                    "Keys": [
+                        "On Demand Instances"
+                    ],
+                    "Metrics": {
+                        "UnblendedCost": {
+                            "Amount": "741.29",
+                            "Unit": "USD"
+                        }
+                    }
+                },
+                {
+                    "Keys": [
+                        "Savings Plans"
+                    ],
+                    "Metrics": {
+                        "UnblendedCost": {
+                            "Amount": "567.11",
+                            "Unit": "USD"
+                        }
+                    }
+                },
+                {
+                    "Keys": [
+                        "Standard Reserved Instances"
+                    ],
+                    "Metrics": {
+                        "UnblendedCost": {
+                            "Amount": "25.05",
+                            "Unit": "USD"
+                        }
+                    }
+                }
+            ],
+            "Estimated": false
+        },
+        {
+            "TimePeriod": {
+                "Start": "2026-01-15",
+                "End": "2026-01-16"
+            },
+            "Total": {},
+            "Groups": [
+                {
+                    "Keys": [
+                        "On Demand Instances"
+                    ],
+                    "Metrics": {
+                        "UnblendedCost": {
+                            "Amount": "1363.96",
+                            "Unit": "USD"
+                        }
+                    }
+                },
+                {
+                    "Keys": [
+                        "Savings Plans"
+                    ],
+                    "Metrics": {
+                        "UnblendedCost": {
+                            "Amount": "369.54",
+                            "Unit": "USD"
+                        }
+                    }
+                },
+                {
+                    "Keys": [
+                        "Standard Reserved Instances"
+                    ],
+                    "Metrics": {
+                        "UnblendedCost": {
+                            "Amount": "45.56",
+                            "Unit": "USD"
+                        }
+                    }
+                }
+            ],
+            "Estimated": false
+        },
+        {
+            "TimePeriod": {
+                "Start": "2026-01-16",
+                "End": "2026-01-17"
+            },
+            "Total": {},
+            "Groups": [
+                {
+                    "Keys": [
+                        "On Demand Instances"
+                    ],
+                    "Metrics": {
+                        "UnblendedCost": {
+                            "Amount": "1409.0",
+                            "Unit": "USD"
+                        }
+                    }
+                },
+                {
+                    "Keys": [
+                        "Savings Plans"
+                    ],
+                    "Metrics": {
+                        "UnblendedCost": {
+                            "Amount": "396.5",
+                            "Unit": "USD"
+                        }
+                    }
+                },
+                {
+                    "Keys": [
+                        "Standard Reserved Instances"
+                    ],
+                    "Metrics": {
+                        "UnblendedCost": {
+                            "Amount": "44.6",
+                            "Unit": "USD"
+                        }
+                    }
+                }
+            ],
+            "Estimated": false
+        },
+        {
+            "TimePeriod": {
+                "Start": "2026-01-17",
+                "End": "2026-01-18"
+            },
+            "Total": {},
+            "Groups": [
+                {
+                    "Keys": [
+                        "On Demand Instances"
+                    ],
+                    "Metrics": {
+                        "UnblendedCost": {
+                            "Amount": "1364.11",
+                            "Unit": "USD"
+                        }
+                    }
+                },
+                {
+                    "Keys": [
+                        "Savings Plans"
+                    ],
+                    "Metrics": {
+                        "UnblendedCost": {
+                            "Amount": "544.16",
+                            "Unit": "USD"
+                        }
+                    }
+                },
+                {
+                    "Keys": [
+                        "Standard Reserved Instances"
+                    ],
+                    "Metrics": {
+                        "UnblendedCost": {
+                            "Amount": "34.9",
+                            "Unit": "USD"
+                        }
+                    }
+                }
+            ],
+            "Estimated": false
+        }
+    ]
+}

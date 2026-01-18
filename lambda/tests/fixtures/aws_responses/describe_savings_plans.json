@@ -1,0 +1,50 @@
+{
+    "savingsPlans": [
+        {
+            "offeringId": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
+            "savingsPlanId": "sp-11111111-2222-3333-4444-555555555555",
+            "savingsPlanArn": "arn:aws:savingsplans::123456789012:savingsplan/sp-11111111-2222-3333-4444-555555555555",
+            "description": "3 year No Upfront Compute Savings Plan",
+            "start": "2024-01-15T10:00:00.000Z",
+            "end": "2027-01-15T10:00:00.000Z",
+            "state": "active",
+            "savingsPlanType": "Compute",
+            "paymentOption": "No Upfront",
+            "productTypes": [
+                "Fargate",
+                "EC2",
+                "Lambda"
+            ],
+            "currency": "USD",
+            "commitment": "10.00000000",
+            "upfrontPaymentAmount": "0.00000000",
+            "recurringPaymentAmount": "10.00000000",
+            "termDurationInSeconds": 94608000,
+            "tags": {},
+            "returnableUntil": "2024-01-22T10:00:00.000Z"
+        },
+        {
+            "offeringId": "b2c3d4e5-f6a7-8901-bcde-f12345678901",
+            "savingsPlanId": "sp-66666666-7777-8888-9999-aaaaaaaaaaaa",
+            "savingsPlanArn": "arn:aws:savingsplans::123456789012:savingsplan/sp-66666666-7777-8888-9999-aaaaaaaaaaaa",
+            "description": "3 year No Upfront Compute Savings Plan",
+            "start": "2023-06-10T14:30:00.000Z",
+            "end": "2026-06-10T14:30:00.000Z",
+            "state": "active",
+            "savingsPlanType": "Compute",
+            "paymentOption": "No Upfront",
+            "productTypes": [
+                "Fargate",
+                "EC2",
+                "Lambda"
+            ],
+            "currency": "USD",
+            "commitment": "5.50000000",
+            "upfrontPaymentAmount": "0.00000000",
+            "recurringPaymentAmount": "5.50000000",
+            "termDurationInSeconds": 94608000,
+            "tags": {},
+            "returnableUntil": "2023-06-10T14:30:00.000Z"
+        }
+    ]
+}

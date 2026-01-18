@@ -1,0 +1,754 @@
+{
+    "SavingsPlansCoverages": [
+        {
+            "TimePeriod": {
+                "Start": "2025-12-19",
+                "End": "2025-12-20"
+            },
+            "Coverage": {
+                "CoverageHours": {
+                    "OnDemandHours": "136.84",
+                    "TotalRunningHours": "1012.88",
+                    "CoveredHours": "876.04",
+                    "CoverageHoursPercentage": "86.49"
+                },
+                "CoverageNormalizedUnits": {
+                    "OnDemandNormalizedUnits": "205.26",
+                    "TotalRunningNormalizedUnits": "1519.32",
+                    "CoveredNormalizedUnits": "1314.06",
+                    "CoverageNormalizedUnitsPercentage": "86.49"
+                },
+                "CoverageCost": {
+                    "OnDemandCost": "13.68",
+                    "SpendCoveredBySavingsPlans": "87.6"
+                },
+                "CoveragePercentage": "86.49"
+            }
+        },
+        {
+            "TimePeriod": {
+                "Start": "2025-12-20",
+                "End": "2025-12-21"
+            },
+            "Coverage": {
+                "CoverageHours": {
+                    "OnDemandHours": "810.03",
+                    "TotalRunningHours": "2824.37",
+                    "CoveredHours": "2014.34",
+                    "CoverageHoursPercentage": "71.32"
+                },
+                "CoverageNormalizedUnits": {
+                    "OnDemandNormalizedUnits": "1215.05",
+                    "TotalRunningNormalizedUnits": "4236.56",
+                    "CoveredNormalizedUnits": "3021.51",
+                    "CoverageNormalizedUnitsPercentage": "71.32"
+                },
+                "CoverageCost": {
+                    "OnDemandCost": "81.0",
+                    "SpendCoveredBySavingsPlans": "201.43"
+                },
+                "CoveragePercentage": "71.32"
+            }
+        },
+        {
+            "TimePeriod": {
+                "Start": "2025-12-21",
+                "End": "2025-12-22"
+            },
+            "Coverage": {
+                "CoverageHours": {
+                    "OnDemandHours": "431.45",
+                    "TotalRunningHours": "2263.62",
+                    "CoveredHours": "1832.17",
+                    "CoverageHoursPercentage": "80.94"
+                },
+                "CoverageNormalizedUnits": {
+                    "OnDemandNormalizedUnits": "647.17",
+                    "TotalRunningNormalizedUnits": "3395.43",
+                    "CoveredNormalizedUnits": "2748.26",
+                    "CoverageNormalizedUnitsPercentage": "80.94"
+                },
+                "CoverageCost": {
+                    "OnDemandCost": "43.15",
+                    "SpendCoveredBySavingsPlans": "183.22"
+                },
+                "CoveragePercentage": "80.94"
+            }
+        },
+        {
+            "TimePeriod": {
+                "Start": "2025-12-22",
+                "End": "2025-12-23"
+            },
+            "Coverage": {
+                "CoverageHours": {
+                    "OnDemandHours": "287.45",
+                    "TotalRunningHours": "1959.47",
+                    "CoveredHours": "1672.02",
+                    "CoverageHoursPercentage": "85.33"
+                },
+                "CoverageNormalizedUnits": {
+                    "OnDemandNormalizedUnits": "431.17",
+                    "TotalRunningNormalizedUnits": "2939.2",
+                    "CoveredNormalizedUnits": "2508.03",
+                    "CoverageNormalizedUnitsPercentage": "85.33"
+                },
+                "CoverageCost": {
+                    "OnDemandCost": "28.75",
+                    "SpendCoveredBySavingsPlans": "167.2"
+                },
+                "CoveragePercentage": "85.33"
+            }
+        },
+        {
+            "TimePeriod": {
+                "Start": "2025-12-23",
+                "End": "2025-12-24"
+            },
+            "Coverage": {
+                "CoverageHours": {
+                    "OnDemandHours": "535.41",
+                    "TotalRunningHours": "2478.76",
+                    "CoveredHours": "1943.35",
+                    "CoverageHoursPercentage": "78.4"
+                },
+                "CoverageNormalizedUnits": {
+                    "OnDemandNormalizedUnits": "803.12",
+                    "TotalRunningNormalizedUnits": "3718.14",
+                    "CoveredNormalizedUnits": "2915.02",
+                    "CoverageNormalizedUnitsPercentage": "78.4"
+                },
+                "CoverageCost": {
+                    "OnDemandCost": "53.54",
+                    "SpendCoveredBySavingsPlans": "194.34"
+                },
+                "CoveragePercentage": "78.4"
+            }
+        },
+        {
+            "TimePeriod": {
+                "Start": "2025-12-24",
+                "End": "2025-12-25"
+            },
+            "Coverage": {
+                "CoverageHours": {
+                    "OnDemandHours": "321.2",
+                    "TotalRunningHours": "1620.6",
+                    "CoveredHours": "1299.4",
+                    "CoverageHoursPercentage": "80.18"
+                },
+                "CoverageNormalizedUnits": {
+                    "OnDemandNormalizedUnits": "481.8",
+                    "TotalRunningNormalizedUnits": "2430.9",
+                    "CoveredNormalizedUnits": "1949.1",
+                    "CoverageNormalizedUnitsPercentage": "80.18"
+                },
+                "CoverageCost": {
+                    "OnDemandCost": "32.12",
+                    "SpendCoveredBySavingsPlans": "129.94"
+                },
+                "CoveragePercentage": "80.18"
+            }
+        },
+        {
+            "TimePeriod": {
+                "Start": "2025-12-25",
+                "End": "2025-12-26"
+            },
+            "Coverage": {
+                "CoverageHours": {
+                    "OnDemandHours": "439.16",
+                    "TotalRunningHours": "2452.03",
+                    "CoveredHours": "2012.87",
+                    "CoverageHoursPercentage": "82.09"
+                },
+                "CoverageNormalizedUnits": {
+                    "OnDemandNormalizedUnits": "658.74",
+                    "TotalRunningNormalizedUnits": "3678.05",
+                    "CoveredNormalizedUnits": "3019.3",
+                    "CoverageNormalizedUnitsPercentage": "82.09"
+                },
+                "CoverageCost": {
+                    "OnDemandCost": "43.92",
+                    "SpendCoveredBySavingsPlans": "201.29"
+                },
+                "CoveragePercentage": "82.09"
+            }
+        },
+        {
+            "TimePeriod": {
+                "Start": "2025-12-26",
+                "End": "2025-12-27"
+            },
+            "Coverage": {
+                "CoverageHours": {
+                    "OnDemandHours": "90.8",
+                    "TotalRunningHours": "1050.96",
+                    "CoveredHours": "960.16",
+                    "CoverageHoursPercentage": "91.36"
+                },
+                "CoverageNormalizedUnits": {
+                    "OnDemandNormalizedUnits": "136.2",
+                    "TotalRunningNormalizedUnits": "1576.44",
+                    "CoveredNormalizedUnits": "1440.24",
+                    "CoverageNormalizedUnitsPercentage": "91.36"
+                },
+                "CoverageCost": {
+                    "OnDemandCost": "9.08",
+                    "SpendCoveredBySavingsPlans": "96.02"
+                },
+                "CoveragePercentage": "91.36"
+            }
+        },
+        {
+            "TimePeriod": {
+                "Start": "2025-12-27",
+                "End": "2025-12-28"
+            },
+            "Coverage": {
+                "CoverageHours": {
+                    "OnDemandHours": "397.11",
+                    "TotalRunningHours": "1417.22",
+                    "CoveredHours": "1020.11",
+                    "CoverageHoursPercentage": "71.98"
+                },
+                "CoverageNormalizedUnits": {
+                    "OnDemandNormalizedUnits": "595.66",
+                    "TotalRunningNormalizedUnits": "2125.83",
+                    "CoveredNormalizedUnits": "1530.16",
+                    "CoverageNormalizedUnitsPercentage": "71.98"
+                },
+                "CoverageCost": {
+                    "OnDemandCost": "39.71",
+                    "SpendCoveredBySavingsPlans": "102.01"
+                },
+                "CoveragePercentage": "71.98"
+            }
+        },
+        {
+            "TimePeriod": {
+                "Start": "2025-12-28",
+                "End": "2025-12-29"
+            },
+            "Coverage": {
+                "CoverageHours": {
+                    "OnDemandHours": "327.09",
+                    "TotalRunningHours": "1397.83",
+                    "CoveredHours": "1070.74",
+                    "CoverageHoursPercentage": "76.6"
+                },
+                "CoverageNormalizedUnits": {
+                    "OnDemandNormalizedUnits": "490.63",
+                    "TotalRunningNormalizedUnits": "2096.74",
+                    "CoveredNormalizedUnits": "1606.11",
+                    "CoverageNormalizedUnitsPercentage": "76.6"
+                },
+                "CoverageCost": {
+                    "OnDemandCost": "32.71",
+                    "SpendCoveredBySavingsPlans": "107.07"
+                },
+                "CoveragePercentage": "76.6"
+            }
+        },
+        {
+            "TimePeriod": {
+                "Start": "2025-12-29",
+                "End": "2025-12-30"
+            },
+            "Coverage": {
+                "CoverageHours": {
+                    "OnDemandHours": "599.29",
+                    "TotalRunningHours": "2105.71",
+                    "CoveredHours": "1506.42",
+                    "CoverageHoursPercentage": "71.54"
+                },
+                "CoverageNormalizedUnits": {
+                    "OnDemandNormalizedUnits": "898.93",
+                    "TotalRunningNormalizedUnits": "3158.57",
+                    "CoveredNormalizedUnits": "2259.63",
+                    "CoverageNormalizedUnitsPercentage": "71.54"
+                },
+                "CoverageCost": {
+                    "OnDemandCost": "59.93",
+                    "SpendCoveredBySavingsPlans": "150.64"
+                },
+                "CoveragePercentage": "71.54"
+            }
+        },
+        {
+            "TimePeriod": {
+                "Start": "2025-12-30",
+                "End": "2025-12-31"
+            },
+            "Coverage": {
+                "CoverageHours": {
+                    "OnDemandHours": "60.31",
+                    "TotalRunningHours": "1129.42",
+                    "CoveredHours": "1069.11",
+                    "CoverageHoursPercentage": "94.66"
+                },
+                "CoverageNormalizedUnits": {
+                    "OnDemandNormalizedUnits": "90.47",
+                    "TotalRunningNormalizedUnits": "1694.13",
+                    "CoveredNormalizedUnits": "1603.66",
+                    "CoverageNormalizedUnitsPercentage": "94.66"
+                },
+                "CoverageCost": {
+                    "OnDemandCost": "6.03",
+                    "SpendCoveredBySavingsPlans": "106.91"
+                },
+                "CoveragePercentage": "94.66"
+            }
+        },
+        {
+            "TimePeriod": {
+                "Start": "2025-12-31",
+                "End": "2026-01-01"
+            },
+            "Coverage": {
+                "CoverageHours": {
+                    "OnDemandHours": "517.61",
+                    "TotalRunningHours": "2707.15",
+                    "CoveredHours": "2189.54",
+                    "CoverageHoursPercentage": "80.88"
+                },
+                "CoverageNormalizedUnits": {
+                    "OnDemandNormalizedUnits": "776.41",
+                    "TotalRunningNormalizedUnits": "4060.73",
+                    "CoveredNormalizedUnits": "3284.31",
+                    "CoverageNormalizedUnitsPercentage": "80.88"
+                },
+                "CoverageCost": {
+                    "OnDemandCost": "51.76",
+                    "SpendCoveredBySavingsPlans": "218.95"
+                },
+                "CoveragePercentage": "80.88"
+            }
+        },
+        {
+            "TimePeriod": {
+                "Start": "2026-01-01",
+                "End": "2026-01-02"
+            },
+            "Coverage": {
+                "CoverageHours": {
+                    "OnDemandHours": "592.98",
+                    "TotalRunningHours": "2672.28",
+                    "CoveredHours": "2079.3",
+                    "CoverageHoursPercentage": "77.81"
+                },
+                "CoverageNormalizedUnits": {
+                    "OnDemandNormalizedUnits": "889.47",
+                    "TotalRunningNormalizedUnits": "4008.42",
+                    "CoveredNormalizedUnits": "3118.95",
+                    "CoverageNormalizedUnitsPercentage": "77.81"
+                },
+                "CoverageCost": {
+                    "OnDemandCost": "59.3",
+                    "SpendCoveredBySavingsPlans": "207.93"
+                },
+                "CoveragePercentage": "77.81"
+            }
+        },
+        {
+            "TimePeriod": {
+                "Start": "2026-01-02",
+                "End": "2026-01-03"
+            },
+            "Coverage": {
+                "CoverageHours": {
+                    "OnDemandHours": "697.13",
+                    "TotalRunningHours": "2780.74",
+                    "CoveredHours": "2083.61",
+                    "CoverageHoursPercentage": "74.93"
+                },
+                "CoverageNormalizedUnits": {
+                    "OnDemandNormalizedUnits": "1045.69",
+                    "TotalRunningNormalizedUnits": "4171.11",
+                    "CoveredNormalizedUnits": "3125.41",
+                    "CoverageNormalizedUnitsPercentage": "74.93"
+                },
+                "CoverageCost": {
+                    "OnDemandCost": "69.71",
+                    "SpendCoveredBySavingsPlans": "208.36"
+                },
+                "CoveragePercentage": "74.93"
+            }
+        },
+        {
+            "TimePeriod": {
+                "Start": "2026-01-03",
+                "End": "2026-01-04"
+            },
+            "Coverage": {
+                "CoverageHours": {
+                    "OnDemandHours": "212.56",
+                    "TotalRunningHours": "1172.44",
+                    "CoveredHours": "959.88",
+                    "CoverageHoursPercentage": "81.87"
+                },
+                "CoverageNormalizedUnits": {
+                    "OnDemandNormalizedUnits": "318.84",
+                    "TotalRunningNormalizedUnits": "1758.66",
+                    "CoveredNormalizedUnits": "1439.82",
+                    "CoverageNormalizedUnitsPercentage": "81.87"
+                },
+                "CoverageCost": {
+                    "OnDemandCost": "21.26",
+                    "SpendCoveredBySavingsPlans": "95.99"
+                },
+                "CoveragePercentage": "81.87"
+            }
+        },
+        {
+            "TimePeriod": {
+                "Start": "2026-01-04",
+                "End": "2026-01-05"
+            },
+            "Coverage": {
+                "CoverageHours": {
+                    "OnDemandHours": "558.88",
+                    "TotalRunningHours": "2254.47",
+                    "CoveredHours": "1695.59",
+                    "CoverageHoursPercentage": "75.21"
+                },
+                "CoverageNormalizedUnits": {
+                    "OnDemandNormalizedUnits": "838.32",
+                    "TotalRunningNormalizedUnits": "3381.7",
+                    "CoveredNormalizedUnits": "2543.38",
+                    "CoverageNormalizedUnitsPercentage": "75.21"
+                },
+                "CoverageCost": {
+                    "OnDemandCost": "55.89",
+                    "SpendCoveredBySavingsPlans": "169.56"
+                },
+                "CoveragePercentage": "75.21"
+            }
+        },
+        {
+            "TimePeriod": {
+                "Start": "2026-01-05",
+                "End": "2026-01-06"
+            },
+            "Coverage": {
+                "CoverageHours": {
+                    "OnDemandHours": "548.65",
+                    "TotalRunningHours": "2601.46",
+                    "CoveredHours": "2052.81",
+                    "CoverageHoursPercentage": "78.91"
+                },
+                "CoverageNormalizedUnits": {
+                    "OnDemandNormalizedUnits": "822.97",
+                    "TotalRunningNormalizedUnits": "3902.19",
+                    "CoveredNormalizedUnits": "3079.22",
+                    "CoverageNormalizedUnitsPercentage": "78.91"
+                },
+                "CoverageCost": {
+                    "OnDemandCost": "54.87",
+                    "SpendCoveredBySavingsPlans": "205.28"
+                },
+                "CoveragePercentage": "78.91"
+            }
+        },
+        {
+            "TimePeriod": {
+                "Start": "2026-01-06",
+                "End": "2026-01-07"
+            },
+            "Coverage": {
+                "CoverageHours": {
+                    "OnDemandHours": "140.04",
+                    "TotalRunningHours": "1311.24",
+                    "CoveredHours": "1171.2",
+                    "CoverageHoursPercentage": "89.32"
+                },
+                "CoverageNormalizedUnits": {
+                    "OnDemandNormalizedUnits": "210.06",
+                    "TotalRunningNormalizedUnits": "1966.86",
+                    "CoveredNormalizedUnits": "1756.8",
+                    "CoverageNormalizedUnitsPercentage": "89.32"
+                },
+                "CoverageCost": {
+                    "OnDemandCost": "14.0",
+                    "SpendCoveredBySavingsPlans": "117.12"
+                },
+                "CoveragePercentage": "89.32"
+            }
+        },
+        {
+            "TimePeriod": {
+                "Start": "2026-01-07",
+                "End": "2026-01-08"
+            },
+            "Coverage": {
+                "CoverageHours": {
+                    "OnDemandHours": "261.2",
+                    "TotalRunningHours": "1311.22",
+                    "CoveredHours": "1050.02",
+                    "CoverageHoursPercentage": "80.08"
+                },
+                "CoverageNormalizedUnits": {
+                    "OnDemandNormalizedUnits": "391.8",
+                    "TotalRunningNormalizedUnits": "1966.83",
+                    "CoveredNormalizedUnits": "1575.03",
+                    "CoverageNormalizedUnitsPercentage": "80.08"
+                },
+                "CoverageCost": {
+                    "OnDemandCost": "26.12",
+                    "SpendCoveredBySavingsPlans": "105.0"
+                },
+                "CoveragePercentage": "80.08"
+            }
+        },
+        {
+            "TimePeriod": {
+                "Start": "2026-01-08",
+                "End": "2026-01-09"
+            },
+            "Coverage": {
+                "CoverageHours": {
+                    "OnDemandHours": "299.22",
+                    "TotalRunningHours": "1333.43",
+                    "CoveredHours": "1034.21",
+                    "CoverageHoursPercentage": "77.56"
+                },
+                "CoverageNormalizedUnits": {
+                    "OnDemandNormalizedUnits": "448.83",
+                    "TotalRunningNormalizedUnits": "2000.14",
+                    "CoveredNormalizedUnits": "1551.32",
+                    "CoverageNormalizedUnitsPercentage": "77.56"
+                },
+                "CoverageCost": {
+                    "OnDemandCost": "29.92",
+                    "SpendCoveredBySavingsPlans": "103.42"
+                },
+                "CoveragePercentage": "77.56"
+            }
+        },
+        {
+            "TimePeriod": {
+                "Start": "2026-01-09",
+                "End": "2026-01-10"
+            },
+            "Coverage": {
+                "CoverageHours": {
+                    "OnDemandHours": "418.55",
+                    "TotalRunningHours": "1824.53",
+                    "CoveredHours": "1405.98",
+                    "CoverageHoursPercentage": "77.06"
+                },
+                "CoverageNormalizedUnits": {
+                    "OnDemandNormalizedUnits": "627.83",
+                    "TotalRunningNormalizedUnits": "2736.8",
+                    "CoveredNormalizedUnits": "2108.97",
+                    "CoverageNormalizedUnitsPercentage": "77.06"
+                },
+                "CoverageCost": {
+                    "OnDemandCost": "41.86",
+                    "SpendCoveredBySavingsPlans": "140.6"
+                },
+                "CoveragePercentage": "77.06"
+            }
+        },
+        {
+            "TimePeriod": {
+                "Start": "2026-01-10",
+                "End": "2026-01-11"
+            },
+            "Coverage": {
+                "CoverageHours": {
+                    "OnDemandHours": "373.07",
+                    "TotalRunningHours": "1424.47",
+                    "CoveredHours": "1051.4",
+                    "CoverageHoursPercentage": "73.81"
+                },
+                "CoverageNormalizedUnits": {
+                    "OnDemandNormalizedUnits": "559.61",
+                    "TotalRunningNormalizedUnits": "2136.7",
+                    "CoveredNormalizedUnits": "1577.1",
+                    "CoverageNormalizedUnitsPercentage": "73.81"
+                },
+                "CoverageCost": {
+                    "OnDemandCost": "37.31",
+                    "SpendCoveredBySavingsPlans": "105.14"
+                },
+                "CoveragePercentage": "73.81"
+            }
+        },
+        {
+            "TimePeriod": {
+                "Start": "2026-01-11",
+                "End": "2026-01-12"
+            },
+            "Coverage": {
+                "CoverageHours": {
+                    "OnDemandHours": "553.12",
+                    "TotalRunningHours": "2870.37",
+                    "CoveredHours": "2317.25",
+                    "CoverageHoursPercentage": "80.73"
+                },
+                "CoverageNormalizedUnits": {
+                    "OnDemandNormalizedUnits": "829.68",
+                    "TotalRunningNormalizedUnits": "4305.56",
+                    "CoveredNormalizedUnits": "3475.88",
+                    "CoverageNormalizedUnitsPercentage": "80.73"
+                },
+                "CoverageCost": {
+                    "OnDemandCost": "55.31",
+                    "SpendCoveredBySavingsPlans": "231.73"
+                },
+                "CoveragePercentage": "80.73"
+            }
+        },
+        {
+            "TimePeriod": {
+                "Start": "2026-01-12",
+                "End": "2026-01-13"
+            },
+            "Coverage": {
+                "CoverageHours": {
+                    "OnDemandHours": "412.18",
+                    "TotalRunningHours": "2625.37",
+                    "CoveredHours": "2213.19",
+                    "CoverageHoursPercentage": "84.3"
+                },
+                "CoverageNormalizedUnits": {
+                    "OnDemandNormalizedUnits": "618.27",
+                    "TotalRunningNormalizedUnits": "3938.05",
+                    "CoveredNormalizedUnits": "3319.78",
+                    "CoverageNormalizedUnitsPercentage": "84.3"
+                },
+                "CoverageCost": {
+                    "OnDemandCost": "41.22",
+                    "SpendCoveredBySavingsPlans": "221.32"
+                },
+                "CoveragePercentage": "84.3"
+            }
+        },
+        {
+            "TimePeriod": {
+                "Start": "2026-01-13",
+                "End": "2026-01-14"
+            },
+            "Coverage": {
+                "CoverageHours": {
+                    "OnDemandHours": "208.74",
+                    "TotalRunningHours": "1538.25",
+                    "CoveredHours": "1329.51",
+                    "CoverageHoursPercentage": "86.43"
+                },
+                "CoverageNormalizedUnits": {
+                    "OnDemandNormalizedUnits": "313.11",
+                    "TotalRunningNormalizedUnits": "2307.38",
+                    "CoveredNormalizedUnits": "1994.26",
+                    "CoverageNormalizedUnitsPercentage": "86.43"
+                },
+                "CoverageCost": {
+                    "OnDemandCost": "20.87",
+                    "SpendCoveredBySavingsPlans": "132.95"
+                },
+                "CoveragePercentage": "86.43"
+            }
+        },
+        {
+            "TimePeriod": {
+                "Start": "2026-01-14",
+                "End": "2026-01-15"
+            },
+            "Coverage": {
+                "CoverageHours": {
+                    "OnDemandHours": "180.93",
+                    "TotalRunningHours": "2121.15",
+                    "CoveredHours": "1940.22",
+                    "CoverageHoursPercentage": "91.47"
+                },
+                "CoverageNormalizedUnits": {
+                    "OnDemandNormalizedUnits": "271.39",
+                    "TotalRunningNormalizedUnits": "3181.73",
+                    "CoveredNormalizedUnits": "2910.33",
+                    "CoverageNormalizedUnitsPercentage": "91.47"
+                },
+                "CoverageCost": {
+                    "OnDemandCost": "18.09",
+                    "SpendCoveredBySavingsPlans": "194.02"
+                },
+                "CoveragePercentage": "91.47"
+            }
+        },
+        {
+            "TimePeriod": {
+                "Start": "2026-01-15",
+                "End": "2026-01-16"
+            },
+            "Coverage": {
+                "CoverageHours": {
+                    "OnDemandHours": "119.78",
+                    "TotalRunningHours": "1007.38",
+                    "CoveredHours": "887.6",
+                    "CoverageHoursPercentage": "88.11"
+                },
+                "CoverageNormalizedUnits": {
+                    "OnDemandNormalizedUnits": "179.67",
+                    "TotalRunningNormalizedUnits": "1511.07",
+                    "CoveredNormalizedUnits": "1331.4",
+                    "CoverageNormalizedUnitsPercentage": "88.11"
+                },
+                "CoverageCost": {
+                    "OnDemandCost": "11.98",
+                    "SpendCoveredBySavingsPlans": "88.76"
+                },
+                "CoveragePercentage": "88.11"
+            }
+        },
+        {
+            "TimePeriod": {
+                "Start": "2026-01-16",
+                "End": "2026-01-17"
+            },
+            "Coverage": {
+                "CoverageHours": {
+                    "OnDemandHours": "745.23",
+                    "TotalRunningHours": "2527.07",
+                    "CoveredHours": "1781.84",
+                    "CoverageHoursPercentage": "70.51"
+                },
+                "CoverageNormalizedUnits": {
+                    "OnDemandNormalizedUnits": "1117.85",
+                    "TotalRunningNormalizedUnits": "3790.61",
+                    "CoveredNormalizedUnits": "2672.76",
+                    "CoverageNormalizedUnitsPercentage": "70.51"
+                },
+                "CoverageCost": {
+                    "OnDemandCost": "74.52",
+                    "SpendCoveredBySavingsPlans": "178.18"
+                },
+                "CoveragePercentage": "70.51"
+            }
+        },
+        {
+            "TimePeriod": {
+                "Start": "2026-01-17",
+                "End": "2026-01-18"
+            },
+            "Coverage": {
+                "CoverageHours": {
+                    "OnDemandHours": "111.48",
+                    "TotalRunningHours": "1527.13",
+                    "CoveredHours": "1415.65",
+                    "CoverageHoursPercentage": "92.7"
+                },
+                "CoverageNormalizedUnits": {
+                    "OnDemandNormalizedUnits": "167.22",
+                    "TotalRunningNormalizedUnits": "2290.7",
+                    "CoveredNormalizedUnits": "2123.48",
+                    "CoverageNormalizedUnitsPercentage": "92.7"
+                },
+                "CoverageCost": {
+                    "OnDemandCost": "11.15",
+                    "SpendCoveredBySavingsPlans": "141.57"
+                },
+                "CoveragePercentage": "92.7"
+            }
+        }
+    ]
+}
