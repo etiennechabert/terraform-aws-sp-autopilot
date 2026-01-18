@@ -86,17 +86,17 @@ def calculate_current_coverage(
         # recent data point using [-1] below. Using lookback_days ensures we have enough data
         # even with weekend delays while keeping the setting configurable.
         end_date = now.date()
-        start_date = end_date - timedelta(days=config["lookback_days"])
+        start_date = end_date - timedelta(days=config.get("lookback_days", 7))
 
         try:
             # Call Cost Explorer API to get Savings Plans coverage metrics
             # TimePeriod: Must be in ISO format (YYYY-MM-DD)
             # Granularity: DAILY returns one data point per day in the time range
-            # GroupBy: SERVICE separates coverage by AWS service (EC2, Lambda, Fargate, SageMaker, etc.)
+            # GroupBy: Separates coverage by Savings Plan type (Compute, SageMaker, etc.)
             response = ce_client.get_savings_plans_coverage(
                 TimePeriod={"Start": start_date.isoformat(), "End": end_date.isoformat()},
                 Granularity="DAILY",
-                GroupBy=[{"Type": "DIMENSION", "Key": "SERVICE"}],
+                GroupBy=[{"Type": "DIMENSION", "Key": "SAVINGS_PLANS_TYPE"}],
             )
         except ClientError as e:
             error_code = e.response["Error"]["Code"]
@@ -124,81 +124,55 @@ def calculate_current_coverage(
             logger.warning("No coverage data available from Cost Explorer")
             return {"compute": 0.0, "database": 0.0, "sagemaker": 0.0}
 
-        # Get most recent spend data for each service
-        # When using GroupBy, AWS flattens the response: each item represents one service for one day
-        # We iterate backwards to find the latest data point for each service
-        service_latest_spend = {}  # {service_name: {'covered': float, 'on_demand': float}}
+        # Get the most recent coverage data point using [-1] index
+        # Why [-1]: Cost Explorer returns data points ordered chronologically (oldest first)
+        # The last element contains the most recent coverage snapshot, which is what we need
+        # for making current purchase decisions
+        latest_coverage = coverage_by_time[-1]
 
-        for item in reversed(coverage_by_time):
-            service_name = item.get("Attributes", {}).get("SERVICE", "").lower()
-
-            # Skip if we already found this service's latest data
-            if service_name in service_latest_spend:
-                continue
-
-            coverage_data = item.get("Coverage", {})
-
-            # When using GroupBy, AWS returns spend amounts, not percentages
-            spend_covered = float(coverage_data.get("SpendCoveredBySavingsPlans", 0))
-            on_demand_cost = float(coverage_data.get("OnDemandCost", 0))
-
-            service_latest_spend[service_name] = {
-                "covered": spend_covered,
-                "on_demand": on_demand_cost,
-            }
-            logger.debug(
-                f"Service '{service_name}' - Covered: ${spend_covered:.2f}, On-Demand: ${on_demand_cost:.2f}"
-            )
-
-        # Aggregate spend amounts by SP type, then calculate coverage percentage
-        # This is the correct approach: sum all spend first, then calculate percentage
-        sp_type_spend = {
-            "compute": {"covered": 0.0, "on_demand": 0.0},
-            "database": {"covered": 0.0, "on_demand": 0.0},
-            "sagemaker": {"covered": 0.0, "on_demand": 0.0},
-        }
-
-        for service_name, spend in service_latest_spend.items():
-            # Compute Savings Plans cover: EC2, Lambda, Fargate, ECS, EKS
-            if any(
-                svc in service_name
-                for svc in [
-                    "ec2",
-                    "elastic compute cloud",
-                    "lambda",
-                    "fargate",
-                    "elastic container service",
-                ]
-            ):
-                sp_type_spend["compute"]["covered"] += spend["covered"]
-                sp_type_spend["compute"]["on_demand"] += spend["on_demand"]
-            # SageMaker Savings Plans cover: SageMaker
-            elif "sagemaker" in service_name:
-                sp_type_spend["sagemaker"]["covered"] += spend["covered"]
-                sp_type_spend["sagemaker"]["on_demand"] += spend["on_demand"]
-            # Database: RDS, DynamoDB, Database Migration Service
-            elif any(
-                svc in service_name
-                for svc in ["rds", "relational database", "dynamodb", "database migration"]
-            ):
-                sp_type_spend["database"]["covered"] += spend["covered"]
-                sp_type_spend["database"]["on_demand"] += spend["on_demand"]
-
-        # Calculate coverage percentages from aggregated spend
+        # Initialize coverage dictionary
         coverage = {"compute": 0.0, "database": 0.0, "sagemaker": 0.0}
 
-        for sp_type, spend in sp_type_spend.items():
-            total_spend = spend["covered"] + spend["on_demand"]
-            if total_spend > 0:
-                coverage[sp_type] = (spend["covered"] / total_spend) * 100
+        # Extract coverage by SP type from grouped data
+        # When using GroupBy=["SAVINGS_PLANS_TYPE"], the response structure is:
+        # {"Groups": [{"Attributes": {"SAVINGS_PLANS_TYPE": "ComputeSP"}, "Coverage": {"CoveragePercentage": "75.5"}}]}
+        coverage_groups = latest_coverage.get("Groups", [])
 
-        if service_latest_spend:
+        if coverage_groups:
+            # GroupBy returned separate coverage per SP type - parse each group
+            for group in coverage_groups:
+                sp_type = group.get("Attributes", {}).get("SAVINGS_PLANS_TYPE", "").lower()
+                coverage_data = group.get("Coverage", {})
+
+                if "CoveragePercentage" in coverage_data:
+                    percentage = float(coverage_data["CoveragePercentage"])
+
+                    # Map AWS SP types to our internal names
+                    # ComputeSP and EC2InstanceSP both contribute to compute coverage
+                    if "computesp" in sp_type or "ec2instancesp" in sp_type:
+                        coverage["compute"] = max(coverage["compute"], percentage)
+                    elif "sagemakersp" in sp_type:
+                        coverage["sagemaker"] = percentage
+                    # RDS Instance SPs are technically separate but we group as database
+                    elif "rdsinstance" in sp_type:
+                        coverage["database"] = percentage
+
             logger.info(
-                f"Coverage by type - Compute: {coverage['compute']:.2f}%, "
-                f"Database: {coverage['database']:.2f}%, SageMaker: {coverage['sagemaker']:.2f}%"
+                f"Coverage by type - Compute: {coverage['compute']}%, "
+                f"Database: {coverage['database']}%, SageMaker: {coverage['sagemaker']}%"
             )
         else:
-            logger.warning("No service-level coverage data available in response")
+            # Fallback: No groups returned (shouldn't happen with GroupBy, but handle gracefully)
+            # Use aggregate coverage if available
+            coverage_data = latest_coverage.get("Coverage", {})
+            if "CoveragePercentage" in coverage_data:
+                aggregate_coverage = float(coverage_data["CoveragePercentage"])
+                logger.warning(
+                    f"GroupBy returned no groups, using aggregate coverage: {aggregate_coverage}%"
+                )
+                coverage["compute"] = aggregate_coverage
+            else:
+                logger.warning("No coverage data available")
 
     except ClientError as e:
         logger.error(f"Failed to get coverage from Cost Explorer: {e!s}")
