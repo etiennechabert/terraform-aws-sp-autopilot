@@ -448,11 +448,11 @@ def test_calculate_current_coverage_with_groupby_multiple_types(
                 "TimePeriod": {"Start": "2026-01-14", "End": "2026-01-15"},
                 "Groups": [
                     {
-                        "Attributes": {"SAVINGS_PLANS_TYPE": "ComputeSP"},
+                        "Attributes": {"SERVICE": "Amazon Elastic Compute Cloud - Compute"},
                         "Coverage": {"CoveragePercentage": "75.5"},
                     },
                     {
-                        "Attributes": {"SAVINGS_PLANS_TYPE": "SageMakerSP"},
+                        "Attributes": {"SERVICE": "Amazon SageMaker"},
                         "Coverage": {"CoveragePercentage": "60.0"},
                     },
                 ],
@@ -489,7 +489,7 @@ def test_calculate_current_coverage_with_groupby_ec2_instance_sp(
                 "TimePeriod": {"Start": "2026-01-14", "End": "2026-01-15"},
                 "Groups": [
                     {
-                        "Attributes": {"SAVINGS_PLANS_TYPE": "EC2InstanceSP"},
+                        "Attributes": {"SERVICE": "Amazon Elastic Compute Cloud - Compute"},
                         "Coverage": {"CoveragePercentage": "85.0"},
                     }
                 ],
@@ -526,7 +526,7 @@ def test_calculate_current_coverage_with_groupby_rds_instance(
                 "TimePeriod": {"Start": "2026-01-14", "End": "2026-01-15"},
                 "Groups": [
                     {
-                        "Attributes": {"SAVINGS_PLANS_TYPE": "RDSInstance"},
+                        "Attributes": {"SERVICE": "Amazon Relational Database Service"},
                         "Coverage": {"CoveragePercentage": "90.0"},
                     }
                 ],
@@ -563,15 +563,15 @@ def test_calculate_current_coverage_with_groupby_all_types(
                 "TimePeriod": {"Start": "2026-01-14", "End": "2026-01-15"},
                 "Groups": [
                     {
-                        "Attributes": {"SAVINGS_PLANS_TYPE": "ComputeSP"},
+                        "Attributes": {"SERVICE": "Amazon Elastic Compute Cloud - Compute"},
                         "Coverage": {"CoveragePercentage": "75.0"},
                     },
                     {
-                        "Attributes": {"SAVINGS_PLANS_TYPE": "SageMakerSP"},
+                        "Attributes": {"SERVICE": "Amazon SageMaker"},
                         "Coverage": {"CoveragePercentage": "60.0"},
                     },
                     {
-                        "Attributes": {"SAVINGS_PLANS_TYPE": "RDSInstance"},
+                        "Attributes": {"SERVICE": "Amazon Relational Database Service"},
                         "Coverage": {"CoveragePercentage": "80.0"},
                     },
                 ],
