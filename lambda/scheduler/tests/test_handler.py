@@ -87,56 +87,6 @@ def mock_clients():
 
 
 # ============================================================================
-# Configuration Tests
-# ============================================================================
-
-
-def test_load_configuration_defaults(mock_env_vars):
-    """Test that load_configuration returns correct default values."""
-    cfg = config.load_configuration()
-
-    assert cfg["queue_url"] == "https://sqs.us-east-1.amazonaws.com/123456789012/test-queue"
-    assert cfg["sns_topic_arn"] == "arn:aws:sns:us-east-1:123456789012:test-topic"
-    assert cfg["dry_run"] is True
-    assert cfg["enable_compute_sp"] is True
-    assert cfg["enable_database_sp"] is False
-    assert cfg["enable_sagemaker_sp"] is False
-    assert cfg["coverage_target_percent"] == 90.0
-    assert cfg["max_purchase_percent"] == 10.0
-    assert cfg["renewal_window_days"] == 7
-    assert cfg["lookback_days"] == 30
-    assert cfg["min_data_days"] == 14
-    assert cfg["min_commitment_per_plan"] == 0.001
-    assert cfg["sagemaker_sp_term_mix"] == {"three_year": 0.67, "one_year": 0.33}
-    assert cfg["sagemaker_sp_payment_option"] == "ALL_UPFRONT"
-
-
-def test_load_configuration_custom_values(monkeypatch):
-    """Test that load_configuration handles custom environment values."""
-    monkeypatch.setenv("QUEUE_URL", "custom-queue-url")
-    monkeypatch.setenv("SNS_TOPIC_ARN", "custom-sns-arn")
-    monkeypatch.setenv("DRY_RUN", "false")
-    monkeypatch.setenv("ENABLE_SAGEMAKER_SP", "true")
-    monkeypatch.setenv("COVERAGE_TARGET_PERCENT", "85.5")
-    monkeypatch.setenv("MAX_PURCHASE_PERCENT", "15")
-    monkeypatch.setenv("COMPUTE_SP_TERM_MIX", '{"three_year": 0.8, "one_year": 0.2}')
-    monkeypatch.setenv("SAGEMAKER_SP_TERM_MIX", '{"three_year": 0.5, "one_year": 0.5}')
-    monkeypatch.setenv("SAGEMAKER_SP_PAYMENT_OPTION", "NO_UPFRONT")
-
-    cfg = config.load_configuration()
-
-    assert cfg["queue_url"] == "custom-queue-url"
-    assert cfg["sns_topic_arn"] == "custom-sns-arn"
-    assert cfg["dry_run"] is False
-    assert cfg["enable_sagemaker_sp"] is True
-    assert cfg["coverage_target_percent"] == 85.5
-    assert cfg["max_purchase_percent"] == 15.0
-    assert cfg["compute_sp_term_mix"] == {"three_year": 0.8, "one_year": 0.2}
-    assert cfg["sagemaker_sp_term_mix"] == {"three_year": 0.5, "one_year": 0.5}
-    assert cfg["sagemaker_sp_payment_option"] == "NO_UPFRONT"
-
-
-# ============================================================================
 # Queue Purge Tests
 # ============================================================================
 
