@@ -61,9 +61,7 @@ def test_fetch_compute_sp_recommendation_success(mock_ce_client, mock_config):
         },
     }
 
-    result = recommendations._fetch_compute_sp_recommendation(
-        mock_ce_client, mock_config, "THIRTY_DAYS"
-    )
+    result = recommendations._fetch_compute_sp_recommendation(mock_ce_client, "THIRTY_DAYS")
 
     assert result is not None
     assert result["HourlyCommitmentToPurchase"] == "5.50"
@@ -84,31 +82,30 @@ def test_fetch_compute_sp_recommendation_no_recommendations(mock_ce_client, mock
     }
 
     result = recommendations._fetch_compute_sp_recommendation(
-        mock_ce_client, mock_config, "THIRTY_DAYS"
+        mock_ce_client, "THIRTY_DAYS"
     )
 
     assert result is None
 
 
 def test_fetch_compute_sp_recommendation_insufficient_data(mock_ce_client, mock_config):
-    """Test when Compute SP recommendation has insufficient data."""
+    """Test Compute SP recommendation with limited lookback data (still returns result)."""
     mock_ce_client.get_savings_plans_purchase_recommendation.return_value = {
         "Metadata": {
             "RecommendationId": "rec-12345",
             "GenerationTimestamp": "2026-01-15T10:00:00Z",
-            "LookbackPeriodInDays": "7",  # Less than min_data_days (14)
+            "LookbackPeriodInDays": "7",  # Limited data, but still valid
         },
         "SavingsPlansPurchaseRecommendation": {
             "SavingsPlansPurchaseRecommendationDetails": [{"HourlyCommitmentToPurchase": "5.50"}]
         },
     }
 
-    result = recommendations._fetch_compute_sp_recommendation(
-        mock_ce_client, mock_config, "SEVEN_DAYS"
-    )
+    result = recommendations._fetch_compute_sp_recommendation(mock_ce_client, "SEVEN_DAYS")
 
-    # Should return None due to insufficient data
-    assert result is None
+    # min_data_days validation was removed, so recommendations with any data are accepted
+    assert result is not None
+    assert result["HourlyCommitmentToPurchase"] == "5.50"
 
 
 def test_fetch_compute_sp_recommendation_api_error(mock_ce_client, mock_config):
@@ -121,7 +118,7 @@ def test_fetch_compute_sp_recommendation_api_error(mock_ce_client, mock_config):
     )
 
     with pytest.raises(ClientError):
-        recommendations._fetch_compute_sp_recommendation(mock_ce_client, mock_config, "THIRTY_DAYS")
+        recommendations._fetch_compute_sp_recommendation(mock_ce_client, "THIRTY_DAYS")
 
 
 # ============================================================================
@@ -149,7 +146,7 @@ def test_fetch_database_sp_recommendation_success(mock_ce_client, mock_config):
     }
 
     result = recommendations._fetch_database_sp_recommendation(
-        mock_ce_client, mock_config, "THIRTY_DAYS"
+        mock_ce_client, "THIRTY_DAYS"
     )
 
     assert result is not None
@@ -169,30 +166,30 @@ def test_fetch_database_sp_recommendation_no_recommendations(mock_ce_client, moc
     }
 
     result = recommendations._fetch_database_sp_recommendation(
-        mock_ce_client, mock_config, "THIRTY_DAYS"
+        mock_ce_client, "THIRTY_DAYS"
     )
 
     assert result is None
 
 
 def test_fetch_database_sp_recommendation_insufficient_data(mock_ce_client, mock_config):
-    """Test when Database SP recommendation has insufficient data."""
+    """Test Database SP recommendation with limited lookback data (still returns result)."""
     mock_ce_client.get_savings_plans_purchase_recommendation.return_value = {
         "Metadata": {
             "RecommendationId": "rec-db-123",
             "GenerationTimestamp": "2026-01-15T11:00:00Z",
-            "LookbackPeriodInDays": "10",  # Less than min_data_days (14)
+            "LookbackPeriodInDays": "10",  # Limited data, but still valid
         },
         "SavingsPlansPurchaseRecommendation": {
             "SavingsPlansPurchaseRecommendationDetails": [{"HourlyCommitmentToPurchase": "2.75"}]
         },
     }
 
-    result = recommendations._fetch_database_sp_recommendation(
-        mock_ce_client, mock_config, "SEVEN_DAYS"
-    )
+    result = recommendations._fetch_database_sp_recommendation(mock_ce_client, "SEVEN_DAYS")
 
-    assert result is None
+    # min_data_days validation was removed, so recommendations with any data are accepted
+    assert result is not None
+    assert result["HourlyCommitmentToPurchase"] == "2.75"
 
 
 def test_fetch_database_sp_recommendation_api_error(mock_ce_client, mock_config):
@@ -206,7 +203,7 @@ def test_fetch_database_sp_recommendation_api_error(mock_ce_client, mock_config)
 
     with pytest.raises(ClientError):
         recommendations._fetch_database_sp_recommendation(
-            mock_ce_client, mock_config, "THIRTY_DAYS"
+            mock_ce_client, "THIRTY_DAYS"
         )
 
 
@@ -235,7 +232,7 @@ def test_fetch_sagemaker_sp_recommendation_success(mock_ce_client, mock_config):
     }
 
     result = recommendations._fetch_sagemaker_sp_recommendation(
-        mock_ce_client, mock_config, "THIRTY_DAYS"
+        mock_ce_client, "THIRTY_DAYS"
     )
 
     assert result is not None
@@ -255,30 +252,30 @@ def test_fetch_sagemaker_sp_recommendation_no_recommendations(mock_ce_client, mo
     }
 
     result = recommendations._fetch_sagemaker_sp_recommendation(
-        mock_ce_client, mock_config, "THIRTY_DAYS"
+        mock_ce_client, "THIRTY_DAYS"
     )
 
     assert result is None
 
 
 def test_fetch_sagemaker_sp_recommendation_insufficient_data(mock_ce_client, mock_config):
-    """Test when SageMaker SP recommendation has insufficient data."""
+    """Test SageMaker SP recommendation with limited lookback data (still returns result)."""
     mock_ce_client.get_savings_plans_purchase_recommendation.return_value = {
         "Metadata": {
             "RecommendationId": "rec-sm-456",
             "GenerationTimestamp": "2026-01-15T12:00:00Z",
-            "LookbackPeriodInDays": "5",  # Less than min_data_days (14)
+            "LookbackPeriodInDays": "5",  # Limited data, but still valid
         },
         "SavingsPlansPurchaseRecommendation": {
             "SavingsPlansPurchaseRecommendationDetails": [{"HourlyCommitmentToPurchase": "3.25"}]
         },
     }
 
-    result = recommendations._fetch_sagemaker_sp_recommendation(
-        mock_ce_client, mock_config, "SEVEN_DAYS"
-    )
+    result = recommendations._fetch_sagemaker_sp_recommendation(mock_ce_client, "SEVEN_DAYS")
 
-    assert result is None
+    # min_data_days validation was removed, so recommendations with any data are accepted
+    assert result is not None
+    assert result["HourlyCommitmentToPurchase"] == "3.25"
 
 
 def test_fetch_sagemaker_sp_recommendation_api_error(mock_ce_client, mock_config):
@@ -292,7 +289,7 @@ def test_fetch_sagemaker_sp_recommendation_api_error(mock_ce_client, mock_config
 
     with pytest.raises(ClientError):
         recommendations._fetch_sagemaker_sp_recommendation(
-            mock_ce_client, mock_config, "THIRTY_DAYS"
+            mock_ce_client, "THIRTY_DAYS"
         )
 
 
