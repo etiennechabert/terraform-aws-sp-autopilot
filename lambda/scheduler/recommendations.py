@@ -8,9 +8,10 @@ to fetch multiple recommendation types in parallel for improved performance.
 
 import logging
 from concurrent.futures import ThreadPoolExecutor, as_completed
-from typing import Any, Dict, Optional
+from typing import Any, Optional
 
 from botocore.exceptions import ClientError
+from mypy_boto3_ce.client import CostExplorerClient
 
 
 # Configure logging
@@ -19,8 +20,8 @@ logger.setLevel(logging.INFO)
 
 
 def _fetch_compute_sp_recommendation(
-    ce_client: Any, config: Dict[str, Any], lookback_period: str
-) -> Optional[Dict[str, Any]]:
+    ce_client: CostExplorerClient, config: dict[str, Any], lookback_period: str
+) -> Optional[dict[str, Any]]:
     """
     Fetch Compute Savings Plan recommendation from AWS Cost Explorer.
 
@@ -93,8 +94,8 @@ def _fetch_compute_sp_recommendation(
 
 
 def _fetch_database_sp_recommendation(
-    ce_client: Any, config: Dict[str, Any], lookback_period: str
-) -> Optional[Dict[str, Any]]:
+    ce_client: CostExplorerClient, config: dict[str, Any], lookback_period: str
+) -> Optional[dict[str, Any]]:
     """
     Fetch Database Savings Plan recommendation from AWS Cost Explorer.
 
@@ -169,8 +170,8 @@ def _fetch_database_sp_recommendation(
 
 
 def _fetch_sagemaker_sp_recommendation(
-    ce_client: Any, config: Dict[str, Any], lookback_period: str
-) -> Optional[Dict[str, Any]]:
+    ce_client: CostExplorerClient, config: dict[str, Any], lookback_period: str
+) -> Optional[dict[str, Any]]:
     """
     Fetch SageMaker Savings Plan recommendation from AWS Cost Explorer.
 
@@ -243,7 +244,7 @@ def _fetch_sagemaker_sp_recommendation(
         raise
 
 
-def get_aws_recommendations(ce_client: Any, config: Dict[str, Any]) -> Dict[str, Any]:
+def get_aws_recommendations(ce_client: CostExplorerClient, config: dict[str, Any]) -> dict[str, Any]:
     """
     Get Savings Plans purchase recommendations from AWS Cost Explorer.
 
