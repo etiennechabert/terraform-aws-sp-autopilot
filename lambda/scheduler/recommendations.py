@@ -10,7 +10,7 @@ from __future__ import annotations
 
 import logging
 from concurrent.futures import ThreadPoolExecutor, as_completed
-from typing import TYPE_CHECKING, Any, Optional
+from typing import TYPE_CHECKING, Any
 
 from botocore.exceptions import ClientError
 
@@ -26,7 +26,7 @@ logger.setLevel(logging.INFO)
 
 def _fetch_compute_sp_recommendation(
     ce_client: CostExplorerClient, config: dict[str, Any], lookback_period: str
-) -> Optional[dict[str, Any]]:
+) -> dict[str, Any] | None:
     """
     Fetch Compute Savings Plan recommendation from AWS Cost Explorer.
 
@@ -100,7 +100,7 @@ def _fetch_compute_sp_recommendation(
 
 def _fetch_database_sp_recommendation(
     ce_client: CostExplorerClient, config: dict[str, Any], lookback_period: str
-) -> Optional[dict[str, Any]]:
+) -> dict[str, Any] | None:
     """
     Fetch Database Savings Plan recommendation from AWS Cost Explorer.
 
@@ -176,7 +176,7 @@ def _fetch_database_sp_recommendation(
 
 def _fetch_sagemaker_sp_recommendation(
     ce_client: CostExplorerClient, config: dict[str, Any], lookback_period: str
-) -> Optional[dict[str, Any]]:
+) -> dict[str, Any] | None:
     """
     Fetch SageMaker Savings Plan recommendation from AWS Cost Explorer.
 
