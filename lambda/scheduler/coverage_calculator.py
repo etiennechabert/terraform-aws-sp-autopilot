@@ -79,17 +79,29 @@ def calculate_current_coverage(
 
     # Get coverage from Cost Explorer
     try:
-        # Get coverage for the last 1 day (most recent data point)
+        # Query Cost Explorer for the last 1 day (most recent data point)
+        # Why 1 day: Cost Explorer returns daily granularity data, and we only need the latest
+        # snapshot to determine current coverage. Using a single day minimizes API response size
+        # and ensures we get the most up-to-date coverage information available.
         end_date = now.date()
         start_date = end_date - timedelta(days=1)
 
         try:
+            # Call Cost Explorer API to get Savings Plans coverage metrics
+            # TimePeriod: Must be in ISO format (YYYY-MM-DD)
+            # Granularity: DAILY returns one data point per day in the time range
             response = ce_client.get_savings_plans_coverage(
                 TimePeriod={"Start": start_date.isoformat(), "End": end_date.isoformat()},
                 Granularity="DAILY",
             )
         except ClientError as e:
             error_code = e.response["Error"]["Code"]
+            # Handle DataUnavailableException: Cost Explorer requires 24-48 hours of usage data
+            # before coverage metrics are available. This occurs in:
+            # 1. Newly created AWS accounts (< 48 hours old)
+            # 2. Accounts with no recent EC2/RDS/Lambda usage
+            # 3. Accounts that just activated Cost Explorer (takes ~24 hours to populate)
+            # In these cases, safely return 0% coverage to allow the system to make initial purchases
             if error_code == "DataUnavailableException":
                 logger.warning(
                     "Cost Explorer data not available (new account or no usage data). "
@@ -98,27 +110,45 @@ def calculate_current_coverage(
                 return {"compute": 0.0, "database": 0.0, "sagemaker": 0.0}
             raise
 
+        # Extract coverage data points from response
+        # Response structure: {"SavingsPlansCoverages": [{"TimePeriod": {...}, "Coverage": {...}}]}
         coverage_by_time = response.get("SavingsPlansCoverages", [])
 
+        # Handle empty response: Can occur if the time period has no usage data
+        # Return 0% coverage to allow the system to make initial SP purchases
         if not coverage_by_time:
             logger.warning("No coverage data available from Cost Explorer")
             return {"compute": 0.0, "database": 0.0, "sagemaker": 0.0}
 
-        # Get the most recent coverage data point
+        # Get the most recent coverage data point using [-1] index
+        # Why [-1]: Cost Explorer returns data points ordered chronologically (oldest first)
+        # The last element contains the most recent coverage snapshot, which is what we need
+        # for making current purchase decisions
         latest_coverage = coverage_by_time[-1]
         coverage_data = latest_coverage.get("Coverage", {})
 
-        # Extract coverage percentage
+        # Extract coverage percentage from nested structure
+        # Structure: {"Coverage": {"CoveragePercentage": "75.5", ...}}
+        # CoveragePercentage represents the percentage of eligible spend covered by active SPs
+        # Example: "75.5" means 75.5% of SP-eligible spend is covered, 24.5% is on-demand
         coverage_percentage = 0.0
         if "CoveragePercentage" in coverage_data:
             coverage_percentage = float(coverage_data["CoveragePercentage"])
 
         logger.info(f"Overall Savings Plans coverage: {coverage_percentage}%")
 
-        # Note: Cost Explorer doesn't separate coverage by SP type in the basic API call
-        # For now, we'll use the overall coverage for compute and assume 0 for database and sagemaker
-        # In a production system, you might need to call GetSavingsPlansCoverage with
-        # GroupBy to separate by service or use DescribeSavingsPlans to categorize
+        # LIMITATION: Cost Explorer's basic GetSavingsPlansCoverage API returns aggregate coverage
+        # across all SP types (Compute, EC2 Instance, SageMaker). It does NOT break down coverage
+        # by individual SP type without using the GroupBy parameter.
+        #
+        # Current approach: Assign aggregate coverage to "compute" and 0% to others
+        # Why: This is a simplified approach for initial implementation. Most customers have
+        # Compute SPs as their primary SP type, so using aggregate coverage for compute provides
+        # a reasonable approximation.
+        #
+        # Future enhancement: Call GetSavingsPlansCoverage with GroupBy=["SAVINGS_PLANS_TYPE"]
+        # to get separate coverage percentages for each SP type, enabling more accurate
+        # purchase decisions for database and sagemaker SPs.
         coverage = {"compute": coverage_percentage, "database": 0.0, "sagemaker": 0.0}
 
     except ClientError as e:
