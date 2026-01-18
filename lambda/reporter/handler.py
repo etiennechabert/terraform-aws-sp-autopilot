@@ -13,7 +13,7 @@ This Lambda:
 import json
 import logging
 from datetime import datetime, timedelta, timezone
-from typing import Any
+from typing import Any, Dict
 
 import boto3
 from botocore.exceptions import ClientError
