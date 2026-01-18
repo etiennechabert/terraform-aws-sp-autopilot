@@ -2,14 +2,18 @@
 Queue Manager - SQS operations for Scheduler Lambda.
 
 Handles purging the queue and queuing purchase intents.
+Supports both AWS SQS and local filesystem modes.
 """
 
-import json
 import logging
+
+# Import queue adapter for local/AWS mode support
 from datetime import datetime, timezone
 from typing import Any, Dict, List
 
 from botocore.exceptions import ClientError
+
+from shared.queue_adapter import QueueAdapter
 
 
 # Configure logging
@@ -18,15 +22,17 @@ logger = logging.getLogger()
 
 def purge_queue(sqs_client: Any, queue_url: str) -> None:
     """
-    Purge all existing messages from the SQS queue.
+    Purge all existing messages from the queue.
+    Supports both AWS SQS and local filesystem modes.
 
     Args:
-        sqs_client: Boto3 SQS client
-        queue_url: SQS queue URL
+        sqs_client: Boto3 SQS client (not used in local mode)
+        queue_url: SQS queue URL (not used in local mode)
     """
     logger.info(f"Purging queue: {queue_url}")
     try:
-        sqs_client.purge_queue(QueueUrl=queue_url)
+        queue_adapter = QueueAdapter(sqs_client=sqs_client, queue_url=queue_url)
+        queue_adapter.purge_queue()
         logger.info("Queue purged successfully")
     except ClientError as e:
         if e.response["Error"]["Code"] == "PurgeQueueInProgress":
@@ -39,10 +45,11 @@ def queue_purchase_intents(
     sqs_client: Any, config: Dict[str, Any], purchase_plans: List[Dict[str, Any]]
 ) -> None:
     """
-    Queue purchase intents to SQS.
+    Queue purchase intents to queue.
+    Supports both AWS SQS and local filesystem modes.
 
     Args:
-        sqs_client: Boto3 SQS client
+        sqs_client: Boto3 SQS client (not used in local mode)
         config: Configuration dictionary
         purchase_plans: List of planned purchases
     """
@@ -53,6 +60,7 @@ def queue_purchase_intents(
         return
 
     queue_url = config["queue_url"]
+    queue_adapter = QueueAdapter(sqs_client=sqs_client, queue_url=queue_url)
     queued_count = 0
 
     for plan in purchase_plans:
@@ -76,12 +84,9 @@ def queue_purchase_intents(
                 "tags": config.get("tags", {}),
             }
 
-            # Send message to SQS
-            response = sqs_client.send_message(
-                QueueUrl=queue_url, MessageBody=json.dumps(purchase_intent)
-            )
+            # Send message via adapter
+            message_id = queue_adapter.send_message(purchase_intent)
 
-            message_id = response.get("MessageId")
             logger.info(
                 f"Queued purchase intent: {sp_type} {term} ${commitment:.4f}/hour "
                 f"(message_id: {message_id}, client_token: {client_token})"
