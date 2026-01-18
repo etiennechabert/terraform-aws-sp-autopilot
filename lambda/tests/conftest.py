@@ -233,11 +233,17 @@ def aws_mock_builder(aws_response):
                 rec = data.get("SavingsPlansPurchaseRecommendation", {})
                 details = rec.get("SavingsPlansPurchaseRecommendationDetails", [])
                 if details:
-                    details[0]["HourlyCommitmentToPurchase"] = str(hourly_commitment)
+                    # Format as string with 2 decimal places if numeric
+                    formatted_commitment = (
+                        f"{hourly_commitment:.2f}"
+                        if isinstance(hourly_commitment, (int, float))
+                        else str(hourly_commitment)
+                    )
+                    details[0]["HourlyCommitmentToPurchase"] = formatted_commitment
                     # Also update summary
                     summary = rec.get("SavingsPlansPurchaseRecommendationSummary", {})
                     if summary:
-                        summary["HourlyCommitmentToPurchase"] = str(hourly_commitment)
+                        summary["HourlyCommitmentToPurchase"] = formatted_commitment
 
             return data
 
