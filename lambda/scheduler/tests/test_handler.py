@@ -1599,8 +1599,12 @@ def test_handler_parallel_execution(mock_env_vars):
 
         # Verify parallel execution - both should start before either completes
         # Get timestamps
-        coverage_start = next(call[2] for call in call_log if call[0] == "coverage" and call[1] == "start")
-        coverage_end = next(call[2] for call in call_log if call[0] == "coverage" and call[1] == "end")
+        coverage_start = next(
+            call[2] for call in call_log if call[0] == "coverage" and call[1] == "start"
+        )
+        coverage_end = next(
+            call[2] for call in call_log if call[0] == "coverage" and call[1] == "end"
+        )
         recommendations_start = next(
             call[2] for call in call_log if call[0] == "recommendations" and call[1] == "start"
         )
@@ -1614,7 +1618,9 @@ def test_handler_parallel_execution(mock_env_vars):
 
         # Both should start before the first one completes (indicating parallel execution)
         assert coverage_start < first_end, "Coverage should start before either completes"
-        assert recommendations_start < first_end, "Recommendations should start before either completes"
+        assert recommendations_start < first_end, (
+            "Recommendations should start before either completes"
+        )
 
         # Verify queue purge was called
         mock_purge.assert_called_once()
