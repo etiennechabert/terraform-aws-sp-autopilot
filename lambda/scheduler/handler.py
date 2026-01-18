@@ -106,6 +106,13 @@ def _ensure_savingsplans_client():
 
 # Backward-compatible wrapper functions for existing tests
 # These match the old function signatures and use lazily-initialized clients
+def load_configuration() -> Dict[str, Any]:
+    """Load configuration - backward compatible wrapper."""
+    from config import load_configuration as config_load
+
+    return config_load()
+
+
 def calculate_current_coverage(config: Dict[str, Any]) -> Dict[str, float]:
     """Calculate current coverage - backward compatible wrapper."""
     return coverage_module.calculate_current_coverage(
@@ -116,6 +123,20 @@ def calculate_current_coverage(config: Dict[str, Any]) -> Dict[str, float]:
 def get_aws_recommendations(config: Dict[str, Any]) -> Dict[str, Any]:
     """Get AWS recommendations - backward compatible wrapper."""
     return recommendations_module.get_aws_recommendations(_ensure_ce_client(), config)
+
+
+def get_assumed_role_session(role_arn: str, session_name: str = "sp-autopilot-session"):
+    """Get assumed role session - backward compatible wrapper."""
+    from shared.aws_utils import get_assumed_role_session as aws_assume_role
+
+    return aws_assume_role(role_arn, session_name)
+
+
+def get_clients(config: Dict[str, Any]):
+    """Get clients - backward compatible wrapper."""
+    from shared.aws_utils import get_clients as aws_get_clients
+
+    return aws_get_clients(config)
 
 
 def purge_queue(queue_url: str) -> None:
@@ -153,8 +174,6 @@ split_by_term = purchase_module.split_by_term
 
 
 # Backward-compatible imports for configuration and AWS utils
-from config import load_configuration
-from shared.aws_utils import get_assumed_role_session, get_clients
 
 
 def send_error_email(error_msg: str, sns_topic_arn: str = None) -> None:

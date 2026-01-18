@@ -24,7 +24,6 @@ resource "aws_lambda_function" "scheduler" {
   filename         = data.archive_file.scheduler.output_path
   source_code_hash = data.archive_file.scheduler.output_base64sha256
 
-  depends_on = [null_resource.scheduler_add_shared]
 
   environment {
     variables = {
@@ -74,7 +73,6 @@ resource "aws_lambda_function" "purchaser" {
   filename         = data.archive_file.purchaser.output_path
   source_code_hash = data.archive_file.purchaser.output_base64sha256
 
-  depends_on = [null_resource.purchaser_add_shared]
 
   environment {
     variables = {
@@ -109,7 +107,6 @@ resource "aws_lambda_function" "reporter" {
   filename         = data.archive_file.reporter.output_path
   source_code_hash = data.archive_file.reporter.output_base64sha256
 
-  depends_on = [null_resource.reporter_add_shared]
 
   environment {
     variables = {
@@ -119,6 +116,7 @@ resource "aws_lambda_function" "reporter" {
       EMAIL_REPORTS               = tostring(local.email_reports)
       SLACK_WEBHOOK_URL           = local.slack_webhook_url
       TEAMS_WEBHOOK_URL           = local.teams_webhook_url
+      LOW_UTILIZATION_THRESHOLD   = tostring(local.low_utilization_threshold)
       MANAGEMENT_ACCOUNT_ROLE_ARN = local.lambda_reporter_assume_role_arn
       TAGS                        = jsonencode(local.common_tags)
     }
@@ -131,119 +129,169 @@ resource "aws_lambda_function" "reporter" {
 # Lambda Deployment Packages
 # ============================================================================
 
-# Build Lambda deployment packages with correct directory structure
-# Run build-lambda-zips.sh before terraform apply to generate the ZIP files
-# Each ZIP contains: function code at root + shared/ subdirectory
-
 # Scheduler Lambda deployment package
 data "archive_file" "scheduler" {
   type             = "zip"
-  source_dir       = "${path.module}/lambda/scheduler"
   output_path      = "${path.module}/scheduler.zip"
   output_file_mode = "0666"
 
-  # Include only Python files, exclude tests and docs
-  excludes = [
-    ".pytest_cache",
-    "__pycache__",
-    ".coverage",
-    "htmlcov",
-    "tests",
-    "TESTING.md",
-    "README.md",
-    "pytest.ini",
-    "requirements.txt",
-    "test_dry_run.sh",
-    "integration_test_dry_run.md"
-  ]
-}
-
-# Copy shared module into scheduler package
-resource "null_resource" "scheduler_add_shared" {
-  triggers = {
-    zip_changed    = data.archive_file.scheduler.output_base64sha256
-    shared_changed = filemd5("${path.module}/lambda/shared/handler_utils.py")
+  # Include function code at root
+  source {
+    content  = file("${path.module}/lambda/scheduler/handler.py")
+    filename = "handler.py"
+  }
+  source {
+    content  = file("${path.module}/lambda/scheduler/config.py")
+    filename = "config.py"
+  }
+  source {
+    content  = file("${path.module}/lambda/scheduler/coverage_calculator.py")
+    filename = "coverage_calculator.py"
+  }
+  source {
+    content  = file("${path.module}/lambda/scheduler/email_notifications.py")
+    filename = "email_notifications.py"
+  }
+  source {
+    content  = file("${path.module}/lambda/scheduler/purchase_calculator.py")
+    filename = "purchase_calculator.py"
+  }
+  source {
+    content  = file("${path.module}/lambda/scheduler/queue_manager.py")
+    filename = "queue_manager.py"
+  }
+  source {
+    content  = file("${path.module}/lambda/scheduler/recommendations.py")
+    filename = "recommendations.py"
+  }
+  source {
+    content  = file("${path.module}/lambda/scheduler/dichotomy_strategy.py")
+    filename = "dichotomy_strategy.py"
+  }
+  source {
+    content  = file("${path.module}/lambda/scheduler/simple_strategy.py")
+    filename = "simple_strategy.py"
   }
 
-  provisioner "local-exec" {
-    command     = "cd lambda && zip -u ../scheduler.zip shared/*.py"
-    working_dir = path.module
-    interpreter = ["bash", "-c"]
+  # Include shared module
+  source {
+    content  = file("${path.module}/lambda/shared/handler_utils.py")
+    filename = "shared/handler_utils.py"
   }
-
-  depends_on = [data.archive_file.scheduler]
+  source {
+    content  = file("${path.module}/lambda/shared/aws_utils.py")
+    filename = "shared/aws_utils.py"
+  }
+  source {
+    content  = file("${path.module}/lambda/shared/local_mode.py")
+    filename = "shared/local_mode.py"
+  }
+  source {
+    content  = file("${path.module}/lambda/shared/queue_adapter.py")
+    filename = "shared/queue_adapter.py"
+  }
+  source {
+    content  = file("${path.module}/lambda/shared/storage_adapter.py")
+    filename = "shared/storage_adapter.py"
+  }
+  source {
+    content  = file("${path.module}/lambda/shared/notifications.py")
+    filename = "shared/notifications.py"
+  }
+  source {
+    content  = file("${path.module}/lambda/shared/__init__.py")
+    filename = "shared/__init__.py"
+  }
 }
 
 # Purchaser Lambda deployment package
 data "archive_file" "purchaser" {
   type             = "zip"
-  source_dir       = "${path.module}/lambda/purchaser"
   output_path      = "${path.module}/purchaser.zip"
   output_file_mode = "0666"
 
-  excludes = [
-    ".pytest_cache",
-    "__pycache__",
-    ".coverage",
-    "htmlcov",
-    "tests",
-    "TESTING.md",
-    "README.md",
-    "pytest.ini",
-    "requirements.txt"
-  ]
-}
-
-# Copy shared module into purchaser package
-resource "null_resource" "purchaser_add_shared" {
-  triggers = {
-    zip_changed    = data.archive_file.purchaser.output_base64sha256
-    shared_changed = filemd5("${path.module}/lambda/shared/handler_utils.py")
+  # Include function code at root
+  source {
+    content  = file("${path.module}/lambda/purchaser/handler.py")
+    filename = "handler.py"
+  }
+  source {
+    content  = file("${path.module}/lambda/purchaser/validation.py")
+    filename = "validation.py"
   }
 
-  provisioner "local-exec" {
-    command     = "cd lambda && zip -u ../purchaser.zip shared/*.py"
-    working_dir = path.module
-    interpreter = ["bash", "-c"]
+  # Include shared module
+  source {
+    content  = file("${path.module}/lambda/shared/handler_utils.py")
+    filename = "shared/handler_utils.py"
   }
-
-  depends_on = [data.archive_file.purchaser]
+  source {
+    content  = file("${path.module}/lambda/shared/aws_utils.py")
+    filename = "shared/aws_utils.py"
+  }
+  source {
+    content  = file("${path.module}/lambda/shared/local_mode.py")
+    filename = "shared/local_mode.py"
+  }
+  source {
+    content  = file("${path.module}/lambda/shared/queue_adapter.py")
+    filename = "shared/queue_adapter.py"
+  }
+  source {
+    content  = file("${path.module}/lambda/shared/storage_adapter.py")
+    filename = "shared/storage_adapter.py"
+  }
+  source {
+    content  = file("${path.module}/lambda/shared/notifications.py")
+    filename = "shared/notifications.py"
+  }
+  source {
+    content  = file("${path.module}/lambda/shared/__init__.py")
+    filename = "shared/__init__.py"
+  }
 }
 
 # Reporter Lambda deployment package
 data "archive_file" "reporter" {
   type             = "zip"
-  source_dir       = "${path.module}/lambda/reporter"
   output_path      = "${path.module}/reporter.zip"
   output_file_mode = "0666"
 
-  excludes = [
-    ".pytest_cache",
-    "__pycache__",
-    ".coverage",
-    "htmlcov",
-    "tests",
-    "TESTING.md",
-    "README.md",
-    "pytest.ini",
-    "requirements.txt"
-  ]
-}
-
-# Copy shared module into reporter package
-resource "null_resource" "reporter_add_shared" {
-  triggers = {
-    zip_changed    = data.archive_file.reporter.output_base64sha256
-    shared_changed = filemd5("${path.module}/lambda/shared/handler_utils.py")
+  # Include function code at root
+  source {
+    content  = file("${path.module}/lambda/reporter/handler.py")
+    filename = "handler.py"
   }
 
-  provisioner "local-exec" {
-    command     = "cd lambda && zip -u ../reporter.zip shared/*.py"
-    working_dir = path.module
-    interpreter = ["bash", "-c"]
+  # Include shared module
+  source {
+    content  = file("${path.module}/lambda/shared/handler_utils.py")
+    filename = "shared/handler_utils.py"
   }
-
-  depends_on = [data.archive_file.reporter]
+  source {
+    content  = file("${path.module}/lambda/shared/aws_utils.py")
+    filename = "shared/aws_utils.py"
+  }
+  source {
+    content  = file("${path.module}/lambda/shared/local_mode.py")
+    filename = "shared/local_mode.py"
+  }
+  source {
+    content  = file("${path.module}/lambda/shared/queue_adapter.py")
+    filename = "shared/queue_adapter.py"
+  }
+  source {
+    content  = file("${path.module}/lambda/shared/storage_adapter.py")
+    filename = "shared/storage_adapter.py"
+  }
+  source {
+    content  = file("${path.module}/lambda/shared/notifications.py")
+    filename = "shared/notifications.py"
+  }
+  source {
+    content  = file("${path.module}/lambda/shared/__init__.py")
+    filename = "shared/__init__.py"
+  }
 }
 
 # Create placeholder ZIP files

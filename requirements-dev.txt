@@ -1,0 +1,20 @@
+# Development dependencies for local debugging and testing
+
+# AWS SDK (same version as Lambda runtime)
+boto3>=1.28.0
+
+# Environment variable management
+python-dotenv>=1.0.0
+
+# Testing framework
+pytest>=7.4.0
+pytest-cov>=4.1.0
+pytest-mock>=3.11.1
+
+# Code quality
+black>=23.7.0
+flake8>=6.1.0
+mypy>=1.5.0
+
+# Type stubs for boto3
+boto3-stubs[ce,savingsplans,s3,sqs,sns,sts]>=1.28.0
