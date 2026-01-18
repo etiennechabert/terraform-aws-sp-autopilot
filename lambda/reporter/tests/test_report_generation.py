@@ -413,9 +413,10 @@ def test_svg_chart_includes_grid_lines(sample_coverage_history):
     line_count = result.count("<line")
     assert line_count > 0  # Should have multiple grid lines
 
-    # Verify horizontal and vertical grid lines
+    # Verify horizontal and vertical grid lines exist
     assert "<line x1=" in result
-    assert "<line y1=" in result
+    # Vertical lines have stroke-dasharray attribute
+    assert 'stroke-dasharray="2,2"' in result
 
 
 def test_svg_chart_includes_axis_labels(sample_coverage_history):
