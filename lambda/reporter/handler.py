@@ -562,6 +562,132 @@ def get_savings_data(
         raise
 
 
+def generate_coverage_chart_svg(coverage_data: List[Dict[str, Any]]) -> str:
+    """
+    Generate SVG line chart for coverage trends.
+
+    Args:
+        coverage_data: List of coverage data points with 'date' and 'coverage_percentage' fields
+
+    Returns:
+        str: SVG markup as a string
+    """
+    if not coverage_data:
+        # Return empty SVG for no data
+        return '<svg width="800" height="400" xmlns="http://www.w3.org/2000/svg"><text x="400" y="200" text-anchor="middle" fill="#999">No data available</text></svg>'
+
+    # Chart dimensions and padding
+    width = 800
+    height = 400
+    padding_left = 60
+    padding_right = 40
+    padding_top = 40
+    padding_bottom = 60
+    chart_width = width - padding_left - padding_right
+    chart_height = height - padding_top - padding_bottom
+
+    # Extract data points
+    data_points = []
+    min_coverage = 100.0
+    max_coverage = 0.0
+
+    for item in coverage_data:
+        coverage_pct = item.get("coverage_percentage", 0.0)
+        date_str = item.get("date", "")
+        data_points.append({"date": date_str, "coverage": coverage_pct})
+        min_coverage = min(min_coverage, coverage_pct)
+        max_coverage = max(max_coverage, coverage_pct)
+
+    # Add padding to y-axis range for better visualization
+    y_range_padding = (max_coverage - min_coverage) * 0.1 if max_coverage > min_coverage else 5.0
+    y_min = max(0, min_coverage - y_range_padding)
+    y_max = min(100, max_coverage + y_range_padding)
+    y_range = y_max - y_min if y_max > y_min else 1.0
+
+    # Calculate scale factors
+    x_scale = chart_width / max(1, len(data_points) - 1) if len(data_points) > 1 else chart_width
+    y_scale = chart_height / y_range
+
+    # Build SVG path for line chart
+    path_points = []
+    for i, point in enumerate(data_points):
+        x = padding_left + (i * x_scale)
+        y = padding_top + chart_height - ((point["coverage"] - y_min) * y_scale)
+        path_points.append(f"{'M' if i == 0 else 'L'} {x:.2f} {y:.2f}")
+
+    path_d = " ".join(path_points)
+
+    # Build SVG markup
+    svg_parts = [
+        f'<svg width="{width}" height="{height}" xmlns="http://www.w3.org/2000/svg">',
+        "  <!-- Chart background -->",
+        f'  <rect x="0" y="0" width="{width}" height="{height}" fill="white"/>',
+        "  <!-- Chart area -->",
+        f'  <rect x="{padding_left}" y="{padding_top}" width="{chart_width}" height="{chart_height}" fill="#f8f9fa" stroke="#dee2e6"/>',
+        "  <!-- Grid lines -->",
+    ]
+
+    # Horizontal grid lines (y-axis)
+    for i in range(5):
+        y = padding_top + (i * chart_height / 4)
+        grid_value = y_max - (i * y_range / 4)
+        svg_parts.append(
+            f'  <line x1="{padding_left}" y1="{y:.2f}" x2="{padding_left + chart_width}" y2="{y:.2f}" stroke="#dee2e6" stroke-width="1"/>'
+        )
+        svg_parts.append(
+            f'  <text x="{padding_left - 10}" y="{y + 5:.2f}" text-anchor="end" fill="#666" font-size="12">{grid_value:.1f}%</text>'
+        )
+
+    # Vertical grid lines (x-axis) - show every few points to avoid crowding
+    step = max(1, len(data_points) // 6)
+    for i in range(0, len(data_points), step):
+        x = padding_left + (i * x_scale)
+        svg_parts.append(
+            f'  <line x1="{x:.2f}" y1="{padding_top}" x2="{x:.2f}" y2="{padding_top + chart_height}" stroke="#dee2e6" stroke-width="1" stroke-dasharray="2,2"/>'
+        )
+        # Date label
+        date_label = (
+            data_points[i]["date"].split("T")[0]
+            if "T" in data_points[i]["date"]
+            else data_points[i]["date"]
+        )
+        # Rotate text for better fit
+        svg_parts.append(
+            f'  <text x="{x:.2f}" y="{padding_top + chart_height + 20}" text-anchor="middle" fill="#666" font-size="10" transform="rotate(0 {x:.2f} {padding_top + chart_height + 20})">{date_label}</text>'
+        )
+
+    # Draw the line chart
+    svg_parts.append("  <!-- Coverage line -->")
+    svg_parts.append(
+        f'  <path d="{path_d}" fill="none" stroke="#2193b0" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>'
+    )
+
+    # Draw data points
+    svg_parts.append("  <!-- Data points -->")
+    for i, point in enumerate(data_points):
+        x = padding_left + (i * x_scale)
+        y = padding_top + chart_height - ((point["coverage"] - y_min) * y_scale)
+        svg_parts.append(
+            f'  <circle cx="{x:.2f}" cy="{y:.2f}" r="4" fill="#2193b0" stroke="white" stroke-width="2"/>'
+        )
+
+    # Chart title and axis labels
+    svg_parts.append("  <!-- Labels -->")
+    svg_parts.append(
+        f'  <text x="{width / 2}" y="25" text-anchor="middle" fill="#232f3e" font-size="16" font-weight="bold">Coverage Trend</text>'
+    )
+    svg_parts.append(
+        f'  <text x="{width / 2}" y="{height - 10}" text-anchor="middle" fill="#666" font-size="12">Date</text>'
+    )
+    svg_parts.append(
+        f'  <text x="20" y="{height / 2}" text-anchor="middle" fill="#666" font-size="12" transform="rotate(-90 20 {height / 2})">Coverage %</text>'
+    )
+
+    svg_parts.append("</svg>")
+
+    return "\n".join(svg_parts)
+
+
 def check_and_alert_low_utilization(
     sns_client: SNSClient, config: dict[str, Any], savings_data: dict[str, Any]
 ) -> None:
@@ -819,6 +945,170 @@ def generate_html_report(
             color: #6c757d;
             font-style: italic;
         }}
+
+        /* Print-friendly styles */
+        @media print {{
+            /* Reset body for print */
+            body {{
+                background-color: white;
+                color: black;
+                font-size: 10pt;
+                line-height: 1.4;
+                padding: 0;
+                margin: 0;
+            }}
+
+            /* Remove container shadows and make full-width */
+            .container {{
+                box-shadow: none;
+                max-width: 100%;
+                padding: 10px;
+                border-radius: 0;
+            }}
+
+            /* Simplify headings for print */
+            h1 {{
+                color: black;
+                border-bottom: 2px solid black;
+                font-size: 18pt;
+                page-break-after: avoid;
+            }}
+
+            h2 {{
+                color: black;
+                border-bottom: 1px solid black;
+                font-size: 14pt;
+                page-break-after: avoid;
+                margin-top: 20px;
+            }}
+
+            h3 {{
+                color: black;
+                font-size: 12pt;
+                page-break-after: avoid;
+            }}
+
+            /* Remove gradients from summary cards, use borders instead */
+            .summary-card {{
+                background: white !important;
+                color: black !important;
+                border: 1px solid black;
+                box-shadow: none;
+                page-break-inside: avoid;
+                padding: 10px;
+            }}
+
+            .summary-card h3 {{
+                opacity: 1;
+                color: black;
+                font-size: 10pt;
+            }}
+
+            .summary-card .value {{
+                color: black;
+                font-size: 14pt;
+            }}
+
+            /* Optimize summary grid for print */
+            .summary {{
+                grid-template-columns: repeat(2, 1fr);
+                gap: 10px;
+                margin-bottom: 20px;
+                page-break-inside: avoid;
+            }}
+
+            /* Table styling for print */
+            table {{
+                page-break-inside: avoid;
+                border-collapse: collapse;
+                font-size: 9pt;
+            }}
+
+            th {{
+                background-color: #f0f0f0 !important;
+                color: black !important;
+                border: 1px solid black;
+                padding: 8px;
+                font-weight: bold;
+            }}
+
+            td {{
+                border: 1px solid black;
+                padding: 6px 8px;
+                color: black;
+            }}
+
+            tr {{
+                page-break-inside: avoid;
+            }}
+
+            tr:hover {{
+                background-color: white;
+            }}
+
+            /* Remove hover effects */
+            tr:hover {{
+                background-color: transparent;
+            }}
+
+            /* Ensure sections break properly */
+            .section {{
+                page-break-inside: avoid;
+                margin-bottom: 20px;
+            }}
+
+            /* Footer styling for print */
+            .footer {{
+                border-top: 1px solid black;
+                color: black;
+                font-size: 8pt;
+                page-break-before: avoid;
+            }}
+
+            /* Ensure subtitle is visible */
+            .subtitle {{
+                color: #666;
+                font-size: 9pt;
+            }}
+
+            /* Simplify trend indicator */
+            .trend {{
+                color: black !important;
+            }}
+
+            /* Make metrics more visible */
+            .metric {{
+                font-weight: bold;
+                color: black;
+            }}
+
+            /* Hide decorative elements not needed in print */
+            .no-data {{
+                color: #666;
+            }}
+
+            /* Ensure good page breaks */
+            h1, h2, h3 {{
+                page-break-after: avoid;
+            }}
+
+            table {{
+                page-break-before: auto;
+            }}
+
+            tr {{
+                page-break-inside: avoid;
+                page-break-after: auto;
+            }}
+
+            thead {{
+                display: table-header-group;
+            }}
+
+            tfoot {{
+                display: table-footer-group;
+            }}
+        }}
     </style>
 </head>
 <body>
@@ -851,6 +1141,14 @@ def generate_html_report(
 
         <div class="section">
             <h2>Coverage Trends <span class="trend" style="color: {trend_color};">{trend_symbol}</span></h2>
+""")
+
+    # Generate and include SVG chart
+    svg_chart = generate_coverage_chart_svg(coverage_history)
+    html_parts.append(f"""
+            <div style="margin: 20px 0; text-align: center;">
+                {svg_chart}
+            </div>
 """)
 
     # Coverage history table
