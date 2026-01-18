@@ -22,6 +22,7 @@ from botocore.exceptions import ClientError
 from validation import validate_purchase_intent
 
 from shared import handler_utils
+from shared.config_validation import validate_purchaser_config
 from shared.queue_adapter import QueueAdapter
 
 
@@ -149,7 +150,12 @@ def load_configuration() -> dict[str, Any]:
         "teams_webhook_url": {"required": False, "type": "str", "env_var": "TEAMS_WEBHOOK_URL"},
     }
 
-    return handler_utils.load_config_from_env(schema)
+    config = handler_utils.load_config_from_env(schema)
+
+    # Validate configuration
+    validate_purchaser_config(config)
+
+    return config
 
 
 def receive_messages(
