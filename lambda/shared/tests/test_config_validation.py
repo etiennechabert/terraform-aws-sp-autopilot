@@ -347,7 +347,7 @@ def test_scheduler_sagemaker_term_mix_sum_invalid():
 def test_scheduler_sagemaker_disabled_skips_term_mix_validation():
     """Test that sagemaker_sp_term_mix validation is skipped when sagemaker is disabled."""
     config = {
-        "sagemaker_sp_enabled": False,
+        "enable_sagemaker_sp": False,
         "sagemaker_sp_term_mix": {"three_year": 0, "one_year": 0},  # Would fail if validated
     }
     # Should not raise despite term_mix summing to 0
@@ -357,7 +357,7 @@ def test_scheduler_sagemaker_disabled_skips_term_mix_validation():
 def test_scheduler_compute_disabled_skips_term_mix_validation():
     """Test that compute_sp_term_mix validation is skipped when compute is disabled."""
     config = {
-        "compute_sp_enabled": False,
+        "enable_compute_sp": False,
         "compute_sp_term_mix": {"three_year": 0, "one_year": 0},  # Would fail if validated
     }
     # Should not raise despite term_mix summing to 0
