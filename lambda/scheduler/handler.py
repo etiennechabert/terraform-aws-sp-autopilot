@@ -330,3 +330,7 @@ def handler(event: dict[str, Any], context: Any) -> dict[str, Any]:
         except Exception as notification_error:
             logger.warning(f"Failed to send error notification: {notification_error}")
         raise  # Re-raise to ensure Lambda fails visibly
+
+
+if __name__ == "__main__":
+    handler({}, None)
