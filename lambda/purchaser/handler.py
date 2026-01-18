@@ -19,6 +19,10 @@ from typing import Any
 
 import boto3
 from botocore.exceptions import ClientError
+from mypy_boto3_ce.client import CostExplorerClient
+from mypy_boto3_savingsplans.client import SavingsPlansClient
+from mypy_boto3_sns.client import SNSClient
+from mypy_boto3_sqs.client import SQSClient
 from validation import validate_purchase_intent
 
 from shared import handler_utils
@@ -159,7 +163,7 @@ def load_configuration() -> dict[str, Any]:
 
 
 def receive_messages(
-    sqs_client: Any, queue_url: str, max_messages: int = 10
+    sqs_client: SQSClient, queue_url: str, max_messages: int = 10
 ) -> list[dict[str, Any]]:
     """
     Receive messages from queue.
@@ -226,7 +230,7 @@ def get_current_coverage(clients: dict[str, Any], config: dict[str, Any]) -> dic
 
 
 def get_ce_coverage(
-    ce_client: Any, start_date: date, end_date: date, config: dict[str, Any]
+    ce_client: CostExplorerClient, start_date: date, end_date: date, config: dict[str, Any]
 ) -> dict[str, Any]:
     """
     Get Savings Plans coverage from Cost Explorer.
@@ -275,7 +279,9 @@ def get_ce_coverage(
         raise
 
 
-def get_expiring_plans(savingsplans_client: Any, config: dict[str, Any]) -> list[dict[str, Any]]:
+def get_expiring_plans(
+    savingsplans_client: SavingsPlansClient, config: dict[str, Any]
+) -> list[dict[str, Any]]:
     """
     Get list of Savings Plans expiring within renewal_window_days.
 
@@ -508,7 +514,7 @@ def would_exceed_cap(
 
 
 def execute_purchase(
-    savingsplans_client: Any, config: dict[str, Any], purchase_intent: dict[str, Any]
+    savingsplans_client: SavingsPlansClient, config: dict[str, Any], purchase_intent: dict[str, Any]
 ) -> str:
     """
     Execute a Savings Plan purchase via AWS API.
@@ -616,7 +622,7 @@ def update_coverage_tracking(
     return updated_coverage
 
 
-def delete_message(sqs_client: Any, queue_url: str, receipt_handle: str) -> None:
+def delete_message(sqs_client: SQSClient, queue_url: str, receipt_handle: str) -> None:
     """
     Delete a message from the queue.
     Supports both AWS SQS and local filesystem modes.
@@ -636,7 +642,7 @@ def delete_message(sqs_client: Any, queue_url: str, receipt_handle: str) -> None
 
 
 def send_summary_email(
-    sns_client: Any, config: dict[str, Any], results: dict[str, Any], coverage: dict[str, float]
+    sns_client: SNSClient, config: dict[str, Any], results: dict[str, Any], coverage: dict[str, float]
 ) -> None:
     """
     Send aggregated summary email for all purchases.
