@@ -42,13 +42,25 @@ def calculate_current_coverage(
         logger.info(f"Found {len(savings_plans)} active Savings Plans")
 
         # Filter out plans expiring within renewal_window_days
+        # Why: Plans expiring soon will be replaced, so we exclude them from coverage calculations
+        # to avoid double-counting when their replacements are purchased. For example, if a plan
+        # expires in 5 days and renewal_window_days=30, we treat it as already expired to allow
+        # purchasing its replacement now.
         valid_plan_ids = []
         for plan in savings_plans:
+            # Only process plans with an end date (no-upfront plans always have end dates)
             if "end" in plan:
-                # Parse end date (ISO 8601 format)
+                # Parse end date from ISO 8601 format (e.g., "2024-12-31T23:59:59Z")
+                # AWS returns dates with 'Z' suffix; we convert to timezone-aware datetime
                 end_date = datetime.fromisoformat(plan["end"].replace("Z", "+00:00"))
+
+                # Calculate days remaining until expiration
+                # Using .days extracts only the day component (ignoring hours/minutes)
                 days_until_expiry = (end_date - now).days
 
+                # Include plan only if it expires AFTER the renewal window
+                # Example: renewal_window_days=30, plan expires in 45 days -> INCLUDE
+                # Example: renewal_window_days=30, plan expires in 15 days -> EXCLUDE
                 if days_until_expiry > renewal_window_days:
                     valid_plan_ids.append(plan["savingsPlanId"])
                     logger.debug(
