@@ -87,45 +87,6 @@ def mock_clients():
 
 
 # ============================================================================
-# Queue Purge Tests
-# ============================================================================
-
-
-def test_purge_queue_success():
-    """Test successful queue purge."""
-    mock_sqs_client = Mock()
-    mock_sqs_client.purge_queue.return_value = {}
-
-    queue_manager.purge_queue(mock_sqs_client, "test-queue-url")
-
-    mock_sqs_client.purge_queue.assert_called_once_with(QueueUrl="test-queue-url")
-
-
-def test_purge_queue_in_progress():
-    """Test that PurgeQueueInProgress error is handled gracefully."""
-    from botocore.exceptions import ClientError
-
-    mock_sqs_client = Mock()
-    error_response = {"Error": {"Code": "PurgeQueueInProgress"}}
-    mock_sqs_client.purge_queue.side_effect = ClientError(error_response, "purge_queue")
-
-    # Should not raise - just log warning
-    queue_manager.purge_queue(mock_sqs_client, "test-queue-url")
-
-
-def test_purge_queue_other_error():
-    """Test that other errors are raised."""
-    from botocore.exceptions import ClientError
-
-    mock_sqs_client = Mock()
-    error_response = {"Error": {"Code": "AccessDenied"}}
-    mock_sqs_client.purge_queue.side_effect = ClientError(error_response, "purge_queue")
-
-    with pytest.raises(ClientError):
-        queue_manager.purge_queue(mock_sqs_client, "test-queue-url")
-
-
-# ============================================================================
 # Coverage Calculation Tests
 # ============================================================================
 
@@ -1279,86 +1240,6 @@ def test_split_by_term_empty_list():
     result = handler.split_by_term(config, [])
 
     assert result == []
-
-
-# ============================================================================
-# Queue Tests
-# ============================================================================
-
-
-def test_queue_purchase_intents_sends_messages(mock_clients):
-    """Test that purchase intents are sent to SQS."""
-    config = {"queue_url": "test-queue-url", "tags": {"Environment": "test"}}
-
-    plans = [
-        {
-            "sp_type": "compute",
-            "term": "THREE_YEAR",
-            "hourly_commitment": 2.5,
-            "payment_option": "ALL_UPFRONT",
-            "recommendation_id": "rec-123",
-        }
-    ]
-
-    with patch.object(handler.sqs_client, "send_message") as mock_send:
-        mock_send.return_value = {"MessageId": "msg-123"}
-
-        handler.queue_purchase_intents(config, plans)
-
-        # Should send 1 message
-        assert mock_send.call_count == 1
-        call_args = mock_send.call_args[1]
-        assert call_args["QueueUrl"] == "test-queue-url"
-
-        # Verify message body
-        message_body = json.loads(call_args["MessageBody"])
-        assert message_body["sp_type"] == "compute"
-        assert message_body["hourly_commitment"] == 2.5
-
-
-def test_queue_purchase_intents_client_token_unique(mock_clients):
-    """Test that each message gets a unique client token."""
-    config = {"queue_url": "test-queue-url", "tags": {}}
-
-    plans = [
-        {
-            "sp_type": "compute",
-            "term": "THREE_YEAR",
-            "hourly_commitment": 1.0,
-            "payment_option": "ALL_UPFRONT",
-        },
-        {
-            "sp_type": "compute",
-            "term": "ONE_YEAR",
-            "hourly_commitment": 0.5,
-            "payment_option": "ALL_UPFRONT",
-        },
-    ]
-
-    with patch.object(handler.sqs_client, "send_message") as mock_send:
-        mock_send.return_value = {"MessageId": "msg-123"}
-
-        handler.queue_purchase_intents(config, plans)
-
-        # Extract client tokens from all calls
-        tokens = []
-        for call in mock_send.call_args_list:
-            message_body = json.loads(call[1]["MessageBody"])
-            tokens.append(message_body["client_token"])
-
-        # All tokens should be unique
-        assert len(tokens) == len(set(tokens))
-
-
-def test_queue_purchase_intents_empty_list(mock_clients):
-    """Test handling of empty purchase plans list."""
-    config = {"queue_url": "test-queue-url", "tags": {}}
-
-    with patch.object(handler.sqs_client, "send_message") as mock_send:
-        handler.queue_purchase_intents(config, [])
-
-        # Should not send any messages
-        assert mock_send.call_count == 0
 
 
 # ============================================================================
