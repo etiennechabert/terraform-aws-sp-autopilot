@@ -248,8 +248,8 @@ def test_generate_coverage_chart_svg_with_data(sample_coverage_history):
     result = handler.generate_coverage_chart_svg(sample_coverage_history)
 
     # Verify SVG structure
-    assert result.startswith('<svg')
-    assert '</svg>' in result
+    assert result.startswith("<svg")
+    assert "</svg>" in result
     assert 'xmlns="http://www.w3.org/2000/svg"' in result
 
     # Verify chart dimensions
@@ -257,24 +257,24 @@ def test_generate_coverage_chart_svg_with_data(sample_coverage_history):
     assert 'height="400"' in result
 
     # Verify chart elements are present
-    assert '<path' in result  # Line chart path
-    assert '<circle' in result  # Data points
-    assert '<line' in result  # Grid lines
-    assert '<text' in result  # Labels
+    assert "<path" in result  # Line chart path
+    assert "<circle" in result  # Data points
+    assert "<line" in result  # Grid lines
+    assert "<text" in result  # Labels
 
     # Verify chart title
-    assert 'Coverage Trend' in result
+    assert "Coverage Trend" in result
 
     # Verify axis labels
-    assert 'Date' in result
-    assert 'Coverage %' in result
+    assert "Date" in result
+    assert "Coverage %" in result
 
     # Verify data points are rendered (should have circles for each data point)
-    circle_count = result.count('<circle')
+    circle_count = result.count("<circle")
     assert circle_count == len(sample_coverage_history)
 
     # Verify dates are included
-    assert '2026-01-10' in result or '2026-01-14' in result
+    assert "2026-01-10" in result or "2026-01-14" in result
 
 
 def test_generate_coverage_chart_svg_with_empty_data():
@@ -282,9 +282,9 @@ def test_generate_coverage_chart_svg_with_empty_data():
     result = handler.generate_coverage_chart_svg([])
 
     # Should return a valid SVG with "No data available" message
-    assert result.startswith('<svg')
-    assert '</svg>' in result
-    assert 'No data available' in result
+    assert result.startswith("<svg")
+    assert "</svg>" in result
+    assert "No data available" in result
 
 
 def test_generate_coverage_chart_svg_with_single_data_point():
@@ -293,15 +293,15 @@ def test_generate_coverage_chart_svg_with_single_data_point():
     result = handler.generate_coverage_chart_svg(single_point)
 
     # Verify SVG is generated
-    assert result.startswith('<svg')
-    assert '</svg>' in result
+    assert result.startswith("<svg")
+    assert "</svg>" in result
 
     # Verify chart elements
-    assert '<path' in result
-    assert '<circle' in result
+    assert "<path" in result
+    assert "<circle" in result
 
     # Should have exactly one data point circle
-    circle_count = result.count('<circle')
+    circle_count = result.count("<circle")
     assert circle_count == 1
 
 
@@ -310,23 +310,23 @@ def test_html_report_includes_print_css(sample_coverage_history, sample_savings_
     result = handler.generate_html_report(sample_coverage_history, sample_savings_data)
 
     # Verify print media query is present
-    assert '@media print' in result
+    assert "@media print" in result
 
     # Verify key print CSS rules are present
-    assert 'page-break-inside: avoid' in result
-    assert 'page-break-after: avoid' in result
+    assert "page-break-inside: avoid" in result
+    assert "page-break-after: avoid" in result
 
     # Verify print-specific styling for body
-    assert 'body {' in result
+    assert "body {" in result
 
     # Verify print-specific styling for tables
-    assert 'table {' in result
+    assert "table {" in result
 
     # Verify color adjustments for print (removing gradients, using borders)
-    assert 'background: white !important' in result or 'color: black' in result
+    assert "background: white !important" in result or "color: black" in result
 
     # Verify summary cards have print styling
-    assert '.summary-card' in result
+    assert ".summary-card" in result
 
 
 def test_html_report_includes_svg_chart(sample_coverage_history, sample_savings_data):
@@ -334,15 +334,15 @@ def test_html_report_includes_svg_chart(sample_coverage_history, sample_savings_
     result = handler.generate_html_report(sample_coverage_history, sample_savings_data)
 
     # Verify SVG chart is embedded in HTML
-    assert '<svg' in result
-    assert '</svg>' in result
+    assert "<svg" in result
+    assert "</svg>" in result
 
     # Verify chart is within the HTML structure
-    assert 'Coverage Trend' in result
+    assert "Coverage Trend" in result
 
     # Verify SVG elements are present
-    assert '<path' in result  # Chart line
-    assert '<circle' in result  # Data points
+    assert "<path" in result  # Chart line
+    assert "<circle" in result  # Data points
 
 
 def test_html_report_svg_chart_with_empty_data():
@@ -350,12 +350,12 @@ def test_html_report_svg_chart_with_empty_data():
     result = handler.generate_html_report([], {"plans_count": 0, "total_commitment": 0.0})
 
     # Verify HTML structure is intact
-    assert '<!DOCTYPE html>' in result
-    assert '</html>' in result
+    assert "<!DOCTYPE html>" in result
+    assert "</html>" in result
 
     # Verify SVG is still present (with "No data available" message)
-    assert '<svg' in result
-    assert 'No data available' in result
+    assert "<svg" in result
+    assert "No data available" in result
 
 
 def test_print_css_handles_page_breaks(sample_coverage_history, sample_savings_data):
@@ -363,13 +363,13 @@ def test_print_css_handles_page_breaks(sample_coverage_history, sample_savings_d
     result = handler.generate_html_report(sample_coverage_history, sample_savings_data)
 
     # Verify page break rules for sections
-    assert 'page-break-inside: avoid' in result
+    assert "page-break-inside: avoid" in result
 
     # Verify heading page break rules
-    assert 'page-break-after: avoid' in result
+    assert "page-break-after: avoid" in result
 
     # Verify table header grouping for print
-    assert 'display: table-header-group' in result or 'thead' in result
+    assert "display: table-header-group" in result or "thead" in result
 
 
 def test_print_css_removes_decorative_elements(sample_coverage_history, sample_savings_data):
@@ -377,14 +377,16 @@ def test_print_css_removes_decorative_elements(sample_coverage_history, sample_s
     result = handler.generate_html_report(sample_coverage_history, sample_savings_data)
 
     # Verify box shadows are removed in print
-    assert 'box-shadow: none' in result
+    assert "box-shadow: none" in result
 
     # Verify gradients are replaced with solid colors in print
     # (The CSS should have rules that override gradients)
-    print_css_section = result[result.find('@media print'):result.rfind('}', result.find('@media print'))]
+    print_css_section = result[
+        result.find("@media print") : result.rfind("}", result.find("@media print"))
+    ]
 
     # Verify print section exists and has styling overrides
-    assert 'background' in print_css_section or 'color' in print_css_section
+    assert "background" in print_css_section or "color" in print_css_section
 
 
 def test_svg_chart_has_proper_scaling(sample_coverage_history):
@@ -399,7 +401,7 @@ def test_svg_chart_has_proper_scaling(sample_coverage_history):
     assert '<path d="M' in result  # SVG path starts with Move command
 
     # Verify all data points have corresponding circles
-    circle_count = result.count('<circle')
+    circle_count = result.count("<circle")
     assert circle_count == len(sample_coverage_history)
 
 
@@ -408,12 +410,12 @@ def test_svg_chart_includes_grid_lines(sample_coverage_history):
     result = handler.generate_coverage_chart_svg(sample_coverage_history)
 
     # Verify grid lines are present
-    line_count = result.count('<line')
+    line_count = result.count("<line")
     assert line_count > 0  # Should have multiple grid lines
 
     # Verify horizontal and vertical grid lines
-    assert '<line x1=' in result
-    assert '<line y1=' in result
+    assert "<line x1=" in result
+    assert "<line y1=" in result
 
 
 def test_svg_chart_includes_axis_labels(sample_coverage_history):
@@ -421,10 +423,10 @@ def test_svg_chart_includes_axis_labels(sample_coverage_history):
     result = handler.generate_coverage_chart_svg(sample_coverage_history)
 
     # Verify axis label text elements
-    text_count = result.count('<text')
+    text_count = result.count("<text")
     assert text_count > 0
 
     # Verify specific axis labels
-    assert 'Coverage %' in result
-    assert 'Date' in result
-    assert 'Coverage Trend' in result
+    assert "Coverage %" in result
+    assert "Date" in result
+    assert "Coverage Trend" in result

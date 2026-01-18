@@ -629,11 +629,11 @@ def generate_coverage_chart_svg(coverage_data: List[Dict[str, Any]]) -> str:
     # Build SVG markup
     svg_parts = [
         f'<svg width="{width}" height="{height}" xmlns="http://www.w3.org/2000/svg">',
-        '  <!-- Chart background -->',
+        "  <!-- Chart background -->",
         f'  <rect x="0" y="0" width="{width}" height="{height}" fill="white"/>',
-        '  <!-- Chart area -->',
+        "  <!-- Chart area -->",
         f'  <rect x="{padding_left}" y="{padding_top}" width="{chart_width}" height="{chart_height}" fill="#f8f9fa" stroke="#dee2e6"/>',
-        '  <!-- Grid lines -->',
+        "  <!-- Grid lines -->",
     ]
 
     # Horizontal grid lines (y-axis)
@@ -655,20 +655,24 @@ def generate_coverage_chart_svg(coverage_data: List[Dict[str, Any]]) -> str:
             f'  <line x1="{x:.2f}" y1="{padding_top}" x2="{x:.2f}" y2="{padding_top + chart_height}" stroke="#dee2e6" stroke-width="1" stroke-dasharray="2,2"/>'
         )
         # Date label
-        date_label = data_points[i]["date"].split("T")[0] if "T" in data_points[i]["date"] else data_points[i]["date"]
+        date_label = (
+            data_points[i]["date"].split("T")[0]
+            if "T" in data_points[i]["date"]
+            else data_points[i]["date"]
+        )
         # Rotate text for better fit
         svg_parts.append(
             f'  <text x="{x:.2f}" y="{padding_top + chart_height + 20}" text-anchor="middle" fill="#666" font-size="10" transform="rotate(0 {x:.2f} {padding_top + chart_height + 20})">{date_label}</text>'
         )
 
     # Draw the line chart
-    svg_parts.append('  <!-- Coverage line -->')
+    svg_parts.append("  <!-- Coverage line -->")
     svg_parts.append(
         f'  <path d="{path_d}" fill="none" stroke="#2193b0" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>'
     )
 
     # Draw data points
-    svg_parts.append('  <!-- Data points -->')
+    svg_parts.append("  <!-- Data points -->")
     for i, point in enumerate(data_points):
         x = padding_left + (i * x_scale)
         y = padding_top + chart_height - ((point["coverage"] - y_min) * y_scale)
@@ -677,7 +681,7 @@ def generate_coverage_chart_svg(coverage_data: List[Dict[str, Any]]) -> str:
         )
 
     # Chart title and axis labels
-    svg_parts.append('  <!-- Labels -->')
+    svg_parts.append("  <!-- Labels -->")
     svg_parts.append(
         f'  <text x="{width / 2}" y="25" text-anchor="middle" fill="#232f3e" font-size="16" font-weight="bold">Coverage Trend</text>'
     )
@@ -688,7 +692,7 @@ def generate_coverage_chart_svg(coverage_data: List[Dict[str, Any]]) -> str:
         f'  <text x="20" y="{height / 2}" text-anchor="middle" fill="#666" font-size="12" transform="rotate(-90 20 {height / 2})">Coverage %</text>'
     )
 
-    svg_parts.append('</svg>')
+    svg_parts.append("</svg>")
 
     return "\n".join(svg_parts)
 
