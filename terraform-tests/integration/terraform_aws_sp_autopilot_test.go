@@ -12,25 +12,10 @@ import (
 	"github.com/aws/aws-sdk-go/service/lambda"
 	"github.com/aws/aws-sdk-go/service/sqs"
 	terratest_aws "github.com/gruntwork-io/terratest/modules/aws"
-	"github.com/gruntwork-io/terratest/modules/logger"
-	terratesting "github.com/gruntwork-io/terratest/modules/testing"
 	"github.com/gruntwork-io/terratest/modules/terraform"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
-
-// cleanLogger implements logger.TestLogger interface to strip verbose prefixes
-type cleanLogger struct{}
-
-func (l *cleanLogger) Logf(_ terratesting.TestingT, format string, args ...interface{}) {
-	// Format the message and print directly without test name/timestamp prefix
-	msg := fmt.Sprintf(format, args...)
-	fmt.Println(msg)
-}
-
-func getCleanLogger() *logger.Logger {
-	return logger.New(&cleanLogger{})
-}
 
 // TestFullDeploymentAndCleanup is a comprehensive end-to-end integration test
 // that validates complete module deployment, resource configuration, functional
