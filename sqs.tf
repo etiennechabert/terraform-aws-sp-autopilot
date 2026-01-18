@@ -45,6 +45,28 @@ resource "aws_sqs_queue" "purchase_intents" {
 }
 
 # ============================================================================
+# SQS Queue Access Policy
+# ============================================================================
+
+resource "aws_sqs_queue_policy" "purchase_intents" {
+  count = local.lambda_scheduler_enabled ? 1 : 0
+
+  queue_url = aws_sqs_queue.purchase_intents.id
+
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [{
+      Effect = "Allow"
+      Principal = {
+        AWS = aws_iam_role.scheduler[0].arn
+      }
+      Action   = "sqs:SendMessage"
+      Resource = aws_sqs_queue.purchase_intents.arn
+    }]
+  })
+}
+
+# ============================================================================
 # CloudWatch Alarm for DLQ Depth
 # ============================================================================
 
