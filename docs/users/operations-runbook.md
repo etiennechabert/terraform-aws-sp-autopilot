@@ -48,6 +48,7 @@ Day-to-day operational procedures for managing AWS Savings Plans Autopilot after
   - [Checking Dead Letter Queue](#checking-dead-letter-queue)
   - [Interpreting SNS Notifications](#interpreting-sns-notifications)
 - [Troubleshooting Common Scenarios](#troubleshooting-common-scenarios)
+  - [Troubleshooting Decision Tree](#troubleshooting-decision-tree)
   - [Coverage Not Reaching Target](#coverage-not-reaching-target)
   - [Unexpected Purchase Amounts](#unexpected-purchase-amounts)
   - [No Purchases Scheduled](#no-purchases-scheduled)
@@ -1766,6 +1767,221 @@ Full report available in S3: s3://sp-autopilot-reports/coverage-reports/latest.j
 ---
 
 ## Troubleshooting Common Scenarios
+
+### Troubleshooting Decision Tree
+
+Use this decision tree to quickly diagnose and resolve common operational issues.
+
+#### Issue: Received CloudWatch Alarm
+
+```
+START: CloudWatch Alarm Notification Received
+│
+├─ Alarm: "scheduler-errors" ?
+│  ├─ YES → Check Scheduler Lambda Logs
+│  │       ├─ Error: AccessDeniedException ?
+│  │       │  └─ YES → Add missing IAM permissions to Scheduler role
+│  │       │          → See: ERROR_PATTERNS.md for required permissions
+│  │       │
+│  │       ├─ Error: Cost Explorer API failure ?
+│  │       │  └─ YES → Verify Cost Explorer enabled in account
+│  │       │          → Check AWS service health dashboard
+│  │       │
+│  │       └─ Error: Insufficient usage data ?
+│  │          └─ YES → Wait for more usage history
+│  │                  → Check purchase_strategy.min_data_days setting
+│  │
+├─ Alarm: "purchaser-errors" ?
+│  ├─ YES → Check Purchaser Lambda Logs
+│  │       ├─ Error: AccessDeniedException ?
+│  │       │  └─ YES → Add savingsplans:CreateSavingsPlan permission
+│  │       │
+│  │       ├─ Error: ServiceQuotaExceededException ?
+│  │       │  └─ YES → Request Savings Plans quota increase via AWS Support
+│  │       │          → OR wait for expired plans to free up quota
+│  │       │
+│  │       ├─ Error: ValidationException ?
+│  │       │  └─ YES → Check message parameters in SQS queue
+│  │       │          → Verify term and payment_option are valid
+│  │       │
+│  │       └─ Error: ThrottlingException ?
+│  │          └─ YES → Messages will auto-retry with backoff
+│  │                  → No action needed unless persistent
+│  │
+├─ Alarm: "reporter-errors" ?
+│  ├─ YES → Check Reporter Lambda Logs
+│  │       ├─ Error: S3 access denied ?
+│  │       │  └─ YES → Add s3:PutObject permission to Reporter role
+│  │       │
+│  │       └─ Error: Cost Explorer API failure ?
+│  │          └─ YES → Check AWS service health dashboard
+│  │
+└─ Alarm: "purchase-intents-dlq-depth" ?
+     └─ YES → Messages in Dead Letter Queue
+             ├─ Check DLQ messages: aws sqs receive-message --queue-url $(terraform output -raw dlq_url)
+             ├─ Review Purchaser logs for failure reason
+             ├─ Fix underlying issue (IAM, quotas, etc.)
+             └─ Move messages back to main queue for retry
+                 → See: Recovering from Failed Purchases section
+```
+
+#### Issue: No Email Received After Scheduled Run
+
+```
+START: Expected Email Not Received
+│
+├─ Email Type: "Purchase Scheduled" (from Scheduler) ?
+│  ├─ YES → Check Scheduler Lambda
+│  │       ├─ Did Lambda execute?
+│  │       │  ├─ NO → Check EventBridge schedule enabled
+│  │       │  │      └─ aws events describe-rule --name $(terraform output -raw scheduler_rule_name)
+│  │       │  │
+│  │       │  └─ YES → Check CloudWatch Logs for execution
+│  │       │           ├─ Logs show "DRY_RUN mode" ?
+│  │       │           │  └─ YES → Disable dry_run in Terraform config
+│  │       │           │
+│  │       │           ├─ Logs show "0 recommendations" ?
+│  │       │           │  └─ YES → Already at target coverage (expected)
+│  │       │           │
+│  │       │           └─ Logs show SNS publish failed ?
+│  │       │              └─ YES → Verify SNS topic subscription confirmed
+│  │       │                      → Check email spam/junk folder
+│  │       │
+│  ├─ Email Type: "Purchase Summary" (from Purchaser) ?
+│  │  ├─ YES → Check Purchaser Lambda
+│  │  │       ├─ Did Lambda execute?
+│  │  │       │  ├─ NO → Check EventBridge schedule enabled
+│  │  │       │  │
+│  │  │       │  └─ YES → Check SQS queue depth
+│  │  │       │           ├─ Queue empty?
+│  │  │       │           │  └─ YES → No purchases to process (expected if none queued)
+│  │  │       │           │
+│  │  │       │           └─ Messages in queue?
+│  │  │       │              └─ YES → Check Purchaser logs for errors
+│  │  │       │                      → See: Failed Purchase Execution section
+│  │  │
+│  └─ Email Type: "Coverage Report" (from Reporter) ?
+│     └─ YES → Check Reporter Lambda
+│             ├─ Did Lambda execute?
+│             │  ├─ NO → Check EventBridge schedule enabled
+│             │  │
+│             │  └─ YES → Check CloudWatch Logs
+│             │           └─ Logs show errors?
+│             │              └─ YES → Review error details
+│             │                      → Common: S3 permissions, Cost Explorer access
+│
+└─ Check SNS Subscription Status
+    └─ aws sns list-subscriptions-by-topic --topic-arn $(terraform output -raw sns_topic_arn)
+        └─ Subscription "PendingConfirmation" ?
+           └─ YES → Check email for confirmation link
+
+```
+
+#### Issue: Coverage Not Increasing
+
+```
+START: Coverage Not Reaching Target
+│
+├─ Are purchases being scheduled?
+│  ├─ NO → Check Scheduler Lambda
+│  │      ├─ Logs show "Already at target coverage" ?
+│  │      │  └─ YES → But coverage is below target?
+│  │      │          → Verify coverage_target_percent in Terraform config
+│  │      │          → Check if multiple SP types (Compute/Database/SageMaker) tracked separately
+│  │      │
+│  │      ├─ Logs show "Coverage cap would be exceeded" ?
+│  │      │  └─ YES → Increase max_coverage_cap in Terraform config
+│  │      │          → OR review if cap is intentionally set low
+│  │      │
+│  │      └─ Logs show "Insufficient usage data" ?
+│  │         └─ YES → Wait for more usage history
+│  │                 → Check purchase_strategy.min_data_days setting
+│  │
+│  └─ YES → Are purchases being executed?
+│           ├─ NO → Check SQS queue
+│           │      ├─ Messages stuck in queue?
+│           │      │  └─ YES → Check Purchaser Lambda logs
+│           │      │          → Check for errors/alarms
+│           │      │          → See: Failed Purchase Execution section
+│           │      │
+│           │      └─ Messages in DLQ?
+│           │         └─ YES → See: Recovering from Failed Purchases section
+│           │
+│           └─ YES → Coverage still not increasing?
+│                   ├─ Check usage trends
+│                   │  └─ Usage growing faster than purchases?
+│                   │     └─ YES → Increase max_purchase_percent
+│                   │             → Current purchases can't keep up with growth
+│                   │
+│                   ├─ Check Savings Plans expiring
+│                   │  └─ aws savingsplans describe-savings-plans \
+│                   │      --filters name=end,values=$(date -u -d '30 days' +%Y-%m-%d)
+│                   │     └─ Plans expiring soon?
+│                   │        └─ YES → Expected - purchases account for expirations
+│                   │                → May need higher max_purchase_percent
+│                   │
+│                   └─ Check purchase amounts
+│                      └─ Purchases very small?
+│                         └─ YES → Review max_purchase_percent
+│                                 → May be too conservative for coverage gap
+```
+
+#### Issue: Unexpected Purchase Amounts
+
+```
+START: Purchase Amount Higher/Lower Than Expected
+│
+├─ Amount HIGHER than expected?
+│  ├─ Check term mix configuration
+│  │  └─ Review sp_plans.[type].term_weights in Terraform
+│  │      └─ More weight on 3-year plans?
+│  │         └─ YES → 3-year plans have higher hourly commitment
+│  │                 → Check if this aligns with intended strategy
+│  │
+│  ├─ Check if multiple SP types enabled
+│  │  └─ Review sp_plans.compute/database/sagemaker.enabled
+│  │      └─ Multiple types enabled?
+│  │         └─ YES → Each type calculated separately
+│  │                 → Total commitment = sum of all types
+│  │
+│  └─ Check usage spike
+│     └─ Review Cost Explorer for usage trends
+│         └─ Recent usage increase?
+│            └─ YES → Recommendations based on recent usage
+│                    → Higher usage = higher recommendations
+│
+└─ Amount LOWER than expected?
+   ├─ Check max_coverage_cap
+   │  └─ Current coverage near max_coverage_cap?
+   │     └─ YES → Purchases limited to avoid exceeding cap
+   │             → Review if cap should be increased
+   │
+   ├─ Check max_purchase_percent
+   │  └─ Review purchase_strategy.simple.max_purchase_percent
+   │      └─ Low percentage?
+   │         └─ YES → Limits how much can be purchased per cycle
+   │                 → Increase if coverage growth too slow
+   │
+   └─ Check usage trends
+      └─ Recent usage decrease?
+         └─ YES → Recommendations based on recent usage
+                 → Lower usage = lower recommendations
+```
+
+**Quick Reference: Common Commands for Troubleshooting**
+
+| Scenario | Command | Purpose |
+|----------|---------|---------|
+| Check if Lambda ran | `aws logs tail /aws/lambda/$(terraform output -raw scheduler_function_name) --since 24h \| grep START` | Verify Lambda execution |
+| View Lambda errors | `aws logs tail /aws/lambda/$(terraform output -raw scheduler_function_name) --since 7d --filter ERROR` | Find error messages |
+| Check queue depth | `aws sqs get-queue-attributes --queue-url $(terraform output -raw queue_url) --attribute-names ApproximateNumberOfMessages` | See pending purchases |
+| Check DLQ depth | `aws sqs get-queue-attributes --queue-url $(terraform output -raw dlq_url) --attribute-names ApproximateNumberOfMessages` | See failed purchases |
+| View current coverage | `aws ce get-savings-plans-coverage --time-period Start=$(date -u -d '1 day ago' +%Y-%m-%d),End=$(date -u +%Y-%m-%d) --granularity DAILY` | Check coverage % |
+| List recent purchases | `aws savingsplans describe-savings-plans --filters name=start,values=$(date -u -d '30 days ago' +%Y-%m-%d)` | Verify purchases executed |
+| Check alarm status | `aws cloudwatch describe-alarms --alarm-name-prefix sp-autopilot --state-value ALARM` | Find active alarms |
+| Check EventBridge schedule | `aws events describe-rule --name $(terraform output -raw scheduler_rule_name) \| jq -r '.State'` | Verify schedule enabled |
+
+---
 
 ### Coverage Not Reaching Target
 
