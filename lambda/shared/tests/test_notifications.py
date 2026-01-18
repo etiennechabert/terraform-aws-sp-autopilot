@@ -314,9 +314,7 @@ def test_send_slack_notification_http_error(mock_http):
 def test_send_slack_notification_timeout_error(mock_http):
     """Test Slack notification with timeout error."""
     # Mock timeout error
-    mock_http.request.side_effect = urllib3.exceptions.TimeoutError(
-        None, None, "Request timeout"
-    )
+    mock_http.request.side_effect = urllib3.exceptions.TimeoutError(None, None, "Request timeout")
 
     webhook_url = "https://hooks.slack.com/services/TEST/WEBHOOK"
     message_data = {"test": "data"}
@@ -449,9 +447,7 @@ def test_send_teams_notification_http_error(mock_http):
 def test_send_teams_notification_timeout_error(mock_http):
     """Test Teams notification with timeout error."""
     # Mock timeout error
-    mock_http.request.side_effect = urllib3.exceptions.TimeoutError(
-        None, None, "Request timeout"
-    )
+    mock_http.request.side_effect = urllib3.exceptions.TimeoutError(None, None, "Request timeout")
 
     webhook_url = "https://outlook.office.com/webhook/TEST/WEBHOOK"
     message_data = {"test": "data"}
@@ -517,9 +513,7 @@ def test_slack_end_to_end_success_notification(mock_http):
     )
 
     # Send notification
-    result = notifications.send_slack_notification(
-        "https://hooks.slack.com/test", message
-    )
+    result = notifications.send_slack_notification("https://hooks.slack.com/test", message)
 
     assert result is True
 
@@ -574,9 +568,7 @@ def test_slack_end_to_end_error_notification(mock_http):
     )
 
     # Send notification
-    result = notifications.send_slack_notification(
-        "https://hooks.slack.com/test", message
-    )
+    result = notifications.send_slack_notification("https://hooks.slack.com/test", message)
 
     assert result is True
 
