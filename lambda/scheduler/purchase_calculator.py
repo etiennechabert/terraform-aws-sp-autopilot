@@ -32,6 +32,7 @@ StrategyFunction = Callable[
 ]
 
 # Import strategy implementations
+from conservative_strategy import calculate_purchase_need_conservative
 from dichotomy_strategy import calculate_purchase_need_dichotomy
 from simple_strategy import calculate_purchase_need_simple
 
@@ -41,6 +42,7 @@ from simple_strategy import calculate_purchase_need_simple
 PURCHASE_STRATEGIES: Dict[str, StrategyFunction] = {
     "simple": calculate_purchase_need_simple,
     "dichotomy": calculate_purchase_need_dichotomy,
+    "conservative": calculate_purchase_need_conservative,
 }
 
 
