@@ -5,14 +5,19 @@ Provides shared utilities for configuration loading, client initialization,
 error handling, and standardized handler patterns across all Lambda functions.
 """
 
+from __future__ import annotations
+
 import json
 import logging
 import os
 from datetime import datetime, timezone
-from typing import Any, Callable, Optional
+from typing import TYPE_CHECKING, Any, Callable
 
 from botocore.exceptions import ClientError
-from mypy_boto3_sns.client import SNSClient
+
+
+if TYPE_CHECKING:
+    from mypy_boto3_sns.client import SNSClient
 
 from shared import notifications
 from shared.aws_utils import get_clients
@@ -130,7 +135,7 @@ def load_config_from_env(schema: dict[str, dict[str, Any]]) -> dict[str, Any]:
 def initialize_clients(
     config: dict[str, Any],
     session_name: str,
-    error_callback: Optional[Callable[[str], None]] = None,
+    error_callback: Callable[[str], None] | None = None,
 ) -> dict[str, Any]:
     """
     Initialize AWS clients with assume role support and standardized error handling.
@@ -272,8 +277,8 @@ def send_error_notification(
     sns_topic_arn: str,
     error_message: str,
     lambda_name: str = "Lambda",
-    slack_webhook_url: Optional[str] = None,
-    teams_webhook_url: Optional[str] = None,
+    slack_webhook_url: str | None = None,
+    teams_webhook_url: str | None = None,
 ) -> None:
     """
     Send error notification via SNS, Slack, and Teams.

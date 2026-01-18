@@ -5,14 +5,19 @@ Handles purging the queue and queuing purchase intents.
 Supports both AWS SQS and local filesystem modes.
 """
 
+from __future__ import annotations
+
 import logging
 
 # Import queue adapter for local/AWS mode support
 from datetime import datetime, timezone
-from typing import Any, Dict, List
+from typing import TYPE_CHECKING, Any, Dict, List
 
 from botocore.exceptions import ClientError
-from mypy_boto3_sqs.client import SQSClient
+
+
+if TYPE_CHECKING:
+    from mypy_boto3_sqs.client import SQSClient
 
 from shared.queue_adapter import QueueAdapter
 

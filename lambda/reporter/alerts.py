@@ -60,7 +60,7 @@ def check_and_alert_low_utilization(
 
         # Build alert body
         body_lines = [
-            f"Savings Plans utilization has fallen below the configured threshold.",
+            "Savings Plans utilization has fallen below the configured threshold.",
             "",
             f"Current Utilization: {average_utilization:.2f}%",
             f"Alert Threshold: {threshold:.2f}%",

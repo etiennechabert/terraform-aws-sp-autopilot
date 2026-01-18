@@ -8,9 +8,8 @@ Tests focus on urllib3-based implementations with mocked HTTP connections.
 import json
 import os
 import sys
-from unittest.mock import MagicMock, Mock, patch
+from unittest.mock import Mock, patch
 
-import pytest
 import urllib3
 
 
@@ -53,7 +52,7 @@ def test_format_slack_message_success_severity():
     section_block = attachment["blocks"][1]
     assert section_block["type"] == "section"
     assert section_block["text"]["type"] == "mrkdwn"
-    assert "Line 1\nLine 2" == section_block["text"]["text"]
+    assert section_block["text"]["text"] == "Line 1\nLine 2"
 
 
 def test_format_slack_message_warning_severity():
@@ -550,7 +549,7 @@ def test_teams_end_to_end_notification(mock_http):
 
     assert sent_data["@type"] == "MessageCard"
     assert sent_data["title"] == "Analysis Complete"
-    assert "Processed: 10 accounts<br>Duration: 5 minutes" == sent_data["text"]
+    assert sent_data["text"] == "Processed: 10 accounts<br>Duration: 5 minutes"
 
 
 @patch("shared.notifications.http")
