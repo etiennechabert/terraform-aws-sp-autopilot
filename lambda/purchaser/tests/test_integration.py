@@ -81,7 +81,7 @@ def test_empty_queue(mock_env_vars, mock_clients):
     )
 
 
-def test_valid_purchase_success(mock_env_vars, mock_clients):
+def test_valid_purchase_success(aws_mock_builder, mock_env_vars, mock_clients):
     """Valid Compute SP purchase should execute successfully."""
     # Mock SQS message with valid purchase intent
     purchase_intent = {
@@ -99,25 +99,22 @@ def test_valid_purchase_success(mock_env_vars, mock_clients):
         "Messages": [{"Body": json.dumps(purchase_intent), "ReceiptHandle": "receipt-handle-123"}]
     }
 
-    # Mock current coverage (low coverage, won't exceed cap)
-    mock_clients["ce"].get_savings_plans_coverage.return_value = {
-        "SavingsPlansCoverages": [
-            {
-                "Groups": [
-                    {
-                        "Attributes": {"SAVINGS_PLANS_TYPE": "ComputeSavingsPlans"},
-                        "Coverage": {"CoveragePercentage": "50.0"},
-                    }
-                ]
-            }
-        ]
-    }
+    # Use real AWS response structure for coverage (low coverage, won't exceed cap)
+    mock_clients["ce"].get_savings_plans_coverage.return_value = aws_mock_builder.coverage(
+        coverage_percentage=50.0
+    )
 
-    # Mock no expiring plans
-    mock_clients["savingsplans"].describe_savings_plans.return_value = {"savingsPlans": []}
+    # Mock no expiring plans - use real structure
+    mock_clients[
+        "savingsplans"
+    ].describe_savings_plans.return_value = aws_mock_builder.describe_savings_plans(plans_count=0)
 
-    # Mock successful purchase
-    mock_clients["savingsplans"].create_savings_plan.return_value = {"savingsPlanId": "sp-12345678"}
+    # Mock successful purchase - use real structure
+    mock_clients[
+        "savingsplans"
+    ].create_savings_plan.return_value = aws_mock_builder.create_savings_plan(
+        savings_plan_id="sp-12345678"
+    )
 
     # Execute handler
     response = handler.handler({}, {})

@@ -1,0 +1,599 @@
+{
+    "SavingsPlansCoverages": [
+        {
+            "Attributes": {
+                "INSTANCE_TYPE_FAMILY": null,
+                "REGION": null,
+                "SERVICE": "AWS Lambda"
+            },
+            "Coverage": {
+                "SpendCoveredBySavingsPlans": "236.97",
+                "OnDemandCost": "75.94",
+                "TotalCost": "312.91",
+                "CoveragePercentage": "75.73"
+            },
+            "TimePeriod": {
+                "Start": "2026-01-11",
+                "End": "2026-01-12"
+            }
+        },
+        {
+            "Attributes": {
+                "INSTANCE_TYPE_FAMILY": null,
+                "REGION": null,
+                "SERVICE": "Amazon Elastic Compute Cloud - Compute"
+            },
+            "Coverage": {
+                "SpendCoveredBySavingsPlans": "239.93",
+                "OnDemandCost": "90.83",
+                "TotalCost": "330.76",
+                "CoveragePercentage": "72.54"
+            },
+            "TimePeriod": {
+                "Start": "2026-01-11",
+                "End": "2026-01-12"
+            }
+        },
+        {
+            "Attributes": {
+                "INSTANCE_TYPE_FAMILY": null,
+                "REGION": null,
+                "SERVICE": "Amazon Elastic Container Service"
+            },
+            "Coverage": {
+                "SpendCoveredBySavingsPlans": "60.82",
+                "OnDemandCost": "35.21",
+                "TotalCost": "96.03",
+                "CoveragePercentage": "63.33"
+            },
+            "TimePeriod": {
+                "Start": "2026-01-11",
+                "End": "2026-01-12"
+            }
+        },
+        {
+            "Attributes": {
+                "INSTANCE_TYPE_FAMILY": null,
+                "REGION": null,
+                "SERVICE": "Amazon Relational Database Service"
+            },
+            "Coverage": {
+                "SpendCoveredBySavingsPlans": "172.21",
+                "OnDemandCost": "70.79",
+                "TotalCost": "243.0",
+                "CoveragePercentage": "70.87"
+            },
+            "TimePeriod": {
+                "Start": "2026-01-11",
+                "End": "2026-01-12"
+            }
+        },
+        {
+            "Attributes": {
+                "INSTANCE_TYPE_FAMILY": null,
+                "REGION": null,
+                "SERVICE": "AWS Fargate"
+            },
+            "Coverage": {
+                "SpendCoveredBySavingsPlans": "116.43",
+                "OnDemandCost": "1.55",
+                "TotalCost": "117.98",
+                "CoveragePercentage": "98.69"
+            },
+            "TimePeriod": {
+                "Start": "2026-01-11",
+                "End": "2026-01-12"
+            }
+        },
+        {
+            "Attributes": {
+                "INSTANCE_TYPE_FAMILY": null,
+                "REGION": null,
+                "SERVICE": "AWS Lambda"
+            },
+            "Coverage": {
+                "SpendCoveredBySavingsPlans": "233.19",
+                "OnDemandCost": "11.86",
+                "TotalCost": "245.05",
+                "CoveragePercentage": "95.16"
+            },
+            "TimePeriod": {
+                "Start": "2026-01-12",
+                "End": "2026-01-13"
+            }
+        },
+        {
+            "Attributes": {
+                "INSTANCE_TYPE_FAMILY": null,
+                "REGION": null,
+                "SERVICE": "Amazon Elastic Compute Cloud - Compute"
+            },
+            "Coverage": {
+                "SpendCoveredBySavingsPlans": "258.05",
+                "OnDemandCost": "131.58",
+                "TotalCost": "389.63",
+                "CoveragePercentage": "66.23"
+            },
+            "TimePeriod": {
+                "Start": "2026-01-12",
+                "End": "2026-01-13"
+            }
+        },
+        {
+            "Attributes": {
+                "INSTANCE_TYPE_FAMILY": null,
+                "REGION": null,
+                "SERVICE": "Amazon Elastic Container Service"
+            },
+            "Coverage": {
+                "SpendCoveredBySavingsPlans": "307.6",
+                "OnDemandCost": "15.1",
+                "TotalCost": "322.7",
+                "CoveragePercentage": "95.32"
+            },
+            "TimePeriod": {
+                "Start": "2026-01-12",
+                "End": "2026-01-13"
+            }
+        },
+        {
+            "Attributes": {
+                "INSTANCE_TYPE_FAMILY": null,
+                "REGION": null,
+                "SERVICE": "Amazon Relational Database Service"
+            },
+            "Coverage": {
+                "SpendCoveredBySavingsPlans": "266.63",
+                "OnDemandCost": "138.21",
+                "TotalCost": "404.84",
+                "CoveragePercentage": "65.86"
+            },
+            "TimePeriod": {
+                "Start": "2026-01-12",
+                "End": "2026-01-13"
+            }
+        },
+        {
+            "Attributes": {
+                "INSTANCE_TYPE_FAMILY": null,
+                "REGION": null,
+                "SERVICE": "AWS Fargate"
+            },
+            "Coverage": {
+                "SpendCoveredBySavingsPlans": "333.49",
+                "OnDemandCost": "94.78",
+                "TotalCost": "428.27",
+                "CoveragePercentage": "77.87"
+            },
+            "TimePeriod": {
+                "Start": "2026-01-12",
+                "End": "2026-01-13"
+            }
+        },
+        {
+            "Attributes": {
+                "INSTANCE_TYPE_FAMILY": null,
+                "REGION": null,
+                "SERVICE": "AWS Lambda"
+            },
+            "Coverage": {
+                "SpendCoveredBySavingsPlans": "253.98",
+                "OnDemandCost": "71.51",
+                "TotalCost": "325.49",
+                "CoveragePercentage": "78.03"
+            },
+            "TimePeriod": {
+                "Start": "2026-01-13",
+                "End": "2026-01-14"
+            }
+        },
+        {
+            "Attributes": {
+                "INSTANCE_TYPE_FAMILY": null,
+                "REGION": null,
+                "SERVICE": "Amazon Elastic Compute Cloud - Compute"
+            },
+            "Coverage": {
+                "SpendCoveredBySavingsPlans": "310.17",
+                "OnDemandCost": "60.45",
+                "TotalCost": "370.62",
+                "CoveragePercentage": "83.69"
+            },
+            "TimePeriod": {
+                "Start": "2026-01-13",
+                "End": "2026-01-14"
+            }
+        },
+        {
+            "Attributes": {
+                "INSTANCE_TYPE_FAMILY": null,
+                "REGION": null,
+                "SERVICE": "Amazon Elastic Container Service"
+            },
+            "Coverage": {
+                "SpendCoveredBySavingsPlans": "41.07",
+                "OnDemandCost": "26.25",
+                "TotalCost": "67.32",
+                "CoveragePercentage": "61.01"
+            },
+            "TimePeriod": {
+                "Start": "2026-01-13",
+                "End": "2026-01-14"
+            }
+        },
+        {
+            "Attributes": {
+                "INSTANCE_TYPE_FAMILY": null,
+                "REGION": null,
+                "SERVICE": "Amazon Relational Database Service"
+            },
+            "Coverage": {
+                "SpendCoveredBySavingsPlans": "309.0",
+                "OnDemandCost": "20.0",
+                "TotalCost": "329.0",
+                "CoveragePercentage": "93.92"
+            },
+            "TimePeriod": {
+                "Start": "2026-01-13",
+                "End": "2026-01-14"
+            }
+        },
+        {
+            "Attributes": {
+                "INSTANCE_TYPE_FAMILY": null,
+                "REGION": null,
+                "SERVICE": "AWS Fargate"
+            },
+            "Coverage": {
+                "SpendCoveredBySavingsPlans": "283.33",
+                "OnDemandCost": "73.38",
+                "TotalCost": "356.71",
+                "CoveragePercentage": "79.43"
+            },
+            "TimePeriod": {
+                "Start": "2026-01-13",
+                "End": "2026-01-14"
+            }
+        },
+        {
+            "Attributes": {
+                "INSTANCE_TYPE_FAMILY": null,
+                "REGION": null,
+                "SERVICE": "AWS Lambda"
+            },
+            "Coverage": {
+                "SpendCoveredBySavingsPlans": "281.71",
+                "OnDemandCost": "121.2",
+                "TotalCost": "402.91",
+                "CoveragePercentage": "69.92"
+            },
+            "TimePeriod": {
+                "Start": "2026-01-14",
+                "End": "2026-01-15"
+            }
+        },
+        {
+            "Attributes": {
+                "INSTANCE_TYPE_FAMILY": null,
+                "REGION": null,
+                "SERVICE": "Amazon Elastic Compute Cloud - Compute"
+            },
+            "Coverage": {
+                "SpendCoveredBySavingsPlans": "245.57",
+                "OnDemandCost": "29.79",
+                "TotalCost": "275.36",
+                "CoveragePercentage": "89.18"
+            },
+            "TimePeriod": {
+                "Start": "2026-01-14",
+                "End": "2026-01-15"
+            }
+        },
+        {
+            "Attributes": {
+                "INSTANCE_TYPE_FAMILY": null,
+                "REGION": null,
+                "SERVICE": "Amazon Elastic Container Service"
+            },
+            "Coverage": {
+                "SpendCoveredBySavingsPlans": "269.67",
+                "OnDemandCost": "149.14",
+                "TotalCost": "418.81",
+                "CoveragePercentage": "64.39"
+            },
+            "TimePeriod": {
+                "Start": "2026-01-14",
+                "End": "2026-01-15"
+            }
+        },
+        {
+            "Attributes": {
+                "INSTANCE_TYPE_FAMILY": null,
+                "REGION": null,
+                "SERVICE": "Amazon Relational Database Service"
+            },
+            "Coverage": {
+                "SpendCoveredBySavingsPlans": "130.64",
+                "OnDemandCost": "43.48",
+                "TotalCost": "174.12",
+                "CoveragePercentage": "75.03"
+            },
+            "TimePeriod": {
+                "Start": "2026-01-14",
+                "End": "2026-01-15"
+            }
+        },
+        {
+            "Attributes": {
+                "INSTANCE_TYPE_FAMILY": null,
+                "REGION": null,
+                "SERVICE": "AWS Fargate"
+            },
+            "Coverage": {
+                "SpendCoveredBySavingsPlans": "431.24",
+                "OnDemandCost": "61.77",
+                "TotalCost": "493.01",
+                "CoveragePercentage": "87.47"
+            },
+            "TimePeriod": {
+                "Start": "2026-01-14",
+                "End": "2026-01-15"
+            }
+        },
+        {
+            "Attributes": {
+                "INSTANCE_TYPE_FAMILY": null,
+                "REGION": null,
+                "SERVICE": "AWS Lambda"
+            },
+            "Coverage": {
+                "SpendCoveredBySavingsPlans": "58.63",
+                "OnDemandCost": "30.52",
+                "TotalCost": "89.15",
+                "CoveragePercentage": "65.77"
+            },
+            "TimePeriod": {
+                "Start": "2026-01-15",
+                "End": "2026-01-16"
+            }
+        },
+        {
+            "Attributes": {
+                "INSTANCE_TYPE_FAMILY": null,
+                "REGION": null,
+                "SERVICE": "Amazon Elastic Compute Cloud - Compute"
+            },
+            "Coverage": {
+                "SpendCoveredBySavingsPlans": "102.05",
+                "OnDemandCost": "41.84",
+                "TotalCost": "143.89",
+                "CoveragePercentage": "70.92"
+            },
+            "TimePeriod": {
+                "Start": "2026-01-15",
+                "End": "2026-01-16"
+            }
+        },
+        {
+            "Attributes": {
+                "INSTANCE_TYPE_FAMILY": null,
+                "REGION": null,
+                "SERVICE": "Amazon Elastic Container Service"
+            },
+            "Coverage": {
+                "SpendCoveredBySavingsPlans": "115.18",
+                "OnDemandCost": "61.85",
+                "TotalCost": "177.03",
+                "CoveragePercentage": "65.06"
+            },
+            "TimePeriod": {
+                "Start": "2026-01-15",
+                "End": "2026-01-16"
+            }
+        },
+        {
+            "Attributes": {
+                "INSTANCE_TYPE_FAMILY": null,
+                "REGION": null,
+                "SERVICE": "Amazon Relational Database Service"
+            },
+            "Coverage": {
+                "SpendCoveredBySavingsPlans": "230.22",
+                "OnDemandCost": "133.48",
+                "TotalCost": "363.7",
+                "CoveragePercentage": "63.3"
+            },
+            "TimePeriod": {
+                "Start": "2026-01-15",
+                "End": "2026-01-16"
+            }
+        },
+        {
+            "Attributes": {
+                "INSTANCE_TYPE_FAMILY": null,
+                "REGION": null,
+                "SERVICE": "AWS Fargate"
+            },
+            "Coverage": {
+                "SpendCoveredBySavingsPlans": "317.17",
+                "OnDemandCost": "166.84",
+                "TotalCost": "484.01",
+                "CoveragePercentage": "65.53"
+            },
+            "TimePeriod": {
+                "Start": "2026-01-15",
+                "End": "2026-01-16"
+            }
+        },
+        {
+            "Attributes": {
+                "INSTANCE_TYPE_FAMILY": null,
+                "REGION": null,
+                "SERVICE": "AWS Lambda"
+            },
+            "Coverage": {
+                "SpendCoveredBySavingsPlans": "267.29",
+                "OnDemandCost": "104.82",
+                "TotalCost": "372.11",
+                "CoveragePercentage": "71.83"
+            },
+            "TimePeriod": {
+                "Start": "2026-01-16",
+                "End": "2026-01-17"
+            }
+        },
+        {
+            "Attributes": {
+                "INSTANCE_TYPE_FAMILY": null,
+                "REGION": null,
+                "SERVICE": "Amazon Elastic Compute Cloud - Compute"
+            },
+            "Coverage": {
+                "SpendCoveredBySavingsPlans": "106.61",
+                "OnDemandCost": "63.55",
+                "TotalCost": "170.16",
+                "CoveragePercentage": "62.65"
+            },
+            "TimePeriod": {
+                "Start": "2026-01-16",
+                "End": "2026-01-17"
+            }
+        },
+        {
+            "Attributes": {
+                "INSTANCE_TYPE_FAMILY": null,
+                "REGION": null,
+                "SERVICE": "Amazon Elastic Container Service"
+            },
+            "Coverage": {
+                "SpendCoveredBySavingsPlans": "171.86",
+                "OnDemandCost": "53.91",
+                "TotalCost": "225.77",
+                "CoveragePercentage": "76.12"
+            },
+            "TimePeriod": {
+                "Start": "2026-01-16",
+                "End": "2026-01-17"
+            }
+        },
+        {
+            "Attributes": {
+                "INSTANCE_TYPE_FAMILY": null,
+                "REGION": null,
+                "SERVICE": "Amazon Relational Database Service"
+            },
+            "Coverage": {
+                "SpendCoveredBySavingsPlans": "151.13",
+                "OnDemandCost": "64.9",
+                "TotalCost": "216.03",
+                "CoveragePercentage": "69.96"
+            },
+            "TimePeriod": {
+                "Start": "2026-01-16",
+                "End": "2026-01-17"
+            }
+        },
+        {
+            "Attributes": {
+                "INSTANCE_TYPE_FAMILY": null,
+                "REGION": null,
+                "SERVICE": "AWS Fargate"
+            },
+            "Coverage": {
+                "SpendCoveredBySavingsPlans": "99.09",
+                "OnDemandCost": "41.4",
+                "TotalCost": "140.49",
+                "CoveragePercentage": "70.53"
+            },
+            "TimePeriod": {
+                "Start": "2026-01-16",
+                "End": "2026-01-17"
+            }
+        },
+        {
+            "Attributes": {
+                "INSTANCE_TYPE_FAMILY": null,
+                "REGION": null,
+                "SERVICE": "AWS Lambda"
+            },
+            "Coverage": {
+                "SpendCoveredBySavingsPlans": "40.03",
+                "OnDemandCost": "11.58",
+                "TotalCost": "51.61",
+                "CoveragePercentage": "77.57"
+            },
+            "TimePeriod": {
+                "Start": "2026-01-17",
+                "End": "2026-01-18"
+            }
+        },
+        {
+            "Attributes": {
+                "INSTANCE_TYPE_FAMILY": null,
+                "REGION": null,
+                "SERVICE": "Amazon Elastic Compute Cloud - Compute"
+            },
+            "Coverage": {
+                "SpendCoveredBySavingsPlans": "372.39",
+                "OnDemandCost": "55.25",
+                "TotalCost": "427.64",
+                "CoveragePercentage": "87.08"
+            },
+            "TimePeriod": {
+                "Start": "2026-01-17",
+                "End": "2026-01-18"
+            }
+        },
+        {
+            "Attributes": {
+                "INSTANCE_TYPE_FAMILY": null,
+                "REGION": null,
+                "SERVICE": "Amazon Elastic Container Service"
+            },
+            "Coverage": {
+                "SpendCoveredBySavingsPlans": "105.02",
+                "OnDemandCost": "30.49",
+                "TotalCost": "135.51",
+                "CoveragePercentage": "77.5"
+            },
+            "TimePeriod": {
+                "Start": "2026-01-17",
+                "End": "2026-01-18"
+            }
+        },
+        {
+            "Attributes": {
+                "INSTANCE_TYPE_FAMILY": null,
+                "REGION": null,
+                "SERVICE": "Amazon Relational Database Service"
+            },
+            "Coverage": {
+                "SpendCoveredBySavingsPlans": "176.09",
+                "OnDemandCost": "101.52",
+                "TotalCost": "277.61",
+                "CoveragePercentage": "63.43"
+            },
+            "TimePeriod": {
+                "Start": "2026-01-17",
+                "End": "2026-01-18"
+            }
+        },
+        {
+            "Attributes": {
+                "INSTANCE_TYPE_FAMILY": null,
+                "REGION": null,
+                "SERVICE": "AWS Fargate"
+            },
+            "Coverage": {
+                "SpendCoveredBySavingsPlans": "349.56",
+                "OnDemandCost": "47.98",
+                "TotalCost": "397.54",
+                "CoveragePercentage": "87.93"
+            },
+            "TimePeriod": {
+                "Start": "2026-01-17",
+                "End": "2026-01-18"
+            }
+        }
+    ]
+}

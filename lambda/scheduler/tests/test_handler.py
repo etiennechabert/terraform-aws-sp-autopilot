@@ -211,27 +211,20 @@ def test_calculate_current_coverage_no_coverage_data(mock_env_vars, mock_clients
 # ============================================================================
 
 
-def test_get_aws_recommendations_compute_enabled(mock_env_vars, mock_clients):
+def test_get_aws_recommendations_compute_enabled(aws_mock_builder, mock_env_vars, mock_clients):
     """Test fetching Compute SP recommendations when enabled."""
     config = handler.load_configuration()
 
     with patch.object(handler.ce_client, "get_savings_plans_purchase_recommendation") as mock_rec:
-        mock_rec.return_value = {
-            "Metadata": {
-                "RecommendationId": "rec-123",
-                "GenerationTimestamp": "2026-01-13T00:00:00Z",
-                "LookbackPeriodInDays": "30",
-            },
-            "SavingsPlansPurchaseRecommendation": {
-                "SavingsPlansPurchaseRecommendationDetails": [{"HourlyCommitmentToPurchase": "2.5"}]
-            },
-        }
+        # Use real AWS response structure with custom commitment
+        # Note: Using database recommendation as template since compute fixture is empty
+        mock_rec.return_value = aws_mock_builder.recommendation("database", hourly_commitment=2.5)
 
         result = handler.get_aws_recommendations(config)
 
         assert result["compute"] is not None
-        assert result["compute"]["HourlyCommitmentToPurchase"] == "2.5"
-        assert result["compute"]["RecommendationId"] == "rec-123"
+        assert result["compute"]["HourlyCommitmentToPurchase"] == "2.500"
+        assert "RecommendationId" in result["compute"]
 
 
 def test_get_aws_recommendations_database_disabled(mock_env_vars, mock_clients):
@@ -242,7 +235,9 @@ def test_get_aws_recommendations_database_disabled(mock_env_vars, mock_clients):
         mock_rec.return_value = {
             "Metadata": {"RecommendationId": "rec-123", "LookbackPeriodInDays": "30"},
             "SavingsPlansPurchaseRecommendation": {
-                "SavingsPlansPurchaseRecommendationDetails": [{"HourlyCommitmentToPurchase": "2.5"}]
+                "SavingsPlansPurchaseRecommendationDetails": [
+                    {"HourlyCommitmentToPurchase": "2.500"}
+                ]
             },
         }
 
@@ -252,7 +247,7 @@ def test_get_aws_recommendations_database_disabled(mock_env_vars, mock_clients):
         assert result["database"] is None
 
 
-def test_get_aws_recommendations_database_enabled(monkeypatch, mock_clients):
+def test_get_aws_recommendations_database_enabled(aws_mock_builder, monkeypatch, mock_clients):
     """Test fetching Database SP recommendations with correct API parameters."""
     # Enable Database SP
     monkeypatch.setenv("QUEUE_URL", "https://sqs.us-east-1.amazonaws.com/123456789012/test-queue")
@@ -263,25 +258,15 @@ def test_get_aws_recommendations_database_enabled(monkeypatch, mock_clients):
     config = handler.load_configuration()
 
     with patch.object(handler.ce_client, "get_savings_plans_purchase_recommendation") as mock_rec:
-        mock_rec.return_value = {
-            "Metadata": {
-                "RecommendationId": "rec-db-456",
-                "GenerationTimestamp": "2026-01-13T00:00:00Z",
-                "LookbackPeriodInDays": "30",
-            },
-            "SavingsPlansPurchaseRecommendation": {
-                "SavingsPlansPurchaseRecommendationDetails": [
-                    {"HourlyCommitmentToPurchase": "1.25"}
-                ]
-            },
-        }
+        # Use real AWS response structure for Database SP
+        mock_rec.return_value = aws_mock_builder.recommendation("database", hourly_commitment=1.25)
 
         result = handler.get_aws_recommendations(config)
 
         # Verify Database SP recommendation was returned
         assert result["database"] is not None
-        assert result["database"]["HourlyCommitmentToPurchase"] == "1.25"
-        assert result["database"]["RecommendationId"] == "rec-db-456"
+        assert result["database"]["HourlyCommitmentToPurchase"] == "1.250"
+        assert "RecommendationId" in result["database"]
 
         # Verify API was called with correct Database SP parameters
         mock_rec.assert_called_once_with(
@@ -293,29 +278,31 @@ def test_get_aws_recommendations_database_enabled(monkeypatch, mock_clients):
 
 
 def test_get_aws_recommendations_database_insufficient_data(monkeypatch, mock_clients):
-    """Test rejection of Database SP recommendations with insufficient data."""
+    """Test Database SP recommendations with limited data (now accepted)."""
     # Enable Database SP
     monkeypatch.setenv("QUEUE_URL", "https://sqs.us-east-1.amazonaws.com/123456789012/test-queue")
     monkeypatch.setenv("SNS_TOPIC_ARN", "arn:aws:sns:us-east-1:123456789012:test-topic")
     monkeypatch.setenv("ENABLE_DATABASE_SP", "true")
     monkeypatch.setenv("ENABLE_COMPUTE_SP", "false")
-    monkeypatch.setenv("MIN_DATA_DAYS", "14")
 
     config = handler.load_configuration()
 
     with patch.object(handler.ce_client, "get_savings_plans_purchase_recommendation") as mock_rec:
-        # Return only 10 days of data (less than min_data_days of 14)
+        # Return limited data (min_data_days validation was removed)
         mock_rec.return_value = {
             "Metadata": {"RecommendationId": "rec-db-789", "LookbackPeriodInDays": "10"},
             "SavingsPlansPurchaseRecommendation": {
-                "SavingsPlansPurchaseRecommendationDetails": [{"HourlyCommitmentToPurchase": "1.5"}]
+                "SavingsPlansPurchaseRecommendationDetails": [
+                    {"HourlyCommitmentToPurchase": "1.500"}
+                ]
             },
         }
 
         result = handler.get_aws_recommendations(config)
 
-        # Should reject due to insufficient data
-        assert result["database"] is None
+        # min_data_days validation was removed, so recommendations are accepted
+        assert result["database"] is not None
+        assert result["database"]["HourlyCommitmentToPurchase"] == "1.500"
 
 
 def test_get_aws_recommendations_database_no_recommendations(monkeypatch, mock_clients):
@@ -339,7 +326,7 @@ def test_get_aws_recommendations_database_no_recommendations(monkeypatch, mock_c
         assert result["database"] is None
 
 
-def test_get_aws_recommendations_sagemaker_enabled(monkeypatch, mock_clients):
+def test_get_aws_recommendations_sagemaker_enabled(aws_mock_builder, monkeypatch, mock_clients):
     """Test fetching SageMaker SP recommendations with correct API parameters."""
     # Enable SageMaker SP
     monkeypatch.setenv("QUEUE_URL", "https://sqs.us-east-1.amazonaws.com/123456789012/test-queue")
@@ -351,25 +338,15 @@ def test_get_aws_recommendations_sagemaker_enabled(monkeypatch, mock_clients):
     config = handler.load_configuration()
 
     with patch.object(handler.ce_client, "get_savings_plans_purchase_recommendation") as mock_rec:
-        mock_rec.return_value = {
-            "Metadata": {
-                "RecommendationId": "rec-sm-456",
-                "GenerationTimestamp": "2026-01-13T00:00:00Z",
-                "LookbackPeriodInDays": "30",
-            },
-            "SavingsPlansPurchaseRecommendation": {
-                "SavingsPlansPurchaseRecommendationDetails": [
-                    {"HourlyCommitmentToPurchase": "3.75"}
-                ]
-            },
-        }
+        # Use real AWS response structure for SageMaker SP
+        mock_rec.return_value = aws_mock_builder.recommendation("sagemaker", hourly_commitment=3.75)
 
         result = handler.get_aws_recommendations(config)
 
         # Verify SageMaker SP recommendation was returned
         assert result["sagemaker"] is not None
-        assert result["sagemaker"]["HourlyCommitmentToPurchase"] == "3.75"
-        assert result["sagemaker"]["RecommendationId"] == "rec-sm-456"
+        assert result["sagemaker"]["HourlyCommitmentToPurchase"] == "3.750"
+        assert "RecommendationId" in result["sagemaker"]
 
         # Verify API was called with correct SageMaker SP parameters
         mock_rec.assert_called_once_with(
@@ -388,7 +365,9 @@ def test_get_aws_recommendations_sagemaker_disabled(mock_env_vars, mock_clients)
         mock_rec.return_value = {
             "Metadata": {"RecommendationId": "rec-123", "LookbackPeriodInDays": "30"},
             "SavingsPlansPurchaseRecommendation": {
-                "SavingsPlansPurchaseRecommendationDetails": [{"HourlyCommitmentToPurchase": "2.5"}]
+                "SavingsPlansPurchaseRecommendationDetails": [
+                    {"HourlyCommitmentToPurchase": "2.500"}
+                ]
             },
         }
 
@@ -399,30 +378,32 @@ def test_get_aws_recommendations_sagemaker_disabled(mock_env_vars, mock_clients)
 
 
 def test_get_aws_recommendations_sagemaker_insufficient_data(monkeypatch, mock_clients):
-    """Test rejection of SageMaker SP recommendations with insufficient data."""
+    """Test SageMaker SP recommendations with limited lookback data (now accepted)."""
     # Enable SageMaker SP
     monkeypatch.setenv("QUEUE_URL", "https://sqs.us-east-1.amazonaws.com/123456789012/test-queue")
     monkeypatch.setenv("SNS_TOPIC_ARN", "arn:aws:sns:us-east-1:123456789012:test-topic")
     monkeypatch.setenv("ENABLE_SAGEMAKER_SP", "true")
     monkeypatch.setenv("ENABLE_COMPUTE_SP", "false")
     monkeypatch.setenv("ENABLE_DATABASE_SP", "false")
-    monkeypatch.setenv("MIN_DATA_DAYS", "14")
 
     config = handler.load_configuration()
 
     with patch.object(handler.ce_client, "get_savings_plans_purchase_recommendation") as mock_rec:
-        # Return only 10 days of data (less than min_data_days of 14)
+        # Return only 10 days of data
         mock_rec.return_value = {
             "Metadata": {"RecommendationId": "rec-sm-789", "LookbackPeriodInDays": "10"},
             "SavingsPlansPurchaseRecommendation": {
-                "SavingsPlansPurchaseRecommendationDetails": [{"HourlyCommitmentToPurchase": "2.5"}]
+                "SavingsPlansPurchaseRecommendationDetails": [
+                    {"HourlyCommitmentToPurchase": "2.500"}
+                ]
             },
         }
 
         result = handler.get_aws_recommendations(config)
 
-        # Should reject due to insufficient data
-        assert result["sagemaker"] is None
+        # min_data_days validation was removed, so recommendations with any data are accepted
+        assert result["sagemaker"] is not None
+        assert result["sagemaker"]["HourlyCommitmentToPurchase"] == "2.500"
 
 
 def test_get_aws_recommendations_sagemaker_no_recommendations(monkeypatch, mock_clients):
@@ -448,22 +429,25 @@ def test_get_aws_recommendations_sagemaker_no_recommendations(monkeypatch, mock_
 
 
 def test_get_aws_recommendations_insufficient_data(mock_env_vars, mock_clients):
-    """Test rejection of recommendations with insufficient data."""
+    """Test Compute SP recommendations with limited lookback data (now accepted)."""
     config = handler.load_configuration()
 
     with patch.object(handler.ce_client, "get_savings_plans_purchase_recommendation") as mock_rec:
-        # Return only 10 days of data (less than min_data_days of 14)
+        # Return only 10 days of data
         mock_rec.return_value = {
             "Metadata": {"RecommendationId": "rec-123", "LookbackPeriodInDays": "10"},
             "SavingsPlansPurchaseRecommendation": {
-                "SavingsPlansPurchaseRecommendationDetails": [{"HourlyCommitmentToPurchase": "2.5"}]
+                "SavingsPlansPurchaseRecommendationDetails": [
+                    {"HourlyCommitmentToPurchase": "2.500"}
+                ]
             },
         }
 
         result = handler.get_aws_recommendations(config)
 
-        # Should reject due to insufficient data
-        assert result["compute"] is None
+        # min_data_days validation was removed, so recommendations with any data are accepted
+        assert result["compute"] is not None
+        assert result["compute"]["HourlyCommitmentToPurchase"] == "2.500"
 
 
 def test_get_aws_recommendations_no_recommendations(mock_env_vars, mock_clients):
@@ -541,7 +525,9 @@ def test_get_aws_recommendations_parallel_execution_both_enabled(monkeypatch, mo
                 "LookbackPeriodInDays": "30",
             },
             "SavingsPlansPurchaseRecommendation": {
-                "SavingsPlansPurchaseRecommendationDetails": [{"HourlyCommitmentToPurchase": "1.5"}]
+                "SavingsPlansPurchaseRecommendationDetails": [
+                    {"HourlyCommitmentToPurchase": "1.500"}
+                ]
             },
         }
 
@@ -558,7 +544,9 @@ def test_get_aws_recommendations_parallel_execution_both_enabled(monkeypatch, mo
                 "LookbackPeriodInDays": "30",
             },
             "SavingsPlansPurchaseRecommendation": {
-                "SavingsPlansPurchaseRecommendationDetails": [{"HourlyCommitmentToPurchase": "2.5"}]
+                "SavingsPlansPurchaseRecommendationDetails": [
+                    {"HourlyCommitmentToPurchase": "2.500"}
+                ]
             },
         }
 
@@ -577,8 +565,8 @@ def test_get_aws_recommendations_parallel_execution_both_enabled(monkeypatch, mo
         # Verify both recommendations were returned
         assert result["compute"] is not None
         assert result["database"] is not None
-        assert result["compute"]["HourlyCommitmentToPurchase"] == "1.5"
-        assert result["database"]["HourlyCommitmentToPurchase"] == "2.5"
+        assert result["compute"]["HourlyCommitmentToPurchase"] == "1.500"
+        assert result["database"]["HourlyCommitmentToPurchase"] == "2.500"
 
         # Verify API was called twice (once for each SP type)
         assert mock_rec.call_count == 2
@@ -614,7 +602,9 @@ def test_get_aws_recommendations_parallel_execution_uses_threadpool(monkeypatch,
         mock_rec.return_value = {
             "Metadata": {"RecommendationId": "rec-123", "LookbackPeriodInDays": "30"},
             "SavingsPlansPurchaseRecommendation": {
-                "SavingsPlansPurchaseRecommendationDetails": [{"HourlyCommitmentToPurchase": "1.0"}]
+                "SavingsPlansPurchaseRecommendationDetails": [
+                    {"HourlyCommitmentToPurchase": "1.000"}
+                ]
             },
         }
 
@@ -627,13 +617,13 @@ def test_get_aws_recommendations_parallel_execution_uses_threadpool(monkeypatch,
             mock_future1 = MagicMock()
             mock_future2 = MagicMock()
             mock_future1.result.return_value = {
-                "HourlyCommitmentToPurchase": "1.5",
+                "HourlyCommitmentToPurchase": "1.500",
                 "RecommendationId": "rec-compute",
                 "GenerationTimestamp": "2026-01-13T00:00:00Z",
                 "Details": {},
             }
             mock_future2.result.return_value = {
-                "HourlyCommitmentToPurchase": "2.5",
+                "HourlyCommitmentToPurchase": "2.500",
                 "RecommendationId": "rec-database",
                 "GenerationTimestamp": "2026-01-13T00:00:00Z",
                 "Details": {},
@@ -677,7 +667,7 @@ def test_get_aws_recommendations_parallel_execution_error_handling(monkeypatch, 
                     "Metadata": {"RecommendationId": "rec-compute", "LookbackPeriodInDays": "30"},
                     "SavingsPlansPurchaseRecommendation": {
                         "SavingsPlansPurchaseRecommendationDetails": [
-                            {"HourlyCommitmentToPurchase": "1.5"}
+                            {"HourlyCommitmentToPurchase": "1.500"}
                         ]
                     },
                 }
@@ -703,7 +693,9 @@ def test_get_aws_recommendations_parallel_single_task(mock_env_vars, mock_client
                 "LookbackPeriodInDays": "30",
             },
             "SavingsPlansPurchaseRecommendation": {
-                "SavingsPlansPurchaseRecommendationDetails": [{"HourlyCommitmentToPurchase": "2.5"}]
+                "SavingsPlansPurchaseRecommendationDetails": [
+                    {"HourlyCommitmentToPurchase": "2.500"}
+                ]
             },
         }
 
@@ -711,7 +703,7 @@ def test_get_aws_recommendations_parallel_single_task(mock_env_vars, mock_client
 
         # Should still work with ThreadPoolExecutor even with single task
         assert result["compute"] is not None
-        assert result["compute"]["HourlyCommitmentToPurchase"] == "2.5"
+        assert result["compute"]["HourlyCommitmentToPurchase"] == "2.500"
         assert result["database"] is None
 
         # Verify only one API call was made
@@ -756,7 +748,7 @@ def test_calculate_purchase_need_positive_gap():
     coverage = {"compute": 70.0, "database": 0.0}
 
     recommendations = {
-        "compute": {"HourlyCommitmentToPurchase": "1.5", "RecommendationId": "test-rec-123"},
+        "compute": {"HourlyCommitmentToPurchase": "1.500", "RecommendationId": "test-rec-123"},
         "database": None,
     }
 
@@ -781,7 +773,7 @@ def test_calculate_purchase_need_no_gap():
     coverage = {"compute": 90.0, "database": 0.0}
 
     recommendations = {
-        "compute": {"HourlyCommitmentToPurchase": "1.5", "RecommendationId": "test-rec-123"},
+        "compute": {"HourlyCommitmentToPurchase": "1.500", "RecommendationId": "test-rec-123"},
         "database": None,
     }
 
@@ -822,7 +814,7 @@ def test_calculate_purchase_need_zero_commitment():
     coverage = {"compute": 70.0, "database": 0.0}
 
     recommendations = {
-        "compute": {"HourlyCommitmentToPurchase": "0", "RecommendationId": "test-rec-123"},
+        "compute": {"HourlyCommitmentToPurchase": "0.000", "RecommendationId": "test-rec-123"},
         "database": None,
     }
 
@@ -844,7 +836,7 @@ def test_calculate_purchase_need_database_sp():
 
     recommendations = {
         "compute": None,
-        "database": {"HourlyCommitmentToPurchase": "2.5", "RecommendationId": "test-db-rec-456"},
+        "database": {"HourlyCommitmentToPurchase": "2.500", "RecommendationId": "test-db-rec-456"},
     }
 
     result = handler.calculate_purchase_need(config, coverage, recommendations)
@@ -871,7 +863,7 @@ def test_calculate_purchase_need_database_no_gap():
 
     recommendations = {
         "compute": None,
-        "database": {"HourlyCommitmentToPurchase": "2.5", "RecommendationId": "test-db-rec-789"},
+        "database": {"HourlyCommitmentToPurchase": "2.500", "RecommendationId": "test-db-rec-789"},
     }
 
     result = handler.calculate_purchase_need(config, coverage, recommendations)
@@ -893,7 +885,7 @@ def test_calculate_purchase_need_database_zero_commitment():
 
     recommendations = {
         "compute": None,
-        "database": {"HourlyCommitmentToPurchase": "0", "RecommendationId": "test-db-rec-zero"},
+        "database": {"HourlyCommitmentToPurchase": "0.000", "RecommendationId": "test-db-rec-zero"},
     }
 
     result = handler.calculate_purchase_need(config, coverage, recommendations)
@@ -935,7 +927,7 @@ def test_calculate_purchase_need_sagemaker_sp():
     recommendations = {
         "compute": None,
         "database": None,
-        "sagemaker": {"HourlyCommitmentToPurchase": "3.75", "RecommendationId": "test-sm-rec-456"},
+        "sagemaker": {"HourlyCommitmentToPurchase": "3.750", "RecommendationId": "test-sm-rec-456"},
     }
 
     result = handler.calculate_purchase_need(config, coverage, recommendations)
@@ -962,7 +954,7 @@ def test_calculate_purchase_need_sagemaker_no_gap():
     recommendations = {
         "compute": None,
         "database": None,
-        "sagemaker": {"HourlyCommitmentToPurchase": "3.75", "RecommendationId": "test-sm-rec-789"},
+        "sagemaker": {"HourlyCommitmentToPurchase": "3.750", "RecommendationId": "test-sm-rec-789"},
     }
 
     result = handler.calculate_purchase_need(config, coverage, recommendations)
@@ -985,7 +977,10 @@ def test_calculate_purchase_need_sagemaker_zero_commitment():
     recommendations = {
         "compute": None,
         "database": None,
-        "sagemaker": {"HourlyCommitmentToPurchase": "0", "RecommendationId": "test-sm-rec-zero"},
+        "sagemaker": {
+            "HourlyCommitmentToPurchase": "0.000",
+            "RecommendationId": "test-sm-rec-zero",
+        },
     }
 
     result = handler.calculate_purchase_need(config, coverage, recommendations)
@@ -1363,7 +1358,7 @@ def test_handler_parallel_execution(mock_env_vars):
             "SavingsPlansPurchaseRecommendationDetails": [
                 {
                     "SavingsPlansDetails": {"OfferingId": "test-offering"},
-                    "HourlyCommitmentToPurchase": "1.5",
+                    "HourlyCommitmentToPurchase": "1.500",
                 }
             ]
         }
@@ -1483,7 +1478,7 @@ def test_handler_dry_run_mode(mock_env_vars):
 
         mock_coverage.return_value = {"compute": 70.0, "database": 0.0}
         mock_recs.return_value = {
-            "compute": {"HourlyCommitmentToPurchase": "1.0", "RecommendationId": "rec-123"},
+            "compute": {"HourlyCommitmentToPurchase": "1.000", "RecommendationId": "rec-123"},
             "database": None,
         }
 
@@ -1523,7 +1518,7 @@ def test_handler_production_mode(mock_env_vars, monkeypatch):
 
         mock_coverage.return_value = {"compute": 70.0, "database": 0.0}
         mock_recs.return_value = {
-            "compute": {"HourlyCommitmentToPurchase": "1.0", "RecommendationId": "rec-123"},
+            "compute": {"HourlyCommitmentToPurchase": "1.000", "RecommendationId": "rec-123"},
             "database": None,
         }
 
