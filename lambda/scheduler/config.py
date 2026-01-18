@@ -58,6 +58,12 @@ CONFIG_SCHEMA = {
         "default": "1",
         "env_var": "MIN_PURCHASE_PERCENT",
     },
+    "min_gap_threshold": {
+        "required": False,
+        "type": "float",
+        "default": "5.0",
+        "env_var": "MIN_GAP_THRESHOLD",
+    },
     "renewal_window_days": {
         "required": False,
         "type": "int",
