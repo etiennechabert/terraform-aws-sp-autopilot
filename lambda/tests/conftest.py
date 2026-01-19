@@ -34,67 +34,69 @@ def aws_response():
         - recommendation_database_sp.json
         - recommendation_sagemaker_sp.json
     """
+
     def _load(filename: str) -> dict:
         fixture_path = FIXTURES_DIR / filename
         if not fixture_path.exists():
             raise FileNotFoundError(f"Fixture file not found: {fixture_path}")
         with open(fixture_path) as f:
             return json.load(f)
+
     return _load
 
 
 @pytest.fixture
 def aws_describe_savings_plans(aws_response):
     """Fixture for describe_savings_plans API response."""
-    return aws_response('describe_savings_plans.json')
+    return aws_response("describe_savings_plans.json")
 
 
 @pytest.fixture
 def aws_get_cost_and_usage(aws_response):
     """Fixture for get_cost_and_usage API response."""
-    return aws_response('get_cost_and_usage.json')
+    return aws_response("get_cost_and_usage.json")
 
 
 @pytest.fixture
 def aws_get_savings_plans_coverage_grouped(aws_response):
     """Fixture for get_savings_plans_coverage (grouped by SERVICE) API response."""
-    return aws_response('get_savings_plans_coverage_grouped.json')
+    return aws_response("get_savings_plans_coverage_grouped.json")
 
 
 @pytest.fixture
 def aws_get_savings_plans_coverage_history(aws_response):
     """Fixture for get_savings_plans_coverage (ungrouped history) API response."""
-    return aws_response('get_savings_plans_coverage_history.json')
+    return aws_response("get_savings_plans_coverage_history.json")
 
 
 @pytest.fixture
 def aws_get_savings_plans_utilization(aws_response):
     """Fixture for get_savings_plans_utilization API response."""
-    return aws_response('get_savings_plans_utilization.json')
+    return aws_response("get_savings_plans_utilization.json")
 
 
 @pytest.fixture
 def aws_recommendation_compute_sp(aws_response):
     """Fixture for Compute SP recommendation API response (empty)."""
-    return aws_response('recommendation_compute_sp.json')
+    return aws_response("recommendation_compute_sp.json")
 
 
 @pytest.fixture
 def aws_recommendation_database_sp(aws_response):
     """Fixture for Database SP recommendation API response."""
-    return aws_response('recommendation_database_sp.json')
+    return aws_response("recommendation_database_sp.json")
 
 
 @pytest.fixture
 def aws_recommendation_sagemaker_sp(aws_response):
     """Fixture for SageMaker SP recommendation API response."""
-    return aws_response('recommendation_sagemaker_sp.json')
+    return aws_response("recommendation_sagemaker_sp.json")
 
 
 @pytest.fixture
 def aws_create_savings_plan(aws_response):
     """Fixture for create_savings_plan API response."""
-    return aws_response('create_savings_plan.json')
+    return aws_response("create_savings_plan.json")
 
 
 @pytest.fixture
@@ -116,7 +118,6 @@ def aws_mock_builder(aws_response):
             )
     """
     import copy
-    from datetime import datetime, timedelta, timezone
 
     class AwsMockBuilder:
         """Builder for AWS API responses with customization support."""
@@ -124,7 +125,7 @@ def aws_mock_builder(aws_response):
         def __init__(self, loader):
             self._load = loader
 
-        def describe_savings_plans(self, plans_count=2, state='active', **overrides):
+        def describe_savings_plans(self, plans_count=2, state="active", **overrides):
             """
             Create describe_savings_plans response.
 
@@ -136,18 +137,15 @@ def aws_mock_builder(aws_response):
             Returns:
                 dict: SavingsPlans API response
             """
-            data = copy.deepcopy(self._load('describe_savings_plans.json'))
+            data = copy.deepcopy(self._load("describe_savings_plans.json"))
 
             # Adjust number of plans
-            if plans_count != len(data['savingsPlans']):
-                data['savingsPlans'] = data['savingsPlans'][:plans_count]
+            if plans_count != len(data["savingsPlans"]):
+                data["savingsPlans"] = data["savingsPlans"][:plans_count]
 
             # Apply state filter
-            for plan in data['savingsPlans']:
-                if 'state' in overrides:
-                    plan['state'] = overrides['state']
-                else:
-                    plan['state'] = state
+            for plan in data["savingsPlans"]:
+                plan["state"] = overrides.get("state", state)
 
             return data
 
@@ -165,21 +163,22 @@ def aws_mock_builder(aws_response):
                 dict: Cost Explorer coverage response
             """
             if empty:
-                return {'SavingsPlansCoverages': []}
+                return {"SavingsPlansCoverages": []}
 
-            data = copy.deepcopy(self._load('get_savings_plans_coverage_grouped.json'))
+            data = copy.deepcopy(self._load("get_savings_plans_coverage_grouped.json"))
 
             # Filter by services if specified
             if services:
-                data['SavingsPlansCoverages'] = [
-                    item for item in data['SavingsPlansCoverages']
-                    if item['Attributes']['SERVICE'] in services
+                data["SavingsPlansCoverages"] = [
+                    item
+                    for item in data["SavingsPlansCoverages"]
+                    if item["Attributes"]["SERVICE"] in services
                 ]
 
             # Override coverage percentage if specified
             if coverage_percentage is not None:
-                for item in data['SavingsPlansCoverages']:
-                    item['Coverage']['CoveragePercentage'] = str(coverage_percentage)
+                for item in data["SavingsPlansCoverages"]:
+                    item["Coverage"]["CoveragePercentage"] = str(coverage_percentage)
 
             return data
 
@@ -195,20 +194,22 @@ def aws_mock_builder(aws_response):
             Returns:
                 dict: Cost Explorer coverage history response
             """
-            data = copy.deepcopy(self._load('get_savings_plans_coverage_history.json'))
+            data = copy.deepcopy(self._load("get_savings_plans_coverage_history.json"))
 
             # Limit number of days if specified
             if days:
-                data['SavingsPlansCoverages'] = data['SavingsPlansCoverages'][:days]
+                data["SavingsPlansCoverages"] = data["SavingsPlansCoverages"][:days]
 
             # Override coverage percentage if specified
             if coverage_percentage is not None:
-                for item in data['SavingsPlansCoverages']:
-                    item['Coverage']['CoveragePercentage'] = str(coverage_percentage)
+                for item in data["SavingsPlansCoverages"]:
+                    item["Coverage"]["CoveragePercentage"] = str(coverage_percentage)
 
             return data
 
-        def recommendation(self, sp_type='database', hourly_commitment=None, empty=False, **overrides):
+        def recommendation(
+            self, sp_type="database", hourly_commitment=None, empty=False, **overrides
+        ):
             """
             Create get_savings_plans_purchase_recommendation response.
 
@@ -221,22 +222,28 @@ def aws_mock_builder(aws_response):
             Returns:
                 dict: Cost Explorer recommendation response
             """
-            data = copy.deepcopy(self._load(f'recommendation_{sp_type}_sp.json'))
+            data = copy.deepcopy(self._load(f"recommendation_{sp_type}_sp.json"))
 
             if empty:
-                data['SavingsPlansPurchaseRecommendation'] = {}
+                data["SavingsPlansPurchaseRecommendation"] = {}
                 return data
 
             # Override hourly commitment if specified
             if hourly_commitment is not None:
-                rec = data.get('SavingsPlansPurchaseRecommendation', {})
-                details = rec.get('SavingsPlansPurchaseRecommendationDetails', [])
+                rec = data.get("SavingsPlansPurchaseRecommendation", {})
+                details = rec.get("SavingsPlansPurchaseRecommendationDetails", [])
                 if details:
-                    details[0]['HourlyCommitmentToPurchase'] = str(hourly_commitment)
+                    # Format as string with 3 decimal places to match AWS API format
+                    formatted_commitment = (
+                        f"{hourly_commitment:.3f}"
+                        if isinstance(hourly_commitment, (int, float))
+                        else str(hourly_commitment)
+                    )
+                    details[0]["HourlyCommitmentToPurchase"] = formatted_commitment
                     # Also update summary
-                    summary = rec.get('SavingsPlansPurchaseRecommendationSummary', {})
+                    summary = rec.get("SavingsPlansPurchaseRecommendationSummary", {})
                     if summary:
-                        summary['HourlyCommitmentToPurchase'] = str(hourly_commitment)
+                        summary["HourlyCommitmentToPurchase"] = formatted_commitment
 
             return data
 
@@ -252,18 +259,18 @@ def aws_mock_builder(aws_response):
             Returns:
                 dict: Cost Explorer utilization response
             """
-            data = copy.deepcopy(self._load('get_savings_plans_utilization.json'))
+            data = copy.deepcopy(self._load("get_savings_plans_utilization.json"))
 
             # Limit number of days if specified
             if days:
-                data['SavingsPlansUtilizationsByTime'] = (
-                    data['SavingsPlansUtilizationsByTime'][:days]
-                )
+                data["SavingsPlansUtilizationsByTime"] = data["SavingsPlansUtilizationsByTime"][
+                    :days
+                ]
 
             # Override utilization percentage if specified
             if utilization_percentage is not None:
-                for item in data['SavingsPlansUtilizationsByTime']:
-                    item['Utilization']['UtilizationPercentage'] = str(utilization_percentage)
+                for item in data["SavingsPlansUtilizationsByTime"]:
+                    item["Utilization"]["UtilizationPercentage"] = str(utilization_percentage)
 
             return data
 
@@ -278,11 +285,11 @@ def aws_mock_builder(aws_response):
             Returns:
                 dict: Cost Explorer cost and usage response
             """
-            data = copy.deepcopy(self._load('get_cost_and_usage.json'))
+            data = copy.deepcopy(self._load("get_cost_and_usage.json"))
 
             # Limit number of days if specified
             if days:
-                data['ResultsByTime'] = data['ResultsByTime'][:days]
+                data["ResultsByTime"] = data["ResultsByTime"][:days]
 
             return data
 
@@ -297,11 +304,11 @@ def aws_mock_builder(aws_response):
             Returns:
                 dict: SavingsPlans create_savings_plan response
             """
-            data = copy.deepcopy(self._load('create_savings_plan.json'))
+            data = copy.deepcopy(self._load("create_savings_plan.json"))
 
             # Override SP ID if specified
             if savings_plan_id:
-                data['savingsPlanId'] = savings_plan_id
+                data["savingsPlanId"] = savings_plan_id
 
             return data
 

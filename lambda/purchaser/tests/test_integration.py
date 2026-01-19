@@ -105,13 +105,15 @@ def test_valid_purchase_success(aws_mock_builder, mock_env_vars, mock_clients):
     )
 
     # Mock no expiring plans - use real structure
-    mock_clients["savingsplans"].describe_savings_plans.return_value = (
-        aws_mock_builder.describe_savings_plans(plans_count=0)
-    )
+    mock_clients[
+        "savingsplans"
+    ].describe_savings_plans.return_value = aws_mock_builder.describe_savings_plans(plans_count=0)
 
     # Mock successful purchase - use real structure
-    mock_clients["savingsplans"].create_savings_plan.return_value = (
-        aws_mock_builder.create_savings_plan(savings_plan_id="sp-12345678")
+    mock_clients[
+        "savingsplans"
+    ].create_savings_plan.return_value = aws_mock_builder.create_savings_plan(
+        savings_plan_id="sp-12345678"
     )
 
     # Execute handler

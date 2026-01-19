@@ -97,11 +97,12 @@ def calculate_current_coverage(
             # Call Cost Explorer API to get Savings Plans coverage metrics
             # TimePeriod: Must be in ISO format (YYYY-MM-DD)
             # Granularity: DAILY returns one data point per day in the time range
-            # GroupBy: Separates coverage by Savings Plan type (Compute, SageMaker, etc.)
+            # GroupBy: Separates coverage by service to match AWS API requirements
+            # AWS now requires SERVICE as the dimension key (SAVINGS_PLANS_TYPE no longer supported)
             response = ce_client.get_savings_plans_coverage(
                 TimePeriod={"Start": start_date.isoformat(), "End": end_date.isoformat()},
                 Granularity="DAILY",
-                GroupBy=[{"Type": "DIMENSION", "Key": "SAVINGS_PLANS_TYPE"}],
+                GroupBy=[{"Type": "DIMENSION", "Key": "SERVICE"}],
             )
         except ClientError as e:
             error_code = e.response["Error"]["Code"]
@@ -139,27 +140,46 @@ def calculate_current_coverage(
         coverage = {"compute": 0.0, "database": 0.0, "sagemaker": 0.0}
 
         # Extract coverage by SP type from grouped data
-        # When using GroupBy=["SAVINGS_PLANS_TYPE"], the response structure is:
-        # {"Groups": [{"Attributes": {"SAVINGS_PLANS_TYPE": "ComputeSP"}, "Coverage": {"CoveragePercentage": "75.5"}}]}
+        # When using GroupBy=["SERVICE"], the response structure is:
+        # {"Groups": [{"Attributes": {"SERVICE": "Amazon Elastic Compute Cloud - Compute"}, "Coverage": {"CoveragePercentage": "75.5"}}]}
         coverage_groups = latest_coverage.get("Groups", [])
 
         if coverage_groups:
-            # GroupBy returned separate coverage per SP type - parse each group
+            # GroupBy returned separate coverage per service - map services to SP types
             for group in coverage_groups:
-                sp_type = group.get("Attributes", {}).get("SAVINGS_PLANS_TYPE", "").lower()
+                service_name = group.get("Attributes", {}).get("SERVICE", "").lower()
                 coverage_data = group.get("Coverage", {})
 
                 if "CoveragePercentage" in coverage_data:
                     percentage = float(coverage_data["CoveragePercentage"])
 
-                    # Map AWS SP types to our internal names
-                    # ComputeSP and EC2InstanceSP both contribute to compute coverage
-                    if "computesp" in sp_type or "ec2instancesp" in sp_type:
+                    # Map AWS services to SP types
+                    # Compute Savings Plans cover: EC2, Lambda, Fargate
+                    if any(
+                        svc in service_name
+                        for svc in [
+                            "ec2",
+                            "elastic compute cloud",
+                            "lambda",
+                            "fargate",
+                            "elastic container service",
+                        ]
+                    ):
                         coverage["compute"] = max(coverage["compute"], percentage)
-                    elif "sagemakersp" in sp_type:
+                    # SageMaker Savings Plans cover: SageMaker
+                    elif "sagemaker" in service_name:
                         coverage["sagemaker"] = percentage
-                    # RDS Instance SPs are technically separate but we group as database
-                    elif "rdsinstance" in sp_type:
+                    # Database Savings Plans cover: RDS, DynamoDB, Aurora
+                    elif any(
+                        svc in service_name
+                        for svc in [
+                            "rds",
+                            "relational database",
+                            "dynamodb",
+                            "aurora",
+                            "database migration",
+                        ]
+                    ):
                         coverage["database"] = percentage
 
             logger.info(

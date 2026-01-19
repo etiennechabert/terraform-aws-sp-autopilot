@@ -47,13 +47,13 @@ def test_fetch_compute_sp_recommendation_success(aws_mock_builder, mock_ce_clien
     # Use real AWS recommendation structure with custom hourly commitment
     # Note: Using database recommendation as template since compute fixture is empty
     mock_ce_client.get_savings_plans_purchase_recommendation.return_value = (
-        aws_mock_builder.recommendation('database', hourly_commitment=5.50)
+        aws_mock_builder.recommendation("database", hourly_commitment=5.50)
     )
 
     result = recommendations._fetch_compute_sp_recommendation(mock_ce_client, "THIRTY_DAYS")
 
     assert result is not None
-    assert result["HourlyCommitmentToPurchase"] == "5.50"
+    assert result["HourlyCommitmentToPurchase"] == "5.500"
     assert "RecommendationId" in result
     assert "GenerationTimestamp" in result
     assert "Details" in result
@@ -65,7 +65,7 @@ def test_fetch_compute_sp_recommendation_no_recommendations(
     """Test when AWS returns no Compute SP recommendations."""
     # Use real AWS structure with empty recommendation
     mock_ce_client.get_savings_plans_purchase_recommendation.return_value = (
-        aws_mock_builder.recommendation('compute', empty=True)
+        aws_mock_builder.recommendation("compute", empty=True)
     )
 
     result = recommendations._fetch_compute_sp_recommendation(mock_ce_client, "THIRTY_DAYS")
@@ -103,6 +103,20 @@ def test_fetch_compute_sp_recommendation_api_error(mock_ce_client, mock_config):
     )
 
     with pytest.raises(ClientError):
+        recommendations._fetch_compute_sp_recommendation(mock_ce_client, "THIRTY_DAYS")
+
+
+def test_fetch_compute_sp_recommendation_missing_metadata(mock_ce_client):
+    """Test error handling when AWS returns recommendations but no Metadata."""
+    mock_ce_client.get_savings_plans_purchase_recommendation.return_value = {
+        "SavingsPlansPurchaseRecommendation": {
+            "SavingsPlansPurchaseRecommendationDetails": [{"HourlyCommitmentToPurchase": "5.50"}]
+        }
+    }
+
+    with pytest.raises(
+        ValueError, match="AWS returned recommendations but no Metadata in response"
+    ):
         recommendations._fetch_compute_sp_recommendation(mock_ce_client, "THIRTY_DAYS")
 
 
@@ -183,6 +197,20 @@ def test_fetch_database_sp_recommendation_api_error(mock_ce_client, mock_config)
     )
 
     with pytest.raises(ClientError):
+        recommendations._fetch_database_sp_recommendation(mock_ce_client, "THIRTY_DAYS")
+
+
+def test_fetch_database_sp_recommendation_missing_metadata(mock_ce_client):
+    """Test error handling when AWS returns recommendations but no Metadata for Database SP."""
+    mock_ce_client.get_savings_plans_purchase_recommendation.return_value = {
+        "SavingsPlansPurchaseRecommendation": {
+            "SavingsPlansPurchaseRecommendationDetails": [{"HourlyCommitmentToPurchase": "2.75"}]
+        }
+    }
+
+    with pytest.raises(
+        ValueError, match="AWS returned recommendations but no Metadata in response"
+    ):
         recommendations._fetch_database_sp_recommendation(mock_ce_client, "THIRTY_DAYS")
 
 

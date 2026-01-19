@@ -57,19 +57,26 @@ def _fetch_compute_sp_recommendation(
 
         logger.debug(f"Compute SP API response: {response}")
 
-        # Extract recommendation metadata
-        metadata = response.get("Metadata")
-        if not metadata:
-            raise ValueError(f"AWS returned no Metadata in response: {response}")
-
-        recommendation_id = metadata.get("RecommendationId", "unknown")
-        generation_timestamp = metadata.get("GenerationTimestamp", "unknown")
-
-        # Extract recommendation details
+        # Extract recommendation details first
         recommendation_details = response.get("SavingsPlansPurchaseRecommendation", {})
         recommendation_summary = recommendation_details.get(
             "SavingsPlansPurchaseRecommendationDetails", []
         )
+
+        # If no recommendation details, AWS has no recommendation - return None
+        if not recommendation_summary:
+            logger.info("No Compute SP recommendations available from AWS")
+            return None
+
+        # Extract recommendation metadata (only present when there are recommendations)
+        metadata = response.get("Metadata")
+        if not metadata:
+            raise ValueError(
+                f"AWS returned recommendations but no Metadata in response: {response}"
+            )
+
+        recommendation_id = metadata.get("RecommendationId", "unknown")
+        generation_timestamp = metadata.get("GenerationTimestamp", "unknown")
 
         if recommendation_summary:
             # Get the first (best) recommendation
@@ -126,19 +133,26 @@ def _fetch_database_sp_recommendation(
             PaymentOption="NO_UPFRONT",
         )
 
-        # Extract recommendation metadata
-        metadata = response.get("Metadata")
-        if not metadata:
-            raise ValueError(f"AWS returned no Metadata in response: {response}")
-
-        recommendation_id = metadata.get("RecommendationId", "unknown")
-        generation_timestamp = metadata.get("GenerationTimestamp", "unknown")
-
-        # Extract recommendation details
+        # Extract recommendation details first
         recommendation_details = response.get("SavingsPlansPurchaseRecommendation", {})
         recommendation_summary = recommendation_details.get(
             "SavingsPlansPurchaseRecommendationDetails", []
         )
+
+        # If no recommendation details, AWS has no recommendation - return None
+        if not recommendation_summary:
+            logger.info("No Database SP recommendations available from AWS")
+            return None
+
+        # Extract recommendation metadata (only present when there are recommendations)
+        metadata = response.get("Metadata")
+        if not metadata:
+            raise ValueError(
+                f"AWS returned recommendations but no Metadata in response: {response}"
+            )
+
+        recommendation_id = metadata.get("RecommendationId", "unknown")
+        generation_timestamp = metadata.get("GenerationTimestamp", "unknown")
 
         if recommendation_summary:
             # Get the first (best) recommendation
@@ -194,19 +208,26 @@ def _fetch_sagemaker_sp_recommendation(
             PaymentOption="NO_UPFRONT",
         )
 
-        # Extract recommendation metadata
-        metadata = response.get("Metadata")
-        if not metadata:
-            raise ValueError(f"AWS returned no Metadata in response: {response}")
-
-        recommendation_id = metadata.get("RecommendationId", "unknown")
-        generation_timestamp = metadata.get("GenerationTimestamp", "unknown")
-
-        # Extract recommendation details
+        # Extract recommendation details first
         recommendation_details = response.get("SavingsPlansPurchaseRecommendation", {})
         recommendation_summary = recommendation_details.get(
             "SavingsPlansPurchaseRecommendationDetails", []
         )
+
+        # If no recommendation details, AWS has no recommendation - return None
+        if not recommendation_summary:
+            logger.info("No SageMaker SP recommendations available from AWS")
+            return None
+
+        # Extract recommendation metadata (only present when there are recommendations)
+        metadata = response.get("Metadata")
+        if not metadata:
+            raise ValueError(
+                f"AWS returned recommendations but no Metadata in response: {response}"
+            )
+
+        recommendation_id = metadata.get("RecommendationId", "unknown")
+        generation_timestamp = metadata.get("GenerationTimestamp", "unknown")
 
         if recommendation_summary:
             # Get the first (best) recommendation
