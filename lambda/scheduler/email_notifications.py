@@ -8,7 +8,7 @@ purchase notifications and dry run analysis results.
 from __future__ import annotations
 
 import logging
-from typing import TYPE_CHECKING, Any, Dict, List
+from typing import TYPE_CHECKING, Any
 
 from botocore.exceptions import ClientError
 
@@ -26,9 +26,9 @@ logger.setLevel(logging.INFO)
 
 def send_scheduled_email(
     sns_client: SNSClient,
-    config: Dict[str, Any],
-    purchase_plans: List[Dict[str, Any]],
-    coverage: Dict[str, float],
+    config: dict[str, Any],
+    purchase_plans: list[dict[str, Any]],
+    coverage: dict[str, float],
 ) -> None:
     """
     Send email notification for scheduled purchases.
@@ -124,9 +124,9 @@ def send_scheduled_email(
 
 def send_dry_run_email(
     sns_client: SNSClient,
-    config: Dict[str, Any],
-    purchase_plans: List[Dict[str, Any]],
-    coverage: Dict[str, float],
+    config: dict[str, Any],
+    purchase_plans: list[dict[str, Any]],
+    coverage: dict[str, float],
 ) -> None:
     """
     Send email notification for dry run analysis.

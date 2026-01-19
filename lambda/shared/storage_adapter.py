@@ -8,7 +8,7 @@ Lambdas to work with either real S3 buckets or local filesystem storage.
 import json
 import logging
 from datetime import datetime, timezone
-from typing import Any, Dict, Optional
+from typing import Any, Optional
 
 from . import local_mode
 
@@ -48,7 +48,7 @@ class StorageAdapter:
         self,
         report_content: str,
         report_format: str = "html",
-        metadata: Optional[Dict[str, str]] = None,
+        metadata: Optional[dict[str, str]] = None,
     ) -> str:
         """
         Upload a report to storage.
@@ -72,7 +72,7 @@ class StorageAdapter:
         self,
         report_content: str,
         report_format: str,
-        metadata: Optional[Dict[str, str]],
+        metadata: Optional[dict[str, str]],
     ) -> str:
         """Upload report in local mode by writing to a file."""
         timestamp = datetime.now(timezone.utc).strftime("%Y-%m-%d_%H-%M-%S")
@@ -109,7 +109,7 @@ class StorageAdapter:
         self,
         report_content: str,
         report_format: str,
-        metadata: Optional[Dict[str, str]],
+        metadata: Optional[dict[str, str]],
     ) -> str:
         """Upload report in AWS mode using S3 API."""
         timestamp = datetime.now(timezone.utc).strftime("%Y-%m-%d_%H-%M-%S")

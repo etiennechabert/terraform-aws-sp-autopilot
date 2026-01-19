@@ -22,7 +22,7 @@ Use when:
 """
 
 import logging
-from typing import Any, Dict, List
+from typing import Any
 
 
 # Configure logging
@@ -30,8 +30,8 @@ logger = logging.getLogger()
 
 
 def calculate_purchase_need_follow_aws(
-    config: Dict[str, Any], coverage: Dict[str, float], recommendations: Dict[str, Any]
-) -> List[Dict[str, Any]]:
+    config: dict[str, Any], coverage: dict[str, float], recommendations: dict[str, Any]
+) -> list[dict[str, Any]]:
     """
     Calculate required purchases using FOLLOW_AWS strategy.
 

@@ -15,7 +15,7 @@ from __future__ import annotations
 import json
 import logging
 from datetime import datetime, timedelta, timezone
-from typing import TYPE_CHECKING, Any, Dict
+from typing import TYPE_CHECKING, Any
 
 import boto3
 from botocore.exceptions import ClientError
@@ -184,7 +184,7 @@ def handler(event: dict[str, Any], context: Any) -> dict[str, Any]:
         raise  # Re-raise to ensure Lambda fails visibly
 
 
-def load_configuration() -> Dict[str, Any]:
+def load_configuration() -> dict[str, Any]:
     """Load configuration - backward compatible wrapper."""
     from config import load_configuration as config_load
 

@@ -15,7 +15,7 @@ Strategy Pattern:
 """
 
 import logging
-from typing import Any, Callable, Dict, List
+from typing import Any, Callable
 
 from dichotomy_strategy import calculate_purchase_need_dichotomy
 from fixed_strategy import calculate_purchase_need_fixed
@@ -32,13 +32,13 @@ logger = logging.getLogger()
 
 # Type alias for strategy functions
 StrategyFunction = Callable[
-    [Dict[str, Any], Dict[str, float], Dict[str, Any]], List[Dict[str, Any]]
+    [dict[str, Any], dict[str, float], dict[str, Any]], list[dict[str, Any]]
 ]
 
 
 # Registry mapping strategy names to their implementation functions
 # Contributors: Add new strategies by importing and registering here
-PURCHASE_STRATEGIES: Dict[str, StrategyFunction] = {
+PURCHASE_STRATEGIES: dict[str, StrategyFunction] = {
     "fixed": calculate_purchase_need_fixed,
     "dichotomy": calculate_purchase_need_dichotomy,
     "follow_aws": calculate_purchase_need_follow_aws,
@@ -46,8 +46,8 @@ PURCHASE_STRATEGIES: Dict[str, StrategyFunction] = {
 
 
 def calculate_purchase_need(
-    config: Dict[str, Any], coverage: Dict[str, float], recommendations: Dict[str, Any]
-) -> List[Dict[str, Any]]:
+    config: dict[str, Any], coverage: dict[str, float], recommendations: dict[str, Any]
+) -> list[dict[str, Any]]:
     """
     Calculate required purchases to reach target coverage using configured strategy.
 
@@ -84,8 +84,8 @@ def calculate_purchase_need(
 
 
 def apply_purchase_limits(
-    config: Dict[str, Any], purchase_plans: List[Dict[str, Any]]
-) -> List[Dict[str, Any]]:
+    config: dict[str, Any], purchase_plans: list[dict[str, Any]]
+) -> list[dict[str, Any]]:
     """
     Apply max_purchase_percent limit to planned purchases.
 

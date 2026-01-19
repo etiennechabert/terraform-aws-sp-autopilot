@@ -16,7 +16,7 @@ import pytest
 # Add parent directory to path
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
 
-import sp_coverage as coverage_module  # noqa: E402
+import sp_coverage as coverage_module
 
 
 @pytest.fixture

@@ -15,10 +15,9 @@ import pytest
 # Add parent directory to path
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
 
-import config  # noqa: E402
-import handler  # noqa: E402
-import recommendations as recommendations_module  # noqa: E402
-import sp_coverage as coverage_module  # noqa: E402
+import config
+import handler
+import sp_coverage as coverage_module
 
 
 @pytest.fixture
@@ -165,7 +164,7 @@ def test_calculate_current_coverage_empty_plans_list(mock_env_vars, mock_clients
     """Test handling of no active Savings Plans."""
     config = handler.load_configuration()
 
-    with patch.object(handler.savingsplans_client, "describe_savings_plans") as mock_describe:
+    with patch.object(handler.savingsplans_client, "describe_savings_plans") as mock_describe:  # noqa: SIM117
         with patch.object(handler.ce_client, "get_savings_plans_coverage") as mock_coverage:
             mock_describe.return_value = {"savingsPlans": []}
 
@@ -187,7 +186,7 @@ def test_calculate_current_coverage_no_coverage_data(mock_env_vars, mock_clients
     """Test handling of no coverage data from Cost Explorer."""
     config = handler.load_configuration()
 
-    with patch.object(handler.savingsplans_client, "describe_savings_plans") as mock_describe:
+    with patch.object(handler.savingsplans_client, "describe_savings_plans") as mock_describe:  # noqa: SIM117
         with patch.object(handler.ce_client, "get_savings_plans_coverage") as mock_coverage:
             mock_describe.return_value = {"savingsPlans": []}
             mock_coverage.return_value = {"SavingsPlansCoverages": []}

@@ -6,7 +6,7 @@ variables and validating configuration parameters for the Savings Plans
 Autopilot Reporter Lambda function.
 """
 
-from typing import Any, Dict
+from typing import Any
 
 from shared.handler_utils import load_config_from_env
 
@@ -52,7 +52,7 @@ CONFIG_SCHEMA = {
 }
 
 
-def load_configuration() -> Dict[str, Any]:
+def load_configuration() -> dict[str, Any]:
     """
     Load and validate configuration from environment variables.
 
