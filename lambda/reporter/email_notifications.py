@@ -46,7 +46,9 @@ def send_report_email(
     # Build S3 URL
     bucket_name = config["reports_bucket"]
     s3_url = f"https://{bucket_name}.s3.amazonaws.com/{s3_object_key}"
-    s3_console_url = f"https://s3.console.aws.amazon.com/s3/object/{bucket_name}?prefix={s3_object_key}"
+    s3_console_url = (
+        f"https://s3.console.aws.amazon.com/s3/object/{bucket_name}?prefix={s3_object_key}"
+    )
 
     # Extract summary metrics
     current_coverage = coverage_summary.get("current_coverage", 0.0)
@@ -127,9 +129,7 @@ def send_report_email(
     message_body = "\n".join(body_lines)
 
     try:
-        sns_client.publish(
-            TopicArn=config["sns_topic_arn"], Subject=subject, Message=message_body
-        )
+        sns_client.publish(TopicArn=config["sns_topic_arn"], Subject=subject, Message=message_body)
         logger.info("Report email sent successfully")
     except ClientError as e:
         logger.error(f"Failed to send report email: {e!s}")
@@ -139,9 +139,7 @@ def send_report_email(
     try:
         slack_webhook_url = config.get("slack_webhook_url")
         if slack_webhook_url:
-            slack_message = notifications.format_slack_message(
-                subject, body_lines, severity="info"
-            )
+            slack_message = notifications.format_slack_message(subject, body_lines, severity="info")
             if notifications.send_slack_notification(slack_webhook_url, slack_message):
                 logger.info("Slack notification sent successfully")
             else:

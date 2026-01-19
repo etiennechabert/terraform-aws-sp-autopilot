@@ -14,9 +14,7 @@ import pytest
 
 
 # Add parent directory to path
-sys.path.insert(
-    0, os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-)
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
 
 import recommendations
 
@@ -44,9 +42,7 @@ def mock_ce_client():
 # ============================================================================
 
 
-def test_fetch_compute_sp_recommendation_success(
-    aws_mock_builder, mock_ce_client, mock_config
-):
+def test_fetch_compute_sp_recommendation_success(aws_mock_builder, mock_ce_client, mock_config):
     """Test successful Compute SP recommendation fetch."""
     # Use real AWS recommendation structure with custom hourly commitment
     # Note: Using database recommendation as template since compute fixture is empty
@@ -54,9 +50,7 @@ def test_fetch_compute_sp_recommendation_success(
         aws_mock_builder.recommendation("database", hourly_commitment=5.50)
     )
 
-    result = recommendations._fetch_compute_sp_recommendation(
-        mock_ce_client, "THIRTY_DAYS"
-    )
+    result = recommendations._fetch_compute_sp_recommendation(mock_ce_client, "THIRTY_DAYS")
 
     assert result is not None
     assert result["HourlyCommitmentToPurchase"] == "5.500"
@@ -74,9 +68,7 @@ def test_fetch_compute_sp_recommendation_no_recommendations(
         aws_mock_builder.recommendation("compute", empty=True)
     )
 
-    result = recommendations._fetch_compute_sp_recommendation(
-        mock_ce_client, "THIRTY_DAYS"
-    )
+    result = recommendations._fetch_compute_sp_recommendation(mock_ce_client, "THIRTY_DAYS")
 
     assert result is None
 
@@ -90,15 +82,11 @@ def test_fetch_compute_sp_recommendation_insufficient_data(mock_ce_client, mock_
             "LookbackPeriodInDays": "7",  # Limited data, but still valid
         },
         "SavingsPlansPurchaseRecommendation": {
-            "SavingsPlansPurchaseRecommendationDetails": [
-                {"HourlyCommitmentToPurchase": "5.50"}
-            ]
+            "SavingsPlansPurchaseRecommendationDetails": [{"HourlyCommitmentToPurchase": "5.50"}]
         },
     }
 
-    result = recommendations._fetch_compute_sp_recommendation(
-        mock_ce_client, "SEVEN_DAYS"
-    )
+    result = recommendations._fetch_compute_sp_recommendation(mock_ce_client, "SEVEN_DAYS")
 
     # min_data_days validation was removed, so recommendations with any data are accepted
     assert result is not None
@@ -122,9 +110,7 @@ def test_fetch_compute_sp_recommendation_missing_metadata(mock_ce_client):
     """Test error handling when AWS returns recommendations but no Metadata."""
     mock_ce_client.get_savings_plans_purchase_recommendation.return_value = {
         "SavingsPlansPurchaseRecommendation": {
-            "SavingsPlansPurchaseRecommendationDetails": [
-                {"HourlyCommitmentToPurchase": "5.50"}
-            ]
+            "SavingsPlansPurchaseRecommendationDetails": [{"HourlyCommitmentToPurchase": "5.50"}]
         }
     }
 
@@ -158,18 +144,14 @@ def test_fetch_database_sp_recommendation_success(mock_ce_client, mock_config):
         },
     }
 
-    result = recommendations._fetch_database_sp_recommendation(
-        mock_ce_client, "THIRTY_DAYS"
-    )
+    result = recommendations._fetch_database_sp_recommendation(mock_ce_client, "THIRTY_DAYS")
 
     assert result is not None
     assert result["HourlyCommitmentToPurchase"] == "2.75"
     assert result["RecommendationId"] == "rec-db-123"
 
 
-def test_fetch_database_sp_recommendation_no_recommendations(
-    mock_ce_client, mock_config
-):
+def test_fetch_database_sp_recommendation_no_recommendations(mock_ce_client, mock_config):
     """Test when AWS returns no Database SP recommendations."""
     mock_ce_client.get_savings_plans_purchase_recommendation.return_value = {
         "Metadata": {
@@ -177,21 +159,15 @@ def test_fetch_database_sp_recommendation_no_recommendations(
             "GenerationTimestamp": "2026-01-15T11:00:00Z",
             "LookbackPeriodInDays": "30",
         },
-        "SavingsPlansPurchaseRecommendation": {
-            "SavingsPlansPurchaseRecommendationDetails": []
-        },
+        "SavingsPlansPurchaseRecommendation": {"SavingsPlansPurchaseRecommendationDetails": []},
     }
 
-    result = recommendations._fetch_database_sp_recommendation(
-        mock_ce_client, "THIRTY_DAYS"
-    )
+    result = recommendations._fetch_database_sp_recommendation(mock_ce_client, "THIRTY_DAYS")
 
     assert result is None
 
 
-def test_fetch_database_sp_recommendation_insufficient_data(
-    mock_ce_client, mock_config
-):
+def test_fetch_database_sp_recommendation_insufficient_data(mock_ce_client, mock_config):
     """Test Database SP recommendation with limited lookback data (still returns result)."""
     mock_ce_client.get_savings_plans_purchase_recommendation.return_value = {
         "Metadata": {
@@ -200,15 +176,11 @@ def test_fetch_database_sp_recommendation_insufficient_data(
             "LookbackPeriodInDays": "10",  # Limited data, but still valid
         },
         "SavingsPlansPurchaseRecommendation": {
-            "SavingsPlansPurchaseRecommendationDetails": [
-                {"HourlyCommitmentToPurchase": "2.75"}
-            ]
+            "SavingsPlansPurchaseRecommendationDetails": [{"HourlyCommitmentToPurchase": "2.75"}]
         },
     }
 
-    result = recommendations._fetch_database_sp_recommendation(
-        mock_ce_client, "SEVEN_DAYS"
-    )
+    result = recommendations._fetch_database_sp_recommendation(mock_ce_client, "SEVEN_DAYS")
 
     # min_data_days validation was removed, so recommendations with any data are accepted
     assert result is not None
@@ -219,9 +191,7 @@ def test_fetch_database_sp_recommendation_api_error(mock_ce_client, mock_config)
     """Test error handling when Database SP API call fails."""
     from botocore.exceptions import ClientError
 
-    error_response = {
-        "Error": {"Code": "ServiceUnavailable", "Message": "Service unavailable"}
-    }
+    error_response = {"Error": {"Code": "ServiceUnavailable", "Message": "Service unavailable"}}
     mock_ce_client.get_savings_plans_purchase_recommendation.side_effect = ClientError(
         error_response, "get_savings_plans_purchase_recommendation"
     )
@@ -234,9 +204,7 @@ def test_fetch_database_sp_recommendation_missing_metadata(mock_ce_client):
     """Test error handling when AWS returns recommendations but no Metadata for Database SP."""
     mock_ce_client.get_savings_plans_purchase_recommendation.return_value = {
         "SavingsPlansPurchaseRecommendation": {
-            "SavingsPlansPurchaseRecommendationDetails": [
-                {"HourlyCommitmentToPurchase": "2.75"}
-            ]
+            "SavingsPlansPurchaseRecommendationDetails": [{"HourlyCommitmentToPurchase": "2.75"}]
         }
     }
 
@@ -270,18 +238,14 @@ def test_fetch_sagemaker_sp_recommendation_success(mock_ce_client, mock_config):
         },
     }
 
-    result = recommendations._fetch_sagemaker_sp_recommendation(
-        mock_ce_client, "THIRTY_DAYS"
-    )
+    result = recommendations._fetch_sagemaker_sp_recommendation(mock_ce_client, "THIRTY_DAYS")
 
     assert result is not None
     assert result["HourlyCommitmentToPurchase"] == "3.25"
     assert result["RecommendationId"] == "rec-sm-456"
 
 
-def test_fetch_sagemaker_sp_recommendation_no_recommendations(
-    mock_ce_client, mock_config
-):
+def test_fetch_sagemaker_sp_recommendation_no_recommendations(mock_ce_client, mock_config):
     """Test when AWS returns no SageMaker SP recommendations."""
     mock_ce_client.get_savings_plans_purchase_recommendation.return_value = {
         "Metadata": {
@@ -289,21 +253,15 @@ def test_fetch_sagemaker_sp_recommendation_no_recommendations(
             "GenerationTimestamp": "2026-01-15T12:00:00Z",
             "LookbackPeriodInDays": "30",
         },
-        "SavingsPlansPurchaseRecommendation": {
-            "SagingsPlansPurchaseRecommendationDetails": []
-        },
+        "SavingsPlansPurchaseRecommendation": {"SagingsPlansPurchaseRecommendationDetails": []},
     }
 
-    result = recommendations._fetch_sagemaker_sp_recommendation(
-        mock_ce_client, "THIRTY_DAYS"
-    )
+    result = recommendations._fetch_sagemaker_sp_recommendation(mock_ce_client, "THIRTY_DAYS")
 
     assert result is None
 
 
-def test_fetch_sagemaker_sp_recommendation_insufficient_data(
-    mock_ce_client, mock_config
-):
+def test_fetch_sagemaker_sp_recommendation_insufficient_data(mock_ce_client, mock_config):
     """Test SageMaker SP recommendation with limited lookback data (still returns result)."""
     mock_ce_client.get_savings_plans_purchase_recommendation.return_value = {
         "Metadata": {
@@ -312,15 +270,11 @@ def test_fetch_sagemaker_sp_recommendation_insufficient_data(
             "LookbackPeriodInDays": "5",  # Limited data, but still valid
         },
         "SavingsPlansPurchaseRecommendation": {
-            "SavingsPlansPurchaseRecommendationDetails": [
-                {"HourlyCommitmentToPurchase": "3.25"}
-            ]
+            "SavingsPlansPurchaseRecommendationDetails": [{"HourlyCommitmentToPurchase": "3.25"}]
         },
     }
 
-    result = recommendations._fetch_sagemaker_sp_recommendation(
-        mock_ce_client, "SEVEN_DAYS"
-    )
+    result = recommendations._fetch_sagemaker_sp_recommendation(mock_ce_client, "SEVEN_DAYS")
 
     # min_data_days validation was removed, so recommendations with any data are accepted
     assert result is not None
@@ -337,9 +291,7 @@ def test_fetch_sagemaker_sp_recommendation_api_error(mock_ce_client, mock_config
     )
 
     with pytest.raises(ClientError):
-        recommendations._fetch_sagemaker_sp_recommendation(
-            mock_ce_client, "THIRTY_DAYS"
-        )
+        recommendations._fetch_sagemaker_sp_recommendation(mock_ce_client, "THIRTY_DAYS")
 
 
 # ============================================================================
@@ -393,9 +345,7 @@ def test_get_aws_recommendations_all_enabled(mock_ce_client, mock_config):
                 },
             }
 
-    mock_ce_client.get_savings_plans_purchase_recommendation.side_effect = (
-        mock_get_recommendation
-    )
+    mock_ce_client.get_savings_plans_purchase_recommendation.side_effect = mock_get_recommendation
 
     result = recommendations.get_aws_recommendations(mock_ce_client, mock_config)
 
@@ -426,9 +376,7 @@ def test_get_aws_recommendations_only_compute_enabled(mock_ce_client):
             "LookbackPeriodInDays": "30",
         },
         "SavingsPlansPurchaseRecommendation": {
-            "SavingsPlansPurchaseRecommendationDetails": [
-                {"HourlyCommitmentToPurchase": "5.50"}
-            ]
+            "SavingsPlansPurchaseRecommendationDetails": [{"HourlyCommitmentToPurchase": "5.50"}]
         },
     }
 
@@ -458,9 +406,7 @@ def test_get_aws_recommendations_lookback_period_mapping(mock_ce_client):
             "LookbackPeriodInDays": "7",
         },
         "SavingsPlansPurchaseRecommendation": {
-            "SavingsPlansPurchaseRecommendationDetails": [
-                {"HourlyCommitmentToPurchase": "5.50"}
-            ]
+            "SavingsPlansPurchaseRecommendationDetails": [{"HourlyCommitmentToPurchase": "5.50"}]
         },
     }
 
@@ -488,9 +434,7 @@ def test_get_aws_recommendations_sixty_days_lookback(mock_ce_client):
             "LookbackPeriodInDays": "60",
         },
         "SavingsPlansPurchaseRecommendation": {
-            "SavingsPlansPurchaseRecommendationDetails": [
-                {"HourlyCommitmentToPurchase": "5.50"}
-            ]
+            "SavingsPlansPurchaseRecommendationDetails": [{"HourlyCommitmentToPurchase": "5.50"}]
         },
     }
 
@@ -547,9 +491,7 @@ def test_get_aws_recommendations_one_fails_others_succeed(mock_ce_client, mock_c
                     "Message": "Service unavailable",
                 }
             }
-            raise ClientError(
-                error_response, "get_savings_plans_purchase_recommendation"
-            )
+            raise ClientError(error_response, "get_savings_plans_purchase_recommendation")
         if sp_type == "SAGEMAKER_SP":
             return {
                 "Metadata": {
@@ -564,9 +506,7 @@ def test_get_aws_recommendations_one_fails_others_succeed(mock_ce_client, mock_c
                 },
             }
 
-    mock_ce_client.get_savings_plans_purchase_recommendation.side_effect = (
-        mock_get_recommendation
-    )
+    mock_ce_client.get_savings_plans_purchase_recommendation.side_effect = mock_get_recommendation
 
     # Should raise the error from the failed fetch
     with pytest.raises(ClientError):

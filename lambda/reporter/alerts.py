@@ -93,9 +93,7 @@ def check_and_alert_low_utilization(
                 slack_message = notifications.format_slack_message(
                     subject, body_lines, severity="warning"
                 )
-                if notifications.send_slack_notification(
-                    slack_webhook_url, slack_message
-                ):
+                if notifications.send_slack_notification(slack_webhook_url, slack_message):
                     logger.info("Low utilization alert sent via Slack")
                 else:
                     logger.warning("Slack notification failed (non-fatal)")
@@ -107,9 +105,7 @@ def check_and_alert_low_utilization(
             teams_webhook_url = config.get("teams_webhook_url")
             if teams_webhook_url:
                 teams_message = notifications.format_teams_message(subject, body_lines)
-                if notifications.send_teams_notification(
-                    teams_webhook_url, teams_message
-                ):
+                if notifications.send_teams_notification(teams_webhook_url, teams_message):
                     logger.info("Low utilization alert sent via Teams")
                 else:
                     logger.warning("Teams notification failed (non-fatal)")

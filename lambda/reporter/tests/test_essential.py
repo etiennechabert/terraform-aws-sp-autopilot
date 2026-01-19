@@ -22,9 +22,7 @@ from botocore.exceptions import ClientError
 
 # Add lambda directory to path
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-sys.path.insert(
-    0, os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-)
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
 
 import handler
 
@@ -58,9 +56,7 @@ def test_handler_success_with_email(mock_env_vars):
         }
 
         # Mock data collection
-        mock_coverage.return_value = [
-            {"timestamp": "2026-01-15", "coverage_percentage": 75.0}
-        ]
+        mock_coverage.return_value = [{"timestamp": "2026-01-15", "coverage_percentage": 75.0}]
         mock_savings.return_value = {
             "total_commitment": 1000.0,
             "plans_count": 2,
@@ -134,9 +130,7 @@ def test_get_coverage_history_success():
 def test_get_savings_data_with_active_plans():
     """Test savings data retrieval with active plans."""
     with (
-        patch.object(
-            handler.savingsplans_client, "describe_savings_plans"
-        ) as mock_describe,
+        patch.object(handler.savingsplans_client, "describe_savings_plans") as mock_describe,
         patch.object(handler.ce_client, "get_savings_plans_utilization") as mock_util,
     ):
         mock_describe.return_value = {
@@ -149,9 +143,7 @@ def test_get_savings_data_with_active_plans():
                 }
             ]
         }
-        mock_util.return_value = {
-            "Total": {"Utilization": {"UtilizationPercentage": "85.5"}}
-        }
+        mock_util.return_value = {"Total": {"Utilization": {"UtilizationPercentage": "85.5"}}}
 
         result = handler.get_savings_data()
 
@@ -184,9 +176,7 @@ def test_send_report_email_success(mock_env_vars):
         coverage_summary = {"current": 75.0, "trend": "up"}
         savings_summary = {"total_commitment": 1000.0}
 
-        handler.send_report_email(
-            config, "report_key.html", coverage_summary, savings_summary
-        )
+        handler.send_report_email(config, "report_key.html", coverage_summary, savings_summary)
 
         mock_publish.assert_called_once()
         call_args = mock_publish.call_args[1]
@@ -208,12 +198,8 @@ def test_api_error_handling(mock_env_vars):
         }
 
         # Simulate API error
-        error_response = {
-            "Error": {"Code": "ThrottlingException", "Message": "Rate exceeded"}
-        }
-        mock_coverage.side_effect = ClientError(
-            error_response, "GetSavingsPlansCoverage"
-        )
+        error_response = {"Error": {"Code": "ThrottlingException", "Message": "Rate exceeded"}}
+        mock_coverage.side_effect = ClientError(error_response, "GetSavingsPlansCoverage")
 
         with pytest.raises(ClientError):
             handler.handler({}, {})

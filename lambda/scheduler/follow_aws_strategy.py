@@ -91,9 +91,7 @@ def calculate_purchase_need_follow_aws(
         )
 
         if coverage_gap <= 0:
-            logger.info(
-                f"{sp_type['name']} SP coverage already meets or exceeds target"
-            )
+            logger.info(f"{sp_type['name']} SP coverage already meets or exceeds target")
             continue
 
         recommendation = recommendations.get(key)
@@ -104,13 +102,9 @@ def calculate_purchase_need_follow_aws(
             continue
 
         # Use AWS recommendation exactly as provided (100%)
-        hourly_commitment_float = float(
-            recommendation.get("HourlyCommitmentToPurchase", "0")
-        )
+        hourly_commitment_float = float(recommendation.get("HourlyCommitmentToPurchase", "0"))
         if hourly_commitment_float <= 0:
-            logger.info(
-                f"{sp_type['name']} SP recommendation has zero commitment - skipping"
-            )
+            logger.info(f"{sp_type['name']} SP recommendation has zero commitment - skipping")
             continue
 
         purchase_plan = {
@@ -137,7 +131,5 @@ def calculate_purchase_need_follow_aws(
             f"(100% of AWS recommendation, recommendation_id: {purchase_plan['recommendation_id']})"
         )
 
-    logger.info(
-        f"Follow AWS strategy purchase need calculated: {len(purchase_plans)} plans"
-    )
+    logger.info(f"Follow AWS strategy purchase need calculated: {len(purchase_plans)} plans")
     return purchase_plans

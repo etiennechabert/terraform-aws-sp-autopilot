@@ -21,9 +21,7 @@ import pytest
 
 # Add lambda directory to path
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-sys.path.insert(
-    0, os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-)
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
 
 import handler
 
@@ -106,9 +104,7 @@ def test_generate_html_report(sample_coverage_history, sample_savings_data):
     assert "</body>" in result
 
 
-def test_generate_html_report_with_increasing_trend(
-    sample_coverage_history, sample_savings_data
-):
+def test_generate_html_report_with_increasing_trend(sample_coverage_history, sample_savings_data):
     """Test HTML report with increasing coverage trend."""
     result = handler.generate_html_report(sample_coverage_history, sample_savings_data)
 
@@ -118,9 +114,7 @@ def test_generate_html_report_with_increasing_trend(
 
 def test_generate_html_report_with_empty_data():
     """Test HTML report with minimal/empty data."""
-    result = handler.generate_html_report(
-        [], {"plans_count": 0, "total_commitment": 0.0}
-    )
+    result = handler.generate_html_report([], {"plans_count": 0, "total_commitment": 0.0})
 
     assert "<!DOCTYPE html>" in result
     assert "</html>" in result
@@ -182,15 +176,11 @@ def test_get_actual_costs_success():
                 "Groups": [
                     {
                         "Keys": ["Savings Plans"],
-                        "Metrics": {
-                            "UnblendedCost": {"Amount": "100.50", "Unit": "USD"}
-                        },
+                        "Metrics": {"UnblendedCost": {"Amount": "100.50", "Unit": "USD"}},
                     },
                     {
                         "Keys": ["On Demand"],
-                        "Metrics": {
-                            "UnblendedCost": {"Amount": "50.25", "Unit": "USD"}
-                        },
+                        "Metrics": {"UnblendedCost": {"Amount": "50.25", "Unit": "USD"}},
                     },
                 ],
             },
@@ -199,15 +189,11 @@ def test_get_actual_costs_success():
                 "Groups": [
                     {
                         "Keys": ["Savings Plans"],
-                        "Metrics": {
-                            "UnblendedCost": {"Amount": "105.75", "Unit": "USD"}
-                        },
+                        "Metrics": {"UnblendedCost": {"Amount": "105.75", "Unit": "USD"}},
                     },
                     {
                         "Keys": ["On Demand"],
-                        "Metrics": {
-                            "UnblendedCost": {"Amount": "55.50", "Unit": "USD"}
-                        },
+                        "Metrics": {"UnblendedCost": {"Amount": "55.50", "Unit": "USD"}},
                     },
                 ],
             },

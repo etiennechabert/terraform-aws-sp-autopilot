@@ -22,9 +22,7 @@ from botocore.exceptions import ClientError
 
 # Add lambda directory to path
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-sys.path.insert(
-    0, os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-)
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
 
 import handler
 
@@ -32,18 +30,12 @@ import handler
 def test_get_savings_data_with_detailed_utilization(aws_mock_builder):
     """Test savings data with detailed utilization breakdown."""
     with (
-        patch.object(
-            handler.savingsplans_client, "describe_savings_plans"
-        ) as mock_describe,
+        patch.object(handler.savingsplans_client, "describe_savings_plans") as mock_describe,
         patch.object(handler.ce_client, "get_savings_plans_utilization") as mock_util,
     ):
         # Use real AWS response structures
-        mock_describe.return_value = aws_mock_builder.describe_savings_plans(
-            plans_count=2
-        )
-        mock_util.return_value = aws_mock_builder.utilization(
-            utilization_percentage=88.5, days=2
-        )
+        mock_describe.return_value = aws_mock_builder.describe_savings_plans(plans_count=2)
+        mock_util.return_value = aws_mock_builder.utilization(utilization_percentage=88.5, days=2)
 
         result = handler.get_savings_data()
 
@@ -59,9 +51,7 @@ def test_get_savings_data_with_detailed_utilization(aws_mock_builder):
 def test_get_savings_data_no_utilization():
     """Test savings data when utilization data is empty."""
     with (
-        patch.object(
-            handler.savingsplans_client, "describe_savings_plans"
-        ) as mock_describe,
+        patch.object(handler.savingsplans_client, "describe_savings_plans") as mock_describe,
         patch.object(handler.ce_client, "get_savings_plans_utilization") as mock_util,
     ):
         mock_describe.return_value = {
@@ -87,9 +77,7 @@ def test_get_savings_data_no_utilization():
 
 def test_get_savings_data_api_error():
     """Test savings data with API error."""
-    with patch.object(
-        handler.savingsplans_client, "describe_savings_plans"
-    ) as mock_describe:
+    with patch.object(handler.savingsplans_client, "describe_savings_plans") as mock_describe:
         mock_describe.side_effect = ClientError(
             {"Error": {"Code": "AccessDenied", "Message": "Access denied"}},
             "DescribeSavingsPlans",
@@ -132,9 +120,7 @@ def test_get_coverage_history_with_multiple_days():
 def test_get_coverage_history_empty():
     """Test coverage history with no data."""
     mock_ce_client = Mock()
-    mock_ce_client.get_savings_plans_coverage.return_value = {
-        "SavingsPlansCoverages": []
-    }
+    mock_ce_client.get_savings_plans_coverage.return_value = {"SavingsPlansCoverages": []}
 
     result = handler.get_coverage_history(mock_ce_client, lookback_days=30)
 

@@ -9,9 +9,7 @@ import sys
 
 
 # Add parent directory to path
-sys.path.insert(
-    0, os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-)
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
 
 from shared import email_templates
 
@@ -477,9 +475,7 @@ def test_build_complete_email_simple():
     assert "Total Purchases: 5" in email_body
     assert "Successful: 4" in email_body
     assert "Failed: 1" in email_body
-    assert (
-        "This is an automated message from AWS Savings Plans Automation." in email_body
-    )
+    assert "This is an automated message from AWS Savings Plans Automation." in email_body
 
 
 def test_build_complete_email_complex():

@@ -21,9 +21,7 @@ class StorageAdapter:
     Adapter class for storage operations supporting both S3 and local filesystem.
     """
 
-    def __init__(
-        self, s3_client: Optional[Any] = None, bucket_name: Optional[str] = None
-    ):
+    def __init__(self, s3_client: Optional[Any] = None, bucket_name: Optional[str] = None):
         """
         Initialize the storage adapter.
 
@@ -44,9 +42,7 @@ class StorageAdapter:
                 f"Storage adapter initialized in LOCAL mode (directory: {self.reports_dir})"
             )
         else:
-            logger.info(
-                f"Storage adapter initialized in AWS mode (bucket: {bucket_name})"
-            )
+            logger.info(f"Storage adapter initialized in AWS mode (bucket: {bucket_name})")
 
     def upload_report(
         self,

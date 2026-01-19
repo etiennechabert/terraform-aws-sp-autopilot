@@ -88,9 +88,7 @@ def handler(event: dict[str, Any], context: Any) -> dict[str, Any]:
             logger.info("Queue is empty - exiting silently")
             return {
                 "statusCode": 200,
-                "body": json.dumps(
-                    {"message": "No purchases to process", "purchases_executed": 0}
-                ),
+                "body": json.dumps({"message": "No purchases to process", "purchases_executed": 0}),
             }
 
         logger.info(f"Found {len(messages)} purchase intents in queue")
@@ -213,9 +211,7 @@ def receive_messages(
         raise
 
 
-def get_current_coverage(
-    clients: dict[str, Any], config: dict[str, Any]
-) -> dict[str, float]:
+def get_current_coverage(clients: dict[str, Any], config: dict[str, Any]) -> dict[str, float]:
     """
     Calculate current Savings Plans coverage, excluding plans expiring soon.
 
@@ -232,9 +228,7 @@ def get_current_coverage(
         # Get date range for coverage query using configured lookback period
         # Cost Explorer has 24-48 hour data lag, so we query multiple days for stability
         end_date = datetime.now(timezone.utc).date()
-        start_date = (
-            datetime.now(timezone.utc) - timedelta(days=config["lookback_days"])
-        ).date()
+        start_date = (datetime.now(timezone.utc) - timedelta(days=config["lookback_days"])).date()
 
         # Get raw coverage from Cost Explorer
         raw_coverage = get_ce_coverage(clients["ce"], start_date, end_date, config)
@@ -243,9 +237,7 @@ def get_current_coverage(
         expiring_plans = get_expiring_plans(clients["savingsplans"], config)
 
         # Adjust coverage to exclude expiring plans
-        adjusted_coverage = adjust_coverage_for_expiring_plans(
-            raw_coverage, expiring_plans
-        )
+        adjusted_coverage = adjust_coverage_for_expiring_plans(raw_coverage, expiring_plans)
 
         logger.info(
             f"Coverage calculated: Compute={adjusted_coverage['compute']:.2f}%, Database={adjusted_coverage['database']:.2f}%, SageMaker={adjusted_coverage['sagemaker']:.2f}%"
@@ -387,9 +379,7 @@ def get_expiring_plans(
         response = savingsplans_client.describe_savings_plans(states=["active"])
 
         # Calculate expiration threshold
-        expiration_threshold = datetime.now(timezone.utc) + timedelta(
-            days=renewal_window_days
-        )
+        expiration_threshold = datetime.now(timezone.utc) + timedelta(days=renewal_window_days)
 
         # Filter to plans expiring within the window
         expiring_plans = []
@@ -406,9 +396,7 @@ def get_expiring_plans(
                     }
                 )
 
-        logger.info(
-            f"Found {len(expiring_plans)} plans expiring within {renewal_window_days} days"
-        )
+        logger.info(f"Found {len(expiring_plans)} plans expiring within {renewal_window_days} days")
         return expiring_plans
 
     except ClientError as e:
@@ -448,21 +436,15 @@ def adjust_coverage_for_expiring_plans(
 
     # If expiring plans exist for a type, set coverage to 0 to force renewal
     if has_expiring_compute:
-        logger.info(
-            "Compute Savings Plans expiring - setting coverage to 0% to force renewal"
-        )
+        logger.info("Compute Savings Plans expiring - setting coverage to 0% to force renewal")
         adjusted_coverage["compute"] = 0.0
 
     if has_expiring_database:
-        logger.info(
-            "Database Savings Plans expiring - setting coverage to 0% to force renewal"
-        )
+        logger.info("Database Savings Plans expiring - setting coverage to 0% to force renewal")
         adjusted_coverage["database"] = 0.0
 
     if has_expiring_sagemaker:
-        logger.info(
-            "SageMaker Savings Plans expiring - setting coverage to 0% to force renewal"
-        )
+        logger.info("SageMaker Savings Plans expiring - setting coverage to 0% to force renewal")
         adjusted_coverage["sagemaker"] = 0.0
 
     return adjusted_coverage
@@ -530,31 +512,21 @@ def process_purchase_messages(
                 results["skipped_count"] += 1
 
                 # Delete message even though we skipped it
-                delete_message(
-                    clients["sqs"], config["queue_url"], message["ReceiptHandle"]
-                )
+                delete_message(clients["sqs"], config["queue_url"], message["ReceiptHandle"])
 
             else:
                 # Execute purchase
-                sp_id = execute_purchase(
-                    clients["savingsplans"], config, purchase_intent
-                )
+                sp_id = execute_purchase(clients["savingsplans"], config, purchase_intent)
                 logger.info(f"Purchase successful: {sp_id}")
 
-                results["successful"].append(
-                    {"intent": purchase_intent, "sp_id": sp_id}
-                )
+                results["successful"].append({"intent": purchase_intent, "sp_id": sp_id})
                 results["successful_count"] += 1
 
                 # Update coverage tracking
-                current_coverage = update_coverage_tracking(
-                    current_coverage, purchase_intent
-                )
+                current_coverage = update_coverage_tracking(current_coverage, purchase_intent)
 
                 # Delete message after successful purchase
-                delete_message(
-                    clients["sqs"], config["queue_url"], message["ReceiptHandle"]
-                )
+                delete_message(clients["sqs"], config["queue_url"], message["ReceiptHandle"])
 
         except ClientError as e:
             logger.error(f"Failed to process purchase: {e!s}")
@@ -686,9 +658,7 @@ def execute_purchase(
     except ClientError as e:
         error_code = e.response.get("Error", {}).get("Code", "Unknown")
         error_message = e.response.get("Error", {}).get("Message", str(e))
-        logger.error(
-            f"CreateSavingsPlan failed - Code: {error_code}, Message: {error_message}"
-        )
+        logger.error(f"CreateSavingsPlan failed - Code: {error_code}, Message: {error_message}")
         raise
 
 
@@ -831,9 +801,7 @@ def send_summary_email(
 
             # Add upfront amount if applicable
             if intent.get("upfront_amount") and float(intent["upfront_amount"]) > 0:
-                body_lines.append(
-                    f"   Upfront Payment: ${float(intent['upfront_amount']):,.2f}"
-                )
+                body_lines.append(f"   Upfront Payment: ${float(intent['upfront_amount']):,.2f}")
 
             body_lines.append("")
     else:
@@ -915,9 +883,7 @@ def send_summary_email(
     message_body = "\n".join(body_lines)
 
     try:
-        sns_client.publish(
-            TopicArn=config["sns_topic_arn"], Subject=subject, Message=message_body
-        )
+        sns_client.publish(TopicArn=config["sns_topic_arn"], Subject=subject, Message=message_body)
         logger.info("Summary email sent successfully")
     except ClientError as e:
         logger.error(f"Failed to send summary email: {e!s}")

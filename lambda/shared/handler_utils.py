@@ -211,9 +211,7 @@ def initialize_clients(
         # Build descriptive error message
         error_msg = f"Failed to initialize AWS clients: {e!s}"
         if config.get("management_account_role_arn"):
-            error_msg = (
-                f"Failed to assume role {config['management_account_role_arn']}: {e!s}"
-            )
+            error_msg = f"Failed to assume role {config['management_account_role_arn']}: {e!s}"
 
         # Log error with full traceback
         logger.error(error_msg, exc_info=True)
@@ -374,9 +372,7 @@ Please check CloudWatch Logs for full details.
 
     # Send SNS notification
     try:
-        sns_client.publish(
-            TopicArn=sns_topic_arn, Subject=sns_subject, Message=sns_message
-        )
+        sns_client.publish(TopicArn=sns_topic_arn, Subject=sns_subject, Message=sns_message)
         logger.info(f"Error notification sent via SNS to {sns_topic_arn}")
     except Exception as e:
         # Don't raise - we're already in error handling

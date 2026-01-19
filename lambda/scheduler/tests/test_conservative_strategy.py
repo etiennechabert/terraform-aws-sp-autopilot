@@ -514,9 +514,7 @@ class TestCalculatePurchaseNeedConservative:
             }
         }
 
-        result = calculate_purchase_need_conservative(
-            config_100, coverage, recommendations
-        )
+        result = calculate_purchase_need_conservative(config_100, coverage, recommendations)
         assert len(result) == 1
         assert result[0]["hourly_commitment"] == 10.0  # 100% of $10
 
@@ -530,9 +528,7 @@ class TestCalculatePurchaseNeedConservative:
             "max_purchase_percent": 25.0,
         }
 
-        result = calculate_purchase_need_conservative(
-            config_25, coverage, recommendations
-        )
+        result = calculate_purchase_need_conservative(config_25, coverage, recommendations)
         assert len(result) == 1
         assert result[0]["hourly_commitment"] == 2.5  # 25% of $10
 
@@ -555,9 +551,7 @@ class TestCalculatePurchaseNeedConservative:
             "min_gap_threshold": 10.0,
             "max_purchase_percent": 50.0,
         }
-        result = calculate_purchase_need_conservative(
-            config_10, coverage, recommendations
-        )
+        result = calculate_purchase_need_conservative(config_10, coverage, recommendations)
         assert len(result) == 1
 
         # With threshold of 25%, gap of 20% should NOT trigger purchase
@@ -569,9 +563,7 @@ class TestCalculatePurchaseNeedConservative:
             "min_gap_threshold": 25.0,
             "max_purchase_percent": 50.0,
         }
-        result = calculate_purchase_need_conservative(
-            config_25, coverage, recommendations
-        )
+        result = calculate_purchase_need_conservative(config_25, coverage, recommendations)
         assert len(result) == 0
 
     def test_default_config_parameters(self):

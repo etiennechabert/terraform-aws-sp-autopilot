@@ -16,9 +16,7 @@ from botocore.exceptions import ClientError
 logger = logging.getLogger()
 
 
-def get_coverage_history(
-    ce_client: Any, lookback_days: int = 30
-) -> List[Dict[str, Any]]:
+def get_coverage_history(ce_client: Any, lookback_days: int = 30) -> List[Dict[str, Any]]:
     """
     Get Savings Plans coverage history from Cost Explorer.
 
@@ -158,10 +156,7 @@ def get_actual_cost_data(ce_client: Any, lookback_days: int = 30) -> Dict[str, A
                 cost_amount = float(unblended_cost.get("Amount", "0"))
 
                 # Categorize by purchase option
-                if (
-                    "Savings Plans" in purchase_option
-                    or "SavingsPlan" in purchase_option
-                ):
+                if "Savings Plans" in purchase_option or "SavingsPlan" in purchase_option:
                     daily_savings_plans_cost += cost_amount
                     total_savings_plans_cost += cost_amount
                 elif "On Demand" in purchase_option or "OnDemand" in purchase_option:
@@ -277,9 +272,7 @@ def get_savings_data(savingsplans_client: Any, ce_client: Any) -> Dict[str, Any]
         # Get utilization and actual savings data from Cost Explorer
         try:
             end_date = datetime.now(timezone.utc).date()
-            start_date = end_date - timedelta(
-                days=30
-            )  # Last 30 days for actual savings
+            start_date = end_date - timedelta(days=30)  # Last 30 days for actual savings
 
             utilization_response = ce_client.get_savings_plans_utilization(
                 TimePeriod={
@@ -289,9 +282,7 @@ def get_savings_data(savingsplans_client: Any, ce_client: Any) -> Dict[str, Any]
                 Granularity="DAILY",
             )
 
-            utilizations = utilization_response.get(
-                "SavingsPlansUtilizationsByTime", []
-            )
+            utilizations = utilization_response.get("SavingsPlansUtilizationsByTime", [])
 
             if utilizations:
                 # Calculate average utilization and actual savings
@@ -317,9 +308,7 @@ def get_savings_data(savingsplans_client: Any, ce_client: Any) -> Dict[str, Any]
 
                     # Extract amortized commitment
                     amortized = util_item.get("AmortizedCommitment", {})
-                    amortized_commitment = amortized.get(
-                        "TotalAmortizedCommitment", "0"
-                    )
+                    amortized_commitment = amortized.get("TotalAmortizedCommitment", "0")
 
                     # Accumulate totals
                     total_net_savings += float(net_savings)
@@ -327,18 +316,10 @@ def get_savings_data(savingsplans_client: Any, ce_client: Any) -> Dict[str, Any]
                     total_amortized_commitment += float(amortized_commitment)
 
                 average_utilization = total_utilization / count if count > 0 else 0.0
-                logger.info(
-                    f"Average utilization over last 30 days: {average_utilization:.2f}%"
-                )
-                logger.info(
-                    f"Actual net savings over last 30 days: ${total_net_savings:.2f}"
-                )
-                logger.info(
-                    f"On-demand equivalent cost: ${total_on_demand_equivalent:.2f}"
-                )
-                logger.info(
-                    f"Amortized SP commitment: ${total_amortized_commitment:.2f}"
-                )
+                logger.info(f"Average utilization over last 30 days: {average_utilization:.2f}%")
+                logger.info(f"Actual net savings over last 30 days: ${total_net_savings:.2f}")
+                logger.info(f"On-demand equivalent cost: ${total_on_demand_equivalent:.2f}")
+                logger.info(f"Amortized SP commitment: ${total_amortized_commitment:.2f}")
             else:
                 average_utilization = 0.0
                 total_net_savings = 0.0
@@ -356,9 +337,7 @@ def get_savings_data(savingsplans_client: Any, ce_client: Any) -> Dict[str, Any]
         # Calculate actual savings percentage
         savings_percentage = 0.0
         if total_on_demand_equivalent > 0:
-            savings_percentage = (
-                total_net_savings / total_on_demand_equivalent
-            ) * 100.0
+            savings_percentage = (total_net_savings / total_on_demand_equivalent) * 100.0
 
         # Calculate breakdown by plan type
         breakdown_by_type = {}
@@ -370,13 +349,9 @@ def get_savings_data(savingsplans_client: Any, ce_client: Any) -> Dict[str, Any]
                     "total_commitment": 0.0,
                 }
             breakdown_by_type[plan_type]["plans_count"] += 1
-            breakdown_by_type[plan_type]["total_commitment"] += plan[
-                "hourly_commitment"
-            ]
+            breakdown_by_type[plan_type]["total_commitment"] += plan["hourly_commitment"]
 
-        logger.info(
-            f"Actual monthly savings: ${total_net_savings:.2f} ({savings_percentage:.2f}%)"
-        )
+        logger.info(f"Actual monthly savings: ${total_net_savings:.2f} ({savings_percentage:.2f}%)")
 
         return {
             "total_commitment": total_hourly_commitment,
@@ -396,7 +371,5 @@ def get_savings_data(savingsplans_client: Any, ce_client: Any) -> Dict[str, Any]
     except ClientError as e:
         error_code = e.response.get("Error", {}).get("Code", "Unknown")
         error_message = e.response.get("Error", {}).get("Message", str(e))
-        logger.error(
-            f"Failed to get savings data - Code: {error_code}, Message: {error_message}"
-        )
+        logger.error(f"Failed to get savings data - Code: {error_code}, Message: {error_message}")
         raise

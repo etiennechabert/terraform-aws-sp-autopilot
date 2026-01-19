@@ -77,9 +77,7 @@ class TestQueueAdapterLocal:
     def local_queue_dir(self):
         """Create a temporary directory for local queue operations."""
         with tempfile.TemporaryDirectory() as tmpdir:
-            with mock.patch.dict(
-                os.environ, {"LOCAL_MODE": "true", "LOCAL_DATA_DIR": tmpdir}
-            ):
+            with mock.patch.dict(os.environ, {"LOCAL_MODE": "true", "LOCAL_DATA_DIR": tmpdir}):
                 yield Path(tmpdir) / "queue"
 
     def test_queue_adapter_local_init(self, local_queue_dir):
@@ -232,9 +230,7 @@ class TestStorageAdapterLocal:
     def local_reports_dir(self):
         """Create a temporary directory for local storage operations."""
         with tempfile.TemporaryDirectory() as tmpdir:
-            with mock.patch.dict(
-                os.environ, {"LOCAL_MODE": "true", "LOCAL_DATA_DIR": tmpdir}
-            ):
+            with mock.patch.dict(os.environ, {"LOCAL_MODE": "true", "LOCAL_DATA_DIR": tmpdir}):
                 yield Path(tmpdir) / "reports"
 
     def test_storage_adapter_local_init(self, local_reports_dir):
@@ -311,17 +307,13 @@ class TestStorageAdapterAWS:
     def test_storage_adapter_aws_init(self, mock_s3_client):
         """Test StorageAdapter initializes in AWS mode."""
         with mock.patch.dict(os.environ, {"LOCAL_MODE": "false"}):
-            adapter = StorageAdapter(
-                s3_client=mock_s3_client, bucket_name="test-bucket"
-            )
+            adapter = StorageAdapter(s3_client=mock_s3_client, bucket_name="test-bucket")
             assert adapter.is_local is False
 
     def test_upload_report_aws(self, mock_s3_client):
         """Test uploading a report in AWS mode."""
         with mock.patch.dict(os.environ, {"LOCAL_MODE": "false"}):
-            adapter = StorageAdapter(
-                s3_client=mock_s3_client, bucket_name="test-bucket"
-            )
+            adapter = StorageAdapter(s3_client=mock_s3_client, bucket_name="test-bucket")
             report_content = "<html>Test Report</html>"
 
             object_key = adapter.upload_report(report_content, report_format="html")
@@ -334,9 +326,7 @@ class TestStorageAdapterAWS:
     def test_list_reports_aws(self, mock_s3_client):
         """Test listing reports in AWS mode."""
         with mock.patch.dict(os.environ, {"LOCAL_MODE": "false"}):
-            adapter = StorageAdapter(
-                s3_client=mock_s3_client, bucket_name="test-bucket"
-            )
+            adapter = StorageAdapter(s3_client=mock_s3_client, bucket_name="test-bucket")
 
             reports = adapter.list_reports(max_items=10)
             assert len(reports) == 2

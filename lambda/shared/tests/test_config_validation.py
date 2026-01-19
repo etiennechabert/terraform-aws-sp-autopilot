@@ -90,9 +90,7 @@ def test_scheduler_max_purchase_percent_out_of_range():
     config = {
         "max_purchase_percent": 200.0,
     }
-    with pytest.raises(
-        ValueError, match=r"max_purchase_percent.*must be between 0\.0 and 100\.0"
-    ):
+    with pytest.raises(ValueError, match=r"max_purchase_percent.*must be between 0\.0 and 100\.0"):
         validate_scheduler_config(config)
 
 
@@ -110,9 +108,7 @@ def test_scheduler_min_purchase_percent_below_range():
     config = {
         "min_purchase_percent": -5.0,
     }
-    with pytest.raises(
-        ValueError, match=r"min_purchase_percent.*must be between 0\.0 and 100\.0"
-    ):
+    with pytest.raises(ValueError, match=r"min_purchase_percent.*must be between 0\.0 and 100\.0"):
         validate_scheduler_config(config)
 
 
@@ -156,9 +152,7 @@ def test_scheduler_renewal_window_days_zero():
     config = {
         "renewal_window_days": 0,
     }
-    with pytest.raises(
-        ValueError, match=r"renewal_window_days.*must be greater than 0"
-    ):
+    with pytest.raises(ValueError, match=r"renewal_window_days.*must be greater than 0"):
         validate_scheduler_config(config)
 
 
@@ -167,9 +161,7 @@ def test_scheduler_renewal_window_days_negative():
     config = {
         "renewal_window_days": -7,
     }
-    with pytest.raises(
-        ValueError, match=r"renewal_window_days.*must be greater than 0"
-    ):
+    with pytest.raises(ValueError, match=r"renewal_window_days.*must be greater than 0"):
         validate_scheduler_config(config)
 
 
@@ -284,9 +276,7 @@ def test_scheduler_compute_term_mix_invalid_value_type():
     config = {
         "compute_sp_term_mix": {"three_year": "0.67", "one_year": 0.33},
     }
-    with pytest.raises(
-        ValueError, match=r"compute_sp_term_mix\[three_year\].*must be a number"
-    ):
+    with pytest.raises(ValueError, match=r"compute_sp_term_mix\[three_year\].*must be a number"):
         validate_scheduler_config(config)
 
 
@@ -339,9 +329,7 @@ def test_scheduler_invalid_sagemaker_term_mix_not_dict():
     config = {
         "sagemaker_sp_term_mix": "invalid",
     }
-    with pytest.raises(
-        ValueError, match=r"sagemaker_sp_term_mix.*must be a dictionary"
-    ):
+    with pytest.raises(ValueError, match=r"sagemaker_sp_term_mix.*must be a dictionary"):
         validate_scheduler_config(config)
 
 
@@ -387,9 +375,7 @@ def test_scheduler_invalid_compute_payment_option():
     config = {
         "compute_sp_payment_option": "INVALID_OPTION",
     }
-    with pytest.raises(
-        ValueError, match=r"Invalid compute_sp_payment_option.*Must be one of"
-    ):
+    with pytest.raises(ValueError, match=r"Invalid compute_sp_payment_option.*Must be one of"):
         validate_scheduler_config(config)
 
 
@@ -398,9 +384,7 @@ def test_scheduler_invalid_sagemaker_payment_option():
     config = {
         "sagemaker_sp_payment_option": "NOT_VALID",
     }
-    with pytest.raises(
-        ValueError, match=r"Invalid sagemaker_sp_payment_option.*Must be one of"
-    ):
+    with pytest.raises(ValueError, match=r"Invalid sagemaker_sp_payment_option.*Must be one of"):
         validate_scheduler_config(config)
 
 
@@ -409,9 +393,7 @@ def test_scheduler_invalid_purchase_strategy_type():
     config = {
         "purchase_strategy_type": "complex",
     }
-    with pytest.raises(
-        ValueError, match=r"Invalid purchase_strategy_type.*Must be one of"
-    ):
+    with pytest.raises(ValueError, match=r"Invalid purchase_strategy_type.*Must be one of"):
         validate_scheduler_config(config)
 
 
@@ -526,9 +508,7 @@ def test_reporter_empty_slack_webhook_url():
     config = {
         "slack_webhook_url": "",
     }
-    with pytest.raises(
-        ValueError, match=r"slack_webhook_url.*must be a non-empty string"
-    ):
+    with pytest.raises(ValueError, match=r"slack_webhook_url.*must be a non-empty string"):
         validate_reporter_config(config)
 
 
@@ -537,9 +517,7 @@ def test_reporter_empty_teams_webhook_url():
     config = {
         "teams_webhook_url": "",
     }
-    with pytest.raises(
-        ValueError, match=r"teams_webhook_url.*must be a non-empty string"
-    ):
+    with pytest.raises(ValueError, match=r"teams_webhook_url.*must be a non-empty string"):
         validate_reporter_config(config)
 
 
@@ -580,9 +558,7 @@ def test_purchaser_max_coverage_cap_below_range():
     config = {
         "max_coverage_cap": -10.0,
     }
-    with pytest.raises(
-        ValueError, match=r"max_coverage_cap.*must be between 0\.0 and 100\.0"
-    ):
+    with pytest.raises(ValueError, match=r"max_coverage_cap.*must be between 0\.0 and 100\.0"):
         validate_purchaser_config(config)
 
 
@@ -591,9 +567,7 @@ def test_purchaser_max_coverage_cap_above_range():
     config = {
         "max_coverage_cap": 150.0,
     }
-    with pytest.raises(
-        ValueError, match=r"max_coverage_cap.*must be between 0\.0 and 100\.0"
-    ):
+    with pytest.raises(ValueError, match=r"max_coverage_cap.*must be between 0\.0 and 100\.0"):
         validate_purchaser_config(config)
 
 
@@ -620,9 +594,7 @@ def test_purchaser_renewal_window_days_zero():
     config = {
         "renewal_window_days": 0,
     }
-    with pytest.raises(
-        ValueError, match=r"renewal_window_days.*must be greater than 0"
-    ):
+    with pytest.raises(ValueError, match=r"renewal_window_days.*must be greater than 0"):
         validate_purchaser_config(config)
 
 
@@ -631,9 +603,7 @@ def test_purchaser_renewal_window_days_negative():
     config = {
         "renewal_window_days": -1,
     }
-    with pytest.raises(
-        ValueError, match=r"renewal_window_days.*must be greater than 0"
-    ):
+    with pytest.raises(ValueError, match=r"renewal_window_days.*must be greater than 0"):
         validate_purchaser_config(config)
 
 
@@ -707,9 +677,7 @@ def test_purchaser_empty_slack_webhook_url():
     config = {
         "slack_webhook_url": "",
     }
-    with pytest.raises(
-        ValueError, match=r"slack_webhook_url.*must be a non-empty string"
-    ):
+    with pytest.raises(ValueError, match=r"slack_webhook_url.*must be a non-empty string"):
         validate_purchaser_config(config)
 
 
@@ -718,9 +686,7 @@ def test_purchaser_empty_teams_webhook_url():
     config = {
         "teams_webhook_url": "",
     }
-    with pytest.raises(
-        ValueError, match=r"teams_webhook_url.*must be a non-empty string"
-    ):
+    with pytest.raises(ValueError, match=r"teams_webhook_url.*must be a non-empty string"):
         validate_purchaser_config(config)
 
 

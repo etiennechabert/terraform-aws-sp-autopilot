@@ -20,9 +20,7 @@ import pytest
 
 # Add lambda directory to path
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-sys.path.insert(
-    0, os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-)
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
 
 import handler
 
@@ -116,9 +114,7 @@ def sample_savings_data():
     }
 
 
-def test_generate_csv_report_basic_structure(
-    sample_coverage_history, sample_savings_data
-):
+def test_generate_csv_report_basic_structure(sample_coverage_history, sample_savings_data):
     """Test CSV report basic structure and headers."""
     result = handler.generate_csv_report(sample_coverage_history, sample_savings_data)
 
@@ -132,9 +128,7 @@ def test_generate_csv_report_basic_structure(
     assert "metric,value" in result
 
     # Verify coverage history section has correct header
-    assert (
-        "date,coverage_percentage,on_demand_hours,covered_hours,total_hours" in result
-    )
+    assert "date,coverage_percentage,on_demand_hours,covered_hours,total_hours" in result
 
     # Verify active savings plans section has correct header
     assert (
@@ -143,9 +137,7 @@ def test_generate_csv_report_basic_structure(
     )
 
 
-def test_generate_csv_report_summary_metrics(
-    sample_coverage_history, sample_savings_data
-):
+def test_generate_csv_report_summary_metrics(sample_coverage_history, sample_savings_data):
     """Test CSV report summary metrics are included correctly."""
     result = handler.generate_csv_report(sample_coverage_history, sample_savings_data)
 
@@ -178,9 +170,7 @@ def test_generate_csv_report_summary_metrics(
     assert "savings_percentage,44.74" in result
 
 
-def test_generate_csv_report_coverage_history_data(
-    sample_coverage_history, sample_savings_data
-):
+def test_generate_csv_report_coverage_history_data(sample_coverage_history, sample_savings_data):
     """Test CSV report coverage history data rows."""
     result = handler.generate_csv_report(sample_coverage_history, sample_savings_data)
 
@@ -192,9 +182,7 @@ def test_generate_csv_report_coverage_history_data(
     assert "2026-01-14,72.30,80.00,175.00,255.00" in result
 
 
-def test_generate_csv_report_active_plans_data(
-    sample_coverage_history, sample_savings_data
-):
+def test_generate_csv_report_active_plans_data(sample_coverage_history, sample_savings_data):
     """Test CSV report active savings plans data rows."""
     result = handler.generate_csv_report(sample_coverage_history, sample_savings_data)
 
@@ -213,9 +201,7 @@ def test_generate_csv_report_active_plans_data(
 
 def test_generate_csv_report_with_empty_data():
     """Test CSV report generation with empty data."""
-    result = handler.generate_csv_report(
-        [], {"plans_count": 0, "total_commitment": 0.0}
-    )
+    result = handler.generate_csv_report([], {"plans_count": 0, "total_commitment": 0.0})
 
     # Verify basic structure still exists
     assert "# Savings Plans Coverage & Savings Report" in result
@@ -232,9 +218,7 @@ def test_generate_csv_report_with_empty_data():
     assert "total_hourly_commitment,0.0000" in result
 
 
-def test_generate_csv_report_with_increasing_trend(
-    sample_coverage_history, sample_savings_data
-):
+def test_generate_csv_report_with_increasing_trend(sample_coverage_history, sample_savings_data):
     """Test CSV report with increasing coverage trend."""
     result = handler.generate_csv_report(sample_coverage_history, sample_savings_data)
 
@@ -283,9 +267,7 @@ def test_generate_csv_report_with_single_data_point(sample_savings_data):
     assert "current_coverage_percentage,70.00" in result
 
 
-def test_generate_csv_report_parseable_format(
-    sample_coverage_history, sample_savings_data
-):
+def test_generate_csv_report_parseable_format(sample_coverage_history, sample_savings_data):
     """Test that CSV report can be parsed by standard CSV reader."""
     result = handler.generate_csv_report(sample_coverage_history, sample_savings_data)
 
@@ -338,9 +320,7 @@ def test_generate_csv_report_no_actual_savings(sample_coverage_history):
     assert "savings_percentage,0.00" in result
 
 
-def test_generate_csv_report_contains_timestamp(
-    sample_coverage_history, sample_savings_data
-):
+def test_generate_csv_report_contains_timestamp(sample_coverage_history, sample_savings_data):
     """Test CSV report contains generation timestamp."""
     result = handler.generate_csv_report(sample_coverage_history, sample_savings_data)
 

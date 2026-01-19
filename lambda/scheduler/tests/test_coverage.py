@@ -14,9 +14,7 @@ import pytest
 
 
 # Add parent directory to path
-sys.path.insert(
-    0, os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-)
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
 
 # Import coverage module with special handling to avoid naming conflicts
 import importlib.util
@@ -25,9 +23,7 @@ import os as _os
 
 _coverage_spec = importlib.util.spec_from_file_location(
     "coverage_module",
-    _os.path.join(
-        _os.path.dirname(_os.path.abspath(__file__)), "..", "coverage_calculator.py"
-    ),
+    _os.path.join(_os.path.dirname(_os.path.abspath(__file__)), "..", "coverage_calculator.py"),
 )
 coverage_module = importlib.util.module_from_spec(_coverage_spec)
 _coverage_spec.loader.exec_module(coverage_module)
@@ -120,9 +116,7 @@ def test_calculate_current_coverage_no_coverage_data(
     )
 
     # No coverage data - use the empty flag
-    mock_ce_client.get_savings_plans_coverage.return_value = aws_mock_builder.coverage(
-        empty=True
-    )
+    mock_ce_client.get_savings_plans_coverage.return_value = aws_mock_builder.coverage(empty=True)
 
     result = coverage_module.calculate_current_coverage(
         mock_savingsplans_client, mock_ce_client, mock_config
@@ -391,9 +385,7 @@ def test_calculate_current_coverage_get_coverage_error(
         ]
     }
 
-    error_response = {
-        "Error": {"Code": "ServiceUnavailable", "Message": "Service unavailable"}
-    }
+    error_response = {"Error": {"Code": "ServiceUnavailable", "Message": "Service unavailable"}}
     mock_ce_client.get_savings_plans_coverage.side_effect = ClientError(
         error_response, "get_savings_plans_coverage"
     )
@@ -504,9 +496,7 @@ def test_calculate_current_coverage_with_groupby_multiple_types(
                 "TimePeriod": {"Start": "2026-01-14", "End": "2026-01-15"},
                 "Groups": [
                     {
-                        "Attributes": {
-                            "SERVICE": "Amazon Elastic Compute Cloud - Compute"
-                        },
+                        "Attributes": {"SERVICE": "Amazon Elastic Compute Cloud - Compute"},
                         "Coverage": {"CoveragePercentage": "75.5"},
                     },
                     {
@@ -551,9 +541,7 @@ def test_calculate_current_coverage_with_groupby_ec2_instance_sp(
                 "TimePeriod": {"Start": "2026-01-14", "End": "2026-01-15"},
                 "Groups": [
                     {
-                        "Attributes": {
-                            "SERVICE": "Amazon Elastic Compute Cloud - Compute"
-                        },
+                        "Attributes": {"SERVICE": "Amazon Elastic Compute Cloud - Compute"},
                         "Coverage": {"CoveragePercentage": "85.0"},
                     }
                 ],
@@ -635,9 +623,7 @@ def test_calculate_current_coverage_with_groupby_all_types(
                 "TimePeriod": {"Start": "2026-01-14", "End": "2026-01-15"},
                 "Groups": [
                     {
-                        "Attributes": {
-                            "SERVICE": "Amazon Elastic Compute Cloud - Compute"
-                        },
+                        "Attributes": {"SERVICE": "Amazon Elastic Compute Cloud - Compute"},
                         "Coverage": {"CoveragePercentage": "75.0"},
                     },
                     {

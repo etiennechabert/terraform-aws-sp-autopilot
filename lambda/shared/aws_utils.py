@@ -41,9 +41,7 @@ def get_assumed_role_session(
 
     try:
         sts_client = boto3.client("sts")
-        response = sts_client.assume_role(
-            RoleArn=role_arn, RoleSessionName=session_name
-        )
+        response = sts_client.assume_role(RoleArn=role_arn, RoleSessionName=session_name)
 
         credentials = response["Credentials"]
 
@@ -53,9 +51,7 @@ def get_assumed_role_session(
             aws_session_token=credentials["SessionToken"],
         )
 
-        logger.info(
-            f"Successfully assumed role, session expires: {credentials['Expiration']}"
-        )
+        logger.info(f"Successfully assumed role, session expires: {credentials['Expiration']}")
         return session
 
     except ClientError as e:

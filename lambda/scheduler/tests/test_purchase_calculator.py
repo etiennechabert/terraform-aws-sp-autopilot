@@ -12,9 +12,7 @@ import pytest
 
 
 # Add parent directory to path
-sys.path.insert(
-    0, os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-)
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
 
 import purchase_calculator
 
@@ -53,9 +51,7 @@ def test_calculate_purchase_need_compute_gap(mock_config):
         "sagemaker": None,
     }
 
-    result = purchase_calculator.calculate_purchase_need(
-        mock_config, coverage, recommendations
-    )
+    result = purchase_calculator.calculate_purchase_need(mock_config, coverage, recommendations)
 
     assert len(result) == 1
     assert result[0]["sp_type"] == "compute"
@@ -76,9 +72,7 @@ def test_calculate_purchase_need_database_gap(mock_config):
         "sagemaker": None,
     }
 
-    result = purchase_calculator.calculate_purchase_need(
-        mock_config, coverage, recommendations
-    )
+    result = purchase_calculator.calculate_purchase_need(mock_config, coverage, recommendations)
 
     assert len(result) == 1
     assert result[0]["sp_type"] == "database"
@@ -100,9 +94,7 @@ def test_calculate_purchase_need_sagemaker_gap(mock_config):
         },
     }
 
-    result = purchase_calculator.calculate_purchase_need(
-        mock_config, coverage, recommendations
-    )
+    result = purchase_calculator.calculate_purchase_need(mock_config, coverage, recommendations)
 
     assert len(result) == 1
     assert result[0]["sp_type"] == "sagemaker"
@@ -129,9 +121,7 @@ def test_calculate_purchase_need_multiple_gaps(mock_config):
         },
     }
 
-    result = purchase_calculator.calculate_purchase_need(
-        mock_config, coverage, recommendations
-    )
+    result = purchase_calculator.calculate_purchase_need(mock_config, coverage, recommendations)
 
     assert len(result) == 3
     sp_types = [plan["sp_type"] for plan in result]
@@ -158,9 +148,7 @@ def test_calculate_purchase_need_no_gap(mock_config):
         },
     }
 
-    result = purchase_calculator.calculate_purchase_need(
-        mock_config, coverage, recommendations
-    )
+    result = purchase_calculator.calculate_purchase_need(mock_config, coverage, recommendations)
 
     # No purchases should be planned
     assert len(result) == 0
@@ -171,9 +159,7 @@ def test_calculate_purchase_need_gap_but_no_recommendation(mock_config):
     coverage = {"compute": 70.0, "database": 90.0, "sagemaker": 90.0}
     recommendations = {"compute": None, "database": None, "sagemaker": None}
 
-    result = purchase_calculator.calculate_purchase_need(
-        mock_config, coverage, recommendations
-    )
+    result = purchase_calculator.calculate_purchase_need(mock_config, coverage, recommendations)
 
     # No purchases can be planned without recommendations
     assert len(result) == 0
@@ -188,9 +174,7 @@ def test_calculate_purchase_need_zero_commitment(mock_config):
         "sagemaker": None,
     }
 
-    result = purchase_calculator.calculate_purchase_need(
-        mock_config, coverage, recommendations
-    )
+    result = purchase_calculator.calculate_purchase_need(mock_config, coverage, recommendations)
 
     # Zero commitment should be skipped
     assert len(result) == 0
@@ -210,9 +194,7 @@ def test_calculate_purchase_need_sp_disabled(mock_config):
         "sagemaker": None,
     }
 
-    result = purchase_calculator.calculate_purchase_need(
-        mock_config, coverage, recommendations
-    )
+    result = purchase_calculator.calculate_purchase_need(mock_config, coverage, recommendations)
 
     # Should not plan purchase for disabled SP type
     assert len(result) == 0

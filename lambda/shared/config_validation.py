@@ -96,25 +96,17 @@ def validate_scheduler_config(config: dict[str, Any]) -> None:
         ValueError: If validation fails with descriptive error message
     """
     if not isinstance(config, dict):
-        raise ValueError(
-            f"Configuration must be a dictionary, got {type(config).__name__}"
-        )
+        raise ValueError(f"Configuration must be a dictionary, got {type(config).__name__}")
 
     # Validate percentage fields (0-100 range)
     if "coverage_target_percent" in config:
-        _validate_percentage_range(
-            config["coverage_target_percent"], "coverage_target_percent"
-        )
+        _validate_percentage_range(config["coverage_target_percent"], "coverage_target_percent")
 
     if "max_purchase_percent" in config:
-        _validate_percentage_range(
-            config["max_purchase_percent"], "max_purchase_percent"
-        )
+        _validate_percentage_range(config["max_purchase_percent"], "max_purchase_percent")
 
     if "min_purchase_percent" in config:
-        _validate_percentage_range(
-            config["min_purchase_percent"], "min_purchase_percent"
-        )
+        _validate_percentage_range(config["min_purchase_percent"], "min_purchase_percent")
 
     # Validate min_purchase_percent < max_purchase_percent
     if (
@@ -183,8 +175,7 @@ def validate_scheduler_config(config: dict[str, Any]) -> None:
         term_value = config["compute_sp_term"]
         if term_value not in VALID_TERMS:
             raise ValueError(
-                f"Invalid compute_sp_term: '{term_value}'. "
-                f"Must be one of: {', '.join(VALID_TERMS)}"
+                f"Invalid compute_sp_term: '{term_value}'. Must be one of: {', '.join(VALID_TERMS)}"
             )
 
     if "sagemaker_sp_term" in config:
@@ -242,9 +233,7 @@ def validate_reporter_config(config: dict[str, Any]) -> None:
         ValueError: If validation fails with descriptive error message
     """
     if not isinstance(config, dict):
-        raise ValueError(
-            f"Configuration must be a dictionary, got {type(config).__name__}"
-        )
+        raise ValueError(f"Configuration must be a dictionary, got {type(config).__name__}")
 
     # Validate report_format is valid
     if "report_format" in config:
@@ -311,9 +300,7 @@ def validate_purchaser_config(config: dict[str, Any]) -> None:
         ValueError: If validation fails with descriptive error message
     """
     if not isinstance(config, dict):
-        raise ValueError(
-            f"Configuration must be a dictionary, got {type(config).__name__}"
-        )
+        raise ValueError(f"Configuration must be a dictionary, got {type(config).__name__}")
 
     # Validate max_coverage_cap is a valid percentage (0-100)
     if "max_coverage_cap" in config:

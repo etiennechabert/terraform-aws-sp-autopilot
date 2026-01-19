@@ -102,9 +102,7 @@ def handler(event: dict[str, Any], context: Any) -> dict[str, Any]:
 
         # Step 2: Gather savings data
         savings_data = get_savings_data(savingsplans_client, ce_client)
-        logger.info(
-            f"Savings data collected: {savings_data.get('plans_count', 0)} active plans"
-        )
+        logger.info(f"Savings data collected: {savings_data.get('plans_count', 0)} active plans")
 
         # Step 2.5: Check for low utilization and send alert if needed
         check_and_alert_low_utilization(sns_client, config, savings_data)
@@ -151,9 +149,7 @@ def handler(event: dict[str, Any], context: Any) -> dict[str, Any]:
                 "trend_direction": trend_direction,
             }
 
-            send_report_email(
-                sns_client, config, s3_object_key, coverage_summary, savings_data
-            )
+            send_report_email(sns_client, config, s3_object_key, coverage_summary, savings_data)
             logger.info("Report email notification sent")
         else:
             logger.info("Email notifications disabled - skipping email")
@@ -345,10 +341,7 @@ def get_actual_cost_data(
                 cost_amount = float(unblended_cost.get("Amount", "0"))
 
                 # Categorize by purchase option
-                if (
-                    "Savings Plans" in purchase_option
-                    or "SavingsPlan" in purchase_option
-                ):
+                if "Savings Plans" in purchase_option or "SavingsPlan" in purchase_option:
                     daily_savings_plans_cost += cost_amount
                     total_savings_plans_cost += cost_amount
                 elif "On Demand" in purchase_option or "OnDemand" in purchase_option:
@@ -472,9 +465,7 @@ def get_savings_data(
         # Get utilization and actual savings data from Cost Explorer
         try:
             end_date = datetime.now(timezone.utc).date()
-            start_date = end_date - timedelta(
-                days=30
-            )  # Last 30 days for actual savings
+            start_date = end_date - timedelta(days=30)  # Last 30 days for actual savings
 
             utilization_response = ce_client.get_savings_plans_utilization(
                 TimePeriod={
@@ -484,9 +475,7 @@ def get_savings_data(
                 Granularity="DAILY",
             )
 
-            utilizations = utilization_response.get(
-                "SavingsPlansUtilizationsByTime", []
-            )
+            utilizations = utilization_response.get("SavingsPlansUtilizationsByTime", [])
 
             if utilizations:
                 # Calculate average utilization and actual savings
@@ -512,9 +501,7 @@ def get_savings_data(
 
                     # Extract amortized commitment
                     amortized = util_item.get("AmortizedCommitment", {})
-                    amortized_commitment = amortized.get(
-                        "TotalAmortizedCommitment", "0"
-                    )
+                    amortized_commitment = amortized.get("TotalAmortizedCommitment", "0")
 
                     # Accumulate totals
                     total_net_savings += float(net_savings)
@@ -522,18 +509,10 @@ def get_savings_data(
                     total_amortized_commitment += float(amortized_commitment)
 
                 average_utilization = total_utilization / count if count > 0 else 0.0
-                logger.info(
-                    f"Average utilization over last 30 days: {average_utilization:.2f}%"
-                )
-                logger.info(
-                    f"Actual net savings over last 30 days: ${total_net_savings:.2f}"
-                )
-                logger.info(
-                    f"On-demand equivalent cost: ${total_on_demand_equivalent:.2f}"
-                )
-                logger.info(
-                    f"Amortized SP commitment: ${total_amortized_commitment:.2f}"
-                )
+                logger.info(f"Average utilization over last 30 days: {average_utilization:.2f}%")
+                logger.info(f"Actual net savings over last 30 days: ${total_net_savings:.2f}")
+                logger.info(f"On-demand equivalent cost: ${total_on_demand_equivalent:.2f}")
+                logger.info(f"Amortized SP commitment: ${total_amortized_commitment:.2f}")
             else:
                 average_utilization = 0.0
                 total_net_savings = 0.0
@@ -551,9 +530,7 @@ def get_savings_data(
         # Calculate actual savings percentage
         savings_percentage = 0.0
         if total_on_demand_equivalent > 0:
-            savings_percentage = (
-                total_net_savings / total_on_demand_equivalent
-            ) * 100.0
+            savings_percentage = (total_net_savings / total_on_demand_equivalent) * 100.0
 
         # Calculate breakdown by plan type
         breakdown_by_type = {}
@@ -565,13 +542,9 @@ def get_savings_data(
                     "total_commitment": 0.0,
                 }
             breakdown_by_type[plan_type]["plans_count"] += 1
-            breakdown_by_type[plan_type]["total_commitment"] += plan[
-                "hourly_commitment"
-            ]
+            breakdown_by_type[plan_type]["total_commitment"] += plan["hourly_commitment"]
 
-        logger.info(
-            f"Actual monthly savings: ${total_net_savings:.2f} ({savings_percentage:.2f}%)"
-        )
+        logger.info(f"Actual monthly savings: ${total_net_savings:.2f} ({savings_percentage:.2f}%)")
 
         return {
             "total_commitment": total_hourly_commitment,
@@ -591,9 +564,7 @@ def get_savings_data(
     except ClientError as e:
         error_code = e.response.get("Error", {}).get("Code", "Unknown")
         error_message = e.response.get("Error", {}).get("Message", str(e))
-        logger.error(
-            f"Failed to get savings data - Code: {error_code}, Message: {error_message}"
-        )
+        logger.error(f"Failed to get savings data - Code: {error_code}, Message: {error_message}")
         raise
 
 
@@ -672,9 +643,7 @@ def check_and_alert_low_utilization(
                 slack_message = notifications.format_slack_message(
                     subject, body_lines, severity="warning"
                 )
-                if notifications.send_slack_notification(
-                    slack_webhook_url, slack_message
-                ):
+                if notifications.send_slack_notification(slack_webhook_url, slack_message):
                     logger.info("Low utilization alert sent via Slack")
                 else:
                     logger.warning("Slack notification failed (non-fatal)")
@@ -686,9 +655,7 @@ def check_and_alert_low_utilization(
             teams_webhook_url = config.get("teams_webhook_url")
             if teams_webhook_url:
                 teams_message = notifications.format_teams_message(subject, body_lines)
-                if notifications.send_teams_notification(
-                    teams_webhook_url, teams_message
-                ):
+                if notifications.send_teams_notification(teams_webhook_url, teams_message):
                     logger.info("Low utilization alert sent via Teams")
                 else:
                     logger.warning("Teams notification failed (non-fatal)")
@@ -721,15 +688,11 @@ def generate_html_report(
     # Calculate coverage summary
     avg_coverage = 0.0
     if coverage_history:
-        total_coverage = sum(
-            item.get("coverage_percentage", 0.0) for item in coverage_history
-        )
+        total_coverage = sum(item.get("coverage_percentage", 0.0) for item in coverage_history)
         avg_coverage = total_coverage / len(coverage_history)
 
     current_coverage = (
-        coverage_history[-1].get("coverage_percentage", 0.0)
-        if coverage_history
-        else 0.0
+        coverage_history[-1].get("coverage_percentage", 0.0) if coverage_history else 0.0
     )
 
     # Calculate trend direction
@@ -1120,15 +1083,11 @@ def generate_json_report(
     # Calculate coverage summary
     avg_coverage = 0.0
     if coverage_history:
-        total_coverage = sum(
-            item.get("coverage_percentage", 0.0) for item in coverage_history
-        )
+        total_coverage = sum(item.get("coverage_percentage", 0.0) for item in coverage_history)
         avg_coverage = total_coverage / len(coverage_history)
 
     current_coverage = (
-        coverage_history[-1].get("coverage_percentage", 0.0)
-        if coverage_history
-        else 0.0
+        coverage_history[-1].get("coverage_percentage", 0.0) if coverage_history else 0.0
     )
 
     # Calculate trend direction
@@ -1158,12 +1117,8 @@ def generate_json_report(
             {
                 "type": plan_type,
                 "plans_count": type_data.get("plans_count", 0),
-                "total_hourly_commitment": round(
-                    type_data.get("total_commitment", 0.0), 4
-                ),
-                "total_monthly_commitment": round(
-                    type_data.get("total_commitment", 0.0) * 730, 2
-                ),
+                "total_hourly_commitment": round(type_data.get("total_commitment", 0.0), 4),
+                "total_monthly_commitment": round(type_data.get("total_commitment", 0.0) * 730, 2),
             }
         )
 
@@ -1185,12 +1140,8 @@ def generate_json_report(
         "coverage_history": coverage_history,
         "savings_summary": {
             "active_plans_count": savings_data.get("plans_count", 0),
-            "total_hourly_commitment": round(
-                savings_data.get("total_commitment", 0.0), 4
-            ),
-            "total_monthly_commitment": round(
-                savings_data.get("total_commitment", 0.0) * 730, 2
-            ),
+            "total_hourly_commitment": round(savings_data.get("total_commitment", 0.0), 4),
+            "total_monthly_commitment": round(savings_data.get("total_commitment", 0.0) * 730, 2),
             "estimated_monthly_savings": round(
                 savings_data.get("estimated_monthly_savings", 0.0), 2
             ),
@@ -1237,15 +1188,11 @@ def generate_csv_report(
     # Calculate coverage summary
     avg_coverage = 0.0
     if coverage_history:
-        total_coverage = sum(
-            item.get("coverage_percentage", 0.0) for item in coverage_history
-        )
+        total_coverage = sum(item.get("coverage_percentage", 0.0) for item in coverage_history)
         avg_coverage = total_coverage / len(coverage_history)
 
     current_coverage = (
-        coverage_history[-1].get("coverage_percentage", 0.0)
-        if coverage_history
-        else 0.0
+        coverage_history[-1].get("coverage_percentage", 0.0) if coverage_history else 0.0
     )
 
     # Calculate trend direction
@@ -1283,9 +1230,7 @@ def generate_csv_report(
     csv_parts.append(f"trend_direction,{trend_direction}")
     csv_parts.append(f"trend_value,{trend_value:.2f}")
     csv_parts.append(f"active_plans_count,{savings_data.get('plans_count', 0)}")
-    csv_parts.append(
-        f"total_hourly_commitment,{savings_data.get('total_commitment', 0.0):.4f}"
-    )
+    csv_parts.append(f"total_hourly_commitment,{savings_data.get('total_commitment', 0.0):.4f}")
     csv_parts.append(
         f"total_monthly_commitment,{savings_data.get('total_commitment', 0.0) * 730:.2f}"
     )
@@ -1303,9 +1248,7 @@ def generate_csv_report(
 
     # Coverage history section
     csv_parts.append("## Coverage History")
-    csv_parts.append(
-        "date,coverage_percentage,on_demand_hours,covered_hours,total_hours"
-    )
+    csv_parts.append("date,coverage_percentage,on_demand_hours,covered_hours,total_hours")
     for item in coverage_history:
         csv_parts.append(
             f"{item.get('date', '')},{item.get('coverage_percentage', 0.0):.2f},"
@@ -1375,9 +1318,7 @@ def upload_report_to_s3(
     except ClientError as e:
         error_code = e.response.get("Error", {}).get("Code", "Unknown")
         error_message = e.response.get("Error", {}).get("Message", str(e))
-        logger.error(
-            f"Failed to upload report - Code: {error_code}, Message: {error_message}"
-        )
+        logger.error(f"Failed to upload report - Code: {error_code}, Message: {error_message}")
         raise
 
 
@@ -1409,7 +1350,9 @@ def send_report_email(
     # Build S3 URL
     bucket_name = config["reports_bucket"]
     s3_url = f"https://{bucket_name}.s3.amazonaws.com/{s3_object_key}"
-    s3_console_url = f"https://s3.console.aws.amazon.com/s3/object/{bucket_name}?prefix={s3_object_key}"
+    s3_console_url = (
+        f"https://s3.console.aws.amazon.com/s3/object/{bucket_name}?prefix={s3_object_key}"
+    )
 
     # Extract summary metrics
     current_coverage = coverage_summary.get("current_coverage", 0.0)
@@ -1490,9 +1433,7 @@ def send_report_email(
     message_body = "\n".join(body_lines)
 
     try:
-        sns_client.publish(
-            TopicArn=config["sns_topic_arn"], Subject=subject, Message=message_body
-        )
+        sns_client.publish(TopicArn=config["sns_topic_arn"], Subject=subject, Message=message_body)
         logger.info("Report email sent successfully")
     except ClientError as e:
         logger.error(f"Failed to send report email: {e!s}")
@@ -1502,9 +1443,7 @@ def send_report_email(
     try:
         slack_webhook_url = config.get("slack_webhook_url")
         if slack_webhook_url:
-            slack_message = notifications.format_slack_message(
-                subject, body_lines, severity="info"
-            )
+            slack_message = notifications.format_slack_message(subject, body_lines, severity="info")
             if notifications.send_slack_notification(slack_webhook_url, slack_message):
                 logger.info("Slack notification sent successfully")
             else:
@@ -1524,9 +1463,7 @@ def send_report_email(
         logger.warning(f"Teams notification error (non-fatal): {e!s}")
 
 
-def send_error_email(
-    config: dict[str, Any] | None = None, error_msg: str | None = None
-) -> None:
+def send_error_email(config: dict[str, Any] | None = None, error_msg: str | None = None) -> None:
     """
     Send error notification email - backward compatible wrapper.
 
