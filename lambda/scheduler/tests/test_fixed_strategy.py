@@ -53,9 +53,7 @@ def mock_recommendations():
 
 def test_calculate_purchase_need_all_types(mock_config, mock_coverage, mock_recommendations):
     """Test fixed strategy returns plans for all enabled SP types with coverage gaps."""
-    plans = calculate_purchase_need_fixed(
-        mock_config, mock_coverage, mock_recommendations
-    )
+    plans = calculate_purchase_need_fixed(mock_config, mock_coverage, mock_recommendations)
 
     assert len(plans) == 3
 
@@ -85,35 +83,33 @@ def test_calculate_purchase_need_disabled_sp_type(mock_config, mock_coverage, mo
     """Test that disabled SP types are skipped."""
     mock_config["enable_sagemaker_sp"] = False
 
-    plans = calculate_purchase_need_fixed(
-        mock_config, mock_coverage, mock_recommendations
-    )
+    plans = calculate_purchase_need_fixed(mock_config, mock_coverage, mock_recommendations)
 
     # Should only have compute and database
     assert len(plans) == 2
     assert all(p["sp_type"] != "sagemaker" for p in plans)
 
 
-def test_calculate_purchase_need_coverage_at_target(mock_config, mock_coverage, mock_recommendations):
+def test_calculate_purchase_need_coverage_at_target(
+    mock_config, mock_coverage, mock_recommendations
+):
     """Test that SP types already at or above target are skipped."""
     mock_coverage["compute"] = 85.0  # Above 80% target
 
-    plans = calculate_purchase_need_fixed(
-        mock_config, mock_coverage, mock_recommendations
-    )
+    plans = calculate_purchase_need_fixed(mock_config, mock_coverage, mock_recommendations)
 
     # Should only have database and sagemaker
     assert len(plans) == 2
     assert all(p["sp_type"] != "compute" for p in plans)
 
 
-def test_calculate_purchase_need_no_recommendation(mock_config, mock_coverage, mock_recommendations):
+def test_calculate_purchase_need_no_recommendation(
+    mock_config, mock_coverage, mock_recommendations
+):
     """Test that SP types without recommendations are skipped."""
     del mock_recommendations["database"]
 
-    plans = calculate_purchase_need_fixed(
-        mock_config, mock_coverage, mock_recommendations
-    )
+    plans = calculate_purchase_need_fixed(mock_config, mock_coverage, mock_recommendations)
 
     # Should only have compute and sagemaker
     assert len(plans) == 2
@@ -124,25 +120,23 @@ def test_calculate_purchase_need_zero_commitment(mock_config, mock_coverage, moc
     """Test that recommendations with zero commitment are skipped."""
     mock_recommendations["compute"]["HourlyCommitmentToPurchase"] = "0.000"
 
-    plans = calculate_purchase_need_fixed(
-        mock_config, mock_coverage, mock_recommendations
-    )
+    plans = calculate_purchase_need_fixed(mock_config, mock_coverage, mock_recommendations)
 
     # Should only have database and sagemaker
     assert len(plans) == 2
     assert all(p["sp_type"] != "compute" for p in plans)
 
 
-def test_calculate_purchase_need_default_payment_options(mock_config, mock_coverage, mock_recommendations):
+def test_calculate_purchase_need_default_payment_options(
+    mock_config, mock_coverage, mock_recommendations
+):
     """Test that default payment options are used when not configured."""
     # Remove payment option configs
     del mock_config["compute_sp_payment_option"]
     del mock_config["database_sp_payment_option"]
     del mock_config["sagemaker_sp_payment_option"]
 
-    plans = calculate_purchase_need_fixed(
-        mock_config, mock_coverage, mock_recommendations
-    )
+    plans = calculate_purchase_need_fixed(mock_config, mock_coverage, mock_recommendations)
 
     # Check defaults are applied
     compute_plan = [p for p in plans if p["sp_type"] == "compute"][0]
@@ -161,9 +155,7 @@ def test_calculate_purchase_need_default_terms(mock_config, mock_coverage, mock_
     del mock_config["compute_sp_term"]
     del mock_config["sagemaker_sp_term"]
 
-    plans = calculate_purchase_need_fixed(
-        mock_config, mock_coverage, mock_recommendations
-    )
+    plans = calculate_purchase_need_fixed(mock_config, mock_coverage, mock_recommendations)
 
     # Check defaults are applied
     compute_plan = [p for p in plans if p["sp_type"] == "compute"][0]
@@ -181,9 +173,7 @@ def test_calculate_purchase_need_no_coverage_data(mock_config, mock_recommendati
     """Test handling of missing coverage data."""
     empty_coverage = {}
 
-    plans = calculate_purchase_need_fixed(
-        mock_config, empty_coverage, mock_recommendations
-    )
+    plans = calculate_purchase_need_fixed(mock_config, empty_coverage, mock_recommendations)
 
     # Should create plans for all types since coverage defaults to 0
     assert len(plans) == 3
@@ -193,9 +183,7 @@ def test_calculate_purchase_need_empty_recommendations(mock_config, mock_coverag
     """Test with no recommendations available."""
     empty_recommendations = {}
 
-    plans = calculate_purchase_need_fixed(
-        mock_config, mock_coverage, empty_recommendations
-    )
+    plans = calculate_purchase_need_fixed(mock_config, mock_coverage, empty_recommendations)
 
     assert len(plans) == 0
 
@@ -206,20 +194,18 @@ def test_calculate_purchase_need_all_disabled(mock_config, mock_coverage, mock_r
     mock_config["enable_database_sp"] = False
     mock_config["enable_sagemaker_sp"] = False
 
-    plans = calculate_purchase_need_fixed(
-        mock_config, mock_coverage, mock_recommendations
-    )
+    plans = calculate_purchase_need_fixed(mock_config, mock_coverage, mock_recommendations)
 
     assert len(plans) == 0
 
 
-def test_calculate_purchase_need_missing_recommendation_id(mock_config, mock_coverage, mock_recommendations):
+def test_calculate_purchase_need_missing_recommendation_id(
+    mock_config, mock_coverage, mock_recommendations
+):
     """Test handling of recommendations without IDs."""
     del mock_recommendations["compute"]["RecommendationId"]
 
-    plans = calculate_purchase_need_fixed(
-        mock_config, mock_coverage, mock_recommendations
-    )
+    plans = calculate_purchase_need_fixed(mock_config, mock_coverage, mock_recommendations)
 
     compute_plan = [p for p in plans if p["sp_type"] == "compute"][0]
     assert compute_plan["recommendation_id"] == "unknown"
