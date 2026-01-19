@@ -144,8 +144,8 @@ data "archive_file" "scheduler" {
     filename = "config.py"
   }
   source {
-    content  = file("${path.module}/lambda/scheduler/coverage_calculator.py")
-    filename = "coverage_calculator.py"
+    content  = file("${path.module}/lambda/scheduler/sp_coverage.py")
+    filename = "sp_coverage.py"
   }
   source {
     content  = file("${path.module}/lambda/scheduler/email_notifications.py")
@@ -168,12 +168,12 @@ data "archive_file" "scheduler" {
     filename = "dichotomy_strategy.py"
   }
   source {
-    content  = file("${path.module}/lambda/scheduler/simple_strategy.py")
-    filename = "simple_strategy.py"
+    content  = file("${path.module}/lambda/scheduler/fixed_strategy.py")
+    filename = "fixed_strategy.py"
   }
   source {
-    content  = file("${path.module}/lambda/scheduler/conservative_strategy.py")
-    filename = "conservative_strategy.py"
+    content  = file("${path.module}/lambda/scheduler/follow_aws_strategy.py")
+    filename = "follow_aws_strategy.py"
   }
 
   # Include shared module

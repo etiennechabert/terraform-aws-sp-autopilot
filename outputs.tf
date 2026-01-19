@@ -169,9 +169,9 @@ output "module_configuration" {
     database_sp_enabled   = local.database_enabled
     database_sp_term      = local.database_sp_term
     database_sp_payment   = local.database_sp_payment_option
-    sagemaker_sp_enabled  = local.sagemaker_enabled
-    sagemaker_sp_term_mix = local.sagemaker_term_mix
-    sagemaker_sp_payment  = local.sagemaker_payment_option
+    sagemaker_sp_enabled = local.sagemaker_enabled
+    sagemaker_sp_term    = local.sagemaker_term
+    sagemaker_sp_payment = local.sagemaker_payment_option
     coverage_target       = local.coverage_target_percent
     max_coverage_cap      = local.max_coverage_cap
     dry_run               = local.dry_run
@@ -223,7 +223,7 @@ output "sagemaker_sp_configuration" {
   description = "SageMaker Savings Plans configuration for monitoring"
   value = {
     enabled        = local.sagemaker_enabled
-    term_mix       = local.sagemaker_term_mix
+    term           = local.sagemaker_term
     payment_option = local.sagemaker_payment_option
     supported_services = [
       "SageMaker"
