@@ -56,7 +56,7 @@ func TestFullDeploymentAndCleanup(t *testing.T) {
 			"purchase_strategy": map[string]interface{}{
 				"coverage_target_percent": 80,
 				"max_coverage_cap":        95,
-				"simple": map[string]interface{}{
+				"fixed": map[string]interface{}{
 					"max_purchase_percent": 15,
 				},
 			},
