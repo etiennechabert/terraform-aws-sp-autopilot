@@ -15,23 +15,10 @@ import pytest
 # Add parent directory to path
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
 
-# Import from new modular structure with aliases to avoid conflicts
-# Note: Must import our local 'coverage_calculator.py' before pytest-cov loads its coverage module
-# We do this by explicitly importing it with importlib to avoid naming conflicts
-import importlib.util
-import os as _os
-
-
-_coverage_spec = importlib.util.spec_from_file_location(
-    "coverage_module",
-    _os.path.join(_os.path.dirname(_os.path.abspath(__file__)), "..", "coverage_calculator.py"),
-)
-coverage_module = importlib.util.module_from_spec(_coverage_spec)
-_coverage_spec.loader.exec_module(coverage_module)
-
 import config  # noqa: E402
 import handler  # noqa: E402
 import recommendations as recommendations_module  # noqa: E402
+import sp_coverage as coverage_module  # noqa: E402
 
 
 @pytest.fixture
