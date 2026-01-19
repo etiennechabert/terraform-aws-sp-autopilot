@@ -53,7 +53,7 @@ Automates AWS Savings Plans purchases based on usage analysis, maintaining consi
 | **Terms** | 1-year, 3-year (configurable mix) |
 | **Payment Options** | All Upfront, Partial Upfront, No Upfront |
 | **Max Discount** | Up to 66% |
-| **Configuration** | Fully configurable term mix and payment options |
+| **Configuration** | Select specific plan type (term + payment option combination) |
 
 ### Database Savings Plans
 
@@ -77,7 +77,7 @@ Automates AWS Savings Plans purchases based on usage analysis, maintaining consi
 | **Max Discount** | Up to 64% |
 | **Configuration** | Enable via `enable_sagemaker_sp = true` |
 
-> **✓ Fully Configurable:** SageMaker Savings Plans offer complete flexibility in term and payment options, similar to Compute Savings Plans. You can customize the term mix (e.g., 70% 3-year, 30% 1-year) via `sagemaker_sp_term_mix` and select any payment option via `sagemaker_sp_payment_option` (`ALL_UPFRONT`, `PARTIAL_UPFRONT`, or `NO_UPFRONT`).
+> **✓ Fully Configurable:** SageMaker Savings Plans offer complete flexibility in term and payment options, similar to Compute Savings Plans. You can select any `plan_type` such as `all_upfront_three_year`, `partial_upfront_one_year`, etc.
 
 ## Architecture
 
@@ -115,7 +115,7 @@ module "savings_plans" {
   purchase_strategy = {
     coverage_target_percent = 90
     max_coverage_cap        = 95
-    simple = {
+    fixed = {
       max_purchase_percent = 10
     }
   }
@@ -123,7 +123,7 @@ module "savings_plans" {
   sp_plans = {
     compute = {
       enabled              = true
-      all_upfront_one_year = 1
+      plan_type = "all_upfront_one_year"
     }
     database = {
       enabled = false
@@ -163,7 +163,7 @@ module "savings_plans" {
   purchase_strategy = {
     coverage_target_percent = 90
     max_coverage_cap        = 95
-    simple = {
+    fixed = {
       max_purchase_percent = 10
     }
   }
@@ -173,8 +173,7 @@ module "savings_plans" {
       enabled = false
     }
     database = {
-      enabled             = true
-      no_upfront_one_year = 1
+      enabled = true
     }
     sagemaker = {
       enabled = false
@@ -205,7 +204,7 @@ module "savings_plans" {
   purchase_strategy = {
     coverage_target_percent = 90
     max_coverage_cap        = 95
-    simple = {
+    fixed = {
       max_purchase_percent = 10
     }
   }
@@ -218,9 +217,8 @@ module "savings_plans" {
       enabled = false
     }
     sagemaker = {
-      enabled                  = true
-      all_upfront_three_year   = 0.7
-      all_upfront_one_year     = 0.3
+      enabled   = true
+      plan_type = "all_upfront_three_year"
     }
   }
 
@@ -248,25 +246,22 @@ module "savings_plans" {
   purchase_strategy = {
     coverage_target_percent = 90
     max_coverage_cap        = 95
-    simple = {
+    fixed = {
       max_purchase_percent = 10
     }
   }
 
   sp_plans = {
     compute = {
-      enabled                = true
-      all_upfront_three_year = 0.67
-      all_upfront_one_year   = 0.33
+      enabled   = true
+      plan_type = "all_upfront_three_year"
     }
     database = {
-      enabled             = true
-      no_upfront_one_year = 1
+      enabled = true
     }
     sagemaker = {
-      enabled                = true
-      all_upfront_three_year = 0.7
-      all_upfront_one_year   = 0.3
+      enabled   = true
+      plan_type = "all_upfront_three_year"
     }
   }
 
@@ -312,7 +307,7 @@ module "savings_plans" {
   purchase_strategy = {
     coverage_target_percent = 90
     max_coverage_cap        = 95
-    simple = {
+    fixed = {
       max_purchase_percent = 10
     }
   }
@@ -320,7 +315,7 @@ module "savings_plans" {
   sp_plans = {
     compute = {
       enabled              = true
-      all_upfront_one_year = 1
+      plan_type = "all_upfront_one_year"
     }
     database = {
       enabled = false
@@ -450,7 +445,7 @@ purchase_strategy = {
   coverage_target_percent = 90
   max_coverage_cap        = 95
 
-  simple = {
+  fixed = {
     max_purchase_percent = 10 # Purchase 10% of AWS recommendation each cycle
   }
 }

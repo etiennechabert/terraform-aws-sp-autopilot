@@ -1,20 +1,24 @@
 """
-Simple Purchase Strategy Module - Fixed percentage purchase strategy.
+Follow AWS Strategy Module - Uses AWS Cost Explorer recommendations exactly as provided.
 
-This module implements the simple (default) purchase strategy, which applies
-a fixed max_purchase_percent to all AWS recommendations uniformly.
+This module implements the follow_aws strategy, which trusts AWS recommendations
+completely and purchases exactly what Cost Explorer suggests.
 
 Strategy Behavior:
-- Applies the same percentage every cycle regardless of coverage gap
-- Linear ramp to target coverage
-- Predictable and easy to understand
-- Best for stable workloads with predictable growth
+- Uses 100% of AWS Cost Explorer recommendations
+- No scaling or modification of recommended amounts
+- Simplest possible strategy - just follow AWS guidance
 
 Benefits:
-- Simple and predictable
-- No surprises in purchase amounts
-- Easy to budget and forecast
-- Good for steady-state optimization
+- Maximum trust in AWS optimization algorithms
+- No manual tuning required
+- AWS recommendations already factor in your usage patterns
+- Good starting point for new users
+
+Use when:
+- You trust AWS Cost Explorer recommendations
+- You want hands-off automation
+- You're starting with Savings Plans and want conservative approach
 """
 
 import logging
@@ -25,13 +29,14 @@ from typing import Any, Dict, List
 logger = logging.getLogger()
 
 
-def calculate_purchase_need_simple(
+def calculate_purchase_need_follow_aws(
     config: Dict[str, Any], coverage: Dict[str, float], recommendations: Dict[str, Any]
 ) -> List[Dict[str, Any]]:
     """
-    Calculate required purchases using SIMPLE strategy (legacy/default).
+    Calculate required purchases using FOLLOW_AWS strategy.
 
-    Simple strategy applies max_purchase_percent uniformly to all AWS recommendations.
+    This strategy uses AWS Cost Explorer recommendations exactly as provided,
+    without any scaling or modification.
 
     Args:
         config: Configuration dictionary
@@ -41,7 +46,7 @@ def calculate_purchase_need_simple(
     Returns:
         list: Purchase plans to execute
     """
-    logger.info("Calculating purchase need using SIMPLE strategy")
+    logger.info("Calculating purchase need using FOLLOW_AWS strategy")
 
     purchase_plans = []
     target_coverage = config["coverage_target_percent"]
@@ -96,6 +101,7 @@ def calculate_purchase_need_simple(
             )
             continue
 
+        # Use AWS recommendation exactly as provided (100%)
         hourly_commitment_float = float(recommendation.get("HourlyCommitmentToPurchase", "0"))
         if hourly_commitment_float <= 0:
             logger.info(f"{sp_type['name']} SP recommendation has zero commitment - skipping")
@@ -108,17 +114,22 @@ def calculate_purchase_need_simple(
                 sp_type["payment_option_config"], sp_type["default_payment"]
             ),
             "recommendation_id": recommendation.get("RecommendationId", "unknown"),
-            "strategy": "simple",
+            "strategy": "follow_aws",
         }
 
-        if "term" in sp_type:
-            purchase_plan["term"] = sp_type["term"]
+        # Set term based on SP type
+        if key == "compute":
+            purchase_plan["term"] = config.get("compute_sp_term", "THREE_YEAR")
+        elif key == "sagemaker":
+            purchase_plan["term"] = config.get("sagemaker_sp_term", "THREE_YEAR")
+        elif key == "database":
+            purchase_plan["term"] = "ONE_YEAR"  # AWS constraint
 
         purchase_plans.append(purchase_plan)
         logger.info(
             f"{sp_type['name']} SP purchase planned: ${hourly_commitment_float}/hour "
-            f"(recommendation_id: {purchase_plan['recommendation_id']})"
+            f"(100% of AWS recommendation, recommendation_id: {purchase_plan['recommendation_id']})"
         )
 
-    logger.info(f"Simple strategy purchase need calculated: {len(purchase_plans)} plans")
+    logger.info(f"Follow AWS strategy purchase need calculated: {len(purchase_plans)} plans")
     return purchase_plans

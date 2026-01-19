@@ -68,9 +68,9 @@ purchase_strategy = {
 - Slight overshoot is acceptable - max_coverage_cap (95%) provides safety
 - Recommended: 1% for most use cases
 
-## Comparison with Simple Strategy
+## Comparison with Fixed Strategy
 
-| Aspect                | Simple Strategy         | Dichotomy Strategy           |
+| Aspect                | Fixed Strategy          | Dichotomy Strategy           |
 |-----------------------|-------------------------|------------------------------|
 | Purchase sizing       | Fixed percentage        | Exponentially decreasing     |
 | Adaptation            | Static                  | Dynamic based on gap         |
@@ -178,17 +178,16 @@ dichotomy = {
 ```hcl
 sp_plans = {
   compute = {
-    enabled = true
-    all_upfront_three_year = 0.7
-    all_upfront_one_year = 0.3
+    enabled   = true
+    plan_type = "all_upfront_three_year"
   }
   database = {
-    enabled = true
-    no_upfront_one_year = 1
+    enabled   = true
+    plan_type = "no_upfront_one_year"  # AWS only supports this for Database
   }
   sagemaker = {
-    enabled = true
-    all_upfront_one_year = 1
+    enabled   = true
+    plan_type = "all_upfront_one_year"
   }
 }
 ```
@@ -204,5 +203,5 @@ terraform destroy
 ## Learn More
 
 - [Main README](../../README.md) - Full module documentation
-- [Simple Strategy Example](../single-account-compute/) - Compare with simple strategy
+- [Fixed Strategy Example](../single-account-compute/) - Compare with fixed strategy
 - [AWS Savings Plans Documentation](https://docs.aws.amazon.com/savingsplans/latest/userguide/)

@@ -90,7 +90,7 @@ Run for 2-3 monthly cycles before enabling purchases. Watch for:
 - No dramatic month-to-month swings
 
 ⚠️ **Red Flags:**
-- Recommendations vastly exceed comfort level → Lower `purchase_strategy.simple.max_purchase_percent`
+- Recommendations vastly exceed comfort level → Lower `purchase_strategy.fixed.max_purchase_percent`
 - No recommendations despite known usage → Check IAM permissions
 - Wildly varying recommendations → Usage too variable for automation
 

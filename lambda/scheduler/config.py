@@ -43,7 +43,7 @@ CONFIG_SCHEMA = {
     "purchase_strategy_type": {
         "required": False,
         "type": "str",
-        "default": "simple",
+        "default": "follow_aws",
         "env_var": "PURCHASE_STRATEGY_TYPE",
     },
     "max_purchase_percent": {
@@ -57,12 +57,6 @@ CONFIG_SCHEMA = {
         "type": "float",
         "default": "1",
         "env_var": "MIN_PURCHASE_PERCENT",
-    },
-    "min_gap_threshold": {
-        "required": False,
-        "type": "float",
-        "default": "5.0",
-        "env_var": "MIN_GAP_THRESHOLD",
     },
     "renewal_window_days": {
         "required": False,
@@ -88,11 +82,11 @@ CONFIG_SCHEMA = {
         "default": "0.001",
         "env_var": "MIN_COMMITMENT_PER_PLAN",
     },
-    "compute_sp_term_mix": {
+    "compute_sp_term": {
         "required": False,
-        "type": "json",
-        "default": '{"three_year": 0.67, "one_year": 0.33}',
-        "env_var": "COMPUTE_SP_TERM_MIX",
+        "type": "str",
+        "default": "THREE_YEAR",
+        "env_var": "COMPUTE_SP_TERM",
     },
     "compute_sp_payment_option": {
         "required": False,
@@ -100,23 +94,17 @@ CONFIG_SCHEMA = {
         "default": "ALL_UPFRONT",
         "env_var": "COMPUTE_SP_PAYMENT_OPTION",
     },
-    "sagemaker_sp_term_mix": {
+    "sagemaker_sp_term": {
         "required": False,
-        "type": "json",
-        "default": '{"three_year": 0.67, "one_year": 0.33}',
-        "env_var": "SAGEMAKER_SP_TERM_MIX",
+        "type": "str",
+        "default": "THREE_YEAR",
+        "env_var": "SAGEMAKER_SP_TERM",
     },
     "sagemaker_sp_payment_option": {
         "required": False,
         "type": "str",
         "default": "ALL_UPFRONT",
         "env_var": "SAGEMAKER_SP_PAYMENT_OPTION",
-    },
-    "partial_upfront_percent": {
-        "required": False,
-        "type": "float",
-        "default": "50",
-        "env_var": "PARTIAL_UPFRONT_PERCENT",
     },
     "management_account_role_arn": {
         "required": False,
