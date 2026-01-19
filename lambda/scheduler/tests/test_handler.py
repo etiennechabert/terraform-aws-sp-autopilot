@@ -33,9 +33,9 @@ _coverage_spec = importlib.util.spec_from_file_location(
 coverage_module = importlib.util.module_from_spec(_coverage_spec)
 _coverage_spec.loader.exec_module(coverage_module)
 
-import config
-import handler
-import recommendations as recommendations_module
+import config  # noqa: E402
+import handler  # noqa: E402
+import recommendations as recommendations_module  # noqa: E402
 
 
 @pytest.fixture
@@ -746,7 +746,7 @@ def test_get_aws_recommendations_parallel_execution_uses_threadpool(
             with patch("recommendations.as_completed") as mock_as_completed:
                 mock_as_completed.return_value = [mock_future1, mock_future2]
 
-                result = handler.get_aws_recommendations(config)
+                handler.get_aws_recommendations(config)
 
                 # Verify ThreadPoolExecutor was created with correct max_workers
                 mock_executor_class.assert_called_once_with(max_workers=2)
@@ -1569,7 +1569,7 @@ def test_handler_parallel_execution(mock_env_vars):
             "handler.recommendations_module.get_aws_recommendations",
             side_effect=mock_get_recommendations,
         ),
-        patch("handler.email_module.send_dry_run_email") as mock_email,
+        patch("handler.email_module.send_dry_run_email"),
         patch("handler.ThreadPoolExecutor", wraps=ThreadPoolExecutor) as mock_executor,
     ):
         # Configure boto3.client mock
@@ -1654,7 +1654,7 @@ def test_handler_dry_run_mode(mock_env_vars):
     with (
         patch("boto3.client") as mock_boto3_client,
         patch("shared.handler_utils.initialize_clients", return_value=mock_clients),
-        patch("handler.queue_module.purge_queue") as mock_purge,
+        patch("handler.queue_module.purge_queue"),
         patch("handler.coverage_module.calculate_current_coverage") as mock_coverage,
         patch("handler.recommendations_module.get_aws_recommendations") as mock_recs,
         patch("handler.email_module.send_dry_run_email") as mock_email,
@@ -1697,7 +1697,7 @@ def test_handler_production_mode(mock_env_vars, monkeypatch):
     with (
         patch("boto3.client") as mock_boto3_client,
         patch("shared.handler_utils.initialize_clients", return_value=mock_clients),
-        patch("handler.queue_module.purge_queue") as mock_purge,
+        patch("handler.queue_module.purge_queue"),
         patch("handler.coverage_module.calculate_current_coverage") as mock_coverage,
         patch("handler.recommendations_module.get_aws_recommendations") as mock_recs,
         patch("handler.email_module.send_scheduled_email") as mock_email,
@@ -1845,7 +1845,7 @@ def test_get_clients_with_role_arn():
         mock_boto3_client.return_value = MagicMock()
 
         # Call function
-        clients = handler.get_clients(config)
+        handler.get_clients(config)
 
         # Verify assume role was called with default session name
         mock_assume.assert_called_once_with(
@@ -1872,7 +1872,7 @@ def test_get_clients_without_role_arn():
         mock_boto3_client.return_value = MagicMock()
 
         # Call function
-        clients = handler.get_clients(config)
+        handler.get_clients(config)
 
         # Verify all 5 clients use boto3.client directly (no assume role)
         assert mock_boto3_client.call_count == 5
@@ -1898,7 +1898,7 @@ def test_handler_assume_role_error_handling(mock_env_vars, monkeypatch):
     with (
         patch("boto3.client") as mock_boto3_client,
         patch("handler.initialize_clients") as mock_initialize,
-        patch("handler.queue_module.purge_queue") as mock_purge,
+        patch("handler.queue_module.purge_queue"),
     ):
         # Configure boto3.client mock to return appropriate mocks
         mock_boto3_client.return_value = MagicMock()

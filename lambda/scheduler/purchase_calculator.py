@@ -17,6 +17,10 @@ Strategy Pattern:
 import logging
 from typing import Any, Callable, Dict, List
 
+from dichotomy_strategy import calculate_purchase_need_dichotomy
+from fixed_strategy import calculate_purchase_need_fixed
+from follow_aws_strategy import calculate_purchase_need_follow_aws
+
 
 # Configure logging
 logger = logging.getLogger()
@@ -30,11 +34,6 @@ logger = logging.getLogger()
 StrategyFunction = Callable[
     [Dict[str, Any], Dict[str, float], Dict[str, Any]], List[Dict[str, Any]]
 ]
-
-# Import strategy implementations
-from dichotomy_strategy import calculate_purchase_need_dichotomy
-from fixed_strategy import calculate_purchase_need_fixed
-from follow_aws_strategy import calculate_purchase_need_follow_aws
 
 
 # Registry mapping strategy names to their implementation functions
