@@ -1,28 +1,22 @@
 """
 Scheduler Lambda - Analyzes usage and queues Savings Plan purchase intents.
 
-Supports both Compute Savings Plans and Database Savings Plans.
+Supports Compute, Database, and SageMaker Savings Plans.
 
 This Lambda:
 1. Purges existing queue messages
 2. Calculates current coverage (excluding plans expiring within renewal_window_days)
 3. Gets AWS purchase recommendations
-4. Calculates purchase need based on coverage_target_percent
-5. Applies max_purchase_percent limit
-6. Splits commitment by term mix (for Compute SP) or applies Database SP term
-7. Queues purchase intents (or sends email only if dry_run=true)
-8. Sends notification email with analysis results
+4. Calculates purchase need based on coverage_target_percent and selected strategy
+5. Applies purchase limits (max_purchase_percent, min_commitment_per_plan)
+6. Queues purchase intents (or sends email only if dry_run=true)
+7. Sends notification email with analysis results
 """
 
 from __future__ import annotations
 
-# Special handling for coverage module to avoid conflict with pytest-cov
-# Import it explicitly to avoid naming conflicts with pytest-cov's coverage module
-import importlib.util
 import json
 import logging
-import os as _os_for_import
-from concurrent.futures import ThreadPoolExecutor
 from typing import TYPE_CHECKING, Any
 
 
@@ -33,7 +27,11 @@ if TYPE_CHECKING:
     from mypy_boto3_sqs.client import SQSClient
 
 # Import new modular components
-# Import with aliases to avoid shadowing when we create backward-compatible wrappers
+import email_notifications as email_module
+import purchase_calculator as purchase_module
+import queue_manager as queue_module
+import recommendations as recommendations_module
+import sp_coverage as coverage_module
 from config import CONFIG_SCHEMA
 
 from shared.config_validation import validate_scheduler_config
@@ -43,22 +41,6 @@ from shared.handler_utils import (
     load_config_from_env,
     send_error_notification,
 )
-
-
-_coverage_spec = importlib.util.spec_from_file_location(
-    "coverage_calc",  # Use different name to avoid conflict
-    _os_for_import.path.join(_os_for_import.path.dirname(__file__), "coverage_calculator.py"),
-)
-coverage_module = importlib.util.module_from_spec(_coverage_spec)
-_coverage_spec.loader.exec_module(coverage_module)
-del _coverage_spec, _os_for_import  # Clean up temporary variables
-
-# Import concurrent.futures components for backward compatibility with tests
-
-import email_notifications as email_module
-import purchase_calculator as purchase_module
-import queue_manager as queue_module
-import recommendations as recommendations_module
 
 
 # Configure logging
@@ -179,7 +161,6 @@ def send_dry_run_email(
 # Re-export these functions directly as they don't need client parameters
 calculate_purchase_need = purchase_module.calculate_purchase_need
 apply_purchase_limits = purchase_module.apply_purchase_limits
-split_by_term = purchase_module.split_by_term
 
 
 # Backward-compatible imports for configuration and AWS utils
@@ -267,37 +248,31 @@ def handler(event: dict[str, Any], context: Any) -> dict[str, Any]:
         # Step 1: Purge existing queue
         queue_module.purge_queue(sqs_client, config["queue_url"])
 
-        # Step 2 & 3: Calculate coverage and get recommendations in parallel
-        with ThreadPoolExecutor(max_workers=2) as executor:
-            # Submit both tasks for parallel execution
-            coverage_future = executor.submit(
-                coverage_module.calculate_current_coverage,
-                savingsplans_client,
-                ce_client,
-                config,
-            )
-            recommendations_future = executor.submit(
-                recommendations_module.get_aws_recommendations, ce_client, config
-            )
-
-            # Wait for results
-            coverage = coverage_future.result()
-            recommendations = recommendations_future.result()
-
+        # Step 2: Calculate current coverage
+        logger.info("Calculating current coverage...")
+        coverage = coverage_module.calculate_current_coverage(
+            savingsplans_client, ce_client, config
+        )
         logger.info(
-            f"Current coverage - Compute: {coverage.get('compute', 0)}%, Database: {coverage.get('database', 0)}%, SageMaker: {coverage.get('sagemaker', 0)}%"
+            f"Current coverage - Compute: {coverage.get('compute', 0)}%, "
+            f"Database: {coverage.get('database', 0)}%, "
+            f"SageMaker: {coverage.get('sagemaker', 0)}%"
         )
 
+        # Step 3: Get AWS recommendations
+        logger.info("Fetching AWS purchase recommendations...")
+        recommendations = recommendations_module.get_aws_recommendations(ce_client, config)
+        logger.info(f"Recommendations received for {len(recommendations)} SP types")
+
         # Step 4: Calculate purchase need
+        logger.info("Calculating purchase need using strategy...")
         purchase_plans = purchase_module.calculate_purchase_need(config, coverage, recommendations)
 
         # Step 5: Apply purchase limits
+        logger.info("Applying purchase limits...")
         purchase_plans = purchase_module.apply_purchase_limits(config, purchase_plans)
 
-        # Step 6: Split by term (for Compute SP)
-        purchase_plans = purchase_module.split_by_term(config, purchase_plans)
-
-        # Step 7: Queue or notify
+        # Step 6: Queue or notify
         if config["dry_run"]:
             logger.info("Dry run mode - sending email only, NOT queuing messages")
             email_module.send_dry_run_email(sns_client, config, purchase_plans, coverage)

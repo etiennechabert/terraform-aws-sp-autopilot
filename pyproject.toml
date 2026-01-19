@@ -60,18 +60,14 @@ select = [
 
 # Ignore specific rules that may conflict with existing code patterns
 ignore = [
-    "E402",     # Module level import not at top (scheduler uses dynamic imports)
     "E501",     # Line too long (handled by formatter)
     "F841",     # Local variable assigned but never used (test setup)
-    "UP035",    # typing.Dict/List deprecated (codebase uses typing style)
-    "UP006",    # Use dict instead of Dict (codebase uses typing style)
     "B007",     # Loop control variable not used (intentional iteration)
     "PLR0913",  # Too many arguments to function call
     "PLR2004",  # Magic value used in comparison
     "PLR0912",  # Too many branches (complexity metric)
     "PLR0915",  # Too many statements (complexity metric)
     "RET503",   # Missing explicit return (implicit None return is fine)
-    "RET504",   # Unnecessary assignment before return
     "ARG001",   # Unused function argument (common in Lambda handlers)
     "ARG002",   # Unused method argument
     "PTH123",   # Use Path.open instead of open (boto3 uses strings)
@@ -79,10 +75,7 @@ ignore = [
     "PTH118",   # os.path.join() -> Path (needed for dynamic module loading)
     "PTH100",   # os.path.abspath() -> Path.resolve() (not critical for test setup)
     "PT011",    # pytest.raises too broad (nice-to-have, not critical)
-    "SIM117",   # Nested with statements (readable as-is)
     "DTZ005",   # datetime.datetime.now() without tz - AWS SDK compatibility
-    "RUF001",   # Ambiguous unicode character (emoji in docstrings/comments)
-    "RUF002",   # Ambiguous unicode character (emoji in docstrings/comments)
     "RUF013",   # PEP 484 implicit Optional (existing pattern)
     "RUF015",   # Prefer next() over single element slice (existing pattern)
     "PLC0415",  # Import should be at top-level (test files import conditionally)
@@ -164,7 +157,12 @@ filterwarnings = [
 source = ["lambda"]
 omit = [
     "*/tests/*",
+    "**/tests/*",
     "*/test_*.py",
+    "**/test_*.py",
+    "lambda/tests/*",
+    "lambda/**/tests/*",
+    "lambda/*/tests/*",
     "*/__pycache__/*",
     "*/.venv/*",
 ]
@@ -173,6 +171,15 @@ omit = [
 precision = 2
 show_missing = true
 skip_covered = false
+omit = [
+    "*/tests/*",
+    "**/tests/*",
+    "*/test_*.py",
+    "**/test_*.py",
+    "lambda/tests/*",
+    "lambda/**/tests/*",
+    "lambda/*/tests/*",
+]
 exclude_lines = [
     "pragma: no cover",
     "def __repr__",

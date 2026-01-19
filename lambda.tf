@@ -37,16 +37,14 @@ resource "aws_lambda_function" "scheduler" {
       PURCHASE_STRATEGY_TYPE      = local.purchase_strategy_type
       MAX_PURCHASE_PERCENT        = tostring(local.max_purchase_percent)
       MIN_PURCHASE_PERCENT        = tostring(local.min_purchase_percent)
-      MIN_GAP_THRESHOLD           = tostring(local.min_gap_threshold)
       RENEWAL_WINDOW_DAYS         = tostring(local.renewal_window_days)
       LOOKBACK_DAYS               = tostring(local.lookback_days)
       MIN_DATA_DAYS               = tostring(local.min_data_days)
       MIN_COMMITMENT_PER_PLAN     = tostring(local.min_commitment_per_plan)
-      COMPUTE_SP_TERM_MIX         = jsonencode(local.compute_term_mix)
+      COMPUTE_SP_TERM             = local.compute_term
       COMPUTE_SP_PAYMENT_OPTION   = local.compute_payment_option
-      SAGEMAKER_SP_TERM_MIX       = jsonencode(local.sagemaker_term_mix)
+      SAGEMAKER_SP_TERM           = local.sagemaker_term
       SAGEMAKER_SP_PAYMENT_OPTION = local.sagemaker_payment_option
-      PARTIAL_UPFRONT_PERCENT     = tostring(local.compute_partial_upfront_percent)
       MANAGEMENT_ACCOUNT_ROLE_ARN = local.lambda_scheduler_assume_role_arn
       TAGS                        = jsonencode(local.common_tags)
     }
@@ -146,8 +144,8 @@ data "archive_file" "scheduler" {
     filename = "config.py"
   }
   source {
-    content  = file("${path.module}/lambda/scheduler/coverage_calculator.py")
-    filename = "coverage_calculator.py"
+    content  = file("${path.module}/lambda/scheduler/sp_coverage.py")
+    filename = "sp_coverage.py"
   }
   source {
     content  = file("${path.module}/lambda/scheduler/email_notifications.py")
@@ -170,12 +168,12 @@ data "archive_file" "scheduler" {
     filename = "dichotomy_strategy.py"
   }
   source {
-    content  = file("${path.module}/lambda/scheduler/simple_strategy.py")
-    filename = "simple_strategy.py"
+    content  = file("${path.module}/lambda/scheduler/fixed_strategy.py")
+    filename = "fixed_strategy.py"
   }
   source {
-    content  = file("${path.module}/lambda/scheduler/conservative_strategy.py")
-    filename = "conservative_strategy.py"
+    content  = file("${path.module}/lambda/scheduler/follow_aws_strategy.py")
+    filename = "follow_aws_strategy.py"
   }
 
   # Include shared module

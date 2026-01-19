@@ -484,7 +484,10 @@ def test_build_complete_email_complex():
     lines.extend(email_templates.build_header("Savings Plans Report", width=60))
     lines.extend(
         email_templates.build_key_value_section(
-            {"Report Generated": "2024-01-15 10:30:00 UTC", "Reporting Period": "30 days"}
+            {
+                "Report Generated": "2024-01-15 10:30:00 UTC",
+                "Reporting Period": "30 days",
+            }
         )
     )
     lines.append("")  # Blank line

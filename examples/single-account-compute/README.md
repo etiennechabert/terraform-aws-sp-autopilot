@@ -89,20 +89,20 @@ After enabling:
 purchase_strategy = {
   coverage_target_percent = 80  # Lower = more conservative
   max_coverage_cap        = 90  # Hard ceiling
-  simple = {
+  fixed = {
     max_purchase_percent = 5  # Lower = slower commitment growth
   }
 }
 ```
 
-### Balance Discount vs Flexibility
+### Choose Plan Type
 
 ```hcl
 sp_plans = {
   compute = {
-    enabled                = true
-    all_upfront_three_year = 0.70  # Higher = more discount, less flexibility
-    all_upfront_one_year   = 0.30
+    enabled   = true
+    plan_type = "all_upfront_three_year"  # Higher discount, less flexibility
+    # Other options: "all_upfront_one_year", "partial_upfront_three_year", etc.
   }
 }
 ```

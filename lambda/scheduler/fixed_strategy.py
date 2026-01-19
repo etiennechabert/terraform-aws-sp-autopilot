@@ -1,7 +1,7 @@
 """
-Simple Purchase Strategy Module - Fixed percentage purchase strategy.
+Fixed Purchase Strategy Module - Fixed percentage purchase strategy.
 
-This module implements the simple (default) purchase strategy, which applies
+This module implements the fixed purchase strategy, which applies
 a fixed max_purchase_percent to all AWS recommendations uniformly.
 
 Strategy Behavior:
@@ -18,20 +18,20 @@ Benefits:
 """
 
 import logging
-from typing import Any, Dict, List
+from typing import Any
 
 
 # Configure logging
 logger = logging.getLogger()
 
 
-def calculate_purchase_need_simple(
-    config: Dict[str, Any], coverage: Dict[str, float], recommendations: Dict[str, Any]
-) -> List[Dict[str, Any]]:
+def calculate_purchase_need_fixed(
+    config: dict[str, Any], coverage: dict[str, float], recommendations: dict[str, Any]
+) -> list[dict[str, Any]]:
     """
-    Calculate required purchases using SIMPLE strategy (legacy/default).
+    Calculate required purchases using FIXED strategy.
 
-    Simple strategy applies max_purchase_percent uniformly to all AWS recommendations.
+    Fixed strategy applies max_purchase_percent uniformly to all AWS recommendations.
 
     Args:
         config: Configuration dictionary
@@ -41,7 +41,7 @@ def calculate_purchase_need_simple(
     Returns:
         list: Purchase plans to execute
     """
-    logger.info("Calculating purchase need using SIMPLE strategy")
+    logger.info("Calculating purchase need using FIXED strategy")
 
     purchase_plans = []
     target_coverage = config["coverage_target_percent"]
@@ -108,11 +108,16 @@ def calculate_purchase_need_simple(
                 sp_type["payment_option_config"], sp_type["default_payment"]
             ),
             "recommendation_id": recommendation.get("RecommendationId", "unknown"),
-            "strategy": "simple",
+            "strategy": "fixed",
         }
 
-        if "term" in sp_type:
-            purchase_plan["term"] = sp_type["term"]
+        # Set term based on SP type
+        if key == "compute":
+            purchase_plan["term"] = config.get("compute_sp_term", "THREE_YEAR")
+        elif key == "sagemaker":
+            purchase_plan["term"] = config.get("sagemaker_sp_term", "THREE_YEAR")
+        elif key == "database":
+            purchase_plan["term"] = "ONE_YEAR"  # AWS constraint
 
         purchase_plans.append(purchase_plan)
         logger.info(
@@ -120,5 +125,5 @@ def calculate_purchase_need_simple(
             f"(recommendation_id: {purchase_plan['recommendation_id']})"
         )
 
-    logger.info(f"Simple strategy purchase need calculated: {len(purchase_plans)} plans")
+    logger.info(f"Fixed strategy purchase need calculated: {len(purchase_plans)} plans")
     return purchase_plans

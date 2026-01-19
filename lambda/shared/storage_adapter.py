@@ -8,7 +8,7 @@ Lambdas to work with either real S3 buckets or local filesystem storage.
 import json
 import logging
 from datetime import datetime, timezone
-from typing import Any, Dict, Optional
+from typing import Any, Optional
 
 from . import local_mode
 
@@ -48,7 +48,7 @@ class StorageAdapter:
         self,
         report_content: str,
         report_format: str = "html",
-        metadata: Optional[Dict[str, str]] = None,
+        metadata: Optional[dict[str, str]] = None,
     ) -> str:
         """
         Upload a report to storage.
@@ -69,7 +69,10 @@ class StorageAdapter:
         return self._upload_report_aws(report_content, report_format, metadata)
 
     def _upload_report_local(
-        self, report_content: str, report_format: str, metadata: Optional[Dict[str, str]]
+        self,
+        report_content: str,
+        report_format: str,
+        metadata: Optional[dict[str, str]],
     ) -> str:
         """Upload report in local mode by writing to a file."""
         timestamp = datetime.now(timezone.utc).strftime("%Y-%m-%d_%H-%M-%S")
@@ -103,7 +106,10 @@ class StorageAdapter:
             raise
 
     def _upload_report_aws(
-        self, report_content: str, report_format: str, metadata: Optional[Dict[str, str]]
+        self,
+        report_content: str,
+        report_format: str,
+        metadata: Optional[dict[str, str]],
     ) -> str:
         """Upload report in AWS mode using S3 API."""
         timestamp = datetime.now(timezone.utc).strftime("%Y-%m-%d_%H-%M-%S")
@@ -177,7 +183,9 @@ class StorageAdapter:
         # Look for HTML, JSON, and CSV reports, exclude metadata files
         for pattern in ["*.html", "*.json", "*.csv"]:
             for file_path in sorted(
-                self.reports_dir.glob(pattern), key=lambda p: p.stat().st_mtime, reverse=True
+                self.reports_dir.glob(pattern),
+                key=lambda p: p.stat().st_mtime,
+                reverse=True,
             ):
                 # Skip metadata files
                 if ".meta.json" not in file_path.name:
@@ -194,7 +202,9 @@ class StorageAdapter:
         """List reports in AWS mode using S3 API."""
         try:
             response = self.s3_client.list_objects_v2(
-                Bucket=self.bucket_name, Prefix="savings-plans-report_", MaxKeys=max_items
+                Bucket=self.bucket_name,
+                Prefix="savings-plans-report_",
+                MaxKeys=max_items,
             )
 
             reports = [obj["Key"] for obj in response.get("Contents", [])]

@@ -143,7 +143,10 @@ def build_key_value_section(
 
 
 def build_list_section(
-    section_title: str, items: list[str], width: int = 50, include_separator: bool = True
+    section_title: str,
+    items: list[str],
+    width: int = 50,
+    include_separator: bool = True,
 ) -> list[str]:
     """
     Build a titled list section with optional separator.
@@ -187,7 +190,9 @@ def build_list_section(
 
 
 def build_footer(
-    custom_message: Optional[str] = None, width: int = 50, include_separator: bool = True
+    custom_message: Optional[str] = None,
+    width: int = 50,
+    include_separator: bool = True,
 ) -> list[str]:
     """
     Build a standard email footer.

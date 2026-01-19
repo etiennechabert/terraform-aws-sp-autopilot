@@ -25,7 +25,7 @@ variable "purchase_strategy" {
     renewal_window_days     = optional(number, 7)
     min_commitment_per_plan = optional(number, 0.001)
 
-    simple = optional(object({
+    fixed = optional(object({
       max_purchase_percent = number
     }))
   })
@@ -37,7 +37,7 @@ variable "purchase_strategy" {
     renewal_window_days     = 7
     min_commitment_per_plan = 0.001
 
-    simple = {
+    fixed = {
       max_purchase_percent = 10
     }
   }

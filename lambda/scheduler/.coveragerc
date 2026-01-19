@@ -1,0 +1,27 @@
+[run]
+omit =
+    tests/*
+    */tests/*
+    test_*.py
+    */test_*.py
+    */__pycache__/*
+    */.venv/*
+
+[report]
+precision = 2
+show_missing = True
+skip_covered = False
+omit =
+    tests/*
+    */tests/*
+    test_*.py
+    */test_*.py
+
+exclude_lines =
+    pragma: no cover
+    def __repr__
+    raise AssertionError
+    raise NotImplementedError
+    if __name__ == .__main__.:
+    if TYPE_CHECKING:
+    @abstractmethod

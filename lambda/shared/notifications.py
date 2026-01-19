@@ -8,10 +8,10 @@ Severity Levels:
     The format_slack_message() function supports color-coded severity levels for
     visual distinction in Slack channels:
 
-    - 'success' (Green #36a64f, ✅): For successful operations, completions
-    - 'warning' (Orange #ff9900, ⚠️): For warnings, potential issues requiring attention
-    - 'error' (Red #ff0000, ❌): For errors, failures, critical issues
-    - 'info' (Blue #0078D4, ℹ️): For informational messages (default)
+    - 'success' (Green #36a64f): For successful operations, completions
+    - 'warning' (Orange #ff9900): For warnings, potential issues requiring attention
+    - 'error' (Red #ff0000): For errors, failures, critical issues
+    - 'info' (Blue #0078D4): For informational messages (default)
 
 Example Usage:
     # Success notification
@@ -76,10 +76,10 @@ def format_slack_message(
         subject: Message subject/title
         body_lines: List of message body lines to include in the message
         severity: Notification severity level. Must be one of:
-            - 'success': Green (#36a64f) with ✅ emoji - use for successful operations
-            - 'warning': Orange (#ff9900) with ⚠️ emoji - use for warnings/alerts
-            - 'error': Red (#ff0000) with ❌ emoji - use for errors/failures
-            - 'info': Blue (#0078D4) with ℹ️ emoji - use for informational messages
+            - 'success': Green (#36a64f) - use for successful operations
+            - 'warning': Orange (#ff9900) - use for warnings/alerts
+            - 'error': Red (#ff0000) - use for errors/failures
+            - 'info': Blue (#0078D4) - use for informational messages
             Default: 'info' (also used if an invalid severity is provided)
 
     Returns:
@@ -122,7 +122,7 @@ def format_slack_message(
         "success": {"color": "#36a64f", "emoji": "✅"},  # Green
         "warning": {"color": "#ff9900", "emoji": "⚠️"},  # Orange
         "error": {"color": "#ff0000", "emoji": "❌"},  # Red
-        "info": {"color": "#0078D4", "emoji": "ℹ️"},  # Blue
+        "info": {"color": "#0078D4", "emoji": "ℹ️"},  # Blue  # noqa: RUF001
     }
 
     # Get config for severity level, default to info if invalid
@@ -132,7 +132,10 @@ def format_slack_message(
     enhanced_subject = f"{config['emoji']} {subject}"
 
     blocks = [
-        {"type": "header", "text": {"type": "plain_text", "text": enhanced_subject, "emoji": True}},
+        {
+            "type": "header",
+            "text": {"type": "plain_text", "text": enhanced_subject, "emoji": True},
+        },
         {"type": "section", "text": {"type": "mrkdwn", "text": "\n".join(body_lines)}},
     ]
 

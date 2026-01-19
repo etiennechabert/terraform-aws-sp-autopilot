@@ -250,9 +250,18 @@ class TestCalculatePurchaseNeedDichotomy:
             "sagemaker": 75.0,  # Gap: 15% -> purchase 12.5%
         }
         recommendations = {
-            "compute": {"HourlyCommitmentToPurchase": "10.00", "RecommendationId": "rec-c"},
-            "database": {"HourlyCommitmentToPurchase": "5.00", "RecommendationId": "rec-d"},
-            "sagemaker": {"HourlyCommitmentToPurchase": "8.00", "RecommendationId": "rec-s"},
+            "compute": {
+                "HourlyCommitmentToPurchase": "10.00",
+                "RecommendationId": "rec-c",
+            },
+            "database": {
+                "HourlyCommitmentToPurchase": "5.00",
+                "RecommendationId": "rec-d",
+            },
+            "sagemaker": {
+                "HourlyCommitmentToPurchase": "8.00",
+                "RecommendationId": "rec-s",
+            },
         }
 
         result = calculate_purchase_need_dichotomy(config, coverage, recommendations)
@@ -288,7 +297,10 @@ class TestCalculatePurchaseNeedDichotomy:
         }
         coverage = {"compute": 95.0}  # Already exceeds target
         recommendations = {
-            "compute": {"HourlyCommitmentToPurchase": "10.00", "RecommendationId": "rec-123"}
+            "compute": {
+                "HourlyCommitmentToPurchase": "10.00",
+                "RecommendationId": "rec-123",
+            }
         }
 
         result = calculate_purchase_need_dichotomy(config, coverage, recommendations)
@@ -324,7 +336,10 @@ class TestCalculatePurchaseNeedDichotomy:
         }
         coverage = {"compute": 50.0}
         recommendations = {
-            "compute": {"HourlyCommitmentToPurchase": "0.00", "RecommendationId": "rec-123"}
+            "compute": {
+                "HourlyCommitmentToPurchase": "0.00",
+                "RecommendationId": "rec-123",
+            }
         }
 
         result = calculate_purchase_need_dichotomy(config, coverage, recommendations)
@@ -343,7 +358,10 @@ class TestCalculatePurchaseNeedDichotomy:
         }
         coverage = {"compute": 0.0}  # Gap: 90%
         recommendations = {
-            "compute": {"HourlyCommitmentToPurchase": "10.00", "RecommendationId": "rec-123"}
+            "compute": {
+                "HourlyCommitmentToPurchase": "10.00",
+                "RecommendationId": "rec-123",
+            }
         }
 
         # Max 100%: Gap 90%, next power-of-2 is 50%
@@ -370,7 +388,10 @@ class TestCalculatePurchaseNeedDichotomy:
             "compute_sp_payment_option": "ALL_UPFRONT",
         }
         recommendations = {
-            "compute": {"HourlyCommitmentToPurchase": "100.00", "RecommendationId": "rec-123"}
+            "compute": {
+                "HourlyCommitmentToPurchase": "100.00",
+                "RecommendationId": "rec-123",
+            }
         }
 
         # Month 1: Coverage 0%, Gap 90%

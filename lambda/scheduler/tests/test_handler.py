@@ -15,23 +15,9 @@ import pytest
 # Add parent directory to path
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
 
-# Import from new modular structure with aliases to avoid conflicts
-# Note: Must import our local 'coverage_calculator.py' before pytest-cov loads its coverage module
-# We do this by explicitly importing it with importlib to avoid naming conflicts
-import importlib.util
-import os as _os
-
-
-_coverage_spec = importlib.util.spec_from_file_location(
-    "coverage_module",
-    _os.path.join(_os.path.dirname(_os.path.abspath(__file__)), "..", "coverage_calculator.py"),
-)
-coverage_module = importlib.util.module_from_spec(_coverage_spec)
-_coverage_spec.loader.exec_module(coverage_module)
-
 import config
 import handler
-import recommendations as recommendations_module
+import sp_coverage as coverage_module
 
 
 @pytest.fixture
@@ -150,7 +136,11 @@ def test_calculate_current_coverage_keeps_valid_plans(mock_env_vars):
 
     mock_savingsplans_client.describe_savings_plans.return_value = {
         "savingsPlans": [
-            {"savingsPlanId": "sp-valid", "state": "active", "end": expiring_later.isoformat()}
+            {
+                "savingsPlanId": "sp-valid",
+                "state": "active",
+                "end": expiring_later.isoformat(),
+            }
         ]
     }
 
@@ -174,7 +164,7 @@ def test_calculate_current_coverage_empty_plans_list(mock_env_vars, mock_clients
     """Test handling of no active Savings Plans."""
     config = handler.load_configuration()
 
-    with patch.object(handler.savingsplans_client, "describe_savings_plans") as mock_describe:
+    with patch.object(handler.savingsplans_client, "describe_savings_plans") as mock_describe:  # noqa: SIM117
         with patch.object(handler.ce_client, "get_savings_plans_coverage") as mock_coverage:
             mock_describe.return_value = {"savingsPlans": []}
 
@@ -196,7 +186,7 @@ def test_calculate_current_coverage_no_coverage_data(mock_env_vars, mock_clients
     """Test handling of no coverage data from Cost Explorer."""
     config = handler.load_configuration()
 
-    with patch.object(handler.savingsplans_client, "describe_savings_plans") as mock_describe:
+    with patch.object(handler.savingsplans_client, "describe_savings_plans") as mock_describe:  # noqa: SIM117
         with patch.object(handler.ce_client, "get_savings_plans_coverage") as mock_coverage:
             mock_describe.return_value = {"savingsPlans": []}
             mock_coverage.return_value = {"SavingsPlansCoverages": []}
@@ -290,7 +280,10 @@ def test_get_aws_recommendations_database_insufficient_data(monkeypatch, mock_cl
     with patch.object(handler.ce_client, "get_savings_plans_purchase_recommendation") as mock_rec:
         # Return limited data (min_data_days validation was removed)
         mock_rec.return_value = {
-            "Metadata": {"RecommendationId": "rec-db-789", "LookbackPeriodInDays": "10"},
+            "Metadata": {
+                "RecommendationId": "rec-db-789",
+                "LookbackPeriodInDays": "10",
+            },
             "SavingsPlansPurchaseRecommendation": {
                 "SavingsPlansPurchaseRecommendationDetails": [
                     {"HourlyCommitmentToPurchase": "1.500"}
@@ -317,7 +310,10 @@ def test_get_aws_recommendations_database_no_recommendations(monkeypatch, mock_c
 
     with patch.object(handler.ce_client, "get_savings_plans_purchase_recommendation") as mock_rec:
         mock_rec.return_value = {
-            "Metadata": {"RecommendationId": "rec-db-empty", "LookbackPeriodInDays": "30"},
+            "Metadata": {
+                "RecommendationId": "rec-db-empty",
+                "LookbackPeriodInDays": "30",
+            },
             "SavingsPlansPurchaseRecommendation": {"SavingsPlansPurchaseRecommendationDetails": []},
         }
 
@@ -391,7 +387,10 @@ def test_get_aws_recommendations_sagemaker_insufficient_data(monkeypatch, mock_c
     with patch.object(handler.ce_client, "get_savings_plans_purchase_recommendation") as mock_rec:
         # Return only 10 days of data
         mock_rec.return_value = {
-            "Metadata": {"RecommendationId": "rec-sm-789", "LookbackPeriodInDays": "10"},
+            "Metadata": {
+                "RecommendationId": "rec-sm-789",
+                "LookbackPeriodInDays": "10",
+            },
             "SavingsPlansPurchaseRecommendation": {
                 "SavingsPlansPurchaseRecommendationDetails": [
                     {"HourlyCommitmentToPurchase": "2.500"}
@@ -419,7 +418,10 @@ def test_get_aws_recommendations_sagemaker_no_recommendations(monkeypatch, mock_
 
     with patch.object(handler.ce_client, "get_savings_plans_purchase_recommendation") as mock_rec:
         mock_rec.return_value = {
-            "Metadata": {"RecommendationId": "rec-sm-empty", "LookbackPeriodInDays": "30"},
+            "Metadata": {
+                "RecommendationId": "rec-sm-empty",
+                "LookbackPeriodInDays": "30",
+            },
             "SavingsPlansPurchaseRecommendation": {"SavingsPlansPurchaseRecommendationDetails": []},
         }
 
@@ -634,7 +636,7 @@ def test_get_aws_recommendations_parallel_execution_uses_threadpool(monkeypatch,
             with patch("recommendations.as_completed") as mock_as_completed:
                 mock_as_completed.return_value = [mock_future1, mock_future2]
 
-                result = handler.get_aws_recommendations(config)
+                handler.get_aws_recommendations(config)
 
                 # Verify ThreadPoolExecutor was created with correct max_workers
                 mock_executor_class.assert_called_once_with(max_workers=2)
@@ -664,7 +666,10 @@ def test_get_aws_recommendations_parallel_execution_error_handling(monkeypatch, 
         def api_side_effect(*args, **kwargs):
             if kwargs.get("SavingsPlansType") == "COMPUTE_SP":
                 return {
-                    "Metadata": {"RecommendationId": "rec-compute", "LookbackPeriodInDays": "30"},
+                    "Metadata": {
+                        "RecommendationId": "rec-compute",
+                        "LookbackPeriodInDays": "30",
+                    },
                     "SavingsPlansPurchaseRecommendation": {
                         "SavingsPlansPurchaseRecommendationDetails": [
                             {"HourlyCommitmentToPurchase": "1.500"}
@@ -748,7 +753,10 @@ def test_calculate_purchase_need_positive_gap():
     coverage = {"compute": 70.0, "database": 0.0}
 
     recommendations = {
-        "compute": {"HourlyCommitmentToPurchase": "1.500", "RecommendationId": "test-rec-123"},
+        "compute": {
+            "HourlyCommitmentToPurchase": "1.500",
+            "RecommendationId": "test-rec-123",
+        },
         "database": None,
     }
 
@@ -773,7 +781,10 @@ def test_calculate_purchase_need_no_gap():
     coverage = {"compute": 90.0, "database": 0.0}
 
     recommendations = {
-        "compute": {"HourlyCommitmentToPurchase": "1.500", "RecommendationId": "test-rec-123"},
+        "compute": {
+            "HourlyCommitmentToPurchase": "1.500",
+            "RecommendationId": "test-rec-123",
+        },
         "database": None,
     }
 
@@ -814,7 +825,10 @@ def test_calculate_purchase_need_zero_commitment():
     coverage = {"compute": 70.0, "database": 0.0}
 
     recommendations = {
-        "compute": {"HourlyCommitmentToPurchase": "0.000", "RecommendationId": "test-rec-123"},
+        "compute": {
+            "HourlyCommitmentToPurchase": "0.000",
+            "RecommendationId": "test-rec-123",
+        },
         "database": None,
     }
 
@@ -836,7 +850,10 @@ def test_calculate_purchase_need_database_sp():
 
     recommendations = {
         "compute": None,
-        "database": {"HourlyCommitmentToPurchase": "2.500", "RecommendationId": "test-db-rec-456"},
+        "database": {
+            "HourlyCommitmentToPurchase": "2.500",
+            "RecommendationId": "test-db-rec-456",
+        },
     }
 
     result = handler.calculate_purchase_need(config, coverage, recommendations)
@@ -863,7 +880,10 @@ def test_calculate_purchase_need_database_no_gap():
 
     recommendations = {
         "compute": None,
-        "database": {"HourlyCommitmentToPurchase": "2.500", "RecommendationId": "test-db-rec-789"},
+        "database": {
+            "HourlyCommitmentToPurchase": "2.500",
+            "RecommendationId": "test-db-rec-789",
+        },
     }
 
     result = handler.calculate_purchase_need(config, coverage, recommendations)
@@ -885,7 +905,10 @@ def test_calculate_purchase_need_database_zero_commitment():
 
     recommendations = {
         "compute": None,
-        "database": {"HourlyCommitmentToPurchase": "0.000", "RecommendationId": "test-db-rec-zero"},
+        "database": {
+            "HourlyCommitmentToPurchase": "0.000",
+            "RecommendationId": "test-db-rec-zero",
+        },
     }
 
     result = handler.calculate_purchase_need(config, coverage, recommendations)
@@ -927,7 +950,10 @@ def test_calculate_purchase_need_sagemaker_sp():
     recommendations = {
         "compute": None,
         "database": None,
-        "sagemaker": {"HourlyCommitmentToPurchase": "3.750", "RecommendationId": "test-sm-rec-456"},
+        "sagemaker": {
+            "HourlyCommitmentToPurchase": "3.750",
+            "RecommendationId": "test-sm-rec-456",
+        },
     }
 
     result = handler.calculate_purchase_need(config, coverage, recommendations)
@@ -954,7 +980,10 @@ def test_calculate_purchase_need_sagemaker_no_gap():
     recommendations = {
         "compute": None,
         "database": None,
-        "sagemaker": {"HourlyCommitmentToPurchase": "3.750", "RecommendationId": "test-sm-rec-789"},
+        "sagemaker": {
+            "HourlyCommitmentToPurchase": "3.750",
+            "RecommendationId": "test-sm-rec-789",
+        },
     }
 
     result = handler.calculate_purchase_need(config, coverage, recommendations)
@@ -1016,7 +1045,13 @@ def test_apply_purchase_limits_scales_commitments():
     """Test that max_purchase_percent scales commitments correctly."""
     config = {"max_purchase_percent": 10.0, "min_commitment_per_plan": 0.001}
 
-    plans = [{"sp_type": "compute", "hourly_commitment": 10.0, "recommendation_id": "rec-123"}]
+    plans = [
+        {
+            "sp_type": "compute",
+            "hourly_commitment": 10.0,
+            "recommendation_id": "rec-123",
+        }
+    ]
 
     result = handler.apply_purchase_limits(config, plans)
 
@@ -1101,354 +1136,6 @@ def test_apply_purchase_limits_sagemaker_sp():
 # ============================================================================
 
 
-def test_split_by_term_compute_sp():
-    """Test that Compute SP is split by term mix."""
-    config = {
-        "compute_sp_term_mix": {"three_year": 0.67, "one_year": 0.33},
-        "min_commitment_per_plan": 0.001,
-    }
-
-    plans = [
-        {
-            "sp_type": "compute",
-            "hourly_commitment": 3.0,
-            "payment_option": "ALL_UPFRONT",
-            "recommendation_id": "test-123",
-        }
-    ]
-
-    result = handler.split_by_term(config, plans)
-
-    # Should split into 2 plans
-    assert len(result) == 2
-
-    # Check three-year plan
-    three_year_plan = [p for p in result if p["term"] == "THREE_YEAR"][0]
-    assert three_year_plan["hourly_commitment"] == pytest.approx(3.0 * 0.67, rel=0.01)
-    assert three_year_plan["term"] == "THREE_YEAR"
-
-    # Check one-year plan
-    one_year_plan = [p for p in result if p["term"] == "ONE_YEAR"][0]
-    assert one_year_plan["hourly_commitment"] == pytest.approx(3.0 * 0.33, rel=0.01)
-    assert one_year_plan["term"] == "ONE_YEAR"
-
-
-def test_split_by_term_database_sp():
-    """Test that Database SP passes through unchanged."""
-    config = {
-        "compute_sp_term_mix": {"three_year": 0.67, "one_year": 0.33},
-        "min_commitment_per_plan": 0.001,
-    }
-
-    plans = [
-        {
-            "sp_type": "database",
-            "hourly_commitment": 2.0,
-            "term": "ONE_YEAR",
-            "payment_option": "ALL_UPFRONT",
-        }
-    ]
-
-    result = handler.split_by_term(config, plans)
-
-    # Should pass through unchanged
-    assert len(result) == 1
-    assert result[0]["sp_type"] == "database"
-    assert result[0]["hourly_commitment"] == 2.0
-    assert result[0]["term"] == "ONE_YEAR"
-
-
-def test_split_by_term_sagemaker_sp():
-    """Test that SageMaker SP is split by term mix."""
-    config = {
-        "sagemaker_sp_term_mix": {"three_year": 0.67, "one_year": 0.33},
-        "min_commitment_per_plan": 0.001,
-    }
-
-    plans = [
-        {
-            "sp_type": "sagemaker",
-            "hourly_commitment": 6.0,
-            "payment_option": "ALL_UPFRONT",
-            "recommendation_id": "test-sm-456",
-        }
-    ]
-
-    result = handler.split_by_term(config, plans)
-
-    # Should split into 2 plans
-    assert len(result) == 2
-
-    # Check three-year plan
-    three_year_plan = [p for p in result if p["term"] == "THREE_YEAR"][0]
-    assert three_year_plan["hourly_commitment"] == pytest.approx(6.0 * 0.67, rel=0.01)
-    assert three_year_plan["term"] == "THREE_YEAR"
-    assert three_year_plan["sp_type"] == "sagemaker"
-    assert three_year_plan["payment_option"] == "ALL_UPFRONT"
-
-    # Check one-year plan
-    one_year_plan = [p for p in result if p["term"] == "ONE_YEAR"][0]
-    assert one_year_plan["hourly_commitment"] == pytest.approx(6.0 * 0.33, rel=0.01)
-    assert one_year_plan["term"] == "ONE_YEAR"
-    assert one_year_plan["sp_type"] == "sagemaker"
-    assert one_year_plan["payment_option"] == "ALL_UPFRONT"
-
-
-def test_split_by_term_sagemaker_filters_below_minimum():
-    """Test that SageMaker SP splits below min_commitment are filtered out."""
-    config = {
-        "sagemaker_sp_term_mix": {"three_year": 0.67, "one_year": 0.33},
-        "min_commitment_per_plan": 1.5,
-    }
-
-    plans = [{"sp_type": "sagemaker", "hourly_commitment": 2.0, "payment_option": "ALL_UPFRONT"}]
-
-    result = handler.split_by_term(config, plans)
-
-    # After splitting: 0.67 * 2.0 = 1.34 (filter out < 1.5), 0.33 * 2.0 = 0.66 (filter out < 1.5)
-    # Both should be filtered out
-    assert len(result) == 0
-
-
-def test_split_by_term_filters_below_minimum():
-    """Test that splits below min_commitment are filtered out."""
-    config = {
-        "compute_sp_term_mix": {"three_year": 0.67, "one_year": 0.33},
-        "min_commitment_per_plan": 1.0,
-    }
-
-    plans = [{"sp_type": "compute", "hourly_commitment": 1.0, "payment_option": "ALL_UPFRONT"}]
-
-    result = handler.split_by_term(config, plans)
-
-    # After splitting: 0.67 (keep), 0.33 (filter out < 1.0)
-    # Actually both should be filtered since 0.67 < 1.0 and 0.33 < 1.0
-    # But let's check the actual behavior
-    assert all(p["hourly_commitment"] >= config["min_commitment_per_plan"] for p in result)
-
-
-def test_split_by_term_empty_list():
-    """Test handling of empty purchase plans list."""
-    config = {"compute_sp_term_mix": {"three_year": 0.67, "one_year": 0.33}}
-
-    result = handler.split_by_term(config, [])
-
-    assert result == []
-
-
-# ============================================================================
-# Email Tests
-# ============================================================================
-
-
-def test_send_scheduled_email_formats_correctly(mock_clients):
-    """Test that scheduled email is formatted correctly."""
-    config = {
-        "sns_topic_arn": "test-topic-arn",
-        "coverage_target_percent": 90.0,
-        "queue_url": "test-queue-url",
-    }
-
-    plans = [
-        {
-            "sp_type": "compute",
-            "term": "THREE_YEAR",
-            "hourly_commitment": 2.5,
-            "payment_option": "ALL_UPFRONT",
-        }
-    ]
-
-    coverage = {"compute": 75.0, "database": 0.0}
-
-    with patch.object(handler.sns_client, "publish") as mock_publish:
-        handler.send_scheduled_email(config, plans, coverage)
-
-        # Verify SNS publish was called
-        assert mock_publish.call_count == 1
-        call_args = mock_publish.call_args[1]
-        assert call_args["TopicArn"] == "test-topic-arn"
-        assert "Savings Plans Scheduled for Purchase" in call_args["Subject"]
-
-        # Verify message content
-        message = call_args["Message"]
-        assert "75.00%" in message  # Coverage
-        assert "2.5" in message  # Hourly commitment
-
-
-def test_send_dry_run_email_has_dry_run_header(mock_clients):
-    """Test that dry-run email has clear DRY RUN header."""
-    config = {"sns_topic_arn": "test-topic-arn", "coverage_target_percent": 90.0}
-
-    plans = []
-    coverage = {"compute": 80.0, "database": 0.0}
-
-    with patch.object(handler.sns_client, "publish") as mock_publish:
-        handler.send_dry_run_email(config, plans, coverage)
-
-        call_args = mock_publish.call_args[1]
-        assert "[DRY RUN]" in call_args["Subject"]
-
-        message = call_args["Message"]
-        assert "***** DRY RUN MODE *****" in message
-        assert "*** NO PURCHASES WERE SCHEDULED ***" in message
-
-
-def test_send_error_email_handles_missing_config(monkeypatch, mock_clients):
-    """Test that error email works even if config is not loaded."""
-    monkeypatch.setenv("SNS_TOPIC_ARN", "error-topic-arn")
-
-    mock_sns = MagicMock()
-    with patch("boto3.client", return_value=mock_sns):
-        handler.send_error_email("Test error message")
-
-        # Check that publish was called on the created SNS client
-        call_args = mock_sns.publish.call_args[1]
-        assert call_args["TopicArn"] == "error-topic-arn"
-        assert "Scheduler Lambda Failed" in call_args["Subject"]
-        assert "Test error message" in call_args["Message"]
-
-
-def test_send_error_email_no_sns_topic(monkeypatch):
-    """Test that send_error_email handles missing SNS_TOPIC_ARN gracefully."""
-    monkeypatch.delenv("SNS_TOPIC_ARN", raising=False)
-
-    # Should not raise - just log error
-    handler.send_error_email("Test error")
-
-
-# ============================================================================
-# Parallel Execution Tests
-# ============================================================================
-
-
-def test_handler_parallel_execution(mock_env_vars):
-    """Test that coverage and recommendations are executed in parallel."""
-    import threading
-    import time
-    from concurrent.futures import ThreadPoolExecutor
-
-    # Track function calls with timing to verify parallel execution
-    call_log = []
-    call_lock = threading.Lock()
-
-    def log_call(name, phase):
-        """Thread-safe logging of function calls."""
-        with call_lock:
-            call_log.append((name, phase, time.time()))
-
-    # Create mock clients
-    mock_clients = {
-        "ce": MagicMock(),
-        "savingsplans": MagicMock(),
-        "sqs": MagicMock(),
-        "sns": MagicMock(),
-    }
-
-    # Set up mock responses
-    mock_clients["savingsplans"].describe_savings_plans.return_value = {"savingsPlans": []}
-
-    mock_clients["ce"].get_savings_plans_coverage.return_value = {
-        "SavingsPlansCoverages": [
-            {"Coverage": {"CoveragePercentage": "80.0"}},
-        ]
-    }
-
-    mock_clients["ce"].get_savings_plans_purchase_recommendation.return_value = {
-        "SavingsPlansPurchaseRecommendation": {
-            "SavingsPlansPurchaseRecommendationDetails": [
-                {
-                    "SavingsPlansDetails": {"OfferingId": "test-offering"},
-                    "HourlyCommitmentToPurchase": "1.500",
-                }
-            ]
-        }
-    }
-
-    # Wrap the actual functions to track their execution
-    original_calculate_coverage = coverage_module.calculate_current_coverage
-    original_get_recommendations = recommendations_module.get_aws_recommendations
-
-    def mock_calculate_coverage(sp_client, ce_client, config):
-        log_call("coverage", "start")
-        time.sleep(0.05)  # Small delay to ensure overlapping execution
-        result = original_calculate_coverage(sp_client, ce_client, config)
-        log_call("coverage", "end")
-        return result
-
-    def mock_get_recommendations(ce_client, config):
-        log_call("recommendations", "start")
-        time.sleep(0.05)  # Small delay to ensure overlapping execution
-        result = original_get_recommendations(ce_client, config)
-        log_call("recommendations", "end")
-        return result
-
-    with (
-        patch("boto3.client") as mock_boto3_client,
-        patch("shared.handler_utils.initialize_clients", return_value=mock_clients),
-        patch("handler.queue_module.purge_queue") as mock_purge,
-        patch(
-            "handler.coverage_module.calculate_current_coverage",
-            side_effect=mock_calculate_coverage,
-        ),
-        patch(
-            "handler.recommendations_module.get_aws_recommendations",
-            side_effect=mock_get_recommendations,
-        ),
-        patch("handler.email_module.send_dry_run_email") as mock_email,
-        patch("handler.ThreadPoolExecutor", wraps=ThreadPoolExecutor) as mock_executor,
-    ):
-        # Configure boto3.client mock
-        mock_boto3_client.return_value = MagicMock()
-
-        # Call handler
-        event = {}
-        context = MagicMock()
-        result = handler.handler(event, context)
-
-        # Verify ThreadPoolExecutor was instantiated with max_workers=2
-        mock_executor.assert_called_once()
-        call_kwargs = mock_executor.call_args.kwargs
-        assert call_kwargs.get("max_workers") == 2, "ThreadPoolExecutor should use max_workers=2"
-
-        # Verify handler completed successfully
-        assert result["statusCode"] == 200
-
-        # Verify both functions were called
-        coverage_calls = [call for call in call_log if call[0] == "coverage"]
-        recommendations_calls = [call for call in call_log if call[0] == "recommendations"]
-
-        assert len(coverage_calls) == 2, "Coverage should have start and end calls"
-        assert len(recommendations_calls) == 2, "Recommendations should have start and end calls"
-
-        # Verify parallel execution - both should start before either completes
-        # Get timestamps
-        coverage_start = next(
-            call[2] for call in call_log if call[0] == "coverage" and call[1] == "start"
-        )
-        coverage_end = next(
-            call[2] for call in call_log if call[0] == "coverage" and call[1] == "end"
-        )
-        recommendations_start = next(
-            call[2] for call in call_log if call[0] == "recommendations" and call[1] == "start"
-        )
-        recommendations_end = next(
-            call[2] for call in call_log if call[0] == "recommendations" and call[1] == "end"
-        )
-
-        # In parallel execution, both should start before the first one ends
-        # Calculate time windows
-        first_end = min(coverage_end, recommendations_end)
-
-        # Both should start before the first one completes (indicating parallel execution)
-        assert coverage_start < first_end, "Coverage should start before either completes"
-        assert recommendations_start < first_end, (
-            "Recommendations should start before either completes"
-        )
-
-        # Verify queue purge was called
-        mock_purge.assert_called_once()
-
-
 # ============================================================================
 # Handler Integration Tests
 # ============================================================================
@@ -1467,7 +1154,7 @@ def test_handler_dry_run_mode(mock_env_vars):
     with (
         patch("boto3.client") as mock_boto3_client,
         patch("shared.handler_utils.initialize_clients", return_value=mock_clients),
-        patch("handler.queue_module.purge_queue") as mock_purge,
+        patch("handler.queue_module.purge_queue"),
         patch("handler.coverage_module.calculate_current_coverage") as mock_coverage,
         patch("handler.recommendations_module.get_aws_recommendations") as mock_recs,
         patch("handler.email_module.send_dry_run_email") as mock_email,
@@ -1478,7 +1165,10 @@ def test_handler_dry_run_mode(mock_env_vars):
 
         mock_coverage.return_value = {"compute": 70.0, "database": 0.0}
         mock_recs.return_value = {
-            "compute": {"HourlyCommitmentToPurchase": "1.000", "RecommendationId": "rec-123"},
+            "compute": {
+                "HourlyCommitmentToPurchase": "1.000",
+                "RecommendationId": "rec-123",
+            },
             "database": None,
         }
 
@@ -1507,7 +1197,7 @@ def test_handler_production_mode(mock_env_vars, monkeypatch):
     with (
         patch("boto3.client") as mock_boto3_client,
         patch("shared.handler_utils.initialize_clients", return_value=mock_clients),
-        patch("handler.queue_module.purge_queue") as mock_purge,
+        patch("handler.queue_module.purge_queue"),
         patch("handler.coverage_module.calculate_current_coverage") as mock_coverage,
         patch("handler.recommendations_module.get_aws_recommendations") as mock_recs,
         patch("handler.email_module.send_scheduled_email") as mock_email,
@@ -1518,7 +1208,10 @@ def test_handler_production_mode(mock_env_vars, monkeypatch):
 
         mock_coverage.return_value = {"compute": 70.0, "database": 0.0}
         mock_recs.return_value = {
-            "compute": {"HourlyCommitmentToPurchase": "1.000", "RecommendationId": "rec-123"},
+            "compute": {
+                "HourlyCommitmentToPurchase": "1.000",
+                "RecommendationId": "rec-123",
+            },
             "database": None,
         }
 
@@ -1650,7 +1343,7 @@ def test_get_clients_with_role_arn():
         mock_boto3_client.return_value = MagicMock()
 
         # Call function
-        clients = handler.get_clients(config)
+        handler.get_clients(config)
 
         # Verify assume role was called with default session name
         mock_assume.assert_called_once_with(
@@ -1677,7 +1370,7 @@ def test_get_clients_without_role_arn():
         mock_boto3_client.return_value = MagicMock()
 
         # Call function
-        clients = handler.get_clients(config)
+        handler.get_clients(config)
 
         # Verify all 5 clients use boto3.client directly (no assume role)
         assert mock_boto3_client.call_count == 5
@@ -1701,7 +1394,7 @@ def test_handler_assume_role_error_handling(mock_env_vars, monkeypatch):
     with (
         patch("boto3.client") as mock_boto3_client,
         patch("handler.initialize_clients") as mock_initialize,
-        patch("handler.queue_module.purge_queue") as mock_purge,
+        patch("handler.queue_module.purge_queue"),
     ):
         # Configure boto3.client mock to return appropriate mocks
         mock_boto3_client.return_value = MagicMock()

@@ -15,7 +15,7 @@ from __future__ import annotations
 import json
 import logging
 from datetime import datetime, timedelta, timezone
-from typing import TYPE_CHECKING, Any, Dict
+from typing import TYPE_CHECKING, Any
 
 import boto3
 from botocore.exceptions import ClientError
@@ -184,7 +184,7 @@ def handler(event: dict[str, Any], context: Any) -> dict[str, Any]:
         raise  # Re-raise to ensure Lambda fails visibly
 
 
-def load_configuration() -> Dict[str, Any]:
+def load_configuration() -> dict[str, Any]:
     """Load configuration - backward compatible wrapper."""
     from config import load_configuration as config_load
 
@@ -468,7 +468,10 @@ def get_savings_data(
             start_date = end_date - timedelta(days=30)  # Last 30 days for actual savings
 
             utilization_response = ce_client.get_savings_plans_utilization(
-                TimePeriod={"Start": start_date.isoformat(), "End": end_date.isoformat()},
+                TimePeriod={
+                    "Start": start_date.isoformat(),
+                    "End": end_date.isoformat(),
+                },
                 Granularity="DAILY",
             )
 
@@ -534,7 +537,10 @@ def get_savings_data(
         for plan in plans_data:
             plan_type = plan["plan_type"]
             if plan_type not in breakdown_by_type:
-                breakdown_by_type[plan_type] = {"plans_count": 0, "total_commitment": 0.0}
+                breakdown_by_type[plan_type] = {
+                    "plans_count": 0,
+                    "total_commitment": 0.0,
+                }
             breakdown_by_type[plan_type]["plans_count"] += 1
             breakdown_by_type[plan_type]["total_commitment"] += plan["hourly_commitment"]
 

@@ -6,7 +6,7 @@ Provides email formatting and sending functionality for Savings Plans reports.
 
 import logging
 from datetime import datetime, timezone
-from typing import Any, Dict
+from typing import Any
 
 from botocore.exceptions import ClientError
 
@@ -20,10 +20,10 @@ logger.setLevel(logging.INFO)
 
 def send_report_email(
     sns_client: Any,
-    config: Dict[str, Any],
+    config: dict[str, Any],
     s3_object_key: str,
-    coverage_summary: Dict[str, Any],
-    savings_summary: Dict[str, Any],
+    coverage_summary: dict[str, Any],
+    savings_summary: dict[str, Any],
 ) -> None:
     """
     Send email notification with S3 report link and summary.

@@ -7,7 +7,7 @@ savings metrics, and active Savings Plans data.
 
 import logging
 from datetime import datetime, timezone
-from typing import Any, Dict, List
+from typing import Any
 
 
 # Configure logging
@@ -16,7 +16,7 @@ logger.setLevel(logging.INFO)
 
 
 def generate_html_report(
-    coverage_history: List[Dict[str, Any]], savings_data: Dict[str, Any]
+    coverage_history: list[dict[str, Any]], savings_data: dict[str, Any]
 ) -> str:
     """
     Generate HTML report with coverage trends and savings metrics.

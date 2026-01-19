@@ -16,17 +16,7 @@ import pytest
 # Add parent directory to path
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
 
-# Import coverage module with special handling to avoid naming conflicts
-import importlib.util
-import os as _os
-
-
-_coverage_spec = importlib.util.spec_from_file_location(
-    "coverage_module",
-    _os.path.join(_os.path.dirname(_os.path.abspath(__file__)), "..", "coverage_calculator.py"),
-)
-coverage_module = importlib.util.module_from_spec(_coverage_spec)
-_coverage_spec.loader.exec_module(coverage_module)
+import sp_coverage as coverage_module
 
 
 @pytest.fixture
@@ -160,8 +150,16 @@ def test_calculate_current_coverage_all_plans_expiring_soon(
 
     mock_savingsplans_client.describe_savings_plans.return_value = {
         "savingsPlans": [
-            {"savingsPlanId": "sp-1", "state": "active", "end": expiring_soon1.isoformat()},
-            {"savingsPlanId": "sp-2", "state": "active", "end": expiring_soon2.isoformat()},
+            {
+                "savingsPlanId": "sp-1",
+                "state": "active",
+                "end": expiring_soon1.isoformat(),
+            },
+            {
+                "savingsPlanId": "sp-2",
+                "state": "active",
+                "end": expiring_soon2.isoformat(),
+            },
         ]
     }
 
@@ -194,8 +192,16 @@ def test_calculate_current_coverage_boundary_renewal_window(
 
     mock_savingsplans_client.describe_savings_plans.return_value = {
         "savingsPlans": [
-            {"savingsPlanId": "sp-exactly", "state": "active", "end": expiring_exactly.isoformat()},
-            {"savingsPlanId": "sp-after", "state": "active", "end": expiring_after.isoformat()},
+            {
+                "savingsPlanId": "sp-exactly",
+                "state": "active",
+                "end": expiring_exactly.isoformat(),
+            },
+            {
+                "savingsPlanId": "sp-after",
+                "state": "active",
+                "end": expiring_after.isoformat(),
+            },
         ]
     }
 
@@ -224,7 +230,11 @@ def test_calculate_current_coverage_multiple_coverage_data_points(
 
     mock_savingsplans_client.describe_savings_plans.return_value = {
         "savingsPlans": [
-            {"savingsPlanId": "sp-12345", "state": "active", "end": expiring_later.isoformat()}
+            {
+                "savingsPlanId": "sp-12345",
+                "state": "active",
+                "end": expiring_later.isoformat(),
+            }
         ]
     }
 
@@ -259,7 +269,11 @@ def test_calculate_current_coverage_missing_coverage_percentage(
 
     mock_savingsplans_client.describe_savings_plans.return_value = {
         "savingsPlans": [
-            {"savingsPlanId": "sp-12345", "state": "active", "end": expiring_later.isoformat()}
+            {
+                "savingsPlanId": "sp-12345",
+                "state": "active",
+                "end": expiring_later.isoformat(),
+            }
         ]
     }
 
@@ -295,7 +309,11 @@ def test_calculate_current_coverage_plan_without_end_date(
                 "state": "active",
                 # Missing 'end' field
             },
-            {"savingsPlanId": "sp-with-end", "state": "active", "end": expiring_later.isoformat()},
+            {
+                "savingsPlanId": "sp-with-end",
+                "state": "active",
+                "end": expiring_later.isoformat(),
+            },
         ]
     }
 
@@ -349,7 +367,11 @@ def test_calculate_current_coverage_get_coverage_error(
 
     mock_savingsplans_client.describe_savings_plans.return_value = {
         "savingsPlans": [
-            {"savingsPlanId": "sp-12345", "state": "active", "end": expiring_later.isoformat()}
+            {
+                "savingsPlanId": "sp-12345",
+                "state": "active",
+                "end": expiring_later.isoformat(),
+            }
         ]
     }
 
@@ -378,7 +400,11 @@ def test_calculate_current_coverage_high_coverage_percentage(
 
     mock_savingsplans_client.describe_savings_plans.return_value = {
         "savingsPlans": [
-            {"savingsPlanId": "sp-12345", "state": "active", "end": expiring_later.isoformat()}
+            {
+                "savingsPlanId": "sp-12345",
+                "state": "active",
+                "end": expiring_later.isoformat(),
+            }
         ]
     }
 
@@ -407,7 +433,11 @@ def test_calculate_current_coverage_zero_coverage(
 
     mock_savingsplans_client.describe_savings_plans.return_value = {
         "savingsPlans": [
-            {"savingsPlanId": "sp-12345", "state": "active", "end": expiring_later.isoformat()}
+            {
+                "savingsPlanId": "sp-12345",
+                "state": "active",
+                "end": expiring_later.isoformat(),
+            }
         ]
     }
 
@@ -436,8 +466,16 @@ def test_calculate_current_coverage_with_groupby_multiple_types(
 
     mock_savingsplans_client.describe_savings_plans.return_value = {
         "savingsPlans": [
-            {"savingsPlanId": "sp-compute", "state": "active", "end": expiring_later.isoformat()},
-            {"savingsPlanId": "sp-sagemaker", "state": "active", "end": expiring_later.isoformat()},
+            {
+                "savingsPlanId": "sp-compute",
+                "state": "active",
+                "end": expiring_later.isoformat(),
+            },
+            {
+                "savingsPlanId": "sp-sagemaker",
+                "state": "active",
+                "end": expiring_later.isoformat(),
+            },
         ]
     }
 
@@ -478,7 +516,11 @@ def test_calculate_current_coverage_with_groupby_ec2_instance_sp(
 
     mock_savingsplans_client.describe_savings_plans.return_value = {
         "savingsPlans": [
-            {"savingsPlanId": "sp-ec2", "state": "active", "end": expiring_later.isoformat()}
+            {
+                "savingsPlanId": "sp-ec2",
+                "state": "active",
+                "end": expiring_later.isoformat(),
+            }
         ]
     }
 
@@ -515,7 +557,11 @@ def test_calculate_current_coverage_with_groupby_rds_instance(
 
     mock_savingsplans_client.describe_savings_plans.return_value = {
         "savingsPlans": [
-            {"savingsPlanId": "sp-rds", "state": "active", "end": expiring_later.isoformat()}
+            {
+                "savingsPlanId": "sp-rds",
+                "state": "active",
+                "end": expiring_later.isoformat(),
+            }
         ]
     }
 
@@ -552,7 +598,11 @@ def test_calculate_current_coverage_with_groupby_all_types(
 
     mock_savingsplans_client.describe_savings_plans.return_value = {
         "savingsPlans": [
-            {"savingsPlanId": "sp-all", "state": "active", "end": expiring_later.isoformat()}
+            {
+                "savingsPlanId": "sp-all",
+                "state": "active",
+                "end": expiring_later.isoformat(),
+            }
         ]
     }
 
@@ -597,7 +647,11 @@ def test_calculate_current_coverage_with_groupby_no_groups_fallback(
 
     mock_savingsplans_client.describe_savings_plans.return_value = {
         "savingsPlans": [
-            {"savingsPlanId": "sp-12345", "state": "active", "end": expiring_later.isoformat()}
+            {
+                "savingsPlanId": "sp-12345",
+                "state": "active",
+                "end": expiring_later.isoformat(),
+            }
         ]
     }
 

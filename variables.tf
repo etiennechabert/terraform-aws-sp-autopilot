@@ -55,18 +55,15 @@ variable "purchase_strategy" {
     min_commitment_per_plan = optional(number, 0.001)
 
     # Strategy type - exactly one must be defined
-    simple = optional(object({
+    follow_aws = optional(object({}))
+
+    fixed = optional(object({
       max_purchase_percent = number
     }))
 
     dichotomy = optional(object({
       max_purchase_percent = number
       min_purchase_percent = number
-    }))
-
-    conservative = optional(object({
-      min_gap_threshold    = number
-      max_purchase_percent = number
     }))
   })
 
@@ -92,20 +89,20 @@ variable "purchase_strategy" {
 
   validation {
     condition = (
-      (var.purchase_strategy.simple != null && var.purchase_strategy.dichotomy == null && var.purchase_strategy.conservative == null) ||
-      (var.purchase_strategy.simple == null && var.purchase_strategy.dichotomy != null && var.purchase_strategy.conservative == null) ||
-      (var.purchase_strategy.simple == null && var.purchase_strategy.dichotomy == null && var.purchase_strategy.conservative != null)
+      (var.purchase_strategy.follow_aws != null && var.purchase_strategy.fixed == null && var.purchase_strategy.dichotomy == null) ||
+      (var.purchase_strategy.follow_aws == null && var.purchase_strategy.fixed != null && var.purchase_strategy.dichotomy == null) ||
+      (var.purchase_strategy.follow_aws == null && var.purchase_strategy.fixed == null && var.purchase_strategy.dichotomy != null)
     )
-    error_message = "Exactly one purchase strategy (simple, dichotomy, or conservative) must be defined."
+    error_message = "Exactly one purchase strategy (follow_aws, fixed, or dichotomy) must be defined."
   }
 
   validation {
     condition = (
-      var.purchase_strategy.simple != null ?
-      var.purchase_strategy.simple.max_purchase_percent > 0 && var.purchase_strategy.simple.max_purchase_percent <= 100 :
+      var.purchase_strategy.fixed != null ?
+      var.purchase_strategy.fixed.max_purchase_percent > 0 && var.purchase_strategy.fixed.max_purchase_percent <= 100 :
       true
     )
-    error_message = "simple.max_purchase_percent must be between 0 and 100."
+    error_message = "fixed.max_purchase_percent must be between 0 and 100."
   }
 
   validation {
@@ -118,17 +115,6 @@ variable "purchase_strategy" {
     )
     error_message = "For dichotomy strategy: 0 < min_purchase_percent < max_purchase_percent <= 100."
   }
-
-  validation {
-    condition = (
-      var.purchase_strategy.conservative != null ?
-      (var.purchase_strategy.conservative.min_gap_threshold > 0 &&
-        var.purchase_strategy.conservative.max_purchase_percent > 0 &&
-      var.purchase_strategy.conservative.max_purchase_percent <= 100) :
-      true
-    )
-    error_message = "For conservative strategy: min_gap_threshold must be > 0 and 0 < max_purchase_percent <= 100."
-  }
 }
 
 # ============================================================================
@@ -139,30 +125,18 @@ variable "sp_plans" {
   description = "Savings Plans configuration for Compute, Database, and SageMaker"
   type = object({
     compute = optional(object({
-      enabled                    = bool
-      all_upfront_three_year     = optional(number, 0)
-      all_upfront_one_year       = optional(number, 0)
-      partial_upfront_three_year = optional(number, 0)
-      partial_upfront_one_year   = optional(number, 0)
-      no_upfront_three_year      = optional(number, 0)
-      no_upfront_one_year        = optional(number, 0)
-      partial_upfront_percent    = optional(number, 50)
+      enabled   = bool
+      plan_type = optional(string, "all_upfront_three_year")
     }))
 
     database = optional(object({
-      enabled             = bool
-      no_upfront_one_year = optional(number, 1) # AWS only supports 1-year NO_UPFRONT
+      enabled = bool
+      # AWS only supports 1-year NO_UPFRONT for Database SPs (fixed by AWS)
     }))
 
     sagemaker = optional(object({
-      enabled                    = bool
-      all_upfront_three_year     = optional(number, 0)
-      all_upfront_one_year       = optional(number, 0)
-      partial_upfront_three_year = optional(number, 0)
-      partial_upfront_one_year   = optional(number, 0)
-      no_upfront_three_year      = optional(number, 0)
-      no_upfront_one_year        = optional(number, 0)
-      partial_upfront_percent    = optional(number, 50)
+      enabled   = bool
+      plan_type = optional(string, "all_upfront_three_year")
     }))
   })
 
@@ -176,72 +150,38 @@ variable "sp_plans" {
     error_message = "At least one SP type (compute, database, or sagemaker) must be enabled."
   }
 
-  # Compute percentages must sum to 1.0 (if enabled)
+  # Compute plan_type must be valid
   validation {
     condition = (
       try(var.sp_plans.compute.enabled, false) ?
-      (try(var.sp_plans.compute.all_upfront_three_year, 0) +
-        try(var.sp_plans.compute.all_upfront_one_year, 0) +
-        try(var.sp_plans.compute.partial_upfront_three_year, 0) +
-        try(var.sp_plans.compute.partial_upfront_one_year, 0) +
-        try(var.sp_plans.compute.no_upfront_three_year, 0) +
-      try(var.sp_plans.compute.no_upfront_one_year, 0)) == 1
+      contains([
+        "all_upfront_three_year",
+        "all_upfront_one_year",
+        "partial_upfront_three_year",
+        "partial_upfront_one_year",
+        "no_upfront_three_year",
+        "no_upfront_one_year"
+      ], try(var.sp_plans.compute.plan_type, "all_upfront_three_year"))
       : true
     )
-    error_message = "Compute SP payment/term percentages must sum to 1.0 when enabled."
+    error_message = "Compute plan_type must be one of: all_upfront_three_year, all_upfront_one_year, partial_upfront_three_year, partial_upfront_one_year, no_upfront_three_year, no_upfront_one_year."
   }
 
-  # Database must be exactly 1.0 (AWS constraint - only one option available)
-  validation {
-    condition = (
-      try(var.sp_plans.database.enabled, false) ?
-      try(var.sp_plans.database.no_upfront_one_year, 0) == 1
-      : true
-    )
-    error_message = "Database SP must have no_upfront_one_year = 1 (AWS only supports 1-year NO_UPFRONT)."
-  }
-
-  # SageMaker percentages must sum to 1.0 (if enabled)
+  # SageMaker plan_type must be valid
   validation {
     condition = (
       try(var.sp_plans.sagemaker.enabled, false) ?
-      (try(var.sp_plans.sagemaker.all_upfront_three_year, 0) +
-        try(var.sp_plans.sagemaker.all_upfront_one_year, 0) +
-        try(var.sp_plans.sagemaker.partial_upfront_three_year, 0) +
-        try(var.sp_plans.sagemaker.partial_upfront_one_year, 0) +
-        try(var.sp_plans.sagemaker.no_upfront_three_year, 0) +
-      try(var.sp_plans.sagemaker.no_upfront_one_year, 0)) == 1
+      contains([
+        "all_upfront_three_year",
+        "all_upfront_one_year",
+        "partial_upfront_three_year",
+        "partial_upfront_one_year",
+        "no_upfront_three_year",
+        "no_upfront_one_year"
+      ], try(var.sp_plans.sagemaker.plan_type, "all_upfront_three_year"))
       : true
     )
-    error_message = "SageMaker SP payment/term percentages must sum to 1.0 when enabled."
-  }
-
-  # All percentages must be non-negative
-  validation {
-    condition = alltrue([
-      try(var.sp_plans.compute.all_upfront_three_year >= 0, true),
-      try(var.sp_plans.compute.all_upfront_one_year >= 0, true),
-      try(var.sp_plans.compute.partial_upfront_three_year >= 0, true),
-      try(var.sp_plans.compute.partial_upfront_one_year >= 0, true),
-      try(var.sp_plans.compute.no_upfront_three_year >= 0, true),
-      try(var.sp_plans.compute.no_upfront_one_year >= 0, true),
-      try(var.sp_plans.sagemaker.all_upfront_three_year >= 0, true),
-      try(var.sp_plans.sagemaker.all_upfront_one_year >= 0, true),
-      try(var.sp_plans.sagemaker.partial_upfront_three_year >= 0, true),
-      try(var.sp_plans.sagemaker.partial_upfront_one_year >= 0, true),
-      try(var.sp_plans.sagemaker.no_upfront_three_year >= 0, true),
-      try(var.sp_plans.sagemaker.no_upfront_one_year >= 0, true),
-    ])
-    error_message = "All SP payment/term percentages must be non-negative."
-  }
-
-  # partial_upfront_percent must be between 0 and 100
-  validation {
-    condition = alltrue([
-      try(var.sp_plans.compute.partial_upfront_percent >= 0 && var.sp_plans.compute.partial_upfront_percent <= 100, true),
-      try(var.sp_plans.sagemaker.partial_upfront_percent >= 0 && var.sp_plans.sagemaker.partial_upfront_percent <= 100, true),
-    ])
-    error_message = "partial_upfront_percent must be between 0 and 100."
+    error_message = "SageMaker plan_type must be one of: all_upfront_three_year, all_upfront_one_year, partial_upfront_three_year, partial_upfront_one_year, no_upfront_three_year, no_upfront_one_year."
   }
 }
 
