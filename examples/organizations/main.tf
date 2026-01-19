@@ -34,7 +34,7 @@ module "savings_plans" {
     min_data_days           = 14 # Require at least 14 days of data
 
     # Moderate commitment growth for organization
-    simple = {
+    fixed = {
       max_purchase_percent = 8 # Max 8% of monthly org spend per cycle
     }
   }

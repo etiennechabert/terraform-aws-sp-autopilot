@@ -6,7 +6,7 @@ Generates CSV-formatted reports containing coverage history and savings data.
 
 import logging
 from datetime import datetime, timezone
-from typing import Any, Dict, List
+from typing import Any
 
 
 # Configure logging
@@ -14,7 +14,7 @@ logger = logging.getLogger()
 
 
 def generate_csv_report(
-    coverage_history: List[Dict[str, Any]], savings_data: Dict[str, Any]
+    coverage_history: list[dict[str, Any]], savings_data: dict[str, Any]
 ) -> str:
     """
     Generate CSV report with coverage trends and savings metrics.

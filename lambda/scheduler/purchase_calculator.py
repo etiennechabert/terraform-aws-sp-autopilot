@@ -3,10 +3,10 @@ Purchase Calculator Module - Strategy dispatcher and shared utilities.
 
 This module contains:
 1. Strategy registry and dispatcher (calculate_purchase_need)
-2. Shared utilities (apply_purchase_limits, split_by_term)
+2. Shared utilities (apply_purchase_limits)
 
 Strategy Pattern:
-- Each strategy is implemented in its own module (simple_strategy.py, dichotomy_strategy.py)
+- Each strategy is implemented in its own module (fixed_strategy.py, dichotomy_strategy.py, follow_aws_strategy.py)
 - Strategies are registered in PURCHASE_STRATEGIES registry
 - Contributors can add new strategies by:
   1. Creating a new strategy module (e.g., aggressive_strategy.py)
@@ -15,7 +15,11 @@ Strategy Pattern:
 """
 
 import logging
-from typing import Any, Callable, Dict, List
+from typing import Any, Callable
+
+from dichotomy_strategy import calculate_purchase_need_dichotomy
+from fixed_strategy import calculate_purchase_need_fixed
+from follow_aws_strategy import calculate_purchase_need_follow_aws
 
 
 # Configure logging
@@ -28,27 +32,22 @@ logger = logging.getLogger()
 
 # Type alias for strategy functions
 StrategyFunction = Callable[
-    [Dict[str, Any], Dict[str, float], Dict[str, Any]], List[Dict[str, Any]]
+    [dict[str, Any], dict[str, float], dict[str, Any]], list[dict[str, Any]]
 ]
-
-# Import strategy implementations
-from conservative_strategy import calculate_purchase_need_conservative
-from dichotomy_strategy import calculate_purchase_need_dichotomy
-from simple_strategy import calculate_purchase_need_simple
 
 
 # Registry mapping strategy names to their implementation functions
 # Contributors: Add new strategies by importing and registering here
-PURCHASE_STRATEGIES: Dict[str, StrategyFunction] = {
-    "simple": calculate_purchase_need_simple,
+PURCHASE_STRATEGIES: dict[str, StrategyFunction] = {
+    "fixed": calculate_purchase_need_fixed,
     "dichotomy": calculate_purchase_need_dichotomy,
-    "conservative": calculate_purchase_need_conservative,
+    "follow_aws": calculate_purchase_need_follow_aws,
 }
 
 
 def calculate_purchase_need(
-    config: Dict[str, Any], coverage: Dict[str, float], recommendations: Dict[str, Any]
-) -> List[Dict[str, Any]]:
+    config: dict[str, Any], coverage: dict[str, float], recommendations: dict[str, Any]
+) -> list[dict[str, Any]]:
     """
     Calculate required purchases to reach target coverage using configured strategy.
 
@@ -66,7 +65,7 @@ def calculate_purchase_need(
     Raises:
         ValueError: If configured strategy is not registered
     """
-    strategy_type = config.get("purchase_strategy_type", "simple")
+    strategy_type = config.get("purchase_strategy_type", "follow_aws")
 
     logger.info(f"Using purchase strategy: {strategy_type}")
 
@@ -85,8 +84,8 @@ def calculate_purchase_need(
 
 
 def apply_purchase_limits(
-    config: Dict[str, Any], purchase_plans: List[Dict[str, Any]]
-) -> List[Dict[str, Any]]:
+    config: dict[str, Any], purchase_plans: list[dict[str, Any]]
+) -> list[dict[str, Any]]:
     """
     Apply max_purchase_percent limit to planned purchases.
 
@@ -140,124 +139,3 @@ def apply_purchase_limits(
     )
 
     return filtered_plans
-
-
-def split_by_term(
-    config: Dict[str, Any], purchase_plans: List[Dict[str, Any]]
-) -> List[Dict[str, Any]]:
-    """
-    Split Compute and SageMaker SP commitments by term mix.
-
-    Args:
-        config: Configuration dictionary
-        purchase_plans: List of planned purchases
-
-    Returns:
-        list: Purchase plans split by term
-    """
-    logger.info("Splitting purchases by term")
-
-    if not purchase_plans:
-        logger.info("No purchase plans to split")
-        return []
-
-    split_plans = []
-    compute_term_mix = config.get("compute_sp_term_mix", {})
-    sagemaker_term_mix = config.get("sagemaker_sp_term_mix", {})
-
-    # Map term_mix keys to API term values
-    term_mapping = {"three_year": "THREE_YEAR", "one_year": "ONE_YEAR"}
-
-    for plan in purchase_plans:
-        sp_type = plan.get("sp_type")
-
-        # Database SP already has term set - pass through unchanged
-        if sp_type == "database":
-            split_plans.append(plan)
-            logger.debug(
-                f"Database SP plan passed through: ${plan.get('hourly_commitment', 0):.4f}/hour"
-            )
-            continue
-
-        # Compute SP needs to be split by term mix
-        if sp_type == "compute":
-            base_commitment = plan.get("hourly_commitment", 0.0)
-            min_commitment = config.get("min_commitment_per_plan", 0.001)
-
-            logger.info(
-                f"Splitting Compute SP: ${base_commitment:.4f}/hour across {len(compute_term_mix)} terms"
-            )
-
-            for term_key, percentage in compute_term_mix.items():
-                # Calculate commitment for this term
-                term_commitment = base_commitment * percentage
-
-                # Skip if below minimum threshold
-                if term_commitment < min_commitment:
-                    logger.info(
-                        f"Skipping {term_key} term: commitment ${term_commitment:.4f}/hour "
-                        f"below minimum ${min_commitment:.4f}/hour"
-                    )
-                    continue
-
-                # Map term key to API value
-                term_value = term_mapping.get(term_key)
-                if not term_value:
-                    logger.warning(f"Unknown term key '{term_key}' - skipping")
-                    continue
-
-                # Create new plan for this term
-                term_plan = plan.copy()
-                term_plan["hourly_commitment"] = term_commitment
-                term_plan["term"] = term_value
-
-                split_plans.append(term_plan)
-                logger.info(
-                    f"Created {term_value} plan: ${term_commitment:.4f}/hour "
-                    f"({percentage * 100:.1f}% of base commitment)"
-                )
-
-        # SageMaker SP needs to be split by term mix
-        elif sp_type == "sagemaker":
-            base_commitment = plan.get("hourly_commitment", 0.0)
-            min_commitment = config.get("min_commitment_per_plan", 0.001)
-
-            logger.info(
-                f"Splitting SageMaker SP: ${base_commitment:.4f}/hour across {len(sagemaker_term_mix)} terms"
-            )
-
-            for term_key, percentage in sagemaker_term_mix.items():
-                # Calculate commitment for this term
-                term_commitment = base_commitment * percentage
-
-                # Skip if below minimum threshold
-                if term_commitment < min_commitment:
-                    logger.info(
-                        f"Skipping {term_key} term: commitment ${term_commitment:.4f}/hour "
-                        f"below minimum ${min_commitment:.4f}/hour"
-                    )
-                    continue
-
-                # Map term key to API value
-                term_value = term_mapping.get(term_key)
-                if not term_value:
-                    logger.warning(f"Unknown term key '{term_key}' - skipping")
-                    continue
-
-                # Create new plan for this term
-                term_plan = plan.copy()
-                term_plan["hourly_commitment"] = term_commitment
-                term_plan["term"] = term_value
-
-                split_plans.append(term_plan)
-                logger.info(
-                    f"Created {term_value} plan: ${term_commitment:.4f}/hour "
-                    f"({percentage * 100:.1f}% of base commitment)"
-                )
-        else:
-            # Unknown SP type - pass through
-            logger.warning(f"Unknown SP type '{sp_type}' - passing through unchanged")
-            split_plans.append(plan)
-
-    logger.info(f"Term splitting complete: {len(purchase_plans)} plans -> {len(split_plans)} plans")
-    return split_plans

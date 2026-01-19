@@ -156,7 +156,47 @@ Module recommends purchase to reach target of 90%
 
 ## Purchase Strategy Concepts
 
-### Simple Strategy
+### Follow AWS Strategy
+
+**Type:** Purchase strategy
+
+**Definition:** Uses AWS Cost Explorer recommendations exactly as provided, without any modification. Trusts AWS optimization completely.
+
+**Configuration:**
+```hcl
+purchase_strategy = {
+  coverage_target_percent = 90
+  max_coverage_cap        = 95
+
+  follow_aws = {}  # No parameters needed
+}
+```
+
+**Characteristics:**
+- **100% of AWS recommendation** every cycle
+- **Hands-off** automation
+- **Simplest** possible strategy
+- **No tuning** required
+
+**How It Works:**
+```
+AWS recommendation: $1,000/hour commitment needed
+→ Purchase: $1,000/hour (100% of recommendation)
+```
+
+**Best For:**
+- Trust AWS Cost Explorer recommendations
+- Want fully automated optimization
+- New users starting with Savings Plans
+- Don't want to manually tune percentages
+
+**Trade-offs:**
+- Less control over purchase velocity
+- May purchase more than needed if AWS overestimates
+
+---
+
+### Fixed Strategy
 
 **Type:** Purchase strategy
 
@@ -168,7 +208,7 @@ purchase_strategy = {
   coverage_target_percent = 90
   max_coverage_cap        = 95
 
-  simple = {
+  fixed = {
     max_purchase_percent = 10  # Purchase 10% of AWS recommendation
   }
 }
@@ -200,6 +240,7 @@ max_purchase_percent: 10
 - Stable workloads with predictable growth
 - Small adjustments to existing coverage
 - Simple, easy-to-forecast budgeting
+- Control over purchase velocity
 
 **Not Ideal For:**
 - New deployments starting from 0% coverage (slow ramp-up)
@@ -267,87 +308,39 @@ purchase_strategy = {
 
 ---
 
-### Conservative Strategy
-
-**Type:** Purchase strategy
-
-**Definition:** Only purchases when the coverage gap exceeds a minimum threshold, then purchases up to a maximum percentage. Prevents tiny, frequent purchases.
-
-**Configuration:**
-```hcl
-purchase_strategy = {
-  coverage_target_percent = 90
-  max_coverage_cap        = 95
-
-  conservative = {
-    min_gap_threshold    = 5   # Only purchase if gap ≥ 5%
-    max_purchase_percent = 15  # Purchase up to 15% of recommendation
-  }
-}
-```
-
-**How It Works:**
-```
-Coverage gap = coverage_target_percent - current_coverage
-
-If gap < min_gap_threshold:
-  → No purchase (gap too small)
-Else:
-  → Purchase up to max_purchase_percent of AWS recommendation
-```
-
-**Behavior Example:**
-
-| Current Coverage | Gap to 90% | Action |
-|------------------|------------|--------|
-| 88% | 2% | **No purchase** (gap < 5% threshold) |
-| 84% | 6% | Purchase 15% of recommendation |
-| 70% | 20% | Purchase 15% of recommendation |
-
-**Best For:**
-- Avoiding frequent small purchases
-- Reducing API calls and operational overhead
-- Workloads with stable coverage near target
-
-**See Also:** [examples/conservative-strategy/](examples/conservative-strategy/)
-
----
-
-### Term Mix
+### Plan Type Selection
 
 **Type:** Configuration concept
 
-**Definition:** The distribution of 1-year and 3-year Savings Plans as percentages that sum to 1.0 (100%).
+**Definition:** The specific combination of term (1-year or 3-year) and payment option (All Upfront, Partial Upfront, No Upfront) for purchased Savings Plans.
 
-**Applies To:** Compute and SageMaker Savings Plans (Database is 1-year only per AWS constraint)
+**Applies To:** Compute and SageMaker Savings Plans (Database is fixed to 1-year NO_UPFRONT per AWS constraint)
 
 **Configuration:**
 ```hcl
 sp_plans = {
   compute = {
-    enabled                = true
-    all_upfront_three_year = 0.67  # 67% of purchases are 3-year plans
-    all_upfront_one_year   = 0.33  # 33% of purchases are 1-year plans
+    enabled   = true
+    plan_type = "all_upfront_three_year"  # Single selection
+  }
+
+  sagemaker = {
+    enabled   = true
+    plan_type = "partial_upfront_one_year"
   }
 }
 ```
 
-**Payment Option Combinations:**
+**Available Plan Types:**
 
-Each term can have multiple payment options. All percentages **must sum to 1.0**:
-
-```hcl
-sp_plans = {
-  compute = {
-    enabled                    = true
-    all_upfront_three_year     = 0.5   # 50%
-    partial_upfront_three_year = 0.2   # 20%
-    all_upfront_one_year       = 0.2   # 20%
-    no_upfront_one_year        = 0.1   # 10%
-    # Total = 1.0 ✓
-  }
-}
-```
+| plan_type | Term | Payment Option | Max Discount | Use Case |
+|-----------|------|----------------|--------------|----------|
+| `all_upfront_three_year` | 3-year | All Upfront | Up to 66% | Maximum savings |
+| `all_upfront_one_year` | 1-year | All Upfront | Up to 40% | High savings, more flexibility |
+| `partial_upfront_three_year` | 3-year | Partial Upfront | Up to 65% | Balanced cost/cash flow |
+| `partial_upfront_one_year` | 1-year | Partial Upfront | Up to 38% | Balanced, shorter term |
+| `no_upfront_three_year` | 3-year | No Upfront | Up to 63% | Cash flow priority |
+| `no_upfront_one_year` | 1-year | No Upfront | Up to 36% | Maximum flexibility |
 
 **Why It Matters:**
 
@@ -356,17 +349,15 @@ sp_plans = {
 | **3-year** | Higher (up to 66%) | Low (3-year commitment) | Higher if usage changes |
 | **1-year** | Lower (up to 40%) | Higher (1-year commitment) | Lower if usage changes |
 
-**Common Strategies:**
+**Common Choices:**
 
-| Mix | Use Case |
-|-----|----------|
-| 100% 1-year | Maximum flexibility, new workloads |
-| 67% 3-year, 33% 1-year | Balanced savings + flexibility |
-| 100% 3-year | Maximum savings, stable workloads |
+| plan_type | Use Case |
+|-----------|----------|
+| `all_upfront_three_year` | Maximum savings, stable workloads, have cash |
+| `all_upfront_one_year` | Good savings, less commitment risk |
+| `no_upfront_one_year` | Maximum flexibility, cash flow sensitive |
 
-**Execution:**
-When purchasing $100/hour commitment with 70% 3-year, 30% 1-year:
-- Creates 3-year plan: $70/hour commitment
+**Note:** Partial Upfront requires 50% upfront payment by default, with remaining paid monthly
 - Creates 1-year plan: $30/hour commitment
 
 ---

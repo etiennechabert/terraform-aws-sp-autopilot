@@ -6,7 +6,7 @@ variables and validating configuration parameters for the Savings Plans
 Autopilot Reporter Lambda function.
 """
 
-from typing import Any, Dict
+from typing import Any
 
 from shared.handler_utils import load_config_from_env
 
@@ -33,8 +33,16 @@ CONFIG_SCHEMA = {
         "env_var": "MANAGEMENT_ACCOUNT_ROLE_ARN",
     },
     "tags": {"required": False, "type": "json", "default": "{}", "env_var": "TAGS"},
-    "slack_webhook_url": {"required": False, "type": "str", "env_var": "SLACK_WEBHOOK_URL"},
-    "teams_webhook_url": {"required": False, "type": "str", "env_var": "TEAMS_WEBHOOK_URL"},
+    "slack_webhook_url": {
+        "required": False,
+        "type": "str",
+        "env_var": "SLACK_WEBHOOK_URL",
+    },
+    "teams_webhook_url": {
+        "required": False,
+        "type": "str",
+        "env_var": "TEAMS_WEBHOOK_URL",
+    },
     "low_utilization_threshold": {
         "required": False,
         "type": "float",
@@ -44,7 +52,7 @@ CONFIG_SCHEMA = {
 }
 
 
-def load_configuration() -> Dict[str, Any]:
+def load_configuration() -> dict[str, Any]:
     """
     Load and validate configuration from environment variables.
 

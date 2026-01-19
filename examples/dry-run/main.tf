@@ -38,7 +38,7 @@ module "savings_plans" {
     min_data_days           = 21 # Require 3 weeks of data for confidence
 
     # Minimal purchase limits (won't be used in dry-run, but sets expectations)
-    simple = {
+    fixed = {
       max_purchase_percent = 3 # Only 3% of monthly spend per cycle
     }
   }

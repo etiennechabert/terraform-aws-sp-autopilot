@@ -7,7 +7,7 @@ and Savings Plans APIs.
 
 import logging
 from datetime import datetime, timedelta, timezone
-from typing import Any, Dict, List
+from typing import Any
 
 from botocore.exceptions import ClientError
 
@@ -16,7 +16,7 @@ from botocore.exceptions import ClientError
 logger = logging.getLogger()
 
 
-def get_coverage_history(ce_client: Any, lookback_days: int = 30) -> List[Dict[str, Any]]:
+def get_coverage_history(ce_client: Any, lookback_days: int = 30) -> list[dict[str, Any]]:
     """
     Get Savings Plans coverage history from Cost Explorer.
 
@@ -88,7 +88,7 @@ def get_coverage_history(ce_client: Any, lookback_days: int = 30) -> List[Dict[s
         raise
 
 
-def get_actual_cost_data(ce_client: Any, lookback_days: int = 30) -> Dict[str, Any]:
+def get_actual_cost_data(ce_client: Any, lookback_days: int = 30) -> dict[str, Any]:
     """
     Get actual Savings Plans and On-Demand costs from Cost Explorer.
 
@@ -197,7 +197,7 @@ def get_actual_cost_data(ce_client: Any, lookback_days: int = 30) -> Dict[str, A
         raise
 
 
-def get_savings_data(savingsplans_client: Any, ce_client: Any) -> Dict[str, Any]:
+def get_savings_data(savingsplans_client: Any, ce_client: Any) -> dict[str, Any]:
     """
     Get savings data from active Savings Plans.
 
@@ -275,7 +275,10 @@ def get_savings_data(savingsplans_client: Any, ce_client: Any) -> Dict[str, Any]
             start_date = end_date - timedelta(days=30)  # Last 30 days for actual savings
 
             utilization_response = ce_client.get_savings_plans_utilization(
-                TimePeriod={"Start": start_date.isoformat(), "End": end_date.isoformat()},
+                TimePeriod={
+                    "Start": start_date.isoformat(),
+                    "End": end_date.isoformat(),
+                },
                 Granularity="DAILY",
             )
 
@@ -341,7 +344,10 @@ def get_savings_data(savingsplans_client: Any, ce_client: Any) -> Dict[str, Any]
         for plan in plans_data:
             plan_type = plan["plan_type"]
             if plan_type not in breakdown_by_type:
-                breakdown_by_type[plan_type] = {"plans_count": 0, "total_commitment": 0.0}
+                breakdown_by_type[plan_type] = {
+                    "plans_count": 0,
+                    "total_commitment": 0.0,
+                }
             breakdown_by_type[plan_type]["plans_count"] += 1
             breakdown_by_type[plan_type]["total_commitment"] += plan["hourly_commitment"]
 

@@ -486,7 +486,10 @@ def test_get_aws_recommendations_one_fails_others_succeed(mock_ce_client, mock_c
         if sp_type == "DATABASE_SP":
             # Fail for database
             error_response = {
-                "Error": {"Code": "ServiceUnavailable", "Message": "Service unavailable"}
+                "Error": {
+                    "Code": "ServiceUnavailable",
+                    "Message": "Service unavailable",
+                }
             }
             raise ClientError(error_response, "get_savings_plans_purchase_recommendation")
         if sp_type == "SAGEMAKER_SP":

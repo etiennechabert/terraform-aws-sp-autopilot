@@ -11,7 +11,7 @@ import logging
 
 # Import queue adapter for local/AWS mode support
 from datetime import datetime, timezone
-from typing import TYPE_CHECKING, Any, Dict, List
+from typing import TYPE_CHECKING, Any
 
 from botocore.exceptions import ClientError
 
@@ -48,7 +48,7 @@ def purge_queue(sqs_client: SQSClient, queue_url: str) -> None:
 
 
 def queue_purchase_intents(
-    sqs_client: SQSClient, config: Dict[str, Any], purchase_plans: List[Dict[str, Any]]
+    sqs_client: SQSClient, config: dict[str, Any], purchase_plans: list[dict[str, Any]]
 ) -> None:
     """
     Queue purchase intents to queue.

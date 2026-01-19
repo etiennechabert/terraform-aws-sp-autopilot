@@ -127,9 +127,8 @@ class TestLocalRunner:
         local_runner = importlib.util.module_from_spec(spec)
 
         # Mock environment to prevent actual loading
-        with mock.patch.dict(os.environ, {"LOCAL_MODE": "true"}):
-            with mock.patch("sys.path"):
-                spec.loader.exec_module(local_runner)
+        with mock.patch.dict(os.environ, {"LOCAL_MODE": "true"}), mock.patch("sys.path"):
+            spec.loader.exec_module(local_runner)
 
         # Test MockContext
         context = local_runner.MockContext("test-function")

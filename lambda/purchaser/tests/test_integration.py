@@ -251,7 +251,10 @@ def test_database_sp_purchase(mock_env_vars, mock_clients):
 
     mock_clients["sqs"].receive_message.return_value = {
         "Messages": [
-            {"Body": json.dumps(purchase_intent), "ReceiptHandle": "receipt-handle-db-123"}
+            {
+                "Body": json.dumps(purchase_intent),
+                "ReceiptHandle": "receipt-handle-db-123",
+            }
         ]
     }
 
@@ -370,7 +373,10 @@ def test_validation_errors(mock_env_vars, mock_clients):
 
     mock_clients["sqs"].receive_message.return_value = {
         "Messages": [
-            {"Body": json.dumps(invalid_sp_type_intent), "ReceiptHandle": "receipt-invalid"}
+            {
+                "Body": json.dumps(invalid_sp_type_intent),
+                "ReceiptHandle": "receipt-invalid",
+            }
         ]
     }
 

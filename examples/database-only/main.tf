@@ -36,7 +36,7 @@ module "savings_plans" {
     min_data_days           = 14 # Require at least 14 days of data
 
     # Gradual commitment growth
-    simple = {
+    fixed = {
       max_purchase_percent = 5 # Max 5% of monthly spend per cycle
     }
   }

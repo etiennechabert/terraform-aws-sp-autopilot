@@ -75,7 +75,9 @@ def handler(event: dict[str, Any], context: Any) -> dict[str, Any]:
 
         # Initialize clients (with assume role if configured)
         clients = handler_utils.initialize_clients(
-            config, session_name="sp-autopilot-purchaser", error_callback=send_error_email
+            config,
+            session_name="sp-autopilot-purchaser",
+            error_callback=send_error_email,
         )
 
         # Step 1: Check queue
@@ -161,8 +163,16 @@ def load_configuration() -> dict[str, Any]:
             "env_var": "MANAGEMENT_ACCOUNT_ROLE_ARN",
         },
         "tags": {"required": False, "type": "json", "default": "{}", "env_var": "TAGS"},
-        "slack_webhook_url": {"required": False, "type": "str", "env_var": "SLACK_WEBHOOK_URL"},
-        "teams_webhook_url": {"required": False, "type": "str", "env_var": "TEAMS_WEBHOOK_URL"},
+        "slack_webhook_url": {
+            "required": False,
+            "type": "str",
+            "env_var": "SLACK_WEBHOOK_URL",
+        },
+        "teams_webhook_url": {
+            "required": False,
+            "type": "str",
+            "env_var": "TEAMS_WEBHOOK_URL",
+        },
     }
 
     config = handler_utils.load_config_from_env(schema)
@@ -242,7 +252,10 @@ def get_current_coverage(clients: dict[str, Any], config: dict[str, Any]) -> dic
 
 
 def get_ce_coverage(
-    ce_client: CostExplorerClient, start_date: date, end_date: date, config: dict[str, Any]
+    ce_client: CostExplorerClient,
+    start_date: date,
+    end_date: date,
+    config: dict[str, Any],
 ) -> dict[str, Any]:
     """
     Get Savings Plans coverage from Cost Explorer.
@@ -317,7 +330,12 @@ def get_ce_coverage(
             # Database: RDS, DynamoDB, Database Migration Service
             elif any(
                 svc in service_name
-                for svc in ["rds", "relational database", "dynamodb", "database migration"]
+                for svc in [
+                    "rds",
+                    "relational database",
+                    "dynamodb",
+                    "database migration",
+                ]
             ):
                 sp_type_spend["database"]["covered"] += spend["covered"]
                 sp_type_spend["database"]["on_demand"] += spend["on_demand"]
@@ -486,7 +504,10 @@ def process_purchase_messages(
                     f"Skipping purchase - would exceed coverage cap: {purchase_intent.get('client_token')}"
                 )
                 results["skipped"].append(
-                    {"intent": purchase_intent, "reason": "Would exceed max_coverage_cap"}
+                    {
+                        "intent": purchase_intent,
+                        "reason": "Would exceed max_coverage_cap",
+                    }
                 )
                 results["skipped_count"] += 1
 
@@ -531,7 +552,9 @@ def process_purchase_messages(
 
 
 def would_exceed_cap(
-    config: dict[str, Any], purchase_intent: dict[str, Any], current_coverage: dict[str, float]
+    config: dict[str, Any],
+    purchase_intent: dict[str, Any],
+    current_coverage: dict[str, float],
 ) -> bool:
     """
     Check if purchase would exceed max_coverage_cap.
@@ -575,7 +598,9 @@ def would_exceed_cap(
 
 
 def execute_purchase(
-    savingsplans_client: SavingsPlansClient, config: dict[str, Any], purchase_intent: dict[str, Any]
+    savingsplans_client: SavingsPlansClient,
+    config: dict[str, Any],
+    purchase_intent: dict[str, Any],
 ) -> str:
     """
     Execute a Savings Plan purchase via AWS API.

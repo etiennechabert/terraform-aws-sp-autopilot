@@ -6,7 +6,7 @@ sending notifications via SNS, Slack, and Microsoft Teams.
 """
 
 import logging
-from typing import Any, Dict
+from typing import Any
 
 from botocore.exceptions import ClientError
 
@@ -19,7 +19,7 @@ logger.setLevel(logging.INFO)
 
 
 def check_and_alert_low_utilization(
-    sns_client: Any, config: Dict[str, Any], savings_data: Dict[str, Any]
+    sns_client: Any, config: dict[str, Any], savings_data: dict[str, Any]
 ) -> None:
     """
     Check if Savings Plans utilization is below threshold and send alert if needed.

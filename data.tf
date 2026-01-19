@@ -46,45 +46,19 @@ locals {
   # Compute SP Configuration
   # ==========================================================================
 
-  compute_enabled = try(var.sp_plans.compute.enabled, false)
+  compute_enabled   = try(var.sp_plans.compute.enabled, false)
+  compute_plan_type = try(var.sp_plans.compute.plan_type, "all_upfront_three_year")
 
-  # Calculate term mix (sum of all 3-year options vs sum of all 1-year options)
-  compute_term_mix = local.compute_enabled ? {
-    three_year = try(
-      var.sp_plans.compute.all_upfront_three_year +
-      var.sp_plans.compute.partial_upfront_three_year +
-      var.sp_plans.compute.no_upfront_three_year,
-      0
-    )
-    one_year = try(
-      var.sp_plans.compute.all_upfront_one_year +
-      var.sp_plans.compute.partial_upfront_one_year +
-      var.sp_plans.compute.no_upfront_one_year,
-      0
-    )
-  } : { three_year = 0, one_year = 0 }
-
-  # Determine dominant payment option (highest percentage)
-  # Note: This is a simplification. If user mixes payment types, we pick the dominant one.
-  # Future: Lambda code could support mixed payment options
-  compute_all_upfront_total = try(
-    var.sp_plans.compute.all_upfront_three_year + var.sp_plans.compute.all_upfront_one_year, 0
-  )
-  compute_partial_upfront_total = try(
-    var.sp_plans.compute.partial_upfront_three_year + var.sp_plans.compute.partial_upfront_one_year, 0
-  )
-  compute_no_upfront_total = try(
-    var.sp_plans.compute.no_upfront_three_year + var.sp_plans.compute.no_upfront_one_year, 0
-  )
+  # Parse plan_type into term and payment_option
+  compute_term = local.compute_enabled ? (
+    strcontains(local.compute_plan_type, "three_year") ? "THREE_YEAR" : "ONE_YEAR"
+  ) : "THREE_YEAR"
 
   compute_payment_option = local.compute_enabled ? (
-    local.compute_all_upfront_total >= local.compute_partial_upfront_total &&
-    local.compute_all_upfront_total >= local.compute_no_upfront_total ? "ALL_UPFRONT" :
-    local.compute_partial_upfront_total >= local.compute_no_upfront_total ? "PARTIAL_UPFRONT" :
+    strcontains(local.compute_plan_type, "all_upfront") ? "ALL_UPFRONT" :
+    strcontains(local.compute_plan_type, "partial_upfront") ? "PARTIAL_UPFRONT" :
     "NO_UPFRONT"
   ) : "ALL_UPFRONT"
-
-  compute_partial_upfront_percent = try(var.sp_plans.compute.partial_upfront_percent, 50)
 
   # ==========================================================================
   # Database SP Configuration
@@ -98,71 +72,42 @@ locals {
   # SageMaker SP Configuration
   # ==========================================================================
 
-  sagemaker_enabled = try(var.sp_plans.sagemaker.enabled, false)
+  sagemaker_enabled   = try(var.sp_plans.sagemaker.enabled, false)
+  sagemaker_plan_type = try(var.sp_plans.sagemaker.plan_type, "all_upfront_three_year")
 
-  sagemaker_term_mix = local.sagemaker_enabled ? {
-    three_year = try(
-      var.sp_plans.sagemaker.all_upfront_three_year +
-      var.sp_plans.sagemaker.partial_upfront_three_year +
-      var.sp_plans.sagemaker.no_upfront_three_year,
-      0
-    )
-    one_year = try(
-      var.sp_plans.sagemaker.all_upfront_one_year +
-      var.sp_plans.sagemaker.partial_upfront_one_year +
-      var.sp_plans.sagemaker.no_upfront_one_year,
-      0
-    )
-  } : { three_year = 0, one_year = 0 }
-
-  sagemaker_all_upfront_total = try(
-    var.sp_plans.sagemaker.all_upfront_three_year + var.sp_plans.sagemaker.all_upfront_one_year, 0
-  )
-  sagemaker_partial_upfront_total = try(
-    var.sp_plans.sagemaker.partial_upfront_three_year + var.sp_plans.sagemaker.partial_upfront_one_year, 0
-  )
-  sagemaker_no_upfront_total = try(
-    var.sp_plans.sagemaker.no_upfront_three_year + var.sp_plans.sagemaker.no_upfront_one_year, 0
-  )
+  # Parse plan_type into term and payment_option
+  sagemaker_term = local.sagemaker_enabled ? (
+    strcontains(local.sagemaker_plan_type, "three_year") ? "THREE_YEAR" : "ONE_YEAR"
+  ) : "THREE_YEAR"
 
   sagemaker_payment_option = local.sagemaker_enabled ? (
-    local.sagemaker_all_upfront_total >= local.sagemaker_partial_upfront_total &&
-    local.sagemaker_all_upfront_total >= local.sagemaker_no_upfront_total ? "ALL_UPFRONT" :
-    local.sagemaker_partial_upfront_total >= local.sagemaker_no_upfront_total ? "PARTIAL_UPFRONT" :
+    strcontains(local.sagemaker_plan_type, "all_upfront") ? "ALL_UPFRONT" :
+    strcontains(local.sagemaker_plan_type, "partial_upfront") ? "PARTIAL_UPFRONT" :
     "NO_UPFRONT"
   ) : "ALL_UPFRONT"
-
-  sagemaker_partial_upfront_percent = try(var.sp_plans.sagemaker.partial_upfront_percent, 50)
 
   # ==========================================================================
   # Purchase Strategy
   # ==========================================================================
 
   purchase_strategy_type = (
-    var.purchase_strategy.simple != null ? "simple" :
+    var.purchase_strategy.follow_aws != null ? "follow_aws" :
+    var.purchase_strategy.fixed != null ? "fixed" :
     var.purchase_strategy.dichotomy != null ? "dichotomy" :
-    var.purchase_strategy.conservative != null ? "conservative" :
-    "simple" # default
+    "follow_aws" # default
   )
 
   max_purchase_percent = (
-    local.purchase_strategy_type == "simple" ?
-    var.purchase_strategy.simple.max_purchase_percent :
-    local.purchase_strategy_type == "dichotomy" ?
-    var.purchase_strategy.dichotomy.max_purchase_percent :
-    var.purchase_strategy.conservative.max_purchase_percent
+    local.purchase_strategy_type == "follow_aws" ? 100.0 :
+    local.purchase_strategy_type == "fixed" ?
+    var.purchase_strategy.fixed.max_purchase_percent :
+    var.purchase_strategy.dichotomy.max_purchase_percent
   )
 
   min_purchase_percent = (
     local.purchase_strategy_type == "dichotomy" ?
     var.purchase_strategy.dichotomy.min_purchase_percent :
-    1.0 # default for simple strategy (not used, but included for consistency)
-  )
-
-  min_gap_threshold = (
-    local.purchase_strategy_type == "conservative" ?
-    var.purchase_strategy.conservative.min_gap_threshold :
-    0.0 # default for non-conservative strategies (not used, but included for consistency)
+    1.0 # default for other strategies (not used, but included for consistency)
   )
 
   # ==========================================================================

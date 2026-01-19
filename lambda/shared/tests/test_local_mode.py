@@ -47,7 +47,7 @@ class TestLocalModeUtils:
         """Test get_local_data_dir returns default directory."""
         with mock.patch.dict(os.environ, {}, clear=True):
             os.environ.pop("LOCAL_DATA_DIR", None)
-            with tempfile.TemporaryDirectory() as tmpdir:
+            with tempfile.TemporaryDirectory() as tmpdir:  # noqa: SIM117
                 with mock.patch.dict(os.environ, {"LOCAL_DATA_DIR": tmpdir}):
                     data_dir = get_local_data_dir()
                     assert data_dir.exists()
@@ -55,7 +55,7 @@ class TestLocalModeUtils:
 
     def test_get_queue_dir(self):
         """Test get_queue_dir creates queue directory."""
-        with tempfile.TemporaryDirectory() as tmpdir:
+        with tempfile.TemporaryDirectory() as tmpdir:  # noqa: SIM117
             with mock.patch.dict(os.environ, {"LOCAL_DATA_DIR": tmpdir}):
                 queue_dir = get_queue_dir()
                 assert queue_dir.exists()
@@ -63,7 +63,7 @@ class TestLocalModeUtils:
 
     def test_get_reports_dir(self):
         """Test get_reports_dir creates reports directory."""
-        with tempfile.TemporaryDirectory() as tmpdir:
+        with tempfile.TemporaryDirectory() as tmpdir:  # noqa: SIM117
             with mock.patch.dict(os.environ, {"LOCAL_DATA_DIR": tmpdir}):
                 reports_dir = get_reports_dir()
                 assert reports_dir.exists()
@@ -76,7 +76,7 @@ class TestQueueAdapterLocal:
     @pytest.fixture
     def local_queue_dir(self):
         """Create a temporary directory for local queue operations."""
-        with tempfile.TemporaryDirectory() as tmpdir:
+        with tempfile.TemporaryDirectory() as tmpdir:  # noqa: SIM117
             with mock.patch.dict(os.environ, {"LOCAL_MODE": "true", "LOCAL_DATA_DIR": tmpdir}):
                 yield Path(tmpdir) / "queue"
 
@@ -229,7 +229,7 @@ class TestStorageAdapterLocal:
     @pytest.fixture
     def local_reports_dir(self):
         """Create a temporary directory for local storage operations."""
-        with tempfile.TemporaryDirectory() as tmpdir:
+        with tempfile.TemporaryDirectory() as tmpdir:  # noqa: SIM117
             with mock.patch.dict(os.environ, {"LOCAL_MODE": "true", "LOCAL_DATA_DIR": tmpdir}):
                 yield Path(tmpdir) / "reports"
 

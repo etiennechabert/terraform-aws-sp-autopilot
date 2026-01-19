@@ -23,7 +23,7 @@ Benefits:
 """
 
 import logging
-from typing import Any, Dict, List
+from typing import Any
 
 
 # Configure logging
@@ -97,8 +97,8 @@ def calculate_dichotomy_purchase_percent(
 
 
 def calculate_purchase_need_dichotomy(
-    config: Dict[str, Any], coverage: Dict[str, float], recommendations: Dict[str, Any]
-) -> List[Dict[str, Any]]:
+    config: dict[str, Any], coverage: dict[str, float], recommendations: dict[str, Any]
+) -> list[dict[str, Any]]:
     """
     Calculate required purchases using dichotomy strategy.
 
@@ -175,6 +175,7 @@ def calculate_purchase_need_dichotomy(
                 purchase_plan = {
                     "sp_type": "compute",
                     "hourly_commitment": actual_hourly_commitment,
+                    "term": config.get("compute_sp_term", "THREE_YEAR"),
                     "payment_option": config.get("compute_sp_payment_option", "ALL_UPFRONT"),
                     "recommendation_id": recommendations["compute"].get(
                         "RecommendationId", "unknown"
@@ -302,6 +303,7 @@ def calculate_purchase_need_dichotomy(
                 purchase_plan = {
                     "sp_type": "sagemaker",
                     "hourly_commitment": actual_hourly_commitment,
+                    "term": config.get("sagemaker_sp_term", "THREE_YEAR"),
                     "payment_option": config.get("sagemaker_sp_payment_option", "ALL_UPFRONT"),
                     "recommendation_id": recommendations["sagemaker"].get(
                         "RecommendationId", "unknown"

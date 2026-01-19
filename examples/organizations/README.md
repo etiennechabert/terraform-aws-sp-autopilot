@@ -215,7 +215,7 @@ notifications = {
 purchase_strategy = {
   coverage_target_percent = 85
   max_coverage_cap        = 95
-  simple = {
+  fixed = {
     max_purchase_percent = 8
   }
 }
@@ -294,7 +294,7 @@ After enabling:
 purchase_strategy = {
   coverage_target_percent = 85  # Higher for stable orgs
   max_coverage_cap        = 95  # Hard ceiling
-  simple = {
+  fixed = {
     max_purchase_percent = 8  # % of monthly on-demand spend
   }
 }
@@ -380,7 +380,7 @@ aws savingsplans describe-savings-plans --filters name=scope,values=organization
 ## Next Steps
 
 - Optimize coverage targets based on usage patterns
-- Fine-tune term mix in `sp_plans.compute`
+- Adjust plan types in `sp_plans` based on discount vs flexibility needs
 - Implement cost allocation tags for chargeback
 - Create dashboards for SP coverage trends
 - Formalize multi-team review procedures

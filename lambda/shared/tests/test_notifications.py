@@ -102,7 +102,7 @@ def test_format_slack_message_info_severity():
 
     # Check emoji is info
     header_block = attachment["blocks"][0]
-    assert "ℹ️" in header_block["text"]["text"]
+    assert "ℹ️" in header_block["text"]["text"]  # noqa: RUF001
     assert "Test Info" in header_block["text"]["text"]
 
 
@@ -117,7 +117,7 @@ def test_format_slack_message_default_severity():
 
     # Default emoji should be info
     header_block = attachment["blocks"][0]
-    assert "ℹ️" in header_block["text"]["text"]
+    assert "ℹ️" in header_block["text"]["text"]  # noqa: RUF001
 
 
 def test_format_slack_message_invalid_severity():
@@ -133,7 +133,7 @@ def test_format_slack_message_invalid_severity():
 
     # Should use info emoji
     header_block = attachment["blocks"][0]
-    assert "ℹ️" in header_block["text"]["text"]
+    assert "ℹ️" in header_block["text"]["text"]  # noqa: RUF001
 
 
 def test_format_slack_message_empty_body():
