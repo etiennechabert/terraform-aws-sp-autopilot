@@ -27,14 +27,16 @@ def mock_env_vars(monkeypatch):
     monkeypatch.setenv("ENABLE_DATABASE_SP", "false")
     monkeypatch.setenv("ENABLE_SAGEMAKER_SP", "false")
     monkeypatch.setenv("COVERAGE_TARGET_PERCENT", "90")
+    monkeypatch.setenv("PURCHASE_STRATEGY_TYPE", "follow_aws")
     monkeypatch.setenv("MAX_PURCHASE_PERCENT", "10")
+    monkeypatch.setenv("MIN_PURCHASE_PERCENT", "1")
     monkeypatch.setenv("RENEWAL_WINDOW_DAYS", "7")
     monkeypatch.setenv("LOOKBACK_DAYS", "30")
     monkeypatch.setenv("MIN_DATA_DAYS", "14")
     monkeypatch.setenv("MIN_COMMITMENT_PER_PLAN", "0.001")
-    monkeypatch.setenv("COMPUTE_SP_TERM_MIX", '{"three_year": 0.67, "one_year": 0.33}')
+    monkeypatch.setenv("COMPUTE_SP_TERM", "THREE_YEAR")
     monkeypatch.setenv("COMPUTE_SP_PAYMENT_OPTION", "ALL_UPFRONT")
-    monkeypatch.setenv("SAGEMAKER_SP_TERM_MIX", '{"three_year": 0.67, "one_year": 0.33}')
+    monkeypatch.setenv("SAGEMAKER_SP_TERM", "THREE_YEAR")
     monkeypatch.setenv("SAGEMAKER_SP_PAYMENT_OPTION", "ALL_UPFRONT")
     monkeypatch.setenv("TAGS", "{}")
 
@@ -55,12 +57,15 @@ def test_load_configuration_defaults(mock_env_vars):
     assert cfg["enable_database_sp"] is False
     assert cfg["enable_sagemaker_sp"] is False
     assert cfg["coverage_target_percent"] == 90.0
+    assert cfg["purchase_strategy_type"] == "follow_aws"
     assert cfg["max_purchase_percent"] == 10.0
+    assert cfg["min_purchase_percent"] == 1.0
     assert cfg["renewal_window_days"] == 7
     assert cfg["lookback_days"] == 30
     assert cfg["min_data_days"] == 14
     assert cfg["min_commitment_per_plan"] == 0.001
-    assert cfg["sagemaker_sp_term_mix"] == {"three_year": 0.67, "one_year": 0.33}
+    assert cfg["compute_sp_term"] == "THREE_YEAR"
+    assert cfg["sagemaker_sp_term"] == "THREE_YEAR"
     assert cfg["sagemaker_sp_payment_option"] == "ALL_UPFRONT"
 
 
@@ -71,9 +76,11 @@ def test_load_configuration_custom_values(monkeypatch):
     monkeypatch.setenv("DRY_RUN", "false")
     monkeypatch.setenv("ENABLE_SAGEMAKER_SP", "true")
     monkeypatch.setenv("COVERAGE_TARGET_PERCENT", "85.5")
+    monkeypatch.setenv("PURCHASE_STRATEGY_TYPE", "dichotomy")
     monkeypatch.setenv("MAX_PURCHASE_PERCENT", "15")
-    monkeypatch.setenv("COMPUTE_SP_TERM_MIX", '{"three_year": 0.8, "one_year": 0.2}')
-    monkeypatch.setenv("SAGEMAKER_SP_TERM_MIX", '{"three_year": 0.5, "one_year": 0.5}')
+    monkeypatch.setenv("MIN_PURCHASE_PERCENT", "2")
+    monkeypatch.setenv("COMPUTE_SP_TERM", "ONE_YEAR")
+    monkeypatch.setenv("SAGEMAKER_SP_TERM", "ONE_YEAR")
     monkeypatch.setenv("SAGEMAKER_SP_PAYMENT_OPTION", "NO_UPFRONT")
 
     cfg = config.load_configuration()
@@ -83,7 +90,9 @@ def test_load_configuration_custom_values(monkeypatch):
     assert cfg["dry_run"] is False
     assert cfg["enable_sagemaker_sp"] is True
     assert cfg["coverage_target_percent"] == 85.5
+    assert cfg["purchase_strategy_type"] == "dichotomy"
     assert cfg["max_purchase_percent"] == 15.0
-    assert cfg["compute_sp_term_mix"] == {"three_year": 0.8, "one_year": 0.2}
-    assert cfg["sagemaker_sp_term_mix"] == {"three_year": 0.5, "one_year": 0.5}
+    assert cfg["min_purchase_percent"] == 2.0
+    assert cfg["compute_sp_term"] == "ONE_YEAR"
+    assert cfg["sagemaker_sp_term"] == "ONE_YEAR"
     assert cfg["sagemaker_sp_payment_option"] == "NO_UPFRONT"
