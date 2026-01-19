@@ -157,7 +157,12 @@ filterwarnings = [
 source = ["lambda"]
 omit = [
     "*/tests/*",
+    "**/tests/*",
     "*/test_*.py",
+    "**/test_*.py",
+    "lambda/tests/*",
+    "lambda/**/tests/*",
+    "lambda/*/tests/*",
     "*/__pycache__/*",
     "*/.venv/*",
 ]
@@ -166,6 +171,15 @@ omit = [
 precision = 2
 show_missing = true
 skip_covered = false
+omit = [
+    "*/tests/*",
+    "**/tests/*",
+    "*/test_*.py",
+    "**/test_*.py",
+    "lambda/tests/*",
+    "lambda/**/tests/*",
+    "lambda/*/tests/*",
+]
 exclude_lines = [
     "pragma: no cover",
     "def __repr__",
