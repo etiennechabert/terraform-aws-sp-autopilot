@@ -250,9 +250,18 @@ class TestCalculatePurchaseNeedDichotomy:
             "sagemaker": 75.0,  # Gap: 15% -> purchase 12.5%
         }
         recommendations = {
-            "compute": {"HourlyCommitmentToPurchase": "10.00", "RecommendationId": "rec-c"},
-            "database": {"HourlyCommitmentToPurchase": "5.00", "RecommendationId": "rec-d"},
-            "sagemaker": {"HourlyCommitmentToPurchase": "8.00", "RecommendationId": "rec-s"},
+            "compute": {
+                "HourlyCommitmentToPurchase": "10.00",
+                "RecommendationId": "rec-c",
+            },
+            "database": {
+                "HourlyCommitmentToPurchase": "5.00",
+                "RecommendationId": "rec-d",
+            },
+            "sagemaker": {
+                "HourlyCommitmentToPurchase": "8.00",
+                "RecommendationId": "rec-s",
+            },
         }
 
         result = calculate_purchase_need_dichotomy(config, coverage, recommendations)
@@ -288,7 +297,10 @@ class TestCalculatePurchaseNeedDichotomy:
         }
         coverage = {"compute": 95.0}  # Already exceeds target
         recommendations = {
-            "compute": {"HourlyCommitmentToPurchase": "10.00", "RecommendationId": "rec-123"}
+            "compute": {
+                "HourlyCommitmentToPurchase": "10.00",
+                "RecommendationId": "rec-123",
+            }
         }
 
         result = calculate_purchase_need_dichotomy(config, coverage, recommendations)
@@ -324,7 +336,10 @@ class TestCalculatePurchaseNeedDichotomy:
         }
         coverage = {"compute": 50.0}
         recommendations = {
-            "compute": {"HourlyCommitmentToPurchase": "0.00", "RecommendationId": "rec-123"}
+            "compute": {
+                "HourlyCommitmentToPurchase": "0.00",
+                "RecommendationId": "rec-123",
+            }
         }
 
         result = calculate_purchase_need_dichotomy(config, coverage, recommendations)
@@ -343,12 +358,17 @@ class TestCalculatePurchaseNeedDichotomy:
         }
         coverage = {"compute": 0.0}  # Gap: 90%
         recommendations = {
-            "compute": {"HourlyCommitmentToPurchase": "10.00", "RecommendationId": "rec-123"}
+            "compute": {
+                "HourlyCommitmentToPurchase": "10.00",
+                "RecommendationId": "rec-123",
+            }
         }
 
         # Max 100%: Gap 90%, next power-of-2 is 50%
         config_100 = {**base_config, "max_purchase_percent": 100.0}
-        result = calculate_purchase_need_dichotomy(config_100, coverage, recommendations)
+        result = calculate_purchase_need_dichotomy(
+            config_100, coverage, recommendations
+        )
         assert result[0]["hourly_commitment"] == 5.0  # 50% of $10
         assert result[0]["purchase_percent"] == 50.0
 
@@ -370,39 +390,56 @@ class TestCalculatePurchaseNeedDichotomy:
             "compute_sp_payment_option": "ALL_UPFRONT",
         }
         recommendations = {
-            "compute": {"HourlyCommitmentToPurchase": "100.00", "RecommendationId": "rec-123"}
+            "compute": {
+                "HourlyCommitmentToPurchase": "100.00",
+                "RecommendationId": "rec-123",
+            }
         }
 
         # Month 1: Coverage 0%, Gap 90%
-        result = calculate_purchase_need_dichotomy(config, {"compute": 0.0}, recommendations)
+        result = calculate_purchase_need_dichotomy(
+            config, {"compute": 0.0}, recommendations
+        )
         assert result[0]["purchase_percent"] == 50.0
         assert result[0]["hourly_commitment"] == 50.0
 
         # Month 2: Coverage 50%, Gap 40%
-        result = calculate_purchase_need_dichotomy(config, {"compute": 50.0}, recommendations)
+        result = calculate_purchase_need_dichotomy(
+            config, {"compute": 50.0}, recommendations
+        )
         assert result[0]["purchase_percent"] == 25.0
         assert result[0]["hourly_commitment"] == 25.0
 
         # Month 3: Coverage 75%, Gap 15%
-        result = calculate_purchase_need_dichotomy(config, {"compute": 75.0}, recommendations)
+        result = calculate_purchase_need_dichotomy(
+            config, {"compute": 75.0}, recommendations
+        )
         assert result[0]["purchase_percent"] == 12.5
         assert result[0]["hourly_commitment"] == 12.5
 
         # Month 4: Coverage 87.5%, gap 2.5%, halve to 1.5625% -> round to 1.6%
-        result = calculate_purchase_need_dichotomy(config, {"compute": 87.5}, recommendations)
+        result = calculate_purchase_need_dichotomy(
+            config, {"compute": 87.5}, recommendations
+        )
         assert result[0]["purchase_percent"] == 1.6
         assert result[0]["hourly_commitment"] == 1.6
 
         # Month 5: Coverage 88.5%, gap 1.5%, halve to 0.78125% < min -> use min 1.0%
-        result = calculate_purchase_need_dichotomy(config, {"compute": 88.5}, recommendations)
+        result = calculate_purchase_need_dichotomy(
+            config, {"compute": 88.5}, recommendations
+        )
         assert result[0]["purchase_percent"] == 1.0
         assert result[0]["hourly_commitment"] == 1.0
 
         # Month 6: Coverage 89.5%, gap 0.5% < min -> buy min 1% (overshoots to 90.5%)
-        result = calculate_purchase_need_dichotomy(config, {"compute": 89.5}, recommendations)
+        result = calculate_purchase_need_dichotomy(
+            config, {"compute": 89.5}, recommendations
+        )
         assert result[0]["purchase_percent"] == 1.0
         assert result[0]["hourly_commitment"] == 1.0
 
         # Month 7: Coverage 90.5%, Gap -0.5% (target exceeded)
-        result = calculate_purchase_need_dichotomy(config, {"compute": 90.5}, recommendations)
+        result = calculate_purchase_need_dichotomy(
+            config, {"compute": 90.5}, recommendations
+        )
         assert len(result) == 0

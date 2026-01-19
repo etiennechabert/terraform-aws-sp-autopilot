@@ -24,7 +24,9 @@ from botocore.exceptions import ClientError
 
 # Add lambda directory to path
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
+sys.path.insert(
+    0, os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+)
 
 import handler
 
@@ -57,7 +59,9 @@ def test_send_report_email_error():
         savings_summary = {"total_commitment": 1000.0}
 
         with pytest.raises(ClientError):
-            handler.send_report_email(config, "report.html", coverage_summary, savings_summary)
+            handler.send_report_email(
+                config, "report.html", coverage_summary, savings_summary
+            )
 
 
 def test_send_report_email_with_breakdown():
@@ -85,7 +89,9 @@ def test_send_report_email_with_breakdown():
             },
         }
 
-        handler.send_report_email(config, "report.html", coverage_summary, savings_summary)
+        handler.send_report_email(
+            config, "report.html", coverage_summary, savings_summary
+        )
 
         # Verify publish was called
         assert mock_publish.called
@@ -113,7 +119,9 @@ def test_send_report_email_with_slack_webhook():
         coverage_summary = {"current": 75.0, "trend": "up"}
         savings_summary = {"total_commitment": 1000.0}
 
-        handler.send_report_email(config, "report.html", coverage_summary, savings_summary)
+        handler.send_report_email(
+            config, "report.html", coverage_summary, savings_summary
+        )
 
         # Verify Slack notification was attempted
         assert mock_slack.called
@@ -134,7 +142,9 @@ def test_send_report_email_with_teams_webhook():
         coverage_summary = {"current": 75.0, "trend": "up"}
         savings_summary = {"total_commitment": 1000.0}
 
-        handler.send_report_email(config, "report.html", coverage_summary, savings_summary)
+        handler.send_report_email(
+            config, "report.html", coverage_summary, savings_summary
+        )
 
         # Verify Teams notification was attempted
         assert mock_teams.called

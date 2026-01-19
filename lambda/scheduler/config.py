@@ -15,7 +15,12 @@ from shared.handler_utils import load_config_from_env
 CONFIG_SCHEMA = {
     "queue_url": {"required": True, "type": "str", "env_var": "QUEUE_URL"},
     "sns_topic_arn": {"required": True, "type": "str", "env_var": "SNS_TOPIC_ARN"},
-    "dry_run": {"required": False, "type": "bool", "default": "true", "env_var": "DRY_RUN"},
+    "dry_run": {
+        "required": False,
+        "type": "bool",
+        "default": "true",
+        "env_var": "DRY_RUN",
+    },
     "enable_compute_sp": {
         "required": False,
         "type": "bool",

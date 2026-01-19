@@ -22,7 +22,9 @@ class QueueAdapter:
     Adapter class for queue operations supporting both SQS and local filesystem.
     """
 
-    def __init__(self, sqs_client: Optional[Any] = None, queue_url: Optional[str] = None):
+    def __init__(
+        self, sqs_client: Optional[Any] = None, queue_url: Optional[str] = None
+    ):
         """
         Initialize the queue adapter.
 
@@ -39,7 +41,9 @@ class QueueAdapter:
 
         if self.is_local:
             self.queue_dir = local_mode.get_queue_dir()
-            logger.info(f"Queue adapter initialized in LOCAL mode (directory: {self.queue_dir})")
+            logger.info(
+                f"Queue adapter initialized in LOCAL mode (directory: {self.queue_dir})"
+            )
         else:
             logger.info(f"Queue adapter initialized in AWS mode (queue: {queue_url})")
 
@@ -118,7 +122,8 @@ class QueueAdapter:
         """Send message in AWS mode using SQS API."""
         try:
             response = self.sqs_client.send_message(
-                QueueUrl=self.queue_url, MessageBody=json.dumps(message_body, default=str)
+                QueueUrl=self.queue_url,
+                MessageBody=json.dumps(message_body, default=str),
             )
             message_id = response["MessageId"]
             logger.info(f"Sent SQS message: {message_id}")
@@ -149,7 +154,9 @@ class QueueAdapter:
         messages = []
 
         # Get all message files sorted by modification time (oldest first)
-        message_files = sorted(self.queue_dir.glob("*.json"), key=lambda p: p.stat().st_mtime)
+        message_files = sorted(
+            self.queue_dir.glob("*.json"), key=lambda p: p.stat().st_mtime
+        )
 
         for file_path in message_files[:max_messages]:
             try:
@@ -160,7 +167,9 @@ class QueueAdapter:
                     {
                         "MessageId": file_path.stem,
                         "Body": json.dumps(message_body),
-                        "ReceiptHandle": str(file_path),  # Use file path as receipt handle
+                        "ReceiptHandle": str(
+                            file_path
+                        ),  # Use file path as receipt handle
                     }
                 )
                 logger.debug(f"Received local queue message: {file_path.name}")
@@ -216,7 +225,9 @@ class QueueAdapter:
     def _delete_message_aws(self, receipt_handle: str) -> None:
         """Delete message in AWS mode using SQS API."""
         try:
-            self.sqs_client.delete_message(QueueUrl=self.queue_url, ReceiptHandle=receipt_handle)
+            self.sqs_client.delete_message(
+                QueueUrl=self.queue_url, ReceiptHandle=receipt_handle
+            )
             logger.info("Deleted SQS message")
         except Exception as e:
             logger.error(f"Failed to delete SQS message: {e}")

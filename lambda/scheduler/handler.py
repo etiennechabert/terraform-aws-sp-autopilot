@@ -138,7 +138,9 @@ def purge_queue(queue_url: str) -> None:
 
 def queue_purchase_intents(config: dict[str, Any], purchase_plans: list) -> None:
     """Queue purchase intents - backward compatible wrapper."""
-    return queue_module.queue_purchase_intents(_ensure_sqs_client(), config, purchase_plans)
+    return queue_module.queue_purchase_intents(
+        _ensure_sqs_client(), config, purchase_plans
+    )
 
 
 def send_scheduled_email(
@@ -262,12 +264,16 @@ def handler(event: dict[str, Any], context: Any) -> dict[str, Any]:
 
         # Step 3: Get AWS recommendations
         logger.info("Fetching AWS purchase recommendations...")
-        recommendations = recommendations_module.get_aws_recommendations(ce_client, config)
+        recommendations = recommendations_module.get_aws_recommendations(
+            ce_client, config
+        )
         logger.info(f"Recommendations received for {len(recommendations)} SP types")
 
         # Step 4: Calculate purchase need
         logger.info("Calculating purchase need using strategy...")
-        purchase_plans = purchase_module.calculate_purchase_need(config, coverage, recommendations)
+        purchase_plans = purchase_module.calculate_purchase_need(
+            config, coverage, recommendations
+        )
 
         # Step 5: Apply purchase limits
         logger.info("Applying purchase limits...")
@@ -276,11 +282,15 @@ def handler(event: dict[str, Any], context: Any) -> dict[str, Any]:
         # Step 6: Queue or notify
         if config["dry_run"]:
             logger.info("Dry run mode - sending email only, NOT queuing messages")
-            email_module.send_dry_run_email(sns_client, config, purchase_plans, coverage)
+            email_module.send_dry_run_email(
+                sns_client, config, purchase_plans, coverage
+            )
         else:
             logger.info("Queuing purchase intents to SQS")
             queue_module.queue_purchase_intents(sqs_client, config, purchase_plans)
-            email_module.send_scheduled_email(sns_client, config, purchase_plans, coverage)
+            email_module.send_scheduled_email(
+                sns_client, config, purchase_plans, coverage
+            )
 
         return {
             "statusCode": 200,

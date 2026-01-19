@@ -81,7 +81,9 @@ def _fetch_compute_sp_recommendation(
         if recommendation_summary:
             # Get the first (best) recommendation
             best_recommendation = recommendation_summary[0]
-            hourly_commitment = best_recommendation.get("HourlyCommitmentToPurchase", "0")
+            hourly_commitment = best_recommendation.get(
+                "HourlyCommitmentToPurchase", "0"
+            )
 
             logger.info(
                 f"Compute SP recommendation: ${hourly_commitment}/hour "
@@ -157,7 +159,9 @@ def _fetch_database_sp_recommendation(
         if recommendation_summary:
             # Get the first (best) recommendation
             best_recommendation = recommendation_summary[0]
-            hourly_commitment = best_recommendation.get("HourlyCommitmentToPurchase", "0")
+            hourly_commitment = best_recommendation.get(
+                "HourlyCommitmentToPurchase", "0"
+            )
 
             logger.info(
                 f"Database SP recommendation: ${hourly_commitment}/hour "
@@ -232,7 +236,9 @@ def _fetch_sagemaker_sp_recommendation(
         if recommendation_summary:
             # Get the first (best) recommendation
             best_recommendation = recommendation_summary[0]
-            hourly_commitment = best_recommendation.get("HourlyCommitmentToPurchase", "0")
+            hourly_commitment = best_recommendation.get(
+                "HourlyCommitmentToPurchase", "0"
+            )
 
             logger.info(
                 f"SageMaker SP recommendation: ${hourly_commitment}/hour "
@@ -300,7 +306,9 @@ def get_aws_recommendations(
     else:
         lookback_period = "SIXTY_DAYS"
 
-    logger.info(f"Using lookback period: {lookback_period} (config: {lookback_days} days)")
+    logger.info(
+        f"Using lookback period: {lookback_period} (config: {lookback_days} days)"
+    )
 
     # Prepare tasks for parallel execution
     tasks = {}

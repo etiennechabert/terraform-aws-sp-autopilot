@@ -23,7 +23,9 @@ logger = logging.getLogger()
 
 
 def calculate_current_coverage(
-    savingsplans_client: SavingsPlansClient, ce_client: CostExplorerClient, config: dict[str, Any]
+    savingsplans_client: SavingsPlansClient,
+    ce_client: CostExplorerClient,
+    config: dict[str, Any],
 ) -> dict[str, float]:
     """
     Calculate current Savings Plans coverage, excluding plans expiring soon.
@@ -100,7 +102,10 @@ def calculate_current_coverage(
             # GroupBy: Separates coverage by service to match AWS API requirements
             # AWS now requires SERVICE as the dimension key (SAVINGS_PLANS_TYPE no longer supported)
             response = ce_client.get_savings_plans_coverage(
-                TimePeriod={"Start": start_date.isoformat(), "End": end_date.isoformat()},
+                TimePeriod={
+                    "Start": start_date.isoformat(),
+                    "End": end_date.isoformat(),
+                },
                 Granularity="DAILY",
                 GroupBy=[{"Type": "DIMENSION", "Key": "SERVICE"}],
             )

@@ -86,7 +86,9 @@ def calculate_purchase_need_fixed(
         )
 
         if coverage_gap <= 0:
-            logger.info(f"{sp_type['name']} SP coverage already meets or exceeds target")
+            logger.info(
+                f"{sp_type['name']} SP coverage already meets or exceeds target"
+            )
             continue
 
         recommendation = recommendations.get(key)
@@ -96,9 +98,13 @@ def calculate_purchase_need_fixed(
             )
             continue
 
-        hourly_commitment_float = float(recommendation.get("HourlyCommitmentToPurchase", "0"))
+        hourly_commitment_float = float(
+            recommendation.get("HourlyCommitmentToPurchase", "0")
+        )
         if hourly_commitment_float <= 0:
-            logger.info(f"{sp_type['name']} SP recommendation has zero commitment - skipping")
+            logger.info(
+                f"{sp_type['name']} SP recommendation has zero commitment - skipping"
+            )
             continue
 
         purchase_plan = {

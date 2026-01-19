@@ -36,11 +36,15 @@ def generate_html_report(
     # Calculate coverage summary
     avg_coverage = 0.0
     if coverage_history:
-        total_coverage = sum(item.get("coverage_percentage", 0.0) for item in coverage_history)
+        total_coverage = sum(
+            item.get("coverage_percentage", 0.0) for item in coverage_history
+        )
         avg_coverage = total_coverage / len(coverage_history)
 
     current_coverage = (
-        coverage_history[-1].get("coverage_percentage", 0.0) if coverage_history else 0.0
+        coverage_history[-1].get("coverage_percentage", 0.0)
+        if coverage_history
+        else 0.0
     )
 
     # Calculate trend direction

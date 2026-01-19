@@ -12,7 +12,9 @@ import pytest
 
 
 # Add parent directory to path
-sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
+sys.path.insert(
+    0, os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+)
 
 import config
 
@@ -20,7 +22,9 @@ import config
 @pytest.fixture
 def mock_env_vars(monkeypatch):
     """Set up environment variables for testing."""
-    monkeypatch.setenv("QUEUE_URL", "https://sqs.us-east-1.amazonaws.com/123456789012/test-queue")
+    monkeypatch.setenv(
+        "QUEUE_URL", "https://sqs.us-east-1.amazonaws.com/123456789012/test-queue"
+    )
     monkeypatch.setenv("SNS_TOPIC_ARN", "arn:aws:sns:us-east-1:123456789012:test-topic")
     monkeypatch.setenv("DRY_RUN", "true")
     monkeypatch.setenv("ENABLE_COMPUTE_SP", "true")
@@ -34,7 +38,9 @@ def mock_env_vars(monkeypatch):
     monkeypatch.setenv("MIN_COMMITMENT_PER_PLAN", "0.001")
     monkeypatch.setenv("COMPUTE_SP_TERM_MIX", '{"three_year": 0.67, "one_year": 0.33}')
     monkeypatch.setenv("COMPUTE_SP_PAYMENT_OPTION", "ALL_UPFRONT")
-    monkeypatch.setenv("SAGEMAKER_SP_TERM_MIX", '{"three_year": 0.67, "one_year": 0.33}')
+    monkeypatch.setenv(
+        "SAGEMAKER_SP_TERM_MIX", '{"three_year": 0.67, "one_year": 0.33}'
+    )
     monkeypatch.setenv("SAGEMAKER_SP_PAYMENT_OPTION", "ALL_UPFRONT")
     monkeypatch.setenv("TAGS", "{}")
 
@@ -48,7 +54,10 @@ def test_load_configuration_defaults(mock_env_vars):
     """Test that load_configuration returns correct default values."""
     cfg = config.load_configuration()
 
-    assert cfg["queue_url"] == "https://sqs.us-east-1.amazonaws.com/123456789012/test-queue"
+    assert (
+        cfg["queue_url"]
+        == "https://sqs.us-east-1.amazonaws.com/123456789012/test-queue"
+    )
     assert cfg["sns_topic_arn"] == "arn:aws:sns:us-east-1:123456789012:test-topic"
     assert cfg["dry_run"] is True
     assert cfg["enable_compute_sp"] is True

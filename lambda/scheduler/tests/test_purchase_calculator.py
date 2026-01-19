@@ -12,7 +12,9 @@ import pytest
 
 
 # Add parent directory to path
-sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
+sys.path.insert(
+    0, os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+)
 
 import purchase_calculator
 
@@ -43,12 +45,17 @@ def test_calculate_purchase_need_compute_gap(mock_config):
     """Test purchase calculation with coverage gap for Compute SP."""
     coverage = {"compute": 70.0, "database": 90.0, "sagemaker": 90.0}
     recommendations = {
-        "compute": {"HourlyCommitmentToPurchase": "5.50", "RecommendationId": "rec-12345"},
+        "compute": {
+            "HourlyCommitmentToPurchase": "5.50",
+            "RecommendationId": "rec-12345",
+        },
         "database": None,
         "sagemaker": None,
     }
 
-    result = purchase_calculator.calculate_purchase_need(mock_config, coverage, recommendations)
+    result = purchase_calculator.calculate_purchase_need(
+        mock_config, coverage, recommendations
+    )
 
     assert len(result) == 1
     assert result[0]["sp_type"] == "compute"
@@ -62,11 +69,16 @@ def test_calculate_purchase_need_database_gap(mock_config):
     coverage = {"compute": 90.0, "database": 60.0, "sagemaker": 90.0}
     recommendations = {
         "compute": None,
-        "database": {"HourlyCommitmentToPurchase": "2.75", "RecommendationId": "rec-db-456"},
+        "database": {
+            "HourlyCommitmentToPurchase": "2.75",
+            "RecommendationId": "rec-db-456",
+        },
         "sagemaker": None,
     }
 
-    result = purchase_calculator.calculate_purchase_need(mock_config, coverage, recommendations)
+    result = purchase_calculator.calculate_purchase_need(
+        mock_config, coverage, recommendations
+    )
 
     assert len(result) == 1
     assert result[0]["sp_type"] == "database"
@@ -82,10 +94,15 @@ def test_calculate_purchase_need_sagemaker_gap(mock_config):
     recommendations = {
         "compute": None,
         "database": None,
-        "sagemaker": {"HourlyCommitmentToPurchase": "3.25", "RecommendationId": "rec-sm-789"},
+        "sagemaker": {
+            "HourlyCommitmentToPurchase": "3.25",
+            "RecommendationId": "rec-sm-789",
+        },
     }
 
-    result = purchase_calculator.calculate_purchase_need(mock_config, coverage, recommendations)
+    result = purchase_calculator.calculate_purchase_need(
+        mock_config, coverage, recommendations
+    )
 
     assert len(result) == 1
     assert result[0]["sp_type"] == "sagemaker"
@@ -98,12 +115,23 @@ def test_calculate_purchase_need_multiple_gaps(mock_config):
     """Test purchase calculation with multiple coverage gaps."""
     coverage = {"compute": 70.0, "database": 60.0, "sagemaker": 50.0}
     recommendations = {
-        "compute": {"HourlyCommitmentToPurchase": "5.50", "RecommendationId": "rec-compute"},
-        "database": {"HourlyCommitmentToPurchase": "2.75", "RecommendationId": "rec-database"},
-        "sagemaker": {"HourlyCommitmentToPurchase": "3.25", "RecommendationId": "rec-sagemaker"},
+        "compute": {
+            "HourlyCommitmentToPurchase": "5.50",
+            "RecommendationId": "rec-compute",
+        },
+        "database": {
+            "HourlyCommitmentToPurchase": "2.75",
+            "RecommendationId": "rec-database",
+        },
+        "sagemaker": {
+            "HourlyCommitmentToPurchase": "3.25",
+            "RecommendationId": "rec-sagemaker",
+        },
     }
 
-    result = purchase_calculator.calculate_purchase_need(mock_config, coverage, recommendations)
+    result = purchase_calculator.calculate_purchase_need(
+        mock_config, coverage, recommendations
+    )
 
     assert len(result) == 3
     sp_types = [plan["sp_type"] for plan in result]
@@ -116,12 +144,23 @@ def test_calculate_purchase_need_no_gap(mock_config):
     """Test when coverage already meets target."""
     coverage = {"compute": 95.0, "database": 92.0, "sagemaker": 94.0}
     recommendations = {
-        "compute": {"HourlyCommitmentToPurchase": "5.50", "RecommendationId": "rec-12345"},
-        "database": {"HourlyCommitmentToPurchase": "2.75", "RecommendationId": "rec-db-456"},
-        "sagemaker": {"HourlyCommitmentToPurchase": "3.25", "RecommendationId": "rec-sm-789"},
+        "compute": {
+            "HourlyCommitmentToPurchase": "5.50",
+            "RecommendationId": "rec-12345",
+        },
+        "database": {
+            "HourlyCommitmentToPurchase": "2.75",
+            "RecommendationId": "rec-db-456",
+        },
+        "sagemaker": {
+            "HourlyCommitmentToPurchase": "3.25",
+            "RecommendationId": "rec-sm-789",
+        },
     }
 
-    result = purchase_calculator.calculate_purchase_need(mock_config, coverage, recommendations)
+    result = purchase_calculator.calculate_purchase_need(
+        mock_config, coverage, recommendations
+    )
 
     # No purchases should be planned
     assert len(result) == 0
@@ -132,7 +171,9 @@ def test_calculate_purchase_need_gap_but_no_recommendation(mock_config):
     coverage = {"compute": 70.0, "database": 90.0, "sagemaker": 90.0}
     recommendations = {"compute": None, "database": None, "sagemaker": None}
 
-    result = purchase_calculator.calculate_purchase_need(mock_config, coverage, recommendations)
+    result = purchase_calculator.calculate_purchase_need(
+        mock_config, coverage, recommendations
+    )
 
     # No purchases can be planned without recommendations
     assert len(result) == 0
@@ -147,7 +188,9 @@ def test_calculate_purchase_need_zero_commitment(mock_config):
         "sagemaker": None,
     }
 
-    result = purchase_calculator.calculate_purchase_need(mock_config, coverage, recommendations)
+    result = purchase_calculator.calculate_purchase_need(
+        mock_config, coverage, recommendations
+    )
 
     # Zero commitment should be skipped
     assert len(result) == 0
@@ -159,12 +202,17 @@ def test_calculate_purchase_need_sp_disabled(mock_config):
 
     coverage = {"compute": 70.0, "database": 90.0, "sagemaker": 90.0}
     recommendations = {
-        "compute": {"HourlyCommitmentToPurchase": "5.50", "RecommendationId": "rec-12345"},
+        "compute": {
+            "HourlyCommitmentToPurchase": "5.50",
+            "RecommendationId": "rec-12345",
+        },
         "database": None,
         "sagemaker": None,
     }
 
-    result = purchase_calculator.calculate_purchase_need(mock_config, coverage, recommendations)
+    result = purchase_calculator.calculate_purchase_need(
+        mock_config, coverage, recommendations
+    )
 
     # Should not plan purchase for disabled SP type
     assert len(result) == 0
@@ -178,7 +226,11 @@ def test_calculate_purchase_need_sp_disabled(mock_config):
 def test_apply_purchase_limits_with_limit(mock_config):
     """Test applying max_purchase_percent limit."""
     purchase_plans = [
-        {"sp_type": "compute", "hourly_commitment": 10.0, "payment_option": "ALL_UPFRONT"}
+        {
+            "sp_type": "compute",
+            "hourly_commitment": 10.0,
+            "payment_option": "ALL_UPFRONT",
+        }
     ]
 
     result = purchase_calculator.apply_purchase_limits(mock_config, purchase_plans)
@@ -191,8 +243,16 @@ def test_apply_purchase_limits_with_limit(mock_config):
 def test_apply_purchase_limits_multiple_plans(mock_config):
     """Test applying limits to multiple plans."""
     purchase_plans = [
-        {"sp_type": "compute", "hourly_commitment": 10.0, "payment_option": "ALL_UPFRONT"},
-        {"sp_type": "database", "hourly_commitment": 5.0, "payment_option": "NO_UPFRONT"},
+        {
+            "sp_type": "compute",
+            "hourly_commitment": 10.0,
+            "payment_option": "ALL_UPFRONT",
+        },
+        {
+            "sp_type": "database",
+            "hourly_commitment": 5.0,
+            "payment_option": "NO_UPFRONT",
+        },
     ]
 
     result = purchase_calculator.apply_purchase_limits(mock_config, purchase_plans)
@@ -234,7 +294,11 @@ def test_apply_purchase_limits_100_percent(mock_config):
     mock_config["max_purchase_percent"] = 100.0
 
     purchase_plans = [
-        {"sp_type": "compute", "hourly_commitment": 5.50, "payment_option": "ALL_UPFRONT"}
+        {
+            "sp_type": "compute",
+            "hourly_commitment": 5.50,
+            "payment_option": "ALL_UPFRONT",
+        }
     ]
 
     result = purchase_calculator.apply_purchase_limits(mock_config, purchase_plans)
@@ -455,7 +519,11 @@ def test_split_by_term_custom_term_mix(mock_config):
 def test_split_by_term_unknown_sp_type(mock_config):
     """Test handling of unknown SP type."""
     purchase_plans = [
-        {"sp_type": "unknown", "hourly_commitment": 1.0, "payment_option": "ALL_UPFRONT"}
+        {
+            "sp_type": "unknown",
+            "hourly_commitment": 1.0,
+            "payment_option": "ALL_UPFRONT",
+        }
     ]
 
     result = purchase_calculator.split_by_term(mock_config, purchase_plans)

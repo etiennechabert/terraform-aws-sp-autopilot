@@ -106,7 +106,9 @@ def test_type_checking_guard_pattern():
         # If file uses TYPE_CHECKING, verify it's imported
         if "if TYPE_CHECKING:" in content:
             # Check if TYPE_CHECKING is imported from typing
-            has_import = re.search(r"from\s+typing\s+import\s+.*\bTYPE_CHECKING\b", content)
+            has_import = re.search(
+                r"from\s+typing\s+import\s+.*\bTYPE_CHECKING\b", content
+            )
 
             if not has_import:
                 issues.append(

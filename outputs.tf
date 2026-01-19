@@ -165,19 +165,19 @@ output "dlq_alarm_arn" {
 output "module_configuration" {
   description = "Module configuration summary"
   value = {
-    compute_sp_enabled    = local.compute_enabled
-    database_sp_enabled   = local.database_enabled
-    database_sp_term      = local.database_sp_term
-    database_sp_payment   = local.database_sp_payment_option
+    compute_sp_enabled   = local.compute_enabled
+    database_sp_enabled  = local.database_enabled
+    database_sp_term     = local.database_sp_term
+    database_sp_payment  = local.database_sp_payment_option
     sagemaker_sp_enabled = local.sagemaker_enabled
     sagemaker_sp_term    = local.sagemaker_term
     sagemaker_sp_payment = local.sagemaker_payment_option
-    coverage_target       = local.coverage_target_percent
-    max_coverage_cap      = local.max_coverage_cap
-    dry_run               = local.dry_run
-    scheduler_schedule    = local.scheduler_schedule
-    purchaser_schedule    = local.purchaser_schedule
-    notification_emails   = length(local.notification_emails)
+    coverage_target      = local.coverage_target_percent
+    max_coverage_cap     = local.max_coverage_cap
+    dry_run              = local.dry_run
+    scheduler_schedule   = local.scheduler_schedule
+    purchaser_schedule   = local.purchaser_schedule
+    notification_emails  = length(local.notification_emails)
   }
 }
 

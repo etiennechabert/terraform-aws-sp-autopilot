@@ -22,7 +22,10 @@ class TestCalculatePurchaseNeedSimple:
         }
         coverage = {"compute": 50.0}
         recommendations = {
-            "compute": {"HourlyCommitmentToPurchase": "10.00", "RecommendationId": "rec-123"}
+            "compute": {
+                "HourlyCommitmentToPurchase": "10.00",
+                "RecommendationId": "rec-123",
+            }
         }
 
         result = calculate_purchase_need_simple(config, coverage, recommendations)
@@ -44,7 +47,10 @@ class TestCalculatePurchaseNeedSimple:
         }
         coverage = {"compute": 95.0}
         recommendations = {
-            "compute": {"HourlyCommitmentToPurchase": "10.00", "RecommendationId": "rec-123"}
+            "compute": {
+                "HourlyCommitmentToPurchase": "10.00",
+                "RecommendationId": "rec-123",
+            }
         }
 
         result = calculate_purchase_need_simple(config, coverage, recommendations)
@@ -76,7 +82,10 @@ class TestCalculatePurchaseNeedSimple:
         }
         coverage = {"compute": 50.0}
         recommendations = {
-            "compute": {"HourlyCommitmentToPurchase": "0.00", "RecommendationId": "rec-123"}
+            "compute": {
+                "HourlyCommitmentToPurchase": "0.00",
+                "RecommendationId": "rec-123",
+            }
         }
 
         result = calculate_purchase_need_simple(config, coverage, recommendations)
@@ -93,7 +102,10 @@ class TestCalculatePurchaseNeedSimple:
         }
         coverage = {"database": 0.0}
         recommendations = {
-            "database": {"HourlyCommitmentToPurchase": "5.50", "RecommendationId": "rec-db-456"}
+            "database": {
+                "HourlyCommitmentToPurchase": "5.50",
+                "RecommendationId": "rec-db-456",
+            }
         }
 
         result = calculate_purchase_need_simple(config, coverage, recommendations)
@@ -116,7 +128,10 @@ class TestCalculatePurchaseNeedSimple:
         }
         coverage = {"database": 90.0}
         recommendations = {
-            "database": {"HourlyCommitmentToPurchase": "5.50", "RecommendationId": "rec-db-456"}
+            "database": {
+                "HourlyCommitmentToPurchase": "5.50",
+                "RecommendationId": "rec-db-456",
+            }
         }
 
         result = calculate_purchase_need_simple(config, coverage, recommendations)
@@ -133,7 +148,10 @@ class TestCalculatePurchaseNeedSimple:
         }
         coverage = {"database": 50.0}
         recommendations = {
-            "database": {"HourlyCommitmentToPurchase": "0.00", "RecommendationId": "rec-db-456"}
+            "database": {
+                "HourlyCommitmentToPurchase": "0.00",
+                "RecommendationId": "rec-db-456",
+            }
         }
 
         result = calculate_purchase_need_simple(config, coverage, recommendations)
@@ -151,7 +169,10 @@ class TestCalculatePurchaseNeedSimple:
         }
         coverage = {"sagemaker": 30.0}
         recommendations = {
-            "sagemaker": {"HourlyCommitmentToPurchase": "8.75", "RecommendationId": "rec-sm-789"}
+            "sagemaker": {
+                "HourlyCommitmentToPurchase": "8.75",
+                "RecommendationId": "rec-sm-789",
+            }
         }
 
         result = calculate_purchase_need_simple(config, coverage, recommendations)
@@ -173,7 +194,10 @@ class TestCalculatePurchaseNeedSimple:
         }
         coverage = {"sagemaker": 92.0}
         recommendations = {
-            "sagemaker": {"HourlyCommitmentToPurchase": "8.75", "RecommendationId": "rec-sm-789"}
+            "sagemaker": {
+                "HourlyCommitmentToPurchase": "8.75",
+                "RecommendationId": "rec-sm-789",
+            }
         }
 
         result = calculate_purchase_need_simple(config, coverage, recommendations)
@@ -190,7 +214,10 @@ class TestCalculatePurchaseNeedSimple:
         }
         coverage = {"sagemaker": 50.0}
         recommendations = {
-            "sagemaker": {"HourlyCommitmentToPurchase": "0", "RecommendationId": "rec-sm-789"}
+            "sagemaker": {
+                "HourlyCommitmentToPurchase": "0",
+                "RecommendationId": "rec-sm-789",
+            }
         }
 
         result = calculate_purchase_need_simple(config, coverage, recommendations)
@@ -209,9 +236,18 @@ class TestCalculatePurchaseNeedSimple:
         }
         coverage = {"compute": 50.0, "database": 60.0, "sagemaker": 70.0}
         recommendations = {
-            "compute": {"HourlyCommitmentToPurchase": "10.00", "RecommendationId": "rec-c-1"},
-            "database": {"HourlyCommitmentToPurchase": "5.50", "RecommendationId": "rec-d-2"},
-            "sagemaker": {"HourlyCommitmentToPurchase": "8.75", "RecommendationId": "rec-s-3"},
+            "compute": {
+                "HourlyCommitmentToPurchase": "10.00",
+                "RecommendationId": "rec-c-1",
+            },
+            "database": {
+                "HourlyCommitmentToPurchase": "5.50",
+                "RecommendationId": "rec-d-2",
+            },
+            "sagemaker": {
+                "HourlyCommitmentToPurchase": "8.75",
+                "RecommendationId": "rec-s-3",
+            },
         }
 
         result = calculate_purchase_need_simple(config, coverage, recommendations)
@@ -247,7 +283,10 @@ class TestCalculatePurchaseNeedSimple:
         }
         coverage = {"compute": 50.0}
         recommendations = {
-            "compute": {"HourlyCommitmentToPurchase": "10.00", "RecommendationId": "rec-123"}
+            "compute": {
+                "HourlyCommitmentToPurchase": "10.00",
+                "RecommendationId": "rec-123",
+            }
         }
 
         result = calculate_purchase_need_simple(config, coverage, recommendations)
@@ -265,7 +304,10 @@ class TestCalculatePurchaseNeedSimple:
         }
         coverage = {"compute": 0.0}
         recommendations = {
-            "compute": {"HourlyCommitmentToPurchase": "123.456", "RecommendationId": "rec-test"}
+            "compute": {
+                "HourlyCommitmentToPurchase": "123.456",
+                "RecommendationId": "rec-test",
+            }
         }
 
         result = calculate_purchase_need_simple(config, coverage, recommendations)
@@ -285,7 +327,10 @@ class TestCalculatePurchaseNeedSimple:
         }
         coverage = {}  # No coverage data
         recommendations = {
-            "compute": {"HourlyCommitmentToPurchase": "10.00", "RecommendationId": "rec-123"}
+            "compute": {
+                "HourlyCommitmentToPurchase": "10.00",
+                "RecommendationId": "rec-123",
+            }
         }
 
         result = calculate_purchase_need_simple(config, coverage, recommendations)
@@ -305,8 +350,14 @@ class TestCalculatePurchaseNeedSimple:
         }
         coverage = {"compute": 50.0, "sagemaker": 50.0}
         recommendations = {
-            "compute": {"HourlyCommitmentToPurchase": "10.00", "RecommendationId": "rec-c-1"},
-            "sagemaker": {"HourlyCommitmentToPurchase": "5.00", "RecommendationId": "rec-s-2"},
+            "compute": {
+                "HourlyCommitmentToPurchase": "10.00",
+                "RecommendationId": "rec-c-1",
+            },
+            "sagemaker": {
+                "HourlyCommitmentToPurchase": "5.00",
+                "RecommendationId": "rec-s-2",
+            },
         }
 
         result = calculate_purchase_need_simple(config, coverage, recommendations)

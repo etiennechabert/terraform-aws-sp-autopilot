@@ -149,7 +149,9 @@ def aws_mock_builder(aws_response):
 
             return data
 
-        def coverage(self, coverage_percentage=None, services=None, empty=False, **overrides):
+        def coverage(
+            self, coverage_percentage=None, services=None, empty=False, **overrides
+        ):
             """
             Create get_savings_plans_coverage response.
 
@@ -263,14 +265,16 @@ def aws_mock_builder(aws_response):
 
             # Limit number of days if specified
             if days:
-                data["SavingsPlansUtilizationsByTime"] = data["SavingsPlansUtilizationsByTime"][
-                    :days
-                ]
+                data["SavingsPlansUtilizationsByTime"] = data[
+                    "SavingsPlansUtilizationsByTime"
+                ][:days]
 
             # Override utilization percentage if specified
             if utilization_percentage is not None:
                 for item in data["SavingsPlansUtilizationsByTime"]:
-                    item["Utilization"]["UtilizationPercentage"] = str(utilization_percentage)
+                    item["Utilization"]["UtilizationPercentage"] = str(
+                        utilization_percentage
+                    )
 
             return data
 

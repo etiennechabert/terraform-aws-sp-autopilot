@@ -33,8 +33,16 @@ CONFIG_SCHEMA = {
         "env_var": "MANAGEMENT_ACCOUNT_ROLE_ARN",
     },
     "tags": {"required": False, "type": "json", "default": "{}", "env_var": "TAGS"},
-    "slack_webhook_url": {"required": False, "type": "str", "env_var": "SLACK_WEBHOOK_URL"},
-    "teams_webhook_url": {"required": False, "type": "str", "env_var": "TEAMS_WEBHOOK_URL"},
+    "slack_webhook_url": {
+        "required": False,
+        "type": "str",
+        "env_var": "SLACK_WEBHOOK_URL",
+    },
+    "teams_webhook_url": {
+        "required": False,
+        "type": "str",
+        "env_var": "TEAMS_WEBHOOK_URL",
+    },
     "low_utilization_threshold": {
         "required": False,
         "type": "float",

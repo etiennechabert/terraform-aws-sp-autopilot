@@ -22,7 +22,9 @@ from botocore.exceptions import ClientError
 
 # Add lambda directory to path
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
+sys.path.insert(
+    0, os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+)
 
 import handler
 
@@ -35,7 +37,9 @@ def mock_env_vars(monkeypatch):
     monkeypatch.setenv("AWS_SECURITY_TOKEN", "testing")
     monkeypatch.setenv("AWS_SESSION_TOKEN", "testing")
     monkeypatch.setenv("AWS_DEFAULT_REGION", "us-east-1")
-    monkeypatch.setenv("QUEUE_URL", "https://sqs.us-east-1.amazonaws.com/123456789012/test-queue")
+    monkeypatch.setenv(
+        "QUEUE_URL", "https://sqs.us-east-1.amazonaws.com/123456789012/test-queue"
+    )
     monkeypatch.setenv("SNS_TOPIC_ARN", "arn:aws:sns:us-east-1:123456789012:test-topic")
     monkeypatch.setenv("MAX_COVERAGE_CAP", "95")
     monkeypatch.setenv("RENEWAL_WINDOW_DAYS", "7")
@@ -96,18 +100,24 @@ def test_valid_purchase_success(aws_mock_builder, mock_env_vars, mock_clients):
     }
 
     mock_clients["sqs"].receive_message.return_value = {
-        "Messages": [{"Body": json.dumps(purchase_intent), "ReceiptHandle": "receipt-handle-123"}]
+        "Messages": [
+            {"Body": json.dumps(purchase_intent), "ReceiptHandle": "receipt-handle-123"}
+        ]
     }
 
     # Use real AWS response structure for coverage (low coverage, won't exceed cap)
-    mock_clients["ce"].get_savings_plans_coverage.return_value = aws_mock_builder.coverage(
+    mock_clients[
+        "ce"
+    ].get_savings_plans_coverage.return_value = aws_mock_builder.coverage(
         coverage_percentage=50.0
     )
 
     # Mock no expiring plans - use real structure
     mock_clients[
         "savingsplans"
-    ].describe_savings_plans.return_value = aws_mock_builder.describe_savings_plans(plans_count=0)
+    ].describe_savings_plans.return_value = aws_mock_builder.describe_savings_plans(
+        plans_count=0
+    )
 
     # Mock successful purchase - use real structure
     mock_clients[
@@ -124,7 +134,9 @@ def test_valid_purchase_success(aws_mock_builder, mock_env_vars, mock_clients):
     assert mock_clients["savingsplans"].create_savings_plan.called, (
         "CreateSavingsPlan should be called"
     )
-    assert mock_clients["sqs"].delete_message.called, "Message should be deleted from queue"
+    assert mock_clients["sqs"].delete_message.called, (
+        "Message should be deleted from queue"
+    )
     assert mock_clients["sns"].publish.called, "Summary email should be sent"
 
     # Verify CreateSavingsPlan parameters
@@ -153,7 +165,9 @@ def test_cap_enforcement(mock_env_vars, mock_clients):
     }
 
     mock_clients["sqs"].receive_message.return_value = {
-        "Messages": [{"Body": json.dumps(purchase_intent), "ReceiptHandle": "receipt-handle-456"}]
+        "Messages": [
+            {"Body": json.dumps(purchase_intent), "ReceiptHandle": "receipt-handle-456"}
+        ]
     }
 
     # Mock current coverage
@@ -171,7 +185,9 @@ def test_cap_enforcement(mock_env_vars, mock_clients):
     }
 
     # Mock no expiring plans
-    mock_clients["savingsplans"].describe_savings_plans.return_value = {"savingsPlans": []}
+    mock_clients["savingsplans"].describe_savings_plans.return_value = {
+        "savingsPlans": []
+    }
 
     # Execute handler
     response = handler.handler({}, {})
@@ -211,7 +227,9 @@ def test_api_error_handling(mock_env_vars, mock_clients):
         }
 
         mock_clients["sqs"].receive_message.return_value = {
-            "Messages": [{"Body": json.dumps(purchase_intent), "ReceiptHandle": "receipt-error"}]
+            "Messages": [
+                {"Body": json.dumps(purchase_intent), "ReceiptHandle": "receipt-error"}
+            ]
         }
 
         # Mock API error
@@ -251,7 +269,10 @@ def test_database_sp_purchase(mock_env_vars, mock_clients):
 
     mock_clients["sqs"].receive_message.return_value = {
         "Messages": [
-            {"Body": json.dumps(purchase_intent), "ReceiptHandle": "receipt-handle-db-123"}
+            {
+                "Body": json.dumps(purchase_intent),
+                "ReceiptHandle": "receipt-handle-db-123",
+            }
         ]
     }
 
@@ -274,7 +295,9 @@ def test_database_sp_purchase(mock_env_vars, mock_clients):
     }
 
     # Mock no expiring plans
-    mock_clients["savingsplans"].describe_savings_plans.return_value = {"savingsPlans": []}
+    mock_clients["savingsplans"].describe_savings_plans.return_value = {
+        "savingsPlans": []
+    }
 
     # Mock successful purchase
     mock_clients["savingsplans"].create_savings_plan.return_value = {
@@ -289,7 +312,9 @@ def test_database_sp_purchase(mock_env_vars, mock_clients):
     assert mock_clients["savingsplans"].create_savings_plan.called, (
         "CreateSavingsPlan should be called for Database SP"
     )
-    assert mock_clients["sqs"].delete_message.called, "Message should be deleted from queue"
+    assert mock_clients["sqs"].delete_message.called, (
+        "Message should be deleted from queue"
+    )
     assert mock_clients["sns"].publish.called, "Summary email should be sent"
 
     # Verify CreateSavingsPlan parameters
@@ -316,7 +341,9 @@ def test_validation_errors(mock_env_vars, mock_clients):
     }
 
     mock_clients["sqs"].receive_message.return_value = {
-        "Messages": [{"Body": json.dumps(malformed_intent), "ReceiptHandle": "receipt-malformed"}]
+        "Messages": [
+            {"Body": json.dumps(malformed_intent), "ReceiptHandle": "receipt-malformed"}
+        ]
     }
 
     # Mock current coverage
@@ -334,7 +361,9 @@ def test_validation_errors(mock_env_vars, mock_clients):
     }
 
     # Mock no expiring plans
-    mock_clients["savingsplans"].describe_savings_plans.return_value = {"savingsPlans": []}
+    mock_clients["savingsplans"].describe_savings_plans.return_value = {
+        "savingsPlans": []
+    }
 
     # Execute handler
     response = handler.handler({}, {})
@@ -370,7 +399,10 @@ def test_validation_errors(mock_env_vars, mock_clients):
 
     mock_clients["sqs"].receive_message.return_value = {
         "Messages": [
-            {"Body": json.dumps(invalid_sp_type_intent), "ReceiptHandle": "receipt-invalid"}
+            {
+                "Body": json.dumps(invalid_sp_type_intent),
+                "ReceiptHandle": "receipt-invalid",
+            }
         ]
     }
 
@@ -406,7 +438,9 @@ def test_upfront_payment_purchase(mock_env_vars, mock_clients):
     }
 
     mock_clients["sqs"].receive_message.return_value = {
-        "Messages": [{"Body": json.dumps(purchase_intent), "ReceiptHandle": "receipt-upfront"}]
+        "Messages": [
+            {"Body": json.dumps(purchase_intent), "ReceiptHandle": "receipt-upfront"}
+        ]
     }
 
     # Mock current coverage
@@ -424,7 +458,9 @@ def test_upfront_payment_purchase(mock_env_vars, mock_clients):
     }
 
     # Mock no expiring plans
-    mock_clients["savingsplans"].describe_savings_plans.return_value = {"savingsPlans": []}
+    mock_clients["savingsplans"].describe_savings_plans.return_value = {
+        "savingsPlans": []
+    }
 
     # Mock successful purchase
     mock_clients["savingsplans"].create_savings_plan.return_value = {
@@ -463,7 +499,9 @@ def test_sagemaker_sp_purchase(mock_env_vars, mock_clients):
     }
 
     mock_clients["sqs"].receive_message.return_value = {
-        "Messages": [{"Body": json.dumps(purchase_intent), "ReceiptHandle": "receipt-sm-123"}]
+        "Messages": [
+            {"Body": json.dumps(purchase_intent), "ReceiptHandle": "receipt-sm-123"}
+        ]
     }
 
     # Mock current coverage
@@ -485,7 +523,9 @@ def test_sagemaker_sp_purchase(mock_env_vars, mock_clients):
     }
 
     # Mock no expiring plans
-    mock_clients["savingsplans"].describe_savings_plans.return_value = {"savingsPlans": []}
+    mock_clients["savingsplans"].describe_savings_plans.return_value = {
+        "savingsPlans": []
+    }
 
     # Mock successful purchase
     mock_clients["savingsplans"].create_savings_plan.return_value = {
@@ -521,7 +561,9 @@ def test_purchase_api_error(mock_env_vars, mock_clients):
     }
 
     mock_clients["sqs"].receive_message.return_value = {
-        "Messages": [{"Body": json.dumps(purchase_intent), "ReceiptHandle": "receipt-fail"}]
+        "Messages": [
+            {"Body": json.dumps(purchase_intent), "ReceiptHandle": "receipt-fail"}
+        ]
     }
 
     # Mock current coverage
@@ -539,7 +581,9 @@ def test_purchase_api_error(mock_env_vars, mock_clients):
     }
 
     # Mock no expiring plans
-    mock_clients["savingsplans"].describe_savings_plans.return_value = {"savingsPlans": []}
+    mock_clients["savingsplans"].describe_savings_plans.return_value = {
+        "savingsPlans": []
+    }
 
     # Mock CreateSavingsPlan API error
     mock_clients["savingsplans"].create_savings_plan.side_effect = ClientError(
@@ -552,7 +596,9 @@ def test_purchase_api_error(mock_env_vars, mock_clients):
 
     # Verify
     assert response["statusCode"] == 200
-    assert not mock_clients["sqs"].delete_message.called, "Message should stay in queue on failure"
+    assert not mock_clients["sqs"].delete_message.called, (
+        "Message should stay in queue on failure"
+    )
     assert mock_clients["sns"].publish.called, "Summary email should be sent"
 
     # Verify email shows failed purchase
@@ -578,7 +624,9 @@ def test_expiring_plans_renewal(mock_env_vars, mock_clients):
     }
 
     mock_clients["sqs"].receive_message.return_value = {
-        "Messages": [{"Body": json.dumps(purchase_intent), "ReceiptHandle": "receipt-renewal"}]
+        "Messages": [
+            {"Body": json.dumps(purchase_intent), "ReceiptHandle": "receipt-renewal"}
+        ]
     }
 
     # Mock current coverage (shows 70% but will be adjusted to 0% due to expiring plan)
@@ -643,7 +691,9 @@ def test_expiring_database_plans(mock_env_vars, mock_clients):
     }
 
     mock_clients["sqs"].receive_message.return_value = {
-        "Messages": [{"Body": json.dumps(purchase_intent), "ReceiptHandle": "receipt-db-renewal"}]
+        "Messages": [
+            {"Body": json.dumps(purchase_intent), "ReceiptHandle": "receipt-db-renewal"}
+        ]
     }
 
     # Mock current coverage
@@ -706,7 +756,9 @@ def test_general_exception_handling(mock_env_vars, mock_clients):
     }
 
     mock_clients["sqs"].receive_message.return_value = {
-        "Messages": [{"Body": json.dumps(purchase_intent), "ReceiptHandle": "receipt-exception"}]
+        "Messages": [
+            {"Body": json.dumps(purchase_intent), "ReceiptHandle": "receipt-exception"}
+        ]
     }
 
     # Mock current coverage
@@ -724,7 +776,9 @@ def test_general_exception_handling(mock_env_vars, mock_clients):
     }
 
     # Mock no expiring plans
-    mock_clients["savingsplans"].describe_savings_plans.return_value = {"savingsPlans": []}
+    mock_clients["savingsplans"].describe_savings_plans.return_value = {
+        "savingsPlans": []
+    }
 
     # Mock general exception (not ClientError)
     mock_clients["savingsplans"].create_savings_plan.side_effect = RuntimeError(
@@ -736,7 +790,9 @@ def test_general_exception_handling(mock_env_vars, mock_clients):
 
     # Verify
     assert response["statusCode"] == 200
-    assert not mock_clients["sqs"].delete_message.called, "Message should stay in queue on failure"
+    assert not mock_clients["sqs"].delete_message.called, (
+        "Message should stay in queue on failure"
+    )
     assert mock_clients["sns"].publish.called, "Summary email should be sent"
 
     # Verify email shows failed purchase
@@ -761,7 +817,9 @@ def test_expiring_sagemaker_plans(mock_env_vars, mock_clients):
     }
 
     mock_clients["sqs"].receive_message.return_value = {
-        "Messages": [{"Body": json.dumps(purchase_intent), "ReceiptHandle": "receipt-sm-renewal"}]
+        "Messages": [
+            {"Body": json.dumps(purchase_intent), "ReceiptHandle": "receipt-sm-renewal"}
+        ]
     }
 
     # Mock current coverage

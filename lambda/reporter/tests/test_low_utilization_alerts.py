@@ -22,7 +22,9 @@ from botocore.exceptions import ClientError
 
 # Add lambda directory to path
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
+sys.path.insert(
+    0, os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+)
 
 import handler
 
@@ -107,7 +109,9 @@ def test_check_and_alert_at_threshold_no_alert(mock_sns_client, sample_config):
         "estimated_monthly_savings": 3000.00,
     }
 
-    handler.check_and_alert_low_utilization(mock_sns_client, sample_config, savings_data)
+    handler.check_and_alert_low_utilization(
+        mock_sns_client, sample_config, savings_data
+    )
 
     # Verify SNS publish was NOT called (not below threshold)
     assert mock_sns_client.publish.call_count == 0
@@ -122,7 +126,9 @@ def test_check_and_alert_no_active_plans(mock_sns_client, sample_config):
         "estimated_monthly_savings": 0.0,
     }
 
-    handler.check_and_alert_low_utilization(mock_sns_client, sample_config, savings_data)
+    handler.check_and_alert_low_utilization(
+        mock_sns_client, sample_config, savings_data
+    )
 
     # Verify SNS publish was NOT called
     assert mock_sns_client.publish.call_count == 0
@@ -223,7 +229,9 @@ def test_check_and_alert_with_slack_notification(
 
         # Verify Slack send call
         send_call_args = mock_send_slack.call_args
-        assert send_call_args[0][0] == "https://hooks.slack.com/services/TEST/WEBHOOK/URL"
+        assert (
+            send_call_args[0][0] == "https://hooks.slack.com/services/TEST/WEBHOOK/URL"
+        )
 
 
 def test_check_and_alert_with_teams_notification(
@@ -257,7 +265,10 @@ def test_check_and_alert_with_teams_notification(
 
         # Verify Teams send call
         send_call_args = mock_send_teams.call_args
-        assert send_call_args[0][0] == "https://outlook.office.com/webhook/TEST/WEBHOOK/URL"
+        assert (
+            send_call_args[0][0]
+            == "https://outlook.office.com/webhook/TEST/WEBHOOK/URL"
+        )
 
 
 def test_check_and_alert_slack_failure_non_fatal(
@@ -387,7 +398,9 @@ def test_check_and_alert_with_zero_utilization(mock_sns_client, sample_config):
         "estimated_monthly_savings": 0.0,
     }
 
-    handler.check_and_alert_low_utilization(mock_sns_client, sample_config, savings_data)
+    handler.check_and_alert_low_utilization(
+        mock_sns_client, sample_config, savings_data
+    )
 
     # Verify SNS publish was called (0% < 70%)
     assert mock_sns_client.publish.call_count == 1
@@ -464,7 +477,9 @@ def test_check_and_alert_missing_utilization_key(mock_sns_client, sample_config)
         "estimated_monthly_savings": 3000.00,
     }
 
-    handler.check_and_alert_low_utilization(mock_sns_client, sample_config, savings_data)
+    handler.check_and_alert_low_utilization(
+        mock_sns_client, sample_config, savings_data
+    )
 
     # Should treat missing utilization as 0.0, which is below threshold
     assert mock_sns_client.publish.call_count == 1
@@ -482,7 +497,9 @@ def test_check_and_alert_edge_case_just_below_threshold(mock_sns_client, sample_
         "estimated_monthly_savings": 4000.00,
     }
 
-    handler.check_and_alert_low_utilization(mock_sns_client, sample_config, savings_data)
+    handler.check_and_alert_low_utilization(
+        mock_sns_client, sample_config, savings_data
+    )
 
     # Verify alert was sent (69.99 < 70.0)
     assert mock_sns_client.publish.call_count == 1

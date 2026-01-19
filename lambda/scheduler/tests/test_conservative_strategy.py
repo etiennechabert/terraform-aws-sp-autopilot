@@ -25,7 +25,10 @@ class TestCalculatePurchaseNeedConservative:
         }
         coverage = {"compute": 70.0}  # Gap is 20%, above 5% threshold
         recommendations = {
-            "compute": {"HourlyCommitmentToPurchase": "10.00", "RecommendationId": "rec-123"}
+            "compute": {
+                "HourlyCommitmentToPurchase": "10.00",
+                "RecommendationId": "rec-123",
+            }
         }
 
         result = calculate_purchase_need_conservative(config, coverage, recommendations)
@@ -50,7 +53,10 @@ class TestCalculatePurchaseNeedConservative:
         }
         coverage = {"compute": 88.0}  # Gap is 2%, below 5% threshold
         recommendations = {
-            "compute": {"HourlyCommitmentToPurchase": "10.00", "RecommendationId": "rec-123"}
+            "compute": {
+                "HourlyCommitmentToPurchase": "10.00",
+                "RecommendationId": "rec-123",
+            }
         }
 
         result = calculate_purchase_need_conservative(config, coverage, recommendations)
@@ -69,7 +75,10 @@ class TestCalculatePurchaseNeedConservative:
         }
         coverage = {"compute": 85.0}  # Gap is exactly 5%
         recommendations = {
-            "compute": {"HourlyCommitmentToPurchase": "10.00", "RecommendationId": "rec-123"}
+            "compute": {
+                "HourlyCommitmentToPurchase": "10.00",
+                "RecommendationId": "rec-123",
+            }
         }
 
         result = calculate_purchase_need_conservative(config, coverage, recommendations)
@@ -90,7 +99,10 @@ class TestCalculatePurchaseNeedConservative:
         }
         coverage = {"compute": 90.0}  # Gap is 0%
         recommendations = {
-            "compute": {"HourlyCommitmentToPurchase": "10.00", "RecommendationId": "rec-123"}
+            "compute": {
+                "HourlyCommitmentToPurchase": "10.00",
+                "RecommendationId": "rec-123",
+            }
         }
 
         result = calculate_purchase_need_conservative(config, coverage, recommendations)
@@ -109,7 +121,10 @@ class TestCalculatePurchaseNeedConservative:
         }
         coverage = {"compute": 95.0}  # Coverage exceeds target
         recommendations = {
-            "compute": {"HourlyCommitmentToPurchase": "10.00", "RecommendationId": "rec-123"}
+            "compute": {
+                "HourlyCommitmentToPurchase": "10.00",
+                "RecommendationId": "rec-123",
+            }
         }
 
         result = calculate_purchase_need_conservative(config, coverage, recommendations)
@@ -145,7 +160,10 @@ class TestCalculatePurchaseNeedConservative:
         }
         coverage = {"compute": 50.0}  # Gap is 40%, above threshold
         recommendations = {
-            "compute": {"HourlyCommitmentToPurchase": "0.00", "RecommendationId": "rec-123"}
+            "compute": {
+                "HourlyCommitmentToPurchase": "0.00",
+                "RecommendationId": "rec-123",
+            }
         }
 
         result = calculate_purchase_need_conservative(config, coverage, recommendations)
@@ -164,7 +182,10 @@ class TestCalculatePurchaseNeedConservative:
         }
         coverage = {"database": 60.0}  # Gap is 30%, above 5% threshold
         recommendations = {
-            "database": {"HourlyCommitmentToPurchase": "8.00", "RecommendationId": "rec-db-456"}
+            "database": {
+                "HourlyCommitmentToPurchase": "8.00",
+                "RecommendationId": "rec-db-456",
+            }
         }
 
         result = calculate_purchase_need_conservative(config, coverage, recommendations)
@@ -190,7 +211,10 @@ class TestCalculatePurchaseNeedConservative:
         }
         coverage = {"database": 87.0}  # Gap is 3%, below 5% threshold
         recommendations = {
-            "database": {"HourlyCommitmentToPurchase": "8.00", "RecommendationId": "rec-db-456"}
+            "database": {
+                "HourlyCommitmentToPurchase": "8.00",
+                "RecommendationId": "rec-db-456",
+            }
         }
 
         result = calculate_purchase_need_conservative(config, coverage, recommendations)
@@ -209,7 +233,10 @@ class TestCalculatePurchaseNeedConservative:
         }
         coverage = {"database": 80.0}  # Gap is exactly 10%
         recommendations = {
-            "database": {"HourlyCommitmentToPurchase": "8.00", "RecommendationId": "rec-db-456"}
+            "database": {
+                "HourlyCommitmentToPurchase": "8.00",
+                "RecommendationId": "rec-db-456",
+            }
         }
 
         result = calculate_purchase_need_conservative(config, coverage, recommendations)
@@ -229,7 +256,10 @@ class TestCalculatePurchaseNeedConservative:
         }
         coverage = {"database": 90.0}
         recommendations = {
-            "database": {"HourlyCommitmentToPurchase": "8.00", "RecommendationId": "rec-db-456"}
+            "database": {
+                "HourlyCommitmentToPurchase": "8.00",
+                "RecommendationId": "rec-db-456",
+            }
         }
 
         result = calculate_purchase_need_conservative(config, coverage, recommendations)
@@ -248,7 +278,10 @@ class TestCalculatePurchaseNeedConservative:
         }
         coverage = {"database": 50.0}  # Gap is 40%, above threshold
         recommendations = {
-            "database": {"HourlyCommitmentToPurchase": "0.00", "RecommendationId": "rec-db-456"}
+            "database": {
+                "HourlyCommitmentToPurchase": "0.00",
+                "RecommendationId": "rec-db-456",
+            }
         }
 
         result = calculate_purchase_need_conservative(config, coverage, recommendations)
@@ -268,7 +301,10 @@ class TestCalculatePurchaseNeedConservative:
         }
         coverage = {"sagemaker": 40.0}  # Gap is 50%, above 5% threshold
         recommendations = {
-            "sagemaker": {"HourlyCommitmentToPurchase": "12.50", "RecommendationId": "rec-sm-789"}
+            "sagemaker": {
+                "HourlyCommitmentToPurchase": "12.50",
+                "RecommendationId": "rec-sm-789",
+            }
         }
 
         result = calculate_purchase_need_conservative(config, coverage, recommendations)
@@ -293,7 +329,10 @@ class TestCalculatePurchaseNeedConservative:
         }
         coverage = {"sagemaker": 89.0}  # Gap is 1%, below 5% threshold
         recommendations = {
-            "sagemaker": {"HourlyCommitmentToPurchase": "12.50", "RecommendationId": "rec-sm-789"}
+            "sagemaker": {
+                "HourlyCommitmentToPurchase": "12.50",
+                "RecommendationId": "rec-sm-789",
+            }
         }
 
         result = calculate_purchase_need_conservative(config, coverage, recommendations)
@@ -312,7 +351,10 @@ class TestCalculatePurchaseNeedConservative:
         }
         coverage = {"sagemaker": 82.5}  # Gap is exactly 7.5%
         recommendations = {
-            "sagemaker": {"HourlyCommitmentToPurchase": "12.50", "RecommendationId": "rec-sm-789"}
+            "sagemaker": {
+                "HourlyCommitmentToPurchase": "12.50",
+                "RecommendationId": "rec-sm-789",
+            }
         }
 
         result = calculate_purchase_need_conservative(config, coverage, recommendations)
@@ -332,7 +374,10 @@ class TestCalculatePurchaseNeedConservative:
         }
         coverage = {"sagemaker": 92.0}
         recommendations = {
-            "sagemaker": {"HourlyCommitmentToPurchase": "12.50", "RecommendationId": "rec-sm-789"}
+            "sagemaker": {
+                "HourlyCommitmentToPurchase": "12.50",
+                "RecommendationId": "rec-sm-789",
+            }
         }
 
         result = calculate_purchase_need_conservative(config, coverage, recommendations)
@@ -351,7 +396,10 @@ class TestCalculatePurchaseNeedConservative:
         }
         coverage = {"sagemaker": 50.0}  # Gap is 40%, above threshold
         recommendations = {
-            "sagemaker": {"HourlyCommitmentToPurchase": "0", "RecommendationId": "rec-sm-789"}
+            "sagemaker": {
+                "HourlyCommitmentToPurchase": "0",
+                "RecommendationId": "rec-sm-789",
+            }
         }
 
         result = calculate_purchase_need_conservative(config, coverage, recommendations)
@@ -376,9 +424,18 @@ class TestCalculatePurchaseNeedConservative:
             "sagemaker": 50.0,  # Gap 40%, above threshold
         }
         recommendations = {
-            "compute": {"HourlyCommitmentToPurchase": "10.00", "RecommendationId": "rec-c-123"},
-            "database": {"HourlyCommitmentToPurchase": "8.00", "RecommendationId": "rec-db-456"},
-            "sagemaker": {"HourlyCommitmentToPurchase": "12.00", "RecommendationId": "rec-sm-789"},
+            "compute": {
+                "HourlyCommitmentToPurchase": "10.00",
+                "RecommendationId": "rec-c-123",
+            },
+            "database": {
+                "HourlyCommitmentToPurchase": "8.00",
+                "RecommendationId": "rec-db-456",
+            },
+            "sagemaker": {
+                "HourlyCommitmentToPurchase": "12.00",
+                "RecommendationId": "rec-sm-789",
+            },
         }
 
         result = calculate_purchase_need_conservative(config, coverage, recommendations)
@@ -416,9 +473,18 @@ class TestCalculatePurchaseNeedConservative:
             "sagemaker": 85.0,  # Gap 5%, exactly at threshold → purchase
         }
         recommendations = {
-            "compute": {"HourlyCommitmentToPurchase": "10.00", "RecommendationId": "rec-c-123"},
-            "database": {"HourlyCommitmentToPurchase": "8.00", "RecommendationId": "rec-db-456"},
-            "sagemaker": {"HourlyCommitmentToPurchase": "12.00", "RecommendationId": "rec-sm-789"},
+            "compute": {
+                "HourlyCommitmentToPurchase": "10.00",
+                "RecommendationId": "rec-c-123",
+            },
+            "database": {
+                "HourlyCommitmentToPurchase": "8.00",
+                "RecommendationId": "rec-db-456",
+            },
+            "sagemaker": {
+                "HourlyCommitmentToPurchase": "12.00",
+                "RecommendationId": "rec-sm-789",
+            },
         }
 
         result = calculate_purchase_need_conservative(config, coverage, recommendations)
@@ -442,10 +508,15 @@ class TestCalculatePurchaseNeedConservative:
         }
         coverage = {"compute": 70.0}
         recommendations = {
-            "compute": {"HourlyCommitmentToPurchase": "10.00", "RecommendationId": "rec-123"}
+            "compute": {
+                "HourlyCommitmentToPurchase": "10.00",
+                "RecommendationId": "rec-123",
+            }
         }
 
-        result = calculate_purchase_need_conservative(config_100, coverage, recommendations)
+        result = calculate_purchase_need_conservative(
+            config_100, coverage, recommendations
+        )
         assert len(result) == 1
         assert result[0]["hourly_commitment"] == 10.0  # 100% of $10
 
@@ -459,7 +530,9 @@ class TestCalculatePurchaseNeedConservative:
             "max_purchase_percent": 25.0,
         }
 
-        result = calculate_purchase_need_conservative(config_25, coverage, recommendations)
+        result = calculate_purchase_need_conservative(
+            config_25, coverage, recommendations
+        )
         assert len(result) == 1
         assert result[0]["hourly_commitment"] == 2.5  # 25% of $10
 
@@ -467,7 +540,10 @@ class TestCalculatePurchaseNeedConservative:
         """Test conservative strategy with different min_gap_threshold values."""
         coverage = {"compute": 70.0}  # Gap is 20%
         recommendations = {
-            "compute": {"HourlyCommitmentToPurchase": "10.00", "RecommendationId": "rec-123"}
+            "compute": {
+                "HourlyCommitmentToPurchase": "10.00",
+                "RecommendationId": "rec-123",
+            }
         }
 
         # With threshold of 10%, gap of 20% should trigger purchase
@@ -479,7 +555,9 @@ class TestCalculatePurchaseNeedConservative:
             "min_gap_threshold": 10.0,
             "max_purchase_percent": 50.0,
         }
-        result = calculate_purchase_need_conservative(config_10, coverage, recommendations)
+        result = calculate_purchase_need_conservative(
+            config_10, coverage, recommendations
+        )
         assert len(result) == 1
 
         # With threshold of 25%, gap of 20% should NOT trigger purchase
@@ -491,7 +569,9 @@ class TestCalculatePurchaseNeedConservative:
             "min_gap_threshold": 25.0,
             "max_purchase_percent": 50.0,
         }
-        result = calculate_purchase_need_conservative(config_25, coverage, recommendations)
+        result = calculate_purchase_need_conservative(
+            config_25, coverage, recommendations
+        )
         assert len(result) == 0
 
     def test_default_config_parameters(self):
@@ -506,7 +586,10 @@ class TestCalculatePurchaseNeedConservative:
         }
         coverage = {"compute": 70.0}  # Gap is 20%, above default 5%
         recommendations = {
-            "compute": {"HourlyCommitmentToPurchase": "10.00", "RecommendationId": "rec-123"}
+            "compute": {
+                "HourlyCommitmentToPurchase": "10.00",
+                "RecommendationId": "rec-123",
+            }
         }
 
         result = calculate_purchase_need_conservative(config, coverage, recommendations)
@@ -531,9 +614,18 @@ class TestCalculatePurchaseNeedConservative:
             "sagemaker": 50.0,
         }
         recommendations = {
-            "compute": {"HourlyCommitmentToPurchase": "10.00", "RecommendationId": "rec-c"},
-            "database": {"HourlyCommitmentToPurchase": "8.00", "RecommendationId": "rec-db"},
-            "sagemaker": {"HourlyCommitmentToPurchase": "12.00", "RecommendationId": "rec-sm"},
+            "compute": {
+                "HourlyCommitmentToPurchase": "10.00",
+                "RecommendationId": "rec-c",
+            },
+            "database": {
+                "HourlyCommitmentToPurchase": "8.00",
+                "RecommendationId": "rec-db",
+            },
+            "sagemaker": {
+                "HourlyCommitmentToPurchase": "12.00",
+                "RecommendationId": "rec-sm",
+            },
         }
 
         result = calculate_purchase_need_conservative(config, coverage, recommendations)
@@ -552,7 +644,10 @@ class TestCalculatePurchaseNeedConservative:
         }
         coverage = {}  # No coverage data
         recommendations = {
-            "compute": {"HourlyCommitmentToPurchase": "10.00", "RecommendationId": "rec-123"}
+            "compute": {
+                "HourlyCommitmentToPurchase": "10.00",
+                "RecommendationId": "rec-123",
+            }
         }
 
         result = calculate_purchase_need_conservative(config, coverage, recommendations)

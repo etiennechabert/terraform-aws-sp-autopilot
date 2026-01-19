@@ -9,7 +9,11 @@ from typing import Any
 
 
 # Valid values for sp_type field
-VALID_SP_TYPES = ["ComputeSavingsPlans", "DatabaseSavingsPlans", "SageMakerSavingsPlans"]
+VALID_SP_TYPES = [
+    "ComputeSavingsPlans",
+    "DatabaseSavingsPlans",
+    "SageMakerSavingsPlans",
+]
 
 # Valid values for payment_option field
 VALID_PAYMENT_OPTIONS = ["NO_UPFRONT", "ALL_UPFRONT", "PARTIAL_UPFRONT"]
@@ -55,7 +59,9 @@ def validate_purchase_intent(purchase_intent: dict[str, Any]) -> None:
         )
 
     # Validate required fields are present
-    missing_fields = [field for field in REQUIRED_FIELDS if field not in purchase_intent]
+    missing_fields = [
+        field for field in REQUIRED_FIELDS if field not in purchase_intent
+    ]
     if missing_fields:
         raise ValueError(f"Missing required fields: {', '.join(missing_fields)}")
 

@@ -34,11 +34,15 @@ def generate_csv_report(
     # Calculate coverage summary
     avg_coverage = 0.0
     if coverage_history:
-        total_coverage = sum(item.get("coverage_percentage", 0.0) for item in coverage_history)
+        total_coverage = sum(
+            item.get("coverage_percentage", 0.0) for item in coverage_history
+        )
         avg_coverage = total_coverage / len(coverage_history)
 
     current_coverage = (
-        coverage_history[-1].get("coverage_percentage", 0.0) if coverage_history else 0.0
+        coverage_history[-1].get("coverage_percentage", 0.0)
+        if coverage_history
+        else 0.0
     )
 
     # Calculate trend direction
@@ -76,7 +80,9 @@ def generate_csv_report(
     csv_parts.append(f"trend_direction,{trend_direction}")
     csv_parts.append(f"trend_value,{trend_value:.2f}")
     csv_parts.append(f"active_plans_count,{savings_data.get('plans_count', 0)}")
-    csv_parts.append(f"total_hourly_commitment,{savings_data.get('total_commitment', 0.0):.4f}")
+    csv_parts.append(
+        f"total_hourly_commitment,{savings_data.get('total_commitment', 0.0):.4f}"
+    )
     csv_parts.append(
         f"total_monthly_commitment,{savings_data.get('total_commitment', 0.0) * 730:.2f}"
     )
@@ -94,7 +100,9 @@ def generate_csv_report(
 
     # Coverage history section
     csv_parts.append("## Coverage History")
-    csv_parts.append("date,coverage_percentage,on_demand_hours,covered_hours,total_hours")
+    csv_parts.append(
+        "date,coverage_percentage,on_demand_hours,covered_hours,total_hours"
+    )
     for item in coverage_history:
         csv_parts.append(
             f"{item.get('date', '')},{item.get('coverage_percentage', 0.0):.2f},"

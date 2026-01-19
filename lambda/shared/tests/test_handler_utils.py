@@ -15,7 +15,9 @@ from botocore.exceptions import ClientError
 
 
 # Add parent directory to path
-sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
+sys.path.insert(
+    0, os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+)
 
 from shared import handler_utils
 
@@ -47,7 +49,12 @@ def test_load_config_from_env_required_field_missing(monkeypatch):
 def test_load_config_from_env_optional_field_with_default(monkeypatch):
     """Test that optional fields use default values when not present."""
     schema = {
-        "dry_run": {"required": False, "type": "bool", "default": "true", "env_var": "DRY_RUN"}
+        "dry_run": {
+            "required": False,
+            "type": "bool",
+            "default": "true",
+            "env_var": "DRY_RUN",
+        }
     }
 
     config = handler_utils.load_config_from_env(schema)
@@ -60,7 +67,12 @@ def test_load_config_from_env_optional_field_override_default(monkeypatch):
     monkeypatch.setenv("DRY_RUN", "false")
 
     schema = {
-        "dry_run": {"required": False, "type": "bool", "default": "true", "env_var": "DRY_RUN"}
+        "dry_run": {
+            "required": False,
+            "type": "bool",
+            "default": "true",
+            "env_var": "DRY_RUN",
+        }
     }
 
     config = handler_utils.load_config_from_env(schema)
@@ -70,7 +82,13 @@ def test_load_config_from_env_optional_field_override_default(monkeypatch):
 
 def test_load_config_from_env_optional_field_no_default(monkeypatch):
     """Test that optional fields without defaults are skipped when missing."""
-    schema = {"optional_field": {"required": False, "type": "str", "env_var": "OPTIONAL_FIELD"}}
+    schema = {
+        "optional_field": {
+            "required": False,
+            "type": "str",
+            "env_var": "OPTIONAL_FIELD",
+        }
+    }
 
     config = handler_utils.load_config_from_env(schema)
 
@@ -97,8 +115,16 @@ def test_load_config_from_env_bool_type_true(monkeypatch):
 
     schema = {
         "bool_true": {"required": True, "type": "bool", "env_var": "BOOL_TRUE"},
-        "bool_true_caps": {"required": True, "type": "bool", "env_var": "BOOL_TRUE_CAPS"},
-        "bool_true_mixed": {"required": True, "type": "bool", "env_var": "BOOL_TRUE_MIXED"},
+        "bool_true_caps": {
+            "required": True,
+            "type": "bool",
+            "env_var": "BOOL_TRUE_CAPS",
+        },
+        "bool_true_mixed": {
+            "required": True,
+            "type": "bool",
+            "env_var": "BOOL_TRUE_MIXED",
+        },
     }
 
     config = handler_utils.load_config_from_env(schema)
@@ -152,7 +178,11 @@ def test_load_config_from_env_float_type(monkeypatch):
 
     schema = {
         "my_float": {"required": True, "type": "float", "env_var": "MY_FLOAT"},
-        "negative_float": {"required": True, "type": "float", "env_var": "NEGATIVE_FLOAT"},
+        "negative_float": {
+            "required": True,
+            "type": "float",
+            "env_var": "NEGATIVE_FLOAT",
+        },
         "int_as_float": {"required": True, "type": "float", "env_var": "INT_AS_FLOAT"},
     }
 
@@ -191,7 +221,12 @@ def test_load_config_from_env_json_type_list(monkeypatch):
 def test_load_config_from_env_invalid_int():
     """Test that invalid integer conversion raises ValueError."""
     schema = {
-        "my_int": {"required": False, "type": "int", "default": "not-an-int", "env_var": "MY_INT"}
+        "my_int": {
+            "required": False,
+            "type": "int",
+            "default": "not-an-int",
+            "env_var": "MY_INT",
+        }
     }
 
     with pytest.raises(ValueError) as exc_info:
@@ -251,7 +286,9 @@ def test_load_config_from_env_unknown_type_logs_warning(monkeypatch, caplog):
     """Test that unknown types log a warning and treat as string."""
     monkeypatch.setenv("MY_FIELD", "test-value")
 
-    schema = {"my_field": {"required": True, "type": "unknown_type", "env_var": "MY_FIELD"}}
+    schema = {
+        "my_field": {"required": True, "type": "unknown_type", "env_var": "MY_FIELD"}
+    }
 
     config = handler_utils.load_config_from_env(schema)
 
@@ -270,7 +307,12 @@ def test_load_config_from_env_complex_schema(monkeypatch):
 
     schema = {
         "queue_url": {"required": True, "type": "str", "env_var": "QUEUE_URL"},
-        "dry_run": {"required": False, "type": "bool", "default": "false", "env_var": "DRY_RUN"},
+        "dry_run": {
+            "required": False,
+            "type": "bool",
+            "default": "false",
+            "env_var": "DRY_RUN",
+        },
         "max_purchase": {
             "required": False,
             "type": "float",
@@ -284,7 +326,11 @@ def test_load_config_from_env_complex_schema(monkeypatch):
             "env_var": "RENEWAL_DAYS",
         },
         "tags": {"required": False, "type": "json", "default": "{}", "env_var": "TAGS"},
-        "optional_missing": {"required": False, "type": "str", "env_var": "OPTIONAL_MISSING"},
+        "optional_missing": {
+            "required": False,
+            "type": "str",
+            "env_var": "OPTIONAL_MISSING",
+        },
     }
 
     config = handler_utils.load_config_from_env(schema)
@@ -307,7 +353,11 @@ def test_initialize_clients_success():
     config = {}
 
     with patch("shared.handler_utils.get_clients") as mock_get_clients:
-        mock_clients = {"ce": MagicMock(), "savingsplans": MagicMock(), "s3": MagicMock()}
+        mock_clients = {
+            "ce": MagicMock(),
+            "savingsplans": MagicMock(),
+            "s3": MagicMock(),
+        }
         mock_get_clients.return_value = mock_clients
 
         result = handler_utils.initialize_clients(config, "test-session")
@@ -327,7 +377,9 @@ def test_initialize_clients_with_assume_role():
         result = handler_utils.initialize_clients(config, "sp-autopilot-scheduler")
 
         assert result == mock_clients
-        mock_get_clients.assert_called_once_with(config, session_name="sp-autopilot-scheduler")
+        mock_get_clients.assert_called_once_with(
+            config, session_name="sp-autopilot-scheduler"
+        )
 
 
 def test_initialize_clients_error_without_role(caplog):
@@ -522,8 +574,12 @@ def test_send_error_notification_includes_timestamp():
     mock_sns = MagicMock()
 
     with patch("shared.handler_utils.datetime") as mock_datetime:
-        mock_datetime.now.return_value.isoformat.return_value = "2026-01-14T12:00:00+00:00"
-        mock_datetime.now.return_value = datetime(2026, 1, 14, 12, 0, 0, tzinfo=timezone.utc)
+        mock_datetime.now.return_value.isoformat.return_value = (
+            "2026-01-14T12:00:00+00:00"
+        )
+        mock_datetime.now.return_value = datetime(
+            2026, 1, 14, 12, 0, 0, tzinfo=timezone.utc
+        )
 
         handler_utils.send_error_notification(
             sns_client=mock_sns,
@@ -541,7 +597,10 @@ def test_send_error_notification_missing_topic_arn(caplog):
     mock_sns = MagicMock()
 
     handler_utils.send_error_notification(
-        sns_client=mock_sns, sns_topic_arn="", error_message="Test error", lambda_name="TestLambda"
+        sns_client=mock_sns,
+        sns_topic_arn="",
+        error_message="Test error",
+        lambda_name="TestLambda",
     )
 
     # Verify SNS publish was NOT called
@@ -574,7 +633,9 @@ def test_send_error_notification_with_slack(caplog):
 
     with (
         patch("shared.handler_utils.notifications.format_slack_message") as mock_format,
-        patch("shared.handler_utils.notifications.send_slack_notification") as mock_send,
+        patch(
+            "shared.handler_utils.notifications.send_slack_notification"
+        ) as mock_send,
     ):
         mock_format.return_value = {"text": "formatted message"}
         mock_send.return_value = True
@@ -603,7 +664,9 @@ def test_send_error_notification_slack_failure(caplog):
 
     with (
         patch("shared.handler_utils.notifications.format_slack_message") as mock_format,
-        patch("shared.handler_utils.notifications.send_slack_notification") as mock_send,
+        patch(
+            "shared.handler_utils.notifications.send_slack_notification"
+        ) as mock_send,
     ):
         mock_format.return_value = {"text": "formatted message"}
         mock_send.return_value = False
@@ -624,7 +687,9 @@ def test_send_error_notification_slack_exception(caplog):
     """Test graceful handling of Slack exception."""
     mock_sns = MagicMock()
 
-    with patch("shared.handler_utils.notifications.format_slack_message") as mock_format:
+    with patch(
+        "shared.handler_utils.notifications.format_slack_message"
+    ) as mock_format:
         mock_format.side_effect = Exception("Slack formatting error")
 
         handler_utils.send_error_notification(
@@ -646,7 +711,9 @@ def test_send_error_notification_with_teams(caplog):
 
     with (
         patch("shared.handler_utils.notifications.format_teams_message") as mock_format,
-        patch("shared.handler_utils.notifications.send_teams_notification") as mock_send,
+        patch(
+            "shared.handler_utils.notifications.send_teams_notification"
+        ) as mock_send,
     ):
         mock_format.return_value = {"text": "formatted message"}
         mock_send.return_value = True
@@ -675,7 +742,9 @@ def test_send_error_notification_teams_failure(caplog):
 
     with (
         patch("shared.handler_utils.notifications.format_teams_message") as mock_format,
-        patch("shared.handler_utils.notifications.send_teams_notification") as mock_send,
+        patch(
+            "shared.handler_utils.notifications.send_teams_notification"
+        ) as mock_send,
     ):
         mock_format.return_value = {"text": "formatted message"}
         mock_send.return_value = False
@@ -696,7 +765,9 @@ def test_send_error_notification_teams_exception(caplog):
     """Test graceful handling of Teams exception."""
     mock_sns = MagicMock()
 
-    with patch("shared.handler_utils.notifications.format_teams_message") as mock_format:
+    with patch(
+        "shared.handler_utils.notifications.format_teams_message"
+    ) as mock_format:
         mock_format.side_effect = Exception("Teams formatting error")
 
         handler_utils.send_error_notification(
@@ -717,10 +788,18 @@ def test_send_error_notification_all_channels(caplog):
     mock_sns = MagicMock()
 
     with (
-        patch("shared.handler_utils.notifications.format_slack_message") as mock_slack_format,
-        patch("shared.handler_utils.notifications.send_slack_notification") as mock_slack_send,
-        patch("shared.handler_utils.notifications.format_teams_message") as mock_teams_format,
-        patch("shared.handler_utils.notifications.send_teams_notification") as mock_teams_send,
+        patch(
+            "shared.handler_utils.notifications.format_slack_message"
+        ) as mock_slack_format,
+        patch(
+            "shared.handler_utils.notifications.send_slack_notification"
+        ) as mock_slack_send,
+        patch(
+            "shared.handler_utils.notifications.format_teams_message"
+        ) as mock_teams_format,
+        patch(
+            "shared.handler_utils.notifications.send_teams_notification"
+        ) as mock_teams_send,
     ):
         mock_slack_format.return_value = {"text": "slack message"}
         mock_slack_send.return_value = True

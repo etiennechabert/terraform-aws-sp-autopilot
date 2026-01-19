@@ -132,7 +132,10 @@ def format_slack_message(
     enhanced_subject = f"{config['emoji']} {subject}"
 
     blocks = [
-        {"type": "header", "text": {"type": "plain_text", "text": enhanced_subject, "emoji": True}},
+        {
+            "type": "header",
+            "text": {"type": "plain_text", "text": enhanced_subject, "emoji": True},
+        },
         {"type": "section", "text": {"type": "mrkdwn", "text": "\n".join(body_lines)}},
     ]
 
