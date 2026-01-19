@@ -60,7 +60,6 @@ select = [
 
 # Ignore specific rules that may conflict with existing code patterns
 ignore = [
-    "E402",     # Module level import not at top (scheduler uses dynamic imports)
     "E501",     # Line too long (handled by formatter)
     "F841",     # Local variable assigned but never used (test setup)
     "UP035",    # typing.Dict/List deprecated (codebase uses typing style)

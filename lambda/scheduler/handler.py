@@ -27,6 +27,11 @@ if TYPE_CHECKING:
     from mypy_boto3_sqs.client import SQSClient
 
 # Import new modular components
+import email_notifications as email_module
+import purchase_calculator as purchase_module
+import queue_manager as queue_module
+import recommendations as recommendations_module
+import sp_coverage as coverage_module
 from config import CONFIG_SCHEMA
 
 from shared.config_validation import validate_scheduler_config
@@ -36,12 +41,6 @@ from shared.handler_utils import (
     load_config_from_env,
     send_error_notification,
 )
-
-import email_notifications as email_module
-import purchase_calculator as purchase_module
-import queue_manager as queue_module
-import recommendations as recommendations_module
-import sp_coverage as coverage_module
 
 
 # Configure logging
