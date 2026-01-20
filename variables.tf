@@ -49,6 +49,7 @@ variable "purchase_strategy" {
     # Historical data settings
     lookback_days = optional(number, 13)
     min_data_days = optional(number, 14)
+    granularity   = optional(string, "HOURLY")
 
     # Renewal and commitment settings
     renewal_window_days     = optional(number, 7)
@@ -114,6 +115,20 @@ variable "purchase_strategy" {
       true
     )
     error_message = "For dichotomy strategy: 0 < min_purchase_percent < max_purchase_percent <= 100."
+  }
+
+  validation {
+    condition     = contains(["HOURLY", "DAILY"], try(var.purchase_strategy.granularity, "HOURLY"))
+    error_message = "granularity must be either 'HOURLY' or 'DAILY'."
+  }
+
+  validation {
+    condition = (
+      try(var.purchase_strategy.granularity, "HOURLY") == "HOURLY" ?
+      var.purchase_strategy.lookback_days <= 13 :
+      var.purchase_strategy.lookback_days <= 90
+    )
+    error_message = "lookback_days must be <= 13 for HOURLY granularity or <= 90 for DAILY granularity."
   }
 }
 

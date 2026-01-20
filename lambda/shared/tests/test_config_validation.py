@@ -6,6 +6,7 @@ Tests critical validation logic and error paths.
 import pytest
 
 from shared.config_validation import (
+    VALID_GRANULARITIES,
     VALID_PAYMENT_OPTIONS,
     VALID_PURCHASE_STRATEGIES,
     VALID_REPORT_FORMATS,
@@ -27,14 +28,12 @@ def test_valid_scheduler_config():
         "max_purchase_percent": 10.0,
         "min_purchase_percent": 1.0,
         "renewal_window_days": 7,
-        "lookback_days": 30,
-        "min_data_days": 14,
+        "lookback_days": 7,
+        "granularity": "HOURLY",
         "min_commitment_per_plan": 0.001,
-        "compute_sp_term_mix": {"three_year": 0.67, "one_year": 0.33},
         "compute_sp_payment_option": "ALL_UPFRONT",
-        "sagemaker_sp_term_mix": {"three_year": 0.67, "one_year": 0.33},
         "sagemaker_sp_payment_option": "ALL_UPFRONT",
-        "purchase_strategy_type": "simple",
+        "purchase_strategy_type": "follow_aws",
     }
     validate_scheduler_config(config)
 
@@ -397,6 +396,69 @@ def test_scheduler_invalid_purchase_strategy_type():
         validate_scheduler_config(config)
 
 
+def test_scheduler_valid_granularity_hourly():
+    """Test that valid HOURLY granularity passes validation."""
+    config = {
+        "granularity": "HOURLY",
+    }
+    validate_scheduler_config(config)
+
+
+def test_scheduler_valid_granularity_daily():
+    """Test that valid DAILY granularity passes validation."""
+    config = {
+        "granularity": "DAILY",
+    }
+    validate_scheduler_config(config)
+
+
+def test_scheduler_invalid_granularity():
+    """Test that invalid granularity raises ValueError."""
+    config = {
+        "granularity": "WEEKLY",
+    }
+    with pytest.raises(ValueError, match=r"Invalid granularity.*Must be one of"):
+        validate_scheduler_config(config)
+
+
+def test_scheduler_lookback_days_hourly_at_limit():
+    """Test that lookback_days=13 passes for HOURLY granularity."""
+    config = {
+        "granularity": "HOURLY",
+        "lookback_days": 13,
+    }
+    validate_scheduler_config(config)
+
+
+def test_scheduler_lookback_days_hourly_exceeds_limit():
+    """Test that lookback_days>13 fails for HOURLY granularity."""
+    config = {
+        "granularity": "HOURLY",
+        "lookback_days": 14,
+    }
+    with pytest.raises(ValueError, match=r"lookback_days.*must be 13 or less for HOURLY"):
+        validate_scheduler_config(config)
+
+
+def test_scheduler_lookback_days_daily_at_limit():
+    """Test that lookback_days=90 passes for DAILY granularity."""
+    config = {
+        "granularity": "DAILY",
+        "lookback_days": 90,
+    }
+    validate_scheduler_config(config)
+
+
+def test_scheduler_lookback_days_daily_exceeds_limit():
+    """Test that lookback_days>90 fails for DAILY granularity."""
+    config = {
+        "granularity": "DAILY",
+        "lookback_days": 91,
+    }
+    with pytest.raises(ValueError, match=r"lookback_days.*must be 90 or less for DAILY"):
+        validate_scheduler_config(config)
+
+
 # ============================================================================
 # REPORTER CONFIG VALIDATION TESTS
 # ============================================================================
@@ -702,9 +764,14 @@ def test_valid_payment_options_constant():
 
 def test_valid_purchase_strategies_constant():
     """Test that VALID_PURCHASE_STRATEGIES contains expected values."""
-    assert VALID_PURCHASE_STRATEGIES == ["simple"]
+    assert VALID_PURCHASE_STRATEGIES == ["follow_aws", "fixed", "dichotomy"]
 
 
 def test_valid_report_formats_constant():
     """Test that VALID_REPORT_FORMATS contains expected values."""
-    assert VALID_REPORT_FORMATS == ["html", "json"]
+    assert VALID_REPORT_FORMATS == ["html", "json", "csv"]
+
+
+def test_valid_granularities_constant():
+    """Test that VALID_GRANULARITIES contains expected values."""
+    assert VALID_GRANULARITIES == ["HOURLY", "DAILY"]

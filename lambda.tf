@@ -39,6 +39,7 @@ resource "aws_lambda_function" "scheduler" {
       MIN_PURCHASE_PERCENT        = tostring(local.min_purchase_percent)
       RENEWAL_WINDOW_DAYS         = tostring(local.renewal_window_days)
       LOOKBACK_DAYS               = tostring(local.lookback_days)
+      GRANULARITY                 = local.granularity
       MIN_COMMITMENT_PER_PLAN     = tostring(local.min_commitment_per_plan)
       COMPUTE_SP_TERM             = local.compute_term
       COMPUTE_SP_PAYMENT_OPTION   = local.compute_payment_option

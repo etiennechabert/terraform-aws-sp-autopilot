@@ -247,6 +247,7 @@ class SpendingAnalyzer:
         Args:
             config: Configuration dictionary containing:
                 - lookback_days: Days to look back for coverage data (default: 7)
+                - granularity: API granularity - "HOURLY" or "DAILY" (default: "HOURLY")
                 - enable_compute_sp: Whether to fetch Compute SP data
                 - enable_database_sp: Whether to fetch Database SP data
                 - enable_sagemaker_sp: Whether to fetch SageMaker SP data
@@ -277,7 +278,8 @@ class SpendingAnalyzer:
         now = datetime.now(timezone.utc)
 
         # Step 1: Validate our service constants are complete
-        unknown_services = self._validate_service_constants(now)
+        granularity = config.get("granularity", "HOURLY")
+        unknown_services = self._validate_service_constants(now, granularity)
 
         # Step 2: Fetch coverage data from Cost Explorer
         lookback_days = config.get("lookback_days", 7)
@@ -307,18 +309,18 @@ class SpendingAnalyzer:
         """
         Fetch Savings Plans coverage data from Cost Explorer.
 
-        Always uses HOURLY granularity since Savings Plans are priced as $/hour commitments.
-        Makes separate API calls filtered by enabled service groups only.
-        Avoids AWS API 500-item limit by filtering per SP type.
+        Supports both HOURLY and DAILY granularity. HOURLY provides better accuracy for
+        purchase calculations since Savings Plans are priced as $/hour commitments, but
+        DAILY can be used for accounts without hourly granularity enabled.
 
         AWS retains hourly data for ~14 days. With 1-day processing lag, we can reliably
-        get 13 days of hourly data. Service filtering keeps each call at ~312 items
-        (under the 500-item limit).
+        get 13 days of hourly data. Daily data is retained for 90+ days. Service filtering
+        keeps each call under the 500-item limit.
 
         Args:
             now: Current timestamp
-            lookback_days: Number of days to look back (max 13 for hourly data)
-            config: Configuration dictionary with enable flags
+            lookback_days: Number of days to look back (max 13 for HOURLY, 90 for DAILY)
+            config: Configuration dictionary with granularity and enable flags
 
         Returns:
             list: Coverage data items from Cost Explorer response
@@ -326,6 +328,7 @@ class SpendingAnalyzer:
         Raises:
             ClientError: If AWS API calls fail
         """
+        granularity = config.get("granularity", "HOURLY")
         end_time = now - timedelta(days=1)  # 1 day lag
         start_time = end_time - timedelta(days=lookback_days)
 
@@ -343,7 +346,7 @@ class SpendingAnalyzer:
             return []
 
         logger.info(
-            f"Fetching hourly coverage data for {lookback_days} days "
+            f"Fetching {granularity.lower()} coverage data for {lookback_days} days "
             f"using {len(service_filters)} service-filtered calls"
         )
 
@@ -356,9 +359,9 @@ class SpendingAnalyzer:
                         "Start": start_time.strftime("%Y-%m-%dT%H:%M:%SZ"),
                         "End": end_time.strftime("%Y-%m-%dT%H:%M:%SZ"),
                     },
-                    "Granularity": "HOURLY",
+                    "Granularity": granularity,
                     "Filter": {"Dimensions": {"Key": "SERVICE", "Values": service_list}},
-                    # No GroupBy - AWS aggregates across filtered services per hour
+                    # No GroupBy - AWS aggregates across filtered services per time period
                 }
 
                 response = self.ce_client.get_savings_plans_coverage(**params)
@@ -389,17 +392,17 @@ class SpendingAnalyzer:
             raise
 
         if not all_coverages:
-            logger.warning("No hourly coverage data available from Cost Explorer")
+            logger.warning(f"No {granularity.lower()} coverage data available from Cost Explorer")
             return []
 
         logger.info(
-            f"Fetched {len(all_coverages)} total hourly coverage data points "
+            f"Fetched {len(all_coverages)} total {granularity.lower()} coverage data points "
             f"from {len(service_filters)} service-filtered calls"
         )
 
         return all_coverages
 
-    def _validate_service_constants(self, now: datetime) -> set[str]:
+    def _validate_service_constants(self, now: datetime, granularity: str = "HOURLY") -> set[str]:
         """
         Validate that our service constants include all AWS services with SP coverage.
 
@@ -412,6 +415,7 @@ class SpendingAnalyzer:
 
         Args:
             now: Current timestamp
+            granularity: API granularity - "HOURLY" or "DAILY" (default: "HOURLY")
 
         Returns:
             set: Unknown services found (empty if all services are known)
@@ -430,7 +434,7 @@ class SpendingAnalyzer:
                     "Start": start_time.strftime("%Y-%m-%dT%H:%M:%SZ"),
                     "End": end_time.strftime("%Y-%m-%dT%H:%M:%SZ"),
                 },
-                "Granularity": "HOURLY",
+                "Granularity": granularity,
                 "GroupBy": [{"Type": "DIMENSION", "Key": "SERVICE"}],
             }
 
