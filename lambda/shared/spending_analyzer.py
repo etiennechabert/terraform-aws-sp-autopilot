@@ -352,12 +352,17 @@ class SpendingAnalyzer:
 
         all_coverages = []
 
+        # Format dates based on granularity
+        # HOURLY requires ISO 8601 (yyyy-MM-ddTHH:mm:ssZ)
+        # DAILY requires date only (yyyy-MM-dd)
+        date_format = "%Y-%m-%d" if granularity == "DAILY" else "%Y-%m-%dT%H:%M:%SZ"
+
         try:
             for sp_type, service_list in service_filters:
                 params = {
                     "TimePeriod": {
-                        "Start": start_time.strftime("%Y-%m-%dT%H:%M:%SZ"),
-                        "End": end_time.strftime("%Y-%m-%dT%H:%M:%SZ"),
+                        "Start": start_time.strftime(date_format),
+                        "End": end_time.strftime(date_format),
                     },
                     "Granularity": granularity,
                     "Filter": {"Dimensions": {"Key": "SERVICE", "Values": service_list}},
