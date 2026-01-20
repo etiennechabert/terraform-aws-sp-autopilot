@@ -59,9 +59,7 @@ def test_calculate_purchase_need_compute_gap(mock_config):
             "LookbackPeriodInDays": "13",
         },
         "SavingsPlansPurchaseRecommendation": {
-            "SavingsPlansPurchaseRecommendationDetails": [
-                {"HourlyCommitmentToPurchase": "5.50"}
-            ]
+            "SavingsPlansPurchaseRecommendationDetails": [{"HourlyCommitmentToPurchase": "5.50"}]
         },
     }
 
@@ -93,9 +91,7 @@ def test_calculate_purchase_need_database_gap(mock_config):
             "LookbackPeriodInDays": "13",
         },
         "SavingsPlansPurchaseRecommendation": {
-            "SavingsPlansPurchaseRecommendationDetails": [
-                {"HourlyCommitmentToPurchase": "2.75"}
-            ]
+            "SavingsPlansPurchaseRecommendationDetails": [{"HourlyCommitmentToPurchase": "2.75"}]
         },
     }
 
@@ -127,9 +123,7 @@ def test_calculate_purchase_need_sagemaker_gap(mock_config):
             "LookbackPeriodInDays": "13",
         },
         "SavingsPlansPurchaseRecommendation": {
-            "SavingsPlansPurchaseRecommendationDetails": [
-                {"HourlyCommitmentToPurchase": "3.25"}
-            ]
+            "SavingsPlansPurchaseRecommendationDetails": [{"HourlyCommitmentToPurchase": "3.25"}]
         },
     }
 
@@ -155,6 +149,7 @@ def test_calculate_purchase_need_multiple_gaps(mock_config):
 
     # Create mock CE client that returns different results based on SP type
     mock_ce_client = Mock()
+
     def mock_recommendation(*args, **kwargs):
         sp_type = kwargs.get("SavingsPlansType")
         if sp_type == "COMPUTE_SP":
@@ -206,9 +201,7 @@ def test_calculate_purchase_need_no_gap(mock_config):
     mock_ce_client = Mock()
     mock_ce_client.get_savings_plans_purchase_recommendation.return_value = {
         "Metadata": {"RecommendationId": "rec-123", "LookbackPeriodInDays": "13"},
-        "SavingsPlansPurchaseRecommendation": {
-            "SavingsPlansPurchaseRecommendationDetails": []
-        },
+        "SavingsPlansPurchaseRecommendation": {"SavingsPlansPurchaseRecommendationDetails": []},
     }
 
     clients = {"ce": mock_ce_client}
@@ -227,9 +220,7 @@ def test_calculate_purchase_need_gap_but_no_recommendation(mock_config):
     mock_ce_client = Mock()
     mock_ce_client.get_savings_plans_purchase_recommendation.return_value = {
         "Metadata": {"RecommendationId": "rec-123", "LookbackPeriodInDays": "13"},
-        "SavingsPlansPurchaseRecommendation": {
-            "SavingsPlansPurchaseRecommendationDetails": []
-        },
+        "SavingsPlansPurchaseRecommendation": {"SavingsPlansPurchaseRecommendationDetails": []},
     }
 
     clients = {"ce": mock_ce_client}
@@ -249,9 +240,7 @@ def test_calculate_purchase_need_zero_commitment(mock_config):
     mock_ce_client.get_savings_plans_purchase_recommendation.return_value = {
         "Metadata": {"RecommendationId": "rec-12345", "LookbackPeriodInDays": "13"},
         "SavingsPlansPurchaseRecommendation": {
-            "SavingsPlansPurchaseRecommendationDetails": [
-                {"HourlyCommitmentToPurchase": "0"}
-            ]
+            "SavingsPlansPurchaseRecommendationDetails": [{"HourlyCommitmentToPurchase": "0"}]
         },
     }
 

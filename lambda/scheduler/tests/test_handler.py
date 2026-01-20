@@ -111,11 +111,8 @@ def test_calculate_current_coverage_filters_expiring_plans(mock_env_vars):
         "SavingsPlansCoverages": [
             {
                 "TimePeriod": {"Start": "2026-01-12T00:00:00Z", "End": "2026-01-13T00:00:00Z"},
-                "Coverage": {
-                    "SpendCoveredBySavingsPlans": "10.5",
-                    "TotalCost": "14.0"
-                },
-                "Attributes": {"SERVICE": "Amazon Elastic Compute Cloud - Compute"}
+                "Coverage": {"SpendCoveredBySavingsPlans": "10.5", "TotalCost": "14.0"},
+                "Attributes": {"SERVICE": "Amazon Elastic Compute Cloud - Compute"},
             }
         ]
     }
@@ -153,11 +150,8 @@ def test_calculate_current_coverage_keeps_valid_plans(mock_env_vars):
         "SavingsPlansCoverages": [
             {
                 "TimePeriod": {"Start": "2026-01-12T00:00:00Z", "End": "2026-01-13T00:00:00Z"},
-                "Coverage": {
-                    "SpendCoveredBySavingsPlans": "17.0",
-                    "TotalCost": "20.0"
-                },
-                "Attributes": {"SERVICE": "Amazon Elastic Compute Cloud - Compute"}
+                "Coverage": {"SpendCoveredBySavingsPlans": "17.0", "TotalCost": "20.0"},
+                "Attributes": {"SERVICE": "Amazon Elastic Compute Cloud - Compute"},
             }
         ]
     }
@@ -749,7 +743,6 @@ def test_get_aws_recommendations_parallel_no_tasks(monkeypatch, mock_clients):
 # ============================================================================
 
 
-
 # ============================================================================
 # Purchase Limits Tests
 # ============================================================================
@@ -877,12 +870,14 @@ def test_handler_dry_run_mode(mock_env_vars):
         mock_boto3_client.return_value = MagicMock()
 
         # Mock purchase_need to return a purchase plan
-        mock_purchase.return_value = [{
-            "sp_type": "compute",
-            "hourly_commitment": 1.0,
-            "payment_option": "ALL_UPFRONT",
-            "recommendation_id": "rec-123",
-        }]
+        mock_purchase.return_value = [
+            {
+                "sp_type": "compute",
+                "hourly_commitment": 1.0,
+                "payment_option": "ALL_UPFRONT",
+                "recommendation_id": "rec-123",
+            }
+        ]
 
         result = handler.handler({}, None)
 
@@ -918,12 +913,14 @@ def test_handler_production_mode(mock_env_vars, monkeypatch):
         mock_boto3_client.return_value = MagicMock()
 
         # Mock purchase_need to return a purchase plan
-        mock_purchase.return_value = [{
-            "sp_type": "compute",
-            "hourly_commitment": 1.0,
-            "payment_option": "ALL_UPFRONT",
-            "recommendation_id": "rec-123",
-        }]
+        mock_purchase.return_value = [
+            {
+                "sp_type": "compute",
+                "hourly_commitment": 1.0,
+                "payment_option": "ALL_UPFRONT",
+                "recommendation_id": "rec-123",
+            }
+        ]
 
         result = handler.handler({}, None)
 
