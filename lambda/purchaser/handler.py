@@ -175,12 +175,7 @@ def load_configuration() -> dict[str, Any]:
         },
     }
 
-    config = handler_utils.load_config_from_env(schema)
-
-    # Validate configuration
-    validate_purchaser_config(config)
-
-    return config
+    return handler_utils.load_config_from_env(schema, validator=validate_purchaser_config)
 
 
 def receive_messages(

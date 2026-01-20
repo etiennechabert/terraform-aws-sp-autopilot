@@ -136,6 +136,13 @@ def validate_scheduler_config(config: dict[str, Any]) -> None:
                 f"Field 'lookback_days' must be an integer, "
                 f"got {type(config['lookback_days']).__name__}: {config['lookback_days']}"
             )
+        if config["lookback_days"] > 13:
+            raise ValueError(
+                f"Field 'lookback_days' must be 13 or less. "
+                f"AWS Cost Explorer retains hourly data for ~14 days. With 1-day processing lag, "
+                f"13 days is the maximum reliable lookback period. "
+                f"Got {config['lookback_days']}"
+            )
 
     if "min_data_days" in config:
         _validate_positive_number(config["min_data_days"], "min_data_days")

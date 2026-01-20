@@ -12,19 +12,121 @@
                 "PYTHONPATH": "${workspaceFolder}/lambda:${workspaceFolder}",
                 "AWS_REGION": "us-east-1",
                 "AWS_DEFAULT_REGION": "us-east-1",
+                // Logging
+                "LOG_LEVEL": "INFO",
+                "BOTO_DEBUG": "false",
                 // Required environment variables
                 "QUEUE_URL": "https://sqs.us-east-1.amazonaws.com/123456789012/test-queue",
                 "SNS_TOPIC_ARN": "arn:aws:sns:us-east-1:123456789012:test-topic",
                 "DRY_RUN": "true",
                 "ENABLE_COMPUTE_SP": "true",
-                "ENABLE_SAGEMAKER_SP": "false",
+                "ENABLE_SAGEMAKER_SP": "true",
                 "COVERAGE_TARGET_PERCENT": "90",
-                "MAX_COVERAGE_CAP": "95",
-                "PURCHASE_STRATEGY_TYPE": "simple",
-                "SIMPLE_MAX_PURCHASE_PERCENT": "10",
-                "COMPUTE_SP_TERM_MIX_THREE_YEAR": "0.3",
-                "COMPUTE_SP_TERM_MIX_ONE_YEAR": "0.7",
+                "PURCHASE_STRATEGY_TYPE": "fixed",
+                "MAX_PURCHASE_PERCENT": "10",
+                "MIN_PURCHASE_PERCENT": "1",
+                "COMPUTE_SP_TERM": "THREE_YEAR",
                 "RENEWAL_WINDOW_DAYS": "7",
+                "LOOKBACK_DAYS": "13",
+                "MIN_COMMITMENT_PER_PLAN": "0",
+                "COMPUTE_SP_PAYMENT_OPTION": "NO_UPFRONT"
+            },
+            "console": "integratedTerminal",
+            "cwd": "${workspaceFolder}/lambda/scheduler"
+        },
+        {
+            "name": "Scheduler - Fixed Strategy",
+            "type": "debugpy",
+            "request": "launch",
+            "module": "lambda.scheduler.handler",
+            "envFile": "${workspaceFolder}/.env",
+            "justMyCode": false,
+            "env": {
+                "PYTHONPATH": "${workspaceFolder}/lambda:${workspaceFolder}",
+                "AWS_REGION": "us-east-1",
+                "AWS_DEFAULT_REGION": "us-east-1",
+                // Logging
+                "LOG_LEVEL": "INFO",
+                "BOTO_DEBUG": "false",
+                // Required environment variables
+                "QUEUE_URL": "https://sqs.us-east-1.amazonaws.com/123456789012/test-queue",
+                "SNS_TOPIC_ARN": "arn:aws:sns:us-east-1:123456789012:test-topic",
+                "DRY_RUN": "true",
+                "ENABLE_COMPUTE_SP": "true",
+                "ENABLE_SAGEMAKER_SP": "true",
+                "COVERAGE_TARGET_PERCENT": "90",
+                // Fixed Strategy
+                "PURCHASE_STRATEGY_TYPE": "fixed",
+                "MAX_PURCHASE_PERCENT": "10",
+                "MIN_PURCHASE_PERCENT": "1",
+                "COMPUTE_SP_TERM": "THREE_YEAR",
+                "RENEWAL_WINDOW_DAYS": "7",
+                "LOOKBACK_DAYS": "13",
+                "MIN_COMMITMENT_PER_PLAN": "0",
+                "COMPUTE_SP_PAYMENT_OPTION": "NO_UPFRONT"
+            },
+            "console": "integratedTerminal",
+            "cwd": "${workspaceFolder}/lambda/scheduler"
+        },
+        {
+            "name": "Scheduler - Dichotomy Strategy",
+            "type": "debugpy",
+            "request": "launch",
+            "module": "lambda.scheduler.handler",
+            "envFile": "${workspaceFolder}/.env",
+            "justMyCode": false,
+            "env": {
+                "PYTHONPATH": "${workspaceFolder}/lambda:${workspaceFolder}",
+                "AWS_REGION": "us-east-1",
+                "AWS_DEFAULT_REGION": "us-east-1",
+                // Logging
+                "LOG_LEVEL": "INFO",
+                "BOTO_DEBUG": "false",
+                // Required environment variables
+                "QUEUE_URL": "https://sqs.us-east-1.amazonaws.com/123456789012/test-queue",
+                "SNS_TOPIC_ARN": "arn:aws:sns:us-east-1:123456789012:test-topic",
+                "DRY_RUN": "true",
+                "ENABLE_COMPUTE_SP": "true",
+                "ENABLE_SAGEMAKER_SP": "true",
+                "COVERAGE_TARGET_PERCENT": "90",
+                // Dichotomy Strategy
+                "PURCHASE_STRATEGY_TYPE": "dichotomy",
+                "DICHOTOMY_INITIAL_PERCENT": "50",
+                "COMPUTE_SP_TERM": "THREE_YEAR",
+                "RENEWAL_WINDOW_DAYS": "7",
+                "LOOKBACK_DAYS": "13",
+                "MIN_COMMITMENT_PER_PLAN": "0",
+                "COMPUTE_SP_PAYMENT_OPTION": "NO_UPFRONT"
+            },
+            "console": "integratedTerminal",
+            "cwd": "${workspaceFolder}/lambda/scheduler"
+        },
+        {
+            "name": "Scheduler - Follow AWS Strategy",
+            "type": "debugpy",
+            "request": "launch",
+            "module": "lambda.scheduler.handler",
+            "envFile": "${workspaceFolder}/.env",
+            "justMyCode": false,
+            "env": {
+                "PYTHONPATH": "${workspaceFolder}/lambda:${workspaceFolder}",
+                "AWS_REGION": "us-east-1",
+                "AWS_DEFAULT_REGION": "us-east-1",
+                // Logging
+                "LOG_LEVEL": "INFO",
+                "BOTO_DEBUG": "false",
+                // Required environment variables
+                "QUEUE_URL": "https://sqs.us-east-1.amazonaws.com/123456789012/test-queue",
+                "SNS_TOPIC_ARN": "arn:aws:sns:us-east-1:123456789012:test-topic",
+                "DRY_RUN": "true",
+                "ENABLE_COMPUTE_SP": "true",
+                "ENABLE_SAGEMAKER_SP": "true",
+                "COVERAGE_TARGET_PERCENT": "90",
+                // Follow AWS Strategy
+                "PURCHASE_STRATEGY_TYPE": "follow_aws",
+                "COMPUTE_SP_TERM": "THREE_YEAR",
+                "RENEWAL_WINDOW_DAYS": "7",
+                "LOOKBACK_DAYS": "13",
                 "MIN_COMMITMENT_PER_PLAN": "0",
                 "COMPUTE_SP_PAYMENT_OPTION": "NO_UPFRONT"
             },
@@ -42,11 +144,13 @@
                 "PYTHONPATH": "${workspaceFolder}",
                 "AWS_REGION": "us-east-1",
                 "AWS_DEFAULT_REGION": "us-east-1",
+                // Logging
+                "LOG_LEVEL": "INFO",
+                "BOTO_DEBUG": "false",
                 // Required environment variables
                 "QUEUE_URL": "https://sqs.us-east-1.amazonaws.com/123456789012/test-queue",
                 "SNS_TOPIC_ARN": "arn:aws:sns:us-east-1:123456789012:test-topic",
-                "DRY_RUN": "true",
-                "MAX_COVERAGE_CAP": "95"
+                "DRY_RUN": "true"
             },
             "console": "integratedTerminal",
             "cwd": "${workspaceFolder}/lambda/purchaser"
@@ -62,6 +166,9 @@
                 "PYTHONPATH": "${workspaceFolder}",
                 "AWS_REGION": "us-east-1",
                 "AWS_DEFAULT_REGION": "us-east-1",
+                // Logging
+                "LOG_LEVEL": "INFO",
+                "BOTO_DEBUG": "false",
                 // Required environment variables
                 "REPORTS_BUCKET": "test-reports-bucket",
                 "SNS_TOPIC_ARN": "arn:aws:sns:us-east-1:123456789012:test-topic",
@@ -85,7 +192,10 @@
             "env": {
                 "PYTHONPATH": "${workspaceFolder}",
                 "AWS_REGION": "us-east-1",
-                "AWS_DEFAULT_REGION": "us-east-1"
+                "AWS_DEFAULT_REGION": "us-east-1",
+                // Logging
+                "LOG_LEVEL": "INFO",
+                "BOTO_DEBUG": "false"
             },
             "console": "integratedTerminal",
             "cwd": "${workspaceFolder}"
@@ -104,7 +214,9 @@
             "justMyCode": false,
             "env": {
                 "PYTHONPATH": "${workspaceFolder}",
-                "AWS_REGION": "us-east-1"
+                "AWS_REGION": "us-east-1",
+                "LOG_LEVEL": "INFO",
+                "BOTO_DEBUG": "false"
             },
             "console": "integratedTerminal",
             "cwd": "${workspaceFolder}/lambda/scheduler"
@@ -123,7 +235,9 @@
             "justMyCode": false,
             "env": {
                 "PYTHONPATH": "${workspaceFolder}",
-                "AWS_REGION": "us-east-1"
+                "AWS_REGION": "us-east-1",
+                "LOG_LEVEL": "INFO",
+                "BOTO_DEBUG": "false"
             },
             "console": "integratedTerminal",
             "cwd": "${workspaceFolder}/lambda/purchaser"
@@ -142,7 +256,9 @@
             "justMyCode": false,
             "env": {
                 "PYTHONPATH": "${workspaceFolder}",
-                "AWS_REGION": "us-east-1"
+                "AWS_REGION": "us-east-1",
+                "LOG_LEVEL": "INFO",
+                "BOTO_DEBUG": "false"
             },
             "console": "integratedTerminal",
             "cwd": "${workspaceFolder}/lambda/reporter"
@@ -161,7 +277,9 @@
             "justMyCode": false,
             "env": {
                 "PYTHONPATH": "${workspaceFolder}",
-                "AWS_REGION": "us-east-1"
+                "AWS_REGION": "us-east-1",
+                "LOG_LEVEL": "INFO",
+                "BOTO_DEBUG": "false"
             },
             "console": "integratedTerminal",
             "cwd": "${workspaceFolder}/lambda/shared"

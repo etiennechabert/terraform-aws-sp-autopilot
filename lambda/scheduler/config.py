@@ -72,13 +72,13 @@ CONFIG_SCHEMA = {
     "lookback_days": {
         "required": False,
         "type": "int",
-        "default": "30",
+        "default": "13",
         "env_var": "LOOKBACK_DAYS",
     },
     "min_data_days": {
         "required": False,
         "type": "int",
-        "default": "14",
+        "default": "7",
         "env_var": "MIN_DATA_DAYS",
     },
     "min_commitment_per_plan": {

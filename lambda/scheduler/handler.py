@@ -31,7 +31,6 @@ import email_notifications as email_module
 import purchase_calculator as purchase_module
 import queue_manager as queue_module
 import recommendations as recommendations_module
-import sp_coverage as coverage_module
 from config import CONFIG_SCHEMA
 
 from shared.config_validation import validate_scheduler_config
@@ -41,6 +40,7 @@ from shared.handler_utils import (
     load_config_from_env,
     send_error_notification,
 )
+from shared.spending_analyzer import SpendingAnalyzer
 
 
 # Configure logging
@@ -106,9 +106,12 @@ def load_configuration() -> dict[str, Any]:
 
 def calculate_current_coverage(config: dict[str, Any]) -> dict[str, float]:
     """Calculate current coverage - backward compatible wrapper."""
-    return coverage_module.calculate_current_coverage(
-        _ensure_savingsplans_client(), _ensure_ce_client(), config
-    )
+    analyzer = SpendingAnalyzer(_ensure_savingsplans_client(), _ensure_ce_client())
+    spending_data = analyzer.analyze_current_spending(config)
+    return {
+        sp_type: data["summary"]["avg_coverage"]
+        for sp_type, data in spending_data.items()
+    }
 
 
 def get_aws_recommendations(config: dict[str, Any]) -> dict[str, Any]:
@@ -203,111 +206,64 @@ def send_error_email(error_msg: str, sns_topic_arn: str = None) -> None:
 @lambda_handler_wrapper("Scheduler")
 def handler(event: dict[str, Any], context: Any) -> dict[str, Any]:
     """
-    Main handler for Scheduler Lambda.
+    Scheduler Lambda - Analyzes usage and queues Savings Plan purchase intents.
 
-    Args:
-        event: EventBridge scheduled event
-        context: Lambda context
-
-    Returns:
-        dict: Status and summary of analysis
-
-    Raises:
-        Exception: All errors are raised (no silent failures)
+    Flow:
+    1. Load and validate configuration
+    2. Initialize AWS clients
+    3. Purge existing queue
+    4. Analyze current coverage
+    5. Get AWS recommendations
+    6. Calculate purchases using strategy
+    7. Queue purchases or send dry-run notification
     """
-    try:
-        # Load configuration from environment
-        config = load_config_from_env(CONFIG_SCHEMA)
+    config = load_config_from_env(CONFIG_SCHEMA, validator=validate_scheduler_config)
 
-        # Validate configuration
-        validate_scheduler_config(config)
+    clients = initialize_clients(
+        config,
+        "sp-autopilot-scheduler",
+        lambda msg: _send_error_notification(config["sns_topic_arn"], msg)
+    )
 
-        # Create error callback function
-        def send_error_email(error_msg: str) -> None:
-            """Send error notification using shared utility."""
-            # Get SNS client directly (before full client initialization)
-            import boto3
+    queue_module.purge_queue(clients["sqs"], config["queue_url"])
 
-            sns = boto3.client("sns")
-            send_error_notification(
-                sns_client=sns,
-                sns_topic_arn=config["sns_topic_arn"],
-                error_message=error_msg,
-                lambda_name="Scheduler",
-            )
+    analyzer = SpendingAnalyzer(clients["savingsplans"], clients["ce"])
+    spending_data = analyzer.analyze_current_spending(config)
 
-        # Initialize clients (with assume role if configured)
-        clients = initialize_clients(config, "sp-autopilot-scheduler", send_error_email)
-        ce_client = clients["ce"]
-        savingsplans_client = clients["savingsplans"]
-        sqs_client = clients["sqs"]
-        sns_client = clients["sns"]
+    purchase_plans = purchase_module.calculate_purchase_need(config, clients, spending_data)
+    purchase_plans = purchase_module.apply_purchase_limits(config, purchase_plans)
 
-        logger.info(f"Configuration loaded: dry_run={config['dry_run']}")
+    # Extract coverage percentages for email notifications
+    coverage = {
+        sp_type: data["summary"]["avg_coverage"]
+        for sp_type, data in spending_data.items()
+    }
 
-        # Step 1: Purge existing queue
-        queue_module.purge_queue(sqs_client, config["queue_url"])
+    if config["dry_run"]:
+        email_module.send_dry_run_email(clients["sns"], config, purchase_plans, coverage)
+    else:
+        queue_module.queue_purchase_intents(clients["sqs"], config, purchase_plans)
+        email_module.send_scheduled_email(clients["sns"], config, purchase_plans, coverage)
 
-        # Step 2: Calculate current coverage
-        logger.info("Calculating current coverage...")
-        coverage = coverage_module.calculate_current_coverage(
-            savingsplans_client, ce_client, config
-        )
-        logger.info(
-            f"Current coverage - Compute: {coverage.get('compute', 0)}%, "
-            f"Database: {coverage.get('database', 0)}%, "
-            f"SageMaker: {coverage.get('sagemaker', 0)}%"
-        )
+    return {
+        "statusCode": 200,
+        "body": json.dumps({
+            "message": "Scheduler completed successfully",
+            "dry_run": config["dry_run"],
+            "purchases_planned": len(purchase_plans),
+        }),
+    }
 
-        # Step 3: Get AWS recommendations
-        logger.info("Fetching AWS purchase recommendations...")
-        recommendations = recommendations_module.get_aws_recommendations(ce_client, config)
-        logger.info(f"Recommendations received for {len(recommendations)} SP types")
 
-        # Step 4: Calculate purchase need
-        logger.info("Calculating purchase need using strategy...")
-        purchase_plans = purchase_module.calculate_purchase_need(config, coverage, recommendations)
-
-        # Step 5: Apply purchase limits
-        logger.info("Applying purchase limits...")
-        purchase_plans = purchase_module.apply_purchase_limits(config, purchase_plans)
-
-        # Step 6: Queue or notify
-        if config["dry_run"]:
-            logger.info("Dry run mode - sending email only, NOT queuing messages")
-            email_module.send_dry_run_email(sns_client, config, purchase_plans, coverage)
-        else:
-            logger.info("Queuing purchase intents to SQS")
-            queue_module.queue_purchase_intents(sqs_client, config, purchase_plans)
-            email_module.send_scheduled_email(sns_client, config, purchase_plans, coverage)
-
-        return {
-            "statusCode": 200,
-            "body": json.dumps(
-                {
-                    "message": "Scheduler completed successfully",
-                    "dry_run": config["dry_run"],
-                    "purchases_planned": len(purchase_plans),
-                }
-            ),
-        }
-
-    except Exception as e:
-        # Try to send error notification
-        try:
-            config = load_config_from_env(CONFIG_SCHEMA)
-            import boto3
-
-            sns = boto3.client("sns")
-            send_error_notification(
-                sns_client=sns,
-                sns_topic_arn=config["sns_topic_arn"],
-                error_message=str(e),
-                lambda_name="Scheduler",
-            )
-        except Exception as notification_error:
-            logger.warning(f"Failed to send error notification: {notification_error}")
-        raise  # Re-raise to ensure Lambda fails visibly
+def _send_error_notification(sns_topic_arn: str, error_msg: str) -> None:
+    """Send error notification via SNS."""
+    import boto3
+    send_error_notification(
+        sns_client=boto3.client("sns"),
+        sns_topic_arn=sns_topic_arn,
+        error_message=error_msg,
+        lambda_name="Scheduler",
+    )
 
 
 if __name__ == "__main__":
