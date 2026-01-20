@@ -47,7 +47,7 @@ variable "purchase_strategy" {
     max_coverage_cap        = number
 
     # Historical data settings
-    lookback_days = optional(number, 30)
+    lookback_days = optional(number, 13)
     min_data_days = optional(number, 14)
 
     # Renewal and commitment settings
