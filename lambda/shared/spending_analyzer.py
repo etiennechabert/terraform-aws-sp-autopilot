@@ -286,11 +286,14 @@ class SpendingAnalyzer:
         # Step 1: Filter out plans expiring within renewal window
         valid_plan_ids = self._filter_active_plans(now, config["renewal_window_days"])
 
-        # Step 2: Fetch coverage data from Cost Explorer
+        # Step 2: Validate our service constants are complete
+        self._validate_service_constants(now)
+
+        # Step 3: Fetch coverage data from Cost Explorer
         lookback_days = config.get("lookback_days", 7)
         coverage_data = self._fetch_coverage_data(now, lookback_days)
 
-        # Step 3: Group coverage by SP type with time series
+        # Step 4: Group coverage by SP type with time series
         sp_type_data = group_coverage_by_sp_type(coverage_data)
 
         logger.info(
@@ -482,4 +485,76 @@ class SpendingAnalyzer:
         )
 
         return all_coverages
+
+    def _validate_service_constants(self, now: datetime) -> None:
+        """
+        Validate that our service constants include all AWS services with SP coverage.
+
+        Makes a single-day GROUP BY SERVICE call to discover all services with coverage data,
+        then compares against our predefined service constants. This helps detect when AWS
+        adds new services that support Savings Plans.
+
+        Uses 1-day period to stay well under the 500-item limit while still discovering
+        all active services.
+
+        Args:
+            now: Current timestamp
+
+        Raises:
+            ValueError: If unknown services are discovered with helpful error message
+            ClientError: If AWS API call fails
+        """
+        end_time = now - timedelta(days=1)
+        start_time = end_time - timedelta(days=1)  # 1 day only
+
+        logger.debug("Validating service constants against AWS API (1-day GROUP BY SERVICE call)")
+
+        try:
+            params = {
+                "TimePeriod": {
+                    "Start": start_time.strftime("%Y-%m-%dT%H:%M:%SZ"),
+                    "End": end_time.strftime("%Y-%m-%dT%H:%M:%SZ"),
+                },
+                "Granularity": "HOURLY",
+                "GroupBy": [{"Type": "DIMENSION", "Key": "SERVICE"}],
+            }
+
+            response = self.ce_client.get_savings_plans_coverage(**params)
+            coverages = response.get("SavingsPlansCoverages", [])
+
+            # Collect all unique services from the response
+            discovered_services = set()
+            for item in coverages:
+                service = item.get("Attributes", {}).get("SERVICE")
+                if service:
+                    discovered_services.add(service)
+
+            # Check against our known services
+            all_known_services = set(COMPUTE_SP_SERVICES + DATABASE_SP_SERVICES + SAGEMAKER_SP_SERVICES)
+            unknown_services = discovered_services - all_known_services
+
+            if unknown_services:
+                logger.error(
+                    f"Discovered {len(unknown_services)} unknown service(s) with Savings Plans coverage: "
+                    f"{sorted(unknown_services)}"
+                )
+                raise ValueError(
+                    f"Found {len(unknown_services)} service(s) with Savings Plans coverage that are not in our constants:\n"
+                    f"{', '.join(sorted(unknown_services))}\n\n"
+                    f"This likely means AWS added new services that support Savings Plans.\n"
+                    f"Please open an issue at: https://github.com/etiennechabert/terraform-aws-sp-autopilot/issues\n"
+                    f"Include this error message so we can update the service constants."
+                )
+
+            logger.debug(
+                f"Service validation successful: {len(discovered_services)} services matched, "
+                f"{len(all_known_services)} total known services"
+            )
+
+        except ClientError as e:
+            error_code = e.response.get("Error", {}).get("Code", "Unknown")
+            if error_code == "DataUnavailableException":
+                logger.debug("No coverage data available for validation (new account or no usage)")
+                return
+            raise
 
