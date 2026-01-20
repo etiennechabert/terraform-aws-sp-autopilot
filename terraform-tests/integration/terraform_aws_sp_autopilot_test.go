@@ -56,6 +56,7 @@ func TestFullDeploymentAndCleanup(t *testing.T) {
 			"purchase_strategy": map[string]interface{}{
 				"coverage_target_percent": 80,
 				"max_coverage_cap":        95,
+			"granularity":             "DAILY", // Use DAILY for test compatibility
 				"fixed": map[string]interface{}{
 					"max_purchase_percent": 15,
 				},
