@@ -638,7 +638,9 @@ The module supports two granularity modes for Cost Explorer data analysis: **HOU
 
 ### Recommended: HOURLY Granularity
 
-**Hourly granularity provides significantly better Savings Plans purchase decisions** by analyzing spending variance throughout the day. Since Savings Plans are priced in $/hour, hourly data reveals:
+**Hourly granularity provides significantly better Savings Plans purchase decisions** because **Savings Plans are purchased as an hourly commitment ($/hour)**. Analyzing data at the same granularity as the commitment ensures accurate purchase sizing.
+
+Hourly data reveals:
 - Peak vs. off-peak usage patterns
 - Workload variance and stability
 - More accurate spending percentiles (p50, p75, p90, p99)
