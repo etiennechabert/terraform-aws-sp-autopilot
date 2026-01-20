@@ -32,7 +32,7 @@ logger = logging.getLogger()
 
 # Type alias for strategy functions
 StrategyFunction = Callable[
-    [dict[str, Any], dict[str, float], dict[str, Any]], list[dict[str, Any]]
+    [dict[str, Any], dict[str, Any], dict[str, dict[str, Any]]], list[dict[str, Any]]
 ]
 
 
@@ -46,18 +46,17 @@ PURCHASE_STRATEGIES: dict[str, StrategyFunction] = {
 
 
 def calculate_purchase_need(
-    config: dict[str, Any], coverage: dict[str, float], recommendations: dict[str, Any]
+    config: dict[str, Any], clients: dict[str, Any], spending_data: dict[str, dict[str, Any]]
 ) -> list[dict[str, Any]]:
     """
     Calculate required purchases to reach target coverage using configured strategy.
 
     This function acts as a dispatcher to the appropriate strategy implementation.
-    Strategies are pluggable - see PURCHASE_STRATEGIES registry.
 
     Args:
         config: Configuration dictionary (must include "purchase_strategy_type")
-        coverage: Current coverage by SP type
-        recommendations: AWS recommendations
+        clients: Dictionary of AWS clients (ce, savingsplans, etc.)
+        spending_data: Full spending analysis from SpendingAnalyzer with time series and summary
 
     Returns:
         list: Purchase plans to execute
@@ -80,7 +79,7 @@ def calculate_purchase_need(
         )
 
     # Call strategy function
-    return strategy_func(config, coverage, recommendations)
+    return strategy_func(config, clients, spending_data)
 
 
 def apply_purchase_limits(

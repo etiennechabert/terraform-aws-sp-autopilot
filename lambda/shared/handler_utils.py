@@ -49,11 +49,21 @@ def configure_logging() -> None:
         for h in root.handlers:
             h.setLevel(level)
 
+    # Suppress verbose botocore/boto3 debug logging unless BOTO_DEBUG=true
+    boto_debug = os.getenv("BOTO_DEBUG", "false").lower() == "true"
+    if not boto_debug:
+        logging.getLogger("botocore").setLevel(logging.INFO)
+        logging.getLogger("boto3").setLevel(logging.INFO)
+        logging.getLogger("urllib3").setLevel(logging.INFO)
+
 
 configure_logging()
 
 
-def load_config_from_env(schema: dict[str, dict[str, Any]]) -> dict[str, Any]:
+def load_config_from_env(
+    schema: dict[str, dict[str, Any]],
+    validator: Callable[[dict[str, Any]], None] | None = None,
+) -> dict[str, Any]:
     """
     Load and validate configuration from environment variables based on a schema.
 
@@ -68,13 +78,14 @@ def load_config_from_env(schema: dict[str, dict[str, Any]]) -> dict[str, Any]:
                 - 'type' (str): Data type - 'str', 'bool', 'int', 'float', 'json'
                 - 'default' (Any): Default value if not required and not present
                 - 'env_var' (str): Environment variable name (defaults to uppercase field name)
+        validator: Optional validator function that takes config dict and raises on invalid config
 
     Returns:
         dict: Configuration dictionary with validated and type-converted values
 
     Raises:
         KeyError: If a required environment variable is missing
-        ValueError: If type conversion fails
+        ValueError: If type conversion or validation fails
         json.JSONDecodeError: If JSON parsing fails
 
     Examples:
@@ -87,6 +98,9 @@ def load_config_from_env(schema: dict[str, dict[str, Any]]) -> dict[str, Any]:
         ... }
         >>> config = load_config_from_env(schema)
         >>> # Returns: {'queue_url': '...', 'dry_run': True, 'max_purchase_percent': 10.0, 'tags': {}}
+
+        >>> # With validator
+        >>> config = load_config_from_env(schema, validator=validate_scheduler_config)
 
     Type Conversion Rules:
         - 'str': No conversion, returned as-is
@@ -153,6 +167,9 @@ def load_config_from_env(schema: dict[str, dict[str, Any]]) -> dict[str, Any]:
                 e.doc,
                 e.pos,
             ) from e
+
+    if validator:
+        validator(config)
 
     return config
 

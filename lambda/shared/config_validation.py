@@ -84,7 +84,7 @@ def validate_scheduler_config(config: dict[str, Any]) -> None:
     - Term values are valid (ONE_YEAR or THREE_YEAR)
     - Payment options are valid
     - Purchase strategy type is valid
-    - Logical constraints (min < max, lookback >= min_data_days)
+    - Logical constraints (min < max, lookback <= 13 days)
 
     Args:
         config: Dictionary containing scheduler configuration
@@ -136,25 +136,13 @@ def validate_scheduler_config(config: dict[str, Any]) -> None:
                 f"Field 'lookback_days' must be an integer, "
                 f"got {type(config['lookback_days']).__name__}: {config['lookback_days']}"
             )
-
-    if "min_data_days" in config:
-        _validate_positive_number(config["min_data_days"], "min_data_days")
-        if not isinstance(config["min_data_days"], int):
+        if config["lookback_days"] > 13:
             raise ValueError(
-                f"Field 'min_data_days' must be an integer, "
-                f"got {type(config['min_data_days']).__name__}: {config['min_data_days']}"
+                f"Field 'lookback_days' must be 13 or less. "
+                f"AWS Cost Explorer retains hourly data for ~14 days. With 1-day processing lag, "
+                f"13 days is the maximum reliable lookback period. "
+                f"Got {config['lookback_days']}"
             )
-
-    # Validate lookback_days >= min_data_days
-    if (
-        "lookback_days" in config
-        and "min_data_days" in config
-        and config["lookback_days"] < config["min_data_days"]
-    ):
-        raise ValueError(
-            f"Field 'lookback_days' ({config['lookback_days']}) must be greater than "
-            f"or equal to 'min_data_days' ({config['min_data_days']})"
-        )
 
     # Validate min_commitment_per_plan is non-negative
     if "min_commitment_per_plan" in config:

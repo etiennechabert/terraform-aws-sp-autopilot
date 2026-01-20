@@ -25,6 +25,8 @@ Benefits:
 import logging
 from typing import Any
 
+import recommendations as recommendations_module
+
 
 # Configure logging
 logger = logging.getLogger()
@@ -97,7 +99,7 @@ def calculate_dichotomy_purchase_percent(
 
 
 def calculate_purchase_need_dichotomy(
-    config: dict[str, Any], coverage: dict[str, float], recommendations: dict[str, Any]
+    config: dict[str, Any], clients: dict[str, Any], spending_data: dict[str, dict[str, Any]]
 ) -> list[dict[str, Any]]:
     """
     Calculate required purchases using dichotomy strategy.
@@ -110,13 +112,22 @@ def calculate_purchase_need_dichotomy(
 
     Args:
         config: Configuration dictionary with strategy parameters
-        coverage: Current coverage by SP type (e.g., {"compute": 50.0, "database": 0.0})
-        recommendations: AWS recommendations by SP type
+        clients: AWS clients (ce, savingsplans, etc.)
+        spending_data: Full spending analysis with time series and summary
 
     Returns:
         list: Purchase plans to execute with calculated commitments
     """
     logger.info("Calculating purchase need using DICHOTOMY strategy")
+
+    # Extract coverage percentages from spending data
+    coverage = {
+        sp_type: data["summary"]["avg_coverage"]
+        for sp_type, data in spending_data.items()
+    }
+
+    # Fetch AWS recommendations (for now - will use PurchaseOptimizer later)
+    recommendations = recommendations_module.get_aws_recommendations(clients["ce"], config)
 
     purchase_plans = []
     target_coverage = config["coverage_target_percent"]

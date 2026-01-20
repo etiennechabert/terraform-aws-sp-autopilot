@@ -24,13 +24,15 @@ Use when:
 import logging
 from typing import Any
 
+import recommendations as recommendations_module
+
 
 # Configure logging
 logger = logging.getLogger()
 
 
 def calculate_purchase_need_follow_aws(
-    config: dict[str, Any], coverage: dict[str, float], recommendations: dict[str, Any]
+    config: dict[str, Any], clients: dict[str, Any], spending_data: dict[str, dict[str, Any]]
 ) -> list[dict[str, Any]]:
     """
     Calculate required purchases using FOLLOW_AWS strategy.
@@ -40,13 +42,22 @@ def calculate_purchase_need_follow_aws(
 
     Args:
         config: Configuration dictionary
-        coverage: Current coverage by SP type
-        recommendations: AWS recommendations
+        clients: AWS clients (ce, savingsplans, etc.)
+        spending_data: Full spending analysis with time series and summary
 
     Returns:
         list: Purchase plans to execute
     """
     logger.info("Calculating purchase need using FOLLOW_AWS strategy")
+
+    # Extract coverage percentages from spending data
+    coverage = {
+        sp_type: data["summary"]["avg_coverage"]
+        for sp_type, data in spending_data.items()
+    }
+
+    # Fetch AWS recommendations
+    recommendations = recommendations_module.get_aws_recommendations(clients["ce"], config)
 
     purchase_plans = []
     target_coverage = config["coverage_target_percent"]

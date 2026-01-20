@@ -38,6 +38,349 @@ def mock_ce_client():
 
 
 # ============================================================================
+# group_coverage_by_sp_type Tests
+# ============================================================================
+
+
+def test_group_coverage_by_sp_type_compute_services():
+    """Test grouping compute services correctly."""
+    coverage_data = [
+        {
+            "Attributes": {"SERVICE": "Amazon Elastic Compute Cloud - Compute"},
+            "Coverage": {
+                "SpendCoveredBySavingsPlans": "100",
+                "TotalCost": "150",
+                "CoveragePercentage": "66.67",
+            },
+        },
+        {
+            "Attributes": {"SERVICE": "AWS Lambda"},
+            "Coverage": {
+                "SpendCoveredBySavingsPlans": "50",
+                "TotalCost": "100",
+                "CoveragePercentage": "50.0",
+            },
+        },
+        {
+            "Attributes": {"SERVICE": "Amazon Elastic Container Service"},
+            "Coverage": {
+                "SpendCoveredBySavingsPlans": "200",
+                "TotalCost": "250",
+                "CoveragePercentage": "80.0",
+            },
+        },
+    ]
+
+    result = coverage_module.group_coverage_by_sp_type(coverage_data)
+
+    # Total compute: covered=350, total=500, coverage=70%, 3 services
+    assert result["compute"]["covered"] == 350.0
+    assert result["compute"]["total"] == 500.0
+    assert result["compute"]["coverage"] == pytest.approx(70.0, rel=0.01)
+    assert result["compute"]["count"] == 3
+    assert result["database"]["coverage"] == 0.0
+    assert result["database"]["count"] == 0
+    assert result["sagemaker"]["coverage"] == 0.0
+    assert result["sagemaker"]["count"] == 0
+
+
+def test_group_coverage_by_sp_type_database_services():
+    """Test grouping database services correctly."""
+    coverage_data = [
+        {
+            "Attributes": {"SERVICE": "Amazon Relational Database Service"},
+            "Coverage": {
+                "SpendCoveredBySavingsPlans": "80",
+                "TotalCost": "100",
+                "CoveragePercentage": "80.0",
+            },
+        },
+        {
+            "Attributes": {"SERVICE": "Amazon DynamoDB"},
+            "Coverage": {
+                "SpendCoveredBySavingsPlans": "0",
+                "TotalCost": "50",
+                "CoveragePercentage": "0.0",
+            },
+        },
+        {
+            "Attributes": {"SERVICE": "AWS Database Migration Service"},
+            "Coverage": {
+                "SpendCoveredBySavingsPlans": "10",
+                "TotalCost": "20",
+                "CoveragePercentage": "50.0",
+            },
+        },
+    ]
+
+    result = coverage_module.group_coverage_by_sp_type(coverage_data)
+
+    # Total database: covered=90, total=170, coverage=52.94%, 3 services
+    assert result["database"]["covered"] == 90.0
+    assert result["database"]["total"] == 170.0
+    assert result["database"]["coverage"] == pytest.approx(52.94, rel=0.01)
+    assert result["database"]["count"] == 3
+    assert result["compute"]["coverage"] == 0.0
+    assert result["compute"]["count"] == 0
+    assert result["sagemaker"]["coverage"] == 0.0
+    assert result["sagemaker"]["count"] == 0
+
+
+def test_group_coverage_by_sp_type_sagemaker_service():
+    """Test grouping SageMaker service correctly."""
+    coverage_data = [
+        {
+            "Attributes": {"SERVICE": "Amazon SageMaker"},
+            "Coverage": {
+                "SpendCoveredBySavingsPlans": "30",
+                "TotalCost": "100",
+                "CoveragePercentage": "30.0",
+            },
+        }
+    ]
+
+    result = coverage_module.group_coverage_by_sp_type(coverage_data)
+
+    assert result["sagemaker"]["covered"] == 30.0
+    assert result["sagemaker"]["total"] == 100.0
+    assert result["sagemaker"]["coverage"] == 30.0
+    assert result["sagemaker"]["count"] == 1
+    assert result["compute"]["coverage"] == 0.0
+    assert result["compute"]["count"] == 0
+    assert result["database"]["coverage"] == 0.0
+    assert result["database"]["count"] == 0
+
+
+def test_group_coverage_by_sp_type_mixed_services():
+    """Test grouping with mixed service types."""
+    coverage_data = [
+        {
+            "Attributes": {"SERVICE": "Amazon Elastic Compute Cloud - Compute"},
+            "Coverage": {
+                "SpendCoveredBySavingsPlans": "100",
+                "TotalCost": "200",
+                "CoveragePercentage": "50.0",
+            },
+        },
+        {
+            "Attributes": {"SERVICE": "Amazon Relational Database Service"},
+            "Coverage": {
+                "SpendCoveredBySavingsPlans": "50",
+                "TotalCost": "100",
+                "CoveragePercentage": "50.0",
+            },
+        },
+        {
+            "Attributes": {"SERVICE": "Amazon SageMaker"},
+            "Coverage": {
+                "SpendCoveredBySavingsPlans": "75",
+                "TotalCost": "150",
+                "CoveragePercentage": "50.0",
+            },
+        },
+    ]
+
+    result = coverage_module.group_coverage_by_sp_type(coverage_data)
+
+    assert result["compute"]["coverage"] == 50.0
+    assert result["compute"]["covered"] == 100.0
+    assert result["compute"]["total"] == 200.0
+    assert result["compute"]["count"] == 1
+    assert result["database"]["coverage"] == 50.0
+    assert result["database"]["covered"] == 50.0
+    assert result["database"]["total"] == 100.0
+    assert result["database"]["count"] == 1
+    assert result["sagemaker"]["coverage"] == 50.0
+    assert result["sagemaker"]["covered"] == 75.0
+    assert result["sagemaker"]["total"] == 150.0
+    assert result["sagemaker"]["count"] == 1
+
+
+def test_group_coverage_by_sp_type_empty_list():
+    """Test handling empty coverage data list."""
+    result = coverage_module.group_coverage_by_sp_type([])
+
+    assert result["compute"]["coverage"] == 0.0
+    assert result["compute"]["covered"] == 0.0
+    assert result["compute"]["total"] == 0.0
+    assert result["compute"]["count"] == 0
+    assert result["database"]["coverage"] == 0.0
+    assert result["database"]["count"] == 0
+    assert result["sagemaker"]["coverage"] == 0.0
+    assert result["sagemaker"]["count"] == 0
+
+
+def test_group_coverage_by_sp_type_zero_spend():
+    """Test handling services with zero total cost."""
+    coverage_data = [
+        {
+            "Attributes": {"SERVICE": "AWS Lambda"},
+            "Coverage": {
+                "SpendCoveredBySavingsPlans": "0",
+                "TotalCost": "0",
+                "CoveragePercentage": "0.0",
+            },
+        }
+    ]
+
+    result = coverage_module.group_coverage_by_sp_type(coverage_data)
+
+    assert result["compute"]["coverage"] == 0.0
+    assert result["compute"]["covered"] == 0.0
+    assert result["compute"]["total"] == 0.0
+    assert result["compute"]["count"] == 1
+    assert result["database"]["coverage"] == 0.0
+    assert result["database"]["count"] == 0
+    assert result["sagemaker"]["coverage"] == 0.0
+    assert result["sagemaker"]["count"] == 0
+
+
+def test_group_coverage_by_sp_type_unknown_service():
+    """Test handling unknown services (should be ignored)."""
+    coverage_data = [
+        {
+            "Attributes": {"SERVICE": "Amazon S3"},
+            "Coverage": {
+                "SpendCoveredBySavingsPlans": "100",
+                "TotalCost": "200",
+                "CoveragePercentage": "50.0",
+            },
+        },
+        {
+            "Attributes": {"SERVICE": "AWS Lambda"},
+            "Coverage": {
+                "SpendCoveredBySavingsPlans": "50",
+                "TotalCost": "100",
+                "CoveragePercentage": "50.0",
+            },
+        },
+    ]
+
+    result = coverage_module.group_coverage_by_sp_type(coverage_data)
+
+    # S3 should be ignored, only Lambda (compute) counts
+    assert result["compute"]["coverage"] == 50.0
+    assert result["compute"]["covered"] == 50.0
+    assert result["compute"]["total"] == 100.0
+    assert result["compute"]["count"] == 1
+    assert result["database"]["coverage"] == 0.0
+    assert result["database"]["count"] == 0
+    assert result["sagemaker"]["coverage"] == 0.0
+    assert result["sagemaker"]["count"] == 0
+
+
+def test_group_coverage_by_sp_type_aggregated_multi_day():
+    """Test aggregation of the same service across multiple days."""
+    coverage_data = [
+        # Day 1 - EC2
+        {
+            "Attributes": {"SERVICE": "Amazon Elastic Compute Cloud - Compute"},
+            "Coverage": {
+                "SpendCoveredBySavingsPlans": "100",
+                "TotalCost": "150",
+            },
+        },
+        # Day 2 - EC2 (same service, different day)
+        {
+            "Attributes": {"SERVICE": "Amazon Elastic Compute Cloud - Compute"},
+            "Coverage": {
+                "SpendCoveredBySavingsPlans": "120",
+                "TotalCost": "160",
+            },
+        },
+        # Day 1 - Lambda
+        {
+            "Attributes": {"SERVICE": "AWS Lambda"},
+            "Coverage": {
+                "SpendCoveredBySavingsPlans": "50",
+                "TotalCost": "100",
+            },
+        },
+        # Day 2 - Lambda
+        {
+            "Attributes": {"SERVICE": "AWS Lambda"},
+            "Coverage": {
+                "SpendCoveredBySavingsPlans": "60",
+                "TotalCost": "110",
+            },
+        },
+    ]
+
+    result = coverage_module.group_coverage_by_sp_type(coverage_data)
+
+    # EC2: (100+120) / (150+160) = 220 / 310 = 70.97%
+    # Lambda: (50+60) / (100+110) = 110 / 210 = 52.38%
+    # Total Compute: (220+110) / (310+210) = 330 / 520 = 63.46%
+    assert result["compute"]["covered"] == 330.0
+    assert result["compute"]["total"] == 520.0
+    assert result["compute"]["coverage"] == pytest.approx(63.46, rel=0.01)
+    assert result["compute"]["count"] == 4  # 4 data points
+    assert result["database"]["coverage"] == 0.0
+    assert result["sagemaker"]["coverage"] == 0.0
+
+
+def test_group_coverage_by_sp_type_real_world_data():
+    """Test with real-world AWS response structure."""
+    coverage_data = [
+        {
+            "Attributes": {"SERVICE": "AWS Lambda"},
+            "Coverage": {
+                "SpendCoveredBySavingsPlans": "5.6552603958",
+                "OnDemandCost": "42.579817976",
+                "TotalCost": "48.2350783718",
+                "CoveragePercentage": "11.72437277329329088862579319575124",
+            },
+            "TimePeriod": {"Start": "2026-01-17", "End": "2026-01-18"},
+        },
+        {
+            "Attributes": {"SERVICE": "Amazon Elastic Compute Cloud - Compute"},
+            "Coverage": {
+                "SpendCoveredBySavingsPlans": "114.2585053198",
+                "OnDemandCost": "21.7049742071",
+                "TotalCost": "135.9634795269",
+                "CoveragePercentage": "84.03617332931985561197185957599707",
+            },
+            "TimePeriod": {"Start": "2026-01-17", "End": "2026-01-18"},
+        },
+        {
+            "Attributes": {"SERVICE": "Amazon Elastic Container Service"},
+            "Coverage": {
+                "SpendCoveredBySavingsPlans": "659.2455999924",
+                "OnDemandCost": "95.651208294",
+                "TotalCost": "754.8968082864",
+                "CoveragePercentage": "87.32923397687609163797482550076435",
+            },
+            "TimePeriod": {"Start": "2026-01-17", "End": "2026-01-18"},
+        },
+        {
+            "Attributes": {"SERVICE": "Amazon Relational Database Service"},
+            "Coverage": {
+                "SpendCoveredBySavingsPlans": "0",
+                "OnDemandCost": "528.5322394884",
+                "TotalCost": "528.5322394884",
+                "CoveragePercentage": "0.0",
+            },
+            "TimePeriod": {"Start": "2026-01-17", "End": "2026-01-18"},
+        },
+    ]
+
+    result = coverage_module.group_coverage_by_sp_type(coverage_data)
+
+    # Compute: (5.66 + 114.26 + 659.25) / (48.24 + 135.96 + 754.90) = 779.17 / 939.10 = 82.97%, 3 services
+    assert result["compute"]["covered"] == pytest.approx(779.16, rel=0.01)
+    assert result["compute"]["total"] == pytest.approx(939.10, rel=0.01)
+    assert result["compute"]["coverage"] == pytest.approx(82.97, rel=0.01)
+    assert result["compute"]["count"] == 3
+    # Database: 0 / 528.53 = 0%, 1 service
+    assert result["database"]["coverage"] == 0.0
+    assert result["database"]["covered"] == 0.0
+    assert result["database"]["total"] == 528.5322394884
+    assert result["database"]["count"] == 1
+    assert result["sagemaker"]["coverage"] == 0.0
+    assert result["sagemaker"]["count"] == 0
+
+
+# ============================================================================
 # Successful Coverage Calculation Tests
 # ============================================================================
 
