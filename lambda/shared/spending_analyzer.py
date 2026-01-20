@@ -291,7 +291,7 @@ class SpendingAnalyzer:
 
         # Step 3: Fetch coverage data from Cost Explorer
         lookback_days = config.get("lookback_days", 7)
-        coverage_data = self._fetch_coverage_data(now, lookback_days)
+        coverage_data = self._fetch_coverage_data(now, lookback_days, config)
 
         # Step 4: Group coverage by SP type with time series
         sp_type_data = group_coverage_by_sp_type(coverage_data)
@@ -368,14 +368,14 @@ class SpendingAnalyzer:
         return valid_plan_ids
 
     def _fetch_coverage_data(
-        self, now: datetime, lookback_days: int
+        self, now: datetime, lookback_days: int, config: dict[str, Any]
     ) -> list[dict[str, Any]]:
         """
         Fetch Savings Plans coverage data from Cost Explorer.
 
         Always uses HOURLY granularity since Savings Plans are priced as $/hour commitments.
-        Makes 3 separate API calls filtered by service groups (compute/database/sagemaker)
-        to avoid AWS API 500-item limit.
+        Makes separate API calls filtered by enabled service groups only.
+        Avoids AWS API 500-item limit by filtering per SP type.
 
         AWS retains hourly data for ~14 days. With 1-day processing lag, we can reliably
         get 13 days of hourly data. Service filtering keeps each call at ~312 items
@@ -384,6 +384,7 @@ class SpendingAnalyzer:
         Args:
             now: Current timestamp
             lookback_days: Number of days to look back (max 13 for hourly data)
+            config: Configuration dictionary with enable flags
 
         Returns:
             list: Coverage data items from Cost Explorer response
@@ -394,13 +395,18 @@ class SpendingAnalyzer:
         end_time = now - timedelta(days=1)  # 1 day lag
         start_time = end_time - timedelta(days=lookback_days)
 
-        # Service groups that map to SP types
-        # Filter values are passed to AWS API to aggregate across services
-        service_filters = [
-            ("Compute", COMPUTE_SP_SERVICES),
-            ("Database", DATABASE_SP_SERVICES),
-            ("SageMaker", SAGEMAKER_SP_SERVICES),
-        ]
+        # Build service filters only for enabled SP types
+        service_filters = []
+        if config.get("enable_compute_sp", True):
+            service_filters.append(("Compute", COMPUTE_SP_SERVICES))
+        if config.get("enable_database_sp", False):
+            service_filters.append(("Database", DATABASE_SP_SERVICES))
+        if config.get("enable_sagemaker_sp", False):
+            service_filters.append(("SageMaker", SAGEMAKER_SP_SERVICES))
+
+        if not service_filters:
+            logger.warning("No SP types enabled - returning empty coverage data")
+            return []
 
         logger.info(
             f"Fetching hourly coverage data for {lookback_days} days "
