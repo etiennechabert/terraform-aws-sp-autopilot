@@ -194,6 +194,7 @@ class TestCalculatePurchaseNeedDichotomy:
             "coverage_target_percent": 90.0,
             "max_purchase_percent": 50.0,
             "min_purchase_percent": 1.0,
+            "database_sp_payment_option": "NO_UPFRONT",
         }
         spending_data = {
             "database": {
@@ -257,6 +258,7 @@ class TestCalculatePurchaseNeedDichotomy:
             "max_purchase_percent": 50.0,
             "min_purchase_percent": 1.0,
             "compute_sp_payment_option": "ALL_UPFRONT",
+            "database_sp_payment_option": "NO_UPFRONT",
             "sagemaker_sp_payment_option": "ALL_UPFRONT",
         }
         spending_data = {
