@@ -13,7 +13,7 @@ Strategy Behavior:
 
 Calculation:
 - Purchase percent = largest power-of-2 fraction that doesn't exceed gap
-- Hourly commitment = avg_hourly_spend × purchase_percent / 100
+- Hourly commitment = avg_hourly_spend * purchase_percent / 100
 
 Example sequence (max_purchase_percent = 50%, target = 90%, spend = $1,235/h):
   * Month 1: Coverage 0% → Gap 90% → Purchase 50% → $617.50/h

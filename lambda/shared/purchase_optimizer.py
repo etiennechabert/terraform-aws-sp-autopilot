@@ -183,7 +183,7 @@ class PurchaseOptimizer:
             return {}
 
         # Calculate percentiles: 10, 20, 30, ..., 90, 99
-        percentile_levels = list(range(10, 100, 10)) + [99]
+        percentile_levels = [*list(range(10, 100, 10)), 99]
         percentiles = {}
 
         n = len(non_zero_values)
@@ -239,6 +239,4 @@ class PurchaseOptimizer:
 
         # Don't exceed the remaining gap
         remaining_gap = target_commitment - current_commitment
-        purchase_amount = min(purchase_amount, remaining_gap)
-
-        return purchase_amount
+        return min(purchase_amount, remaining_gap)

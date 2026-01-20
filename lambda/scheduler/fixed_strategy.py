@@ -12,7 +12,7 @@ Strategy Behavior:
 - Predictable and easy to understand
 
 Calculation:
-- Hourly commitment = avg_hourly_spend × min(coverage_gap, max_purchase_percent) / 100
+- Hourly commitment = avg_hourly_spend * min(coverage_gap, max_purchase_percent) / 100
 
 Example:
 - Avg hourly spend: $1,235/h
@@ -20,7 +20,7 @@ Example:
 - Target coverage: 90%
 - Coverage gap: 65%
 - max_purchase_percent: 10%
-- Purchase: $1,235 × 10% = $123.50/h (adds ~10% coverage)
+- Purchase: $1,235 * 10% = $123.50/h (adds ~10% coverage)
 
 Benefits:
 - Simple and predictable
@@ -51,7 +51,7 @@ def calculate_purchase_need_fixed(
 
     Calculation:
     - Purchase percent = min(coverage_gap, max_purchase_percent)
-    - Hourly commitment = avg_hourly_spend × purchase_percent / 100
+    - Hourly commitment = avg_hourly_spend * purchase_percent / 100
 
     Args:
         config: Configuration dictionary
