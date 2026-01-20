@@ -176,15 +176,7 @@ def calculate_purchase_need_dichotomy(
 
         summary = data["summary"]
         current_coverage = summary["avg_coverage"]
-        total_spend = summary["total_spend"]
-        num_hours = len(data["timeseries"])
-
-        if num_hours == 0:
-            logger.info(f"{sp_type['name']} SP - No time series data available")
-            continue
-
-        # Calculate average hourly spend
-        avg_hourly_spend = total_spend / num_hours
+        avg_hourly_spend = summary["avg_hourly_total"]
 
         # Calculate coverage gap
         coverage_gap = target_coverage - current_coverage

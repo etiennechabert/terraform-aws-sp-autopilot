@@ -192,16 +192,25 @@ def group_coverage_by_sp_type(
                 total_points.append(total)
 
         # Calculate summary statistics
+        num_hours = len(result[sp_type]["timeseries"])
         avg_coverage = (
             (total_covered / total_spend * 100) if total_spend > 0 else 0.0
         )
 
+        # Calculate hourly rates (Savings Plans are $/hour)
+        avg_hourly_covered = total_covered / num_hours if num_hours > 0 else 0.0
+        avg_hourly_total = total_spend / num_hours if num_hours > 0 else 0.0
+
         result[sp_type]["summary"] = {
+            # Totals over the period
             "total_covered": total_covered,
             "total_spend": total_spend,
             "avg_coverage": avg_coverage,
-            "min_total": min(total_points) if total_points else 0.0,
-            "max_total": max(total_points) if total_points else 0.0,
+            # Hourly rates (for purchase calculations)
+            "avg_hourly_covered": avg_hourly_covered,
+            "avg_hourly_total": avg_hourly_total,
+            "min_hourly_total": min(total_points) if total_points else 0.0,
+            "max_hourly_total": max(total_points) if total_points else 0.0,
         }
 
     return result
