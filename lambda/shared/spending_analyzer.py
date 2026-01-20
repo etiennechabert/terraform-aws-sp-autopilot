@@ -142,23 +142,17 @@ def group_coverage_by_sp_type(
                 "sagemaker": {"covered": 0.0, "total": 0.0},
             }
 
-        # Map to SP type
-        # For hourly data: pseudo-service names like __Compute__
-        # For daily data: exact service names (case-insensitive match)
+        # Map to SP type from pseudo-service names
+        # Items are tagged with __Compute__, __Database__, __SageMaker__ in _fetch_coverage_data
         if "__compute__" in service_name:
             sp_type = "compute"
         elif "__database__" in service_name:
             sp_type = "database"
         elif "__sagemaker__" in service_name:
             sp_type = "sagemaker"
-        elif service_name in COMPUTE_SERVICE_NAMES_LOWER:
-            sp_type = "compute"
-        elif service_name in DATABASE_SERVICE_NAMES_LOWER:
-            sp_type = "database"
-        elif service_name in SAGEMAKER_SERVICE_NAMES_LOWER:
-            sp_type = "sagemaker"
         else:
-            # Unknown service, skip
+            # Should never happen - all items are tagged in _fetch_coverage_data
+            logger.warning(f"Unexpected service name without SP type tag: {service_name}")
             continue
 
         # Accumulate spend for this timestamp and SP type
