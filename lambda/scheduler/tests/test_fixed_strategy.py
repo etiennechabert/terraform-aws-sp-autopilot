@@ -107,7 +107,12 @@ def test_calculate_purchase_need_coverage_at_target(mock_config, mock_spending_d
 
 def test_calculate_purchase_need_no_spending_data(mock_config):
     """Test that SP types without spending data are skipped."""
-    spending_data = {"compute": {"timeseries": [], "summary": {"avg_coverage": 50.0, "avg_hourly_total": 2.5, "avg_hourly_covered": 1.25}}}
+    spending_data = {
+        "compute": {
+            "timeseries": [],
+            "summary": {"avg_coverage": 50.0, "avg_hourly_total": 2.5, "avg_hourly_covered": 1.25},
+        }
+    }
 
     plans = calculate_purchase_need_fixed(mock_config, {}, spending_data)
 

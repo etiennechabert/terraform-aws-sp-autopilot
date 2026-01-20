@@ -422,7 +422,11 @@ class TestCalculatePurchaseNeedDichotomy:
         spending_data_m1 = {
             "compute": {
                 "timeseries": [],
-                "summary": {"avg_coverage": 0.0, "avg_hourly_total": 100.0, "avg_hourly_covered": 0.0},
+                "summary": {
+                    "avg_coverage": 0.0,
+                    "avg_hourly_total": 100.0,
+                    "avg_hourly_covered": 0.0,
+                },
             }
         }
         result = calculate_purchase_need_dichotomy(config, {}, spending_data_m1)
