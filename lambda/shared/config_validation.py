@@ -142,20 +142,18 @@ def validate_scheduler_config(config: dict[str, Any]) -> None:
 
         # Validate lookback_days based on granularity
         granularity = config.get("granularity", "HOURLY")
-        if granularity == "HOURLY":
-            if config["lookback_days"] > 13:
-                raise ValueError(
-                    f"Field 'lookback_days' must be 13 or less for HOURLY granularity. "
-                    f"AWS Cost Explorer retains hourly data for ~14 days. With 1-day processing lag, "
-                    f"13 days is the maximum reliable lookback period. "
-                    f"Got {config['lookback_days']}"
-                )
-        elif granularity == "DAILY":
-            if config["lookback_days"] > 90:
-                raise ValueError(
-                    f"Field 'lookback_days' must be 90 or less for DAILY granularity. "
-                    f"Got {config['lookback_days']}"
-                )
+        if granularity == "HOURLY" and config["lookback_days"] > 13:
+            raise ValueError(
+                f"Field 'lookback_days' must be 13 or less for HOURLY granularity. "
+                f"AWS Cost Explorer retains hourly data for ~14 days. With 1-day processing lag, "
+                f"13 days is the maximum reliable lookback period. "
+                f"Got {config['lookback_days']}"
+            )
+        if granularity == "DAILY" and config["lookback_days"] > 90:
+            raise ValueError(
+                f"Field 'lookback_days' must be 90 or less for DAILY granularity. "
+                f"Got {config['lookback_days']}"
+            )
 
     # Validate min_commitment_per_plan is non-negative
     if "min_commitment_per_plan" in config:
