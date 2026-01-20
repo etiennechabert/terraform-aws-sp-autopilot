@@ -88,10 +88,8 @@ def group_coverage_by_sp_type(
     Takes coverage data and organizes it by SP type (compute, database, sagemaker)
     preserving the time series for graphing and analysis.
 
-    For hourly data, items are pre-tagged with pseudo-service names (__Compute__,
-    __Database__, __SageMaker__) from service-filtered API calls.
-
-    For daily data, items have real SERVICE values that need mapping.
+    Items are pre-tagged with SP type names ("compute", "database", "sagemaker")
+    in _fetch_coverage_data for direct classification.
 
     Args:
         coverage_data: List of coverage items from SavingsPlansCoverages response
@@ -142,14 +140,10 @@ def group_coverage_by_sp_type(
                 "sagemaker": {"covered": 0.0, "total": 0.0},
             }
 
-        # Map to SP type from pseudo-service names
-        # Items are tagged with __Compute__, __Database__, __SageMaker__ in _fetch_coverage_data
-        if "__compute__" in service_name:
-            sp_type = "compute"
-        elif "__database__" in service_name:
-            sp_type = "database"
-        elif "__sagemaker__" in service_name:
-            sp_type = "sagemaker"
+        # Map to SP type from tagged service names
+        # Items are tagged with "compute", "database", or "sagemaker" in _fetch_coverage_data
+        if service_name in ("compute", "database", "sagemaker"):
+            sp_type = service_name
         else:
             # Should never happen - all items are tagged in _fetch_coverage_data
             logger.warning(f"Unexpected service name without SP type tag: {service_name}")
@@ -376,8 +370,8 @@ class SpendingAnalyzer:
                 for item in coverages:
                     if "Attributes" not in item:
                         item["Attributes"] = {}
-                    # Use a pseudo-service name that maps directly to SP type
-                    item["Attributes"]["SERVICE"] = f"__{sp_type}__"
+                    # Tag with lowercase SP type directly
+                    item["Attributes"]["SERVICE"] = sp_type.lower()
 
                 all_coverages.extend(coverages)
 
