@@ -282,3 +282,75 @@ def test_send_dry_run_email_missing_coverage_keys(
     message = mock_sns_client.publish.call_args[1]["Message"]
     # Should default to 0.00%
     assert "0.00%" in message
+
+
+def test_send_scheduled_email_with_unknown_services(
+    mock_sns_client, mock_config, mock_purchase_plans, mock_coverage
+):
+    """Test scheduled email includes warning for unknown services."""
+    unknown_services = ["AmazonNewService", "AWSFutureService"]
+
+    with patch("email_notifications.local_mode.is_local_mode", return_value=False):
+        send_scheduled_email(
+            mock_sns_client, mock_config, mock_purchase_plans, mock_coverage, unknown_services
+        )
+
+    message = mock_sns_client.publish.call_args[1]["Message"]
+
+    # Verify warning is included
+    assert "WARNING: UNKNOWN SERVICES DETECTED" in message
+    assert "Found 2 service(s) with Savings Plans coverage" in message
+    assert "AmazonNewService" in message
+    assert "AWSFutureService" in message
+    assert "ACTION REQUIRED" in message
+    assert "github.com/etiennechabert/terraform-aws-sp-autopilot/issues/new" in message
+
+
+def test_send_dry_run_email_with_unknown_services(
+    mock_sns_client, mock_config, mock_purchase_plans, mock_coverage
+):
+    """Test dry run email includes warning for unknown services."""
+    unknown_services = ["AmazonNewService", "AWSFutureService"]
+
+    with patch("email_notifications.local_mode.is_local_mode", return_value=False):
+        send_dry_run_email(
+            mock_sns_client, mock_config, mock_purchase_plans, mock_coverage, unknown_services
+        )
+
+    message = mock_sns_client.publish.call_args[1]["Message"]
+
+    # Verify warning is included
+    assert "WARNING: UNKNOWN SERVICES DETECTED" in message
+    assert "Found 2 service(s) with Savings Plans coverage" in message
+    assert "AmazonNewService" in message
+    assert "AWSFutureService" in message
+
+
+def test_send_scheduled_email_none_coverage(
+    mock_sns_client, mock_config, mock_purchase_plans
+):
+    """Test scheduled email with None coverage (follow_aws strategy)."""
+    with patch("email_notifications.local_mode.is_local_mode", return_value=False):
+        send_scheduled_email(mock_sns_client, mock_config, mock_purchase_plans, None)
+
+    message = mock_sns_client.publish.call_args[1]["Message"]
+
+    # Should not include coverage section
+    assert "Current Coverage:" not in message
+    # But should still include purchase plans
+    assert "Total Plans Queued: 3" in message
+
+
+def test_send_dry_run_email_none_coverage(
+    mock_sns_client, mock_config, mock_purchase_plans
+):
+    """Test dry run email with None coverage (follow_aws strategy)."""
+    with patch("email_notifications.local_mode.is_local_mode", return_value=False):
+        send_dry_run_email(mock_sns_client, mock_config, mock_purchase_plans, None)
+
+    message = mock_sns_client.publish.call_args[1]["Message"]
+
+    # Should not include coverage section
+    assert "Current Coverage:" not in message
+    # But should still include purchase plans
+    assert "Total Plans Analyzed: 3" in message

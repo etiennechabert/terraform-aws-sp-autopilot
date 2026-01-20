@@ -932,6 +932,95 @@ def test_handler_production_mode(mock_env_vars, monkeypatch):
         assert result["statusCode"] == 200
 
 
+def test_handler_follow_aws_strategy_skips_spending_analyzer(mock_env_vars):
+    """Test that follow_aws strategy skips SpendingAnalyzer and passes coverage=None."""
+    # mock_env_vars already sets PURCHASE_STRATEGY_TYPE to follow_aws
+    mock_clients = {
+        "ce": MagicMock(),
+        "savingsplans": MagicMock(),
+        "sqs": MagicMock(),
+        "sns": MagicMock(),
+    }
+
+    with (
+        patch("boto3.client") as mock_boto3_client,
+        patch("shared.handler_utils.initialize_clients", return_value=mock_clients),
+        patch("queue_manager.purge_queue"),
+        patch("purchase_calculator.calculate_purchase_need") as mock_purchase,
+        patch("email_notifications.send_dry_run_email") as mock_email,
+        patch("handler.SpendingAnalyzer") as mock_analyzer,
+    ):
+        mock_boto3_client.return_value = MagicMock()
+        mock_purchase.return_value = []
+
+        result = handler.handler({}, None)
+
+        # Verify SpendingAnalyzer was NOT instantiated for follow_aws strategy
+        assert mock_analyzer.call_count == 0
+
+        # Verify email was called with coverage=None and unknown_services=None
+        mock_email.assert_called_once()
+        call_args = mock_email.call_args[0]
+        # Args: (sns_client, config, purchase_plans, coverage, unknown_services)
+        assert call_args[3] is None  # coverage should be None
+        assert call_args[4] is None  # unknown_services should be None
+
+        assert result["statusCode"] == 200
+
+
+def test_handler_fixed_strategy_uses_spending_analyzer(mock_env_vars, monkeypatch):
+    """Test that fixed strategy instantiates SpendingAnalyzer and passes coverage."""
+    monkeypatch.setenv("PURCHASE_STRATEGY_TYPE", "fixed")
+    monkeypatch.setenv("MAX_PURCHASE_PERCENT", "5")
+
+    mock_clients = {
+        "ce": MagicMock(),
+        "savingsplans": MagicMock(),
+        "sqs": MagicMock(),
+        "sns": MagicMock(),
+    }
+
+    mock_spending_data = {
+        "compute": {
+            "summary": {"avg_coverage": 50.0, "total_spend": 100.0, "total_covered": 50.0},
+            "timeseries": [],
+        },
+        "_unknown_services": [],
+    }
+
+    with (
+        patch("boto3.client") as mock_boto3_client,
+        patch("shared.handler_utils.initialize_clients", return_value=mock_clients),
+        patch("queue_manager.purge_queue"),
+        patch("purchase_calculator.calculate_purchase_need") as mock_purchase,
+        patch("email_notifications.send_dry_run_email") as mock_email,
+        patch("handler.SpendingAnalyzer") as mock_analyzer_class,
+    ):
+        mock_boto3_client.return_value = MagicMock()
+        mock_purchase.return_value = []
+
+        # Mock SpendingAnalyzer instance
+        mock_analyzer = MagicMock()
+        mock_analyzer.analyze_current_spending.return_value = mock_spending_data
+        mock_analyzer_class.return_value = mock_analyzer
+
+        result = handler.handler({}, None)
+
+        # Verify SpendingAnalyzer was instantiated for fixed strategy
+        assert mock_analyzer_class.call_count == 1
+        assert mock_analyzer.analyze_current_spending.call_count == 1
+
+        # Verify email was called with coverage dict (not None)
+        mock_email.assert_called_once()
+        call_args = mock_email.call_args[0]
+        # Args: (sns_client, config, purchase_plans, coverage, unknown_services)
+        assert call_args[3] is not None  # coverage should be a dict
+        assert call_args[3] == {"compute": 50.0}  # coverage extracted from spending_data
+        assert call_args[4] == []  # unknown_services
+
+        assert result["statusCode"] == 200
+
+
 def test_handler_error_raises_exception(mock_env_vars):
     """Test that handler raises exceptions on errors."""
     # Mock initialize_clients to avoid real AWS credential lookup

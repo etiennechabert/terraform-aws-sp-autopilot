@@ -387,5 +387,38 @@ def test_apply_purchase_limits_mixed_filtering(mock_config):
 
 
 # ============================================================================
+# Error Handling Tests
+# ============================================================================
+
+
+def test_calculate_purchase_need_missing_strategy_type():
+    """Test error when purchase_strategy_type is missing from config."""
+    from unittest.mock import Mock
+
+    config = {
+        "enable_compute_sp": True,
+        # Missing: purchase_strategy_type
+    }
+    clients = {"ce": Mock()}
+
+    with pytest.raises(ValueError, match="Missing required configuration 'purchase_strategy_type'"):
+        purchase_calculator.calculate_purchase_need(config, clients, spending_data=None)
+
+
+def test_calculate_purchase_need_unknown_strategy():
+    """Test error when purchase_strategy_type is not in registry."""
+    from unittest.mock import Mock
+
+    config = {
+        "enable_compute_sp": True,
+        "purchase_strategy_type": "nonexistent_strategy",
+    }
+    clients = {"ce": Mock()}
+
+    with pytest.raises(ValueError, match="Unknown purchase strategy 'nonexistent_strategy'"):
+        purchase_calculator.calculate_purchase_need(config, clients, spending_data=None)
+
+
+# ============================================================================
 # Split by Term Tests
 # ============================================================================
