@@ -29,6 +29,7 @@ def send_scheduled_email(
     config: dict[str, Any],
     purchase_plans: list[dict[str, Any]],
     coverage: dict[str, float],
+    unknown_services: list[str] | None = None,
 ) -> None:
     """
     Send email notification for scheduled purchases.
@@ -38,6 +39,7 @@ def send_scheduled_email(
         config: Configuration dictionary
         purchase_plans: List of planned purchases
         coverage: Current coverage
+        unknown_services: List of unknown services found (optional)
     """
     logger.info("Sending scheduled purchases email")
 
@@ -87,6 +89,51 @@ def send_scheduled_email(
             "-" * 50,
             f"Total Estimated Annual Cost: ${total_annual_cost:,.2f}",
             "",
+        ]
+    )
+
+    # Add warning if unknown services detected
+    if unknown_services:
+        email_lines.extend(
+            [
+                "⚠️  WARNING: UNKNOWN SERVICES DETECTED",
+                "=" * 50,
+                "",
+                f"Found {len(unknown_services)} service(s) with Savings Plans coverage",
+                "that are NOT in our service constants:",
+                "",
+            ]
+        )
+        for svc in sorted(unknown_services):
+            email_lines.append(f"  - {svc}")
+        email_lines.extend(
+            [
+                "",
+                "Your analysis completed but may have INCOMPLETE coverage data.",
+                "This likely means AWS added new services that support Savings Plans.",
+                "",
+                "ACTION REQUIRED:",
+                "1. Open issue: https://github.com/etiennechabert/terraform-aws-sp-autopilot/issues/new",
+                "2. Title: New AWS services support Savings Plans",
+                "3. Copy-paste:",
+                "",
+                f"   AWS added {len(unknown_services)} new service(s):",
+            ]
+        )
+        for svc in sorted(unknown_services):
+            email_lines.append(f"   - {svc}")
+        email_lines.extend(
+            [
+                "",
+                "   Please update lambda/shared/spending_analyzer.py",
+                "",
+                "=" * 50,
+                "",
+            ]
+        )
+
+    email_lines.extend(
+        [
             "CANCELLATION INSTRUCTIONS:",
             "To cancel these purchases before they execute:",
             "1. Purge the SQS queue to remove all pending purchase intents",
@@ -127,6 +174,7 @@ def send_dry_run_email(
     config: dict[str, Any],
     purchase_plans: list[dict[str, Any]],
     coverage: dict[str, float],
+    unknown_services: list[str] | None = None,
 ) -> None:
     """
     Send email notification for dry run analysis.
@@ -136,6 +184,7 @@ def send_dry_run_email(
         config: Configuration dictionary
         purchase_plans: List of what would be purchased
         coverage: Current coverage
+        unknown_services: List of unknown services found (optional)
     """
     logger.info("Sending dry run email")
 
@@ -187,6 +236,51 @@ def send_dry_run_email(
             "-" * 50,
             f"Total Estimated Annual Cost: ${total_annual_cost:,.2f}",
             "",
+        ]
+    )
+
+    # Add warning if unknown services detected
+    if unknown_services:
+        email_lines.extend(
+            [
+                "⚠️  WARNING: UNKNOWN SERVICES DETECTED",
+                "=" * 50,
+                "",
+                f"Found {len(unknown_services)} service(s) with Savings Plans coverage",
+                "that are NOT in our service constants:",
+                "",
+            ]
+        )
+        for svc in sorted(unknown_services):
+            email_lines.append(f"  - {svc}")
+        email_lines.extend(
+            [
+                "",
+                "Your analysis completed but may have INCOMPLETE coverage data.",
+                "This likely means AWS added new services that support Savings Plans.",
+                "",
+                "ACTION REQUIRED:",
+                "1. Open issue: https://github.com/etiennechabert/terraform-aws-sp-autopilot/issues/new",
+                "2. Title: New AWS services support Savings Plans",
+                "3. Copy-paste:",
+                "",
+                f"   AWS added {len(unknown_services)} new service(s):",
+            ]
+        )
+        for svc in sorted(unknown_services):
+            email_lines.append(f"   - {svc}")
+        email_lines.extend(
+            [
+                "",
+                "   Please update lambda/shared/spending_analyzer.py",
+                "",
+                "=" * 50,
+                "",
+            ]
+        )
+
+    email_lines.extend(
+        [
             "TO ENABLE ACTUAL PURCHASES:",
             "1. Set the DRY_RUN environment variable to 'false'",
             "2. Update the Lambda configuration:",

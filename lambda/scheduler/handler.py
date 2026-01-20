@@ -231,8 +231,8 @@ def handler(event: dict[str, Any], context: Any) -> dict[str, Any]:
     analyzer = SpendingAnalyzer(clients["savingsplans"], clients["ce"])
     spending_data = analyzer.analyze_current_spending(config)
 
-    # Extract unknown services for validation at the end
-    unknown_services = spending_data.pop("_unknown_services", [])
+    # Extract unknown services for email notification
+    unknown_services: list[str] = spending_data.pop("_unknown_services", [])
 
     purchase_plans = purchase_module.calculate_purchase_need(config, clients, spending_data)
     purchase_plans = purchase_module.apply_purchase_limits(config, purchase_plans)
@@ -244,36 +244,16 @@ def handler(event: dict[str, Any], context: Any) -> dict[str, Any]:
     }
 
     if config["dry_run"]:
-        email_module.send_dry_run_email(clients["sns"], config, purchase_plans, coverage)
+        email_module.send_dry_run_email(
+            clients["sns"], config, purchase_plans, coverage,
+            unknown_services if unknown_services else None
+        )
     else:
         queue_module.queue_purchase_intents(clients["sqs"], config, purchase_plans)
-        email_module.send_scheduled_email(clients["sns"], config, purchase_plans, coverage)
-
-    # Check for unknown services at the end (after all work is done)
-    if unknown_services:
-        error_msg = (
-            f"\n{'=' * 80}\n"
-            f"UNKNOWN SERVICES DETECTED\n"
-            f"{'=' * 80}\n\n"
-            f"Found {len(unknown_services)} service(s) with Savings Plans coverage that are NOT in our constants:\n\n"
-            f"{chr(10).join(f'  - {svc}' for svc in sorted(unknown_services))}\n\n"
-            f"Your Savings Plans analysis completed successfully, but coverage data may be incomplete.\n"
-            f"This likely means AWS added new services that support Savings Plans.\n\n"
-            f"{'=' * 80}\n"
-            f"ACTION REQUIRED\n"
-            f"{'=' * 80}\n\n"
-            f"Please open a GitHub issue to get these services added:\n\n"
-            f"1. Go to: https://github.com/etiennechabert/terraform-aws-sp-autopilot/issues/new\n\n"
-            f"2. Title: New AWS services support Savings Plans\n\n"
-            f"3. Copy-paste this message:\n\n"
-            f"---START COPY---\n"
-            f"AWS added {len(unknown_services)} new service(s) with Savings Plans coverage:\n\n"
-            f"{chr(10).join(f'- {svc}' for svc in sorted(unknown_services))}\n\n"
-            f"Please update the service constants in `lambda/shared/spending_analyzer.py`.\n"
-            f"---END COPY---\n\n"
-            f"{'=' * 80}\n"
+        email_module.send_scheduled_email(
+            clients["sns"], config, purchase_plans, coverage,
+            unknown_services if unknown_services else None
         )
-        raise ValueError(error_msg)
 
     return {
         "statusCode": 200,
