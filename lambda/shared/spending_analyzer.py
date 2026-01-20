@@ -294,12 +294,12 @@ class SpendingAnalyzer:
 
         logger.info(
             f"Coverage by type - Compute: {sp_type_data['compute']['summary']['avg_coverage']:.2f}% "
-            f"(${sp_type_data['compute']['summary']['total_covered']:.2f}/${sp_type_data['compute']['summary']['total_spend']:.2f}, "
-            f"min: ${sp_type_data['compute']['summary']['min_total']:.2f}, max: ${sp_type_data['compute']['summary']['max_total']:.2f}), "
+            f"(${sp_type_data['compute']['summary']['avg_hourly_total']:.2f}/h avg, "
+            f"${sp_type_data['compute']['summary']['min_hourly_total']:.2f}-${sp_type_data['compute']['summary']['max_hourly_total']:.2f}/h range), "
             f"Database: {sp_type_data['database']['summary']['avg_coverage']:.2f}% "
-            f"(${sp_type_data['database']['summary']['total_covered']:.2f}/${sp_type_data['database']['summary']['total_spend']:.2f}), "
+            f"(${sp_type_data['database']['summary']['avg_hourly_total']:.2f}/h avg), "
             f"SageMaker: {sp_type_data['sagemaker']['summary']['avg_coverage']:.2f}% "
-            f"(${sp_type_data['sagemaker']['summary']['total_covered']:.2f}/${sp_type_data['sagemaker']['summary']['total_spend']:.2f})"
+            f"(${sp_type_data['sagemaker']['summary']['avg_hourly_total']:.2f}/h avg)"
         )
 
         # Include unknown services in result for handler to check
