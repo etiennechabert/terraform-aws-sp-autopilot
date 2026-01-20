@@ -391,32 +391,6 @@ class SpendingAnalyzer:
         Raises:
             ClientError: If AWS API calls fail
         """
-        return self._fetch_hourly_coverage_by_sp_type(now, lookback_days)
-
-    def _fetch_hourly_coverage_by_sp_type(
-        self, now: datetime, lookback_days: int
-    ) -> list[dict[str, Any]]:
-        """
-        Fetch hourly coverage data using service-filtered requests.
-
-        Makes 3 separate API calls, each filtering for services belonging to a
-        specific SP type (Compute/Database/SageMaker). This avoids the 500-item
-        limit issue with GROUP BY SERVICE and eliminates need for post-processing
-        service-to-SP-type mapping.
-
-        Each call returns aggregated hourly data across the filtered services
-        (~168 items for 7 days), well under the 500-item limit.
-
-        Args:
-            now: Current timestamp
-            lookback_days: Number of days to look back
-
-        Returns:
-            list: Combined coverage data from all service groups
-
-        Raises:
-            ClientError: If Cost Explorer API call fails
-        """
         end_time = now - timedelta(days=1)  # 1 day lag
         start_time = end_time - timedelta(days=lookback_days)
 
