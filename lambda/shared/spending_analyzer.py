@@ -433,11 +433,14 @@ class SpendingAnalyzer:
 
         logger.debug("Validating service constants against AWS API (1-day GROUP BY SERVICE call)")
 
+        # Format dates based on granularity
+        date_format = "%Y-%m-%d" if granularity == "DAILY" else "%Y-%m-%dT%H:%M:%SZ"
+
         try:
             params = {
                 "TimePeriod": {
-                    "Start": start_time.strftime("%Y-%m-%dT%H:%M:%SZ"),
-                    "End": end_time.strftime("%Y-%m-%dT%H:%M:%SZ"),
+                    "Start": start_time.strftime(date_format),
+                    "End": end_time.strftime(date_format),
                 },
                 "Granularity": granularity,
                 "GroupBy": [{"Type": "DIMENSION", "Key": "SERVICE"}],
