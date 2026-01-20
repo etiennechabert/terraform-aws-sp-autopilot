@@ -107,15 +107,18 @@ class TestCalculatePurchaseNeedDichotomy:
             "min_purchase_percent": 1.0,
             "compute_sp_payment_option": "ALL_UPFRONT",
         }
-        coverage = {"compute": 0.0}
-        recommendations = {
+        spending_data = {
             "compute": {
-                "HourlyCommitmentToPurchase": "10.00",
-                "RecommendationId": "rec-123",
+                "timeseries": [],
+                "summary": {
+                    "avg_coverage": 0.0,
+                    "avg_hourly_total": 10.0,
+                    "avg_hourly_covered": 0.0,
+                },
             }
         }
 
-        result = calculate_purchase_need_dichotomy(config, coverage, recommendations)
+        result = calculate_purchase_need_dichotomy(config, {}, spending_data)
 
         assert len(result) == 1
         assert result[0]["sp_type"] == "compute"
@@ -135,15 +138,18 @@ class TestCalculatePurchaseNeedDichotomy:
             "min_purchase_percent": 1.0,
             "compute_sp_payment_option": "ALL_UPFRONT",
         }
-        coverage = {"compute": 50.0}  # Already have 50% coverage
-        recommendations = {
+        spending_data = {
             "compute": {
-                "HourlyCommitmentToPurchase": "8.00",
-                "RecommendationId": "rec-456",
+                "timeseries": [],
+                "summary": {
+                    "avg_coverage": 50.0,
+                    "avg_hourly_total": 8.0,
+                    "avg_hourly_covered": 4.0,
+                },
             }
         }
 
-        result = calculate_purchase_need_dichotomy(config, coverage, recommendations)
+        result = calculate_purchase_need_dichotomy(config, {}, spending_data)
 
         assert len(result) == 1
         # Gap is 40%, so purchase percent should be 25%
@@ -161,15 +167,18 @@ class TestCalculatePurchaseNeedDichotomy:
             "min_purchase_percent": 1.0,
             "compute_sp_payment_option": "ALL_UPFRONT",
         }
-        coverage = {"compute": 87.5}  # Already have 87.5% coverage
-        recommendations = {
+        spending_data = {
             "compute": {
-                "HourlyCommitmentToPurchase": "5.00",
-                "RecommendationId": "rec-789",
+                "timeseries": [],
+                "summary": {
+                    "avg_coverage": 87.5,
+                    "avg_hourly_total": 5.0,
+                    "avg_hourly_covered": 4.375,
+                },
             }
         }
 
-        result = calculate_purchase_need_dichotomy(config, coverage, recommendations)
+        result = calculate_purchase_need_dichotomy(config, {}, spending_data)
 
         assert len(result) == 1
         # At 87.5%, target 90%, halve to 1.5625% -> round to 1.6%
@@ -186,15 +195,18 @@ class TestCalculatePurchaseNeedDichotomy:
             "max_purchase_percent": 50.0,
             "min_purchase_percent": 1.0,
         }
-        coverage = {"database": 0.0}
-        recommendations = {
+        spending_data = {
             "database": {
-                "HourlyCommitmentToPurchase": "15.00",
-                "RecommendationId": "rec-db-123",
+                "timeseries": [],
+                "summary": {
+                    "avg_coverage": 0.0,
+                    "avg_hourly_total": 15.0,
+                    "avg_hourly_covered": 0.0,
+                },
             }
         }
 
-        result = calculate_purchase_need_dichotomy(config, coverage, recommendations)
+        result = calculate_purchase_need_dichotomy(config, {}, spending_data)
 
         assert len(result) == 1
         assert result[0]["sp_type"] == "database"
@@ -215,15 +227,18 @@ class TestCalculatePurchaseNeedDichotomy:
             "min_purchase_percent": 1.0,
             "sagemaker_sp_payment_option": "PARTIAL_UPFRONT",
         }
-        coverage = {"sagemaker": 30.0}
-        recommendations = {
+        spending_data = {
             "sagemaker": {
-                "HourlyCommitmentToPurchase": "20.00",
-                "RecommendationId": "rec-sm-123",
+                "timeseries": [],
+                "summary": {
+                    "avg_coverage": 30.0,
+                    "avg_hourly_total": 20.0,
+                    "avg_hourly_covered": 6.0,
+                },
             }
         }
 
-        result = calculate_purchase_need_dichotomy(config, coverage, recommendations)
+        result = calculate_purchase_need_dichotomy(config, {}, spending_data)
 
         assert len(result) == 1
         assert result[0]["sp_type"] == "sagemaker"
@@ -244,27 +259,34 @@ class TestCalculatePurchaseNeedDichotomy:
             "compute_sp_payment_option": "ALL_UPFRONT",
             "sagemaker_sp_payment_option": "ALL_UPFRONT",
         }
-        coverage = {
-            "compute": 50.0,  # Gap: 40% -> purchase 25%
-            "database": 0.0,  # Gap: 90% -> purchase 50%
-            "sagemaker": 75.0,  # Gap: 15% -> purchase 12.5%
-        }
-        recommendations = {
+        spending_data = {
             "compute": {
-                "HourlyCommitmentToPurchase": "10.00",
-                "RecommendationId": "rec-c",
+                "timeseries": [],
+                "summary": {
+                    "avg_coverage": 50.0,
+                    "avg_hourly_total": 10.0,
+                    "avg_hourly_covered": 5.0,
+                },
             },
             "database": {
-                "HourlyCommitmentToPurchase": "5.00",
-                "RecommendationId": "rec-d",
+                "timeseries": [],
+                "summary": {
+                    "avg_coverage": 0.0,
+                    "avg_hourly_total": 5.0,
+                    "avg_hourly_covered": 0.0,
+                },
             },
             "sagemaker": {
-                "HourlyCommitmentToPurchase": "8.00",
-                "RecommendationId": "rec-s",
+                "timeseries": [],
+                "summary": {
+                    "avg_coverage": 75.0,
+                    "avg_hourly_total": 8.0,
+                    "avg_hourly_covered": 6.0,
+                },
             },
         }
 
-        result = calculate_purchase_need_dichotomy(config, coverage, recommendations)
+        result = calculate_purchase_need_dichotomy(config, {}, spending_data)
 
         assert len(result) == 3
 
@@ -273,15 +295,15 @@ class TestCalculatePurchaseNeedDichotomy:
         database_plan = next(p for p in result if p["sp_type"] == "database")
         sagemaker_plan = next(p for p in result if p["sp_type"] == "sagemaker")
 
-        # Compute: 25% of $10 = $2.50
+        # Compute: Gap 40% -> purchase 25% of $10 = $2.50
         assert compute_plan["hourly_commitment"] == 2.5
         assert compute_plan["purchase_percent"] == 25.0
 
-        # Database: 50% of $5 = $2.50
+        # Database: Gap 90% -> purchase 50% of $5 = $2.50
         assert database_plan["hourly_commitment"] == 2.5
         assert database_plan["purchase_percent"] == 50.0
 
-        # SageMaker: 12.5% of $8 = $1.00
+        # SageMaker: Gap 15% -> purchase 12.5% of $8 = $1.00
         assert sagemaker_plan["hourly_commitment"] == 1.0
         assert sagemaker_plan["purchase_percent"] == 12.5
 
@@ -295,20 +317,23 @@ class TestCalculatePurchaseNeedDichotomy:
             "max_purchase_percent": 50.0,
             "min_purchase_percent": 1.0,
         }
-        coverage = {"compute": 95.0}  # Already exceeds target
-        recommendations = {
+        spending_data = {
             "compute": {
-                "HourlyCommitmentToPurchase": "10.00",
-                "RecommendationId": "rec-123",
+                "timeseries": [],
+                "summary": {
+                    "avg_coverage": 95.0,
+                    "avg_hourly_total": 10.0,
+                    "avg_hourly_covered": 9.5,
+                },
             }
         }
 
-        result = calculate_purchase_need_dichotomy(config, coverage, recommendations)
+        result = calculate_purchase_need_dichotomy(config, {}, spending_data)
 
         assert len(result) == 0
 
-    def test_no_purchase_when_no_recommendation(self):
-        """Test that no purchase is made when AWS has no recommendation."""
+    def test_no_purchase_when_no_spending_data(self):
+        """Test that no purchase is made when there's no spending data."""
         config = {
             "enable_compute_sp": True,
             "enable_database_sp": False,
@@ -317,15 +342,14 @@ class TestCalculatePurchaseNeedDichotomy:
             "max_purchase_percent": 50.0,
             "min_purchase_percent": 1.0,
         }
-        coverage = {"compute": 50.0}
-        recommendations = {}  # No recommendation available
+        spending_data = {}
 
-        result = calculate_purchase_need_dichotomy(config, coverage, recommendations)
+        result = calculate_purchase_need_dichotomy(config, {}, spending_data)
 
         assert len(result) == 0
 
-    def test_no_purchase_when_recommendation_is_zero(self):
-        """Test that no purchase is made when AWS recommendation is zero."""
+    def test_no_purchase_when_zero_spend(self):
+        """Test that no purchase is made when avg hourly spend is zero."""
         config = {
             "enable_compute_sp": True,
             "enable_database_sp": False,
@@ -334,15 +358,18 @@ class TestCalculatePurchaseNeedDichotomy:
             "max_purchase_percent": 50.0,
             "min_purchase_percent": 1.0,
         }
-        coverage = {"compute": 50.0}
-        recommendations = {
+        spending_data = {
             "compute": {
-                "HourlyCommitmentToPurchase": "0.00",
-                "RecommendationId": "rec-123",
+                "timeseries": [],
+                "summary": {
+                    "avg_coverage": 0.0,
+                    "avg_hourly_total": 0.0,
+                    "avg_hourly_covered": 0.0,
+                },
             }
         }
 
-        result = calculate_purchase_need_dichotomy(config, coverage, recommendations)
+        result = calculate_purchase_need_dichotomy(config, {}, spending_data)
 
         assert len(result) == 0
 
@@ -356,23 +383,26 @@ class TestCalculatePurchaseNeedDichotomy:
             "min_purchase_percent": 1.0,
             "compute_sp_payment_option": "ALL_UPFRONT",
         }
-        coverage = {"compute": 0.0}  # Gap: 90%
-        recommendations = {
+        spending_data = {
             "compute": {
-                "HourlyCommitmentToPurchase": "10.00",
-                "RecommendationId": "rec-123",
+                "timeseries": [],
+                "summary": {
+                    "avg_coverage": 0.0,
+                    "avg_hourly_total": 10.0,
+                    "avg_hourly_covered": 0.0,
+                },
             }
         }
 
         # Max 100%: Gap 90%, next power-of-2 is 50%
         config_100 = {**base_config, "max_purchase_percent": 100.0}
-        result = calculate_purchase_need_dichotomy(config_100, coverage, recommendations)
+        result = calculate_purchase_need_dichotomy(config_100, {}, spending_data)
         assert result[0]["hourly_commitment"] == 5.0  # 50% of $10
         assert result[0]["purchase_percent"] == 50.0
 
         # Max 25%
         config_25 = {**base_config, "max_purchase_percent": 25.0}
-        result = calculate_purchase_need_dichotomy(config_25, coverage, recommendations)
+        result = calculate_purchase_need_dichotomy(config_25, {}, spending_data)
         assert result[0]["hourly_commitment"] == 2.5  # 25% of $10
         assert result[0]["purchase_percent"] == 25.0
 
@@ -387,43 +417,103 @@ class TestCalculatePurchaseNeedDichotomy:
             "min_purchase_percent": 1.0,
             "compute_sp_payment_option": "ALL_UPFRONT",
         }
-        recommendations = {
-            "compute": {
-                "HourlyCommitmentToPurchase": "100.00",
-                "RecommendationId": "rec-123",
-            }
-        }
 
         # Month 1: Coverage 0%, Gap 90%
-        result = calculate_purchase_need_dichotomy(config, {"compute": 0.0}, recommendations)
+        spending_data_m1 = {
+            "compute": {
+                "timeseries": [],
+                "summary": {"avg_coverage": 0.0, "avg_hourly_total": 100.0, "avg_hourly_covered": 0.0},
+            }
+        }
+        result = calculate_purchase_need_dichotomy(config, {}, spending_data_m1)
         assert result[0]["purchase_percent"] == 50.0
         assert result[0]["hourly_commitment"] == 50.0
 
         # Month 2: Coverage 50%, Gap 40%
-        result = calculate_purchase_need_dichotomy(config, {"compute": 50.0}, recommendations)
+        spending_data_m2 = {
+            "compute": {
+                "timeseries": [],
+                "summary": {
+                    "avg_coverage": 50.0,
+                    "avg_hourly_total": 100.0,
+                    "avg_hourly_covered": 50.0,
+                },
+            }
+        }
+        result = calculate_purchase_need_dichotomy(config, {}, spending_data_m2)
         assert result[0]["purchase_percent"] == 25.0
         assert result[0]["hourly_commitment"] == 25.0
 
         # Month 3: Coverage 75%, Gap 15%
-        result = calculate_purchase_need_dichotomy(config, {"compute": 75.0}, recommendations)
+        spending_data_m3 = {
+            "compute": {
+                "timeseries": [],
+                "summary": {
+                    "avg_coverage": 75.0,
+                    "avg_hourly_total": 100.0,
+                    "avg_hourly_covered": 75.0,
+                },
+            }
+        }
+        result = calculate_purchase_need_dichotomy(config, {}, spending_data_m3)
         assert result[0]["purchase_percent"] == 12.5
         assert result[0]["hourly_commitment"] == 12.5
 
         # Month 4: Coverage 87.5%, gap 2.5%, halve to 1.5625% -> round to 1.6%
-        result = calculate_purchase_need_dichotomy(config, {"compute": 87.5}, recommendations)
+        spending_data_m4 = {
+            "compute": {
+                "timeseries": [],
+                "summary": {
+                    "avg_coverage": 87.5,
+                    "avg_hourly_total": 100.0,
+                    "avg_hourly_covered": 87.5,
+                },
+            }
+        }
+        result = calculate_purchase_need_dichotomy(config, {}, spending_data_m4)
         assert result[0]["purchase_percent"] == 1.6
         assert result[0]["hourly_commitment"] == 1.6
 
         # Month 5: Coverage 88.5%, gap 1.5%, halve to 0.78125% < min -> use min 1.0%
-        result = calculate_purchase_need_dichotomy(config, {"compute": 88.5}, recommendations)
+        spending_data_m5 = {
+            "compute": {
+                "timeseries": [],
+                "summary": {
+                    "avg_coverage": 88.5,
+                    "avg_hourly_total": 100.0,
+                    "avg_hourly_covered": 88.5,
+                },
+            }
+        }
+        result = calculate_purchase_need_dichotomy(config, {}, spending_data_m5)
         assert result[0]["purchase_percent"] == 1.0
         assert result[0]["hourly_commitment"] == 1.0
 
         # Month 6: Coverage 89.5%, gap 0.5% < min -> buy min 1% (overshoots to 90.5%)
-        result = calculate_purchase_need_dichotomy(config, {"compute": 89.5}, recommendations)
+        spending_data_m6 = {
+            "compute": {
+                "timeseries": [],
+                "summary": {
+                    "avg_coverage": 89.5,
+                    "avg_hourly_total": 100.0,
+                    "avg_hourly_covered": 89.5,
+                },
+            }
+        }
+        result = calculate_purchase_need_dichotomy(config, {}, spending_data_m6)
         assert result[0]["purchase_percent"] == 1.0
         assert result[0]["hourly_commitment"] == 1.0
 
         # Month 7: Coverage 90.5%, Gap -0.5% (target exceeded)
-        result = calculate_purchase_need_dichotomy(config, {"compute": 90.5}, recommendations)
+        spending_data_m7 = {
+            "compute": {
+                "timeseries": [],
+                "summary": {
+                    "avg_coverage": 90.5,
+                    "avg_hourly_total": 100.0,
+                    "avg_hourly_covered": 90.5,
+                },
+            }
+        }
+        result = calculate_purchase_need_dichotomy(config, {}, spending_data_m7)
         assert len(result) == 0
