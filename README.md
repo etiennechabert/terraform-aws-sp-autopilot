@@ -788,3 +788,35 @@ Contributions are welcome! Please open an issue or pull request on GitHub.
 ## Support
 
 For questions, issues, or feature requests, please open a GitHub issue.
+
+## Development
+
+### Pre-commit Hooks
+
+This project uses git pre-commit hooks to ensure code quality. The hook automatically runs linting and formatting before each commit.
+
+To install the hook:
+```bash
+make install-hooks
+```
+
+The hook will:
+- Run `ruff` linting and formatting on staged Python files
+- Auto-fix issues when possible
+- Re-stage modified files
+- Prevent commits with linting errors
+
+To bypass the hook temporarily (not recommended):
+```bash
+git commit --no-verify
+```
+
+### Available Make Targets
+
+- `make lint` - Run linting and auto-fix issues
+- `make lint-check` - Check linting without fixing (CI mode)
+- `make format` - Format Python code with ruff
+- `make test` - Run all tests
+- `make install-hooks` - Install git pre-commit hooks
+- `make help` - Show available targets
+
