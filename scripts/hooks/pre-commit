@@ -1,0 +1,65 @@
+#!/bin/bash
+#
+# Pre-commit hook for terraform-aws-sp-autopilot
+# Runs linting and formatting checks before allowing commits
+#
+# To install: make install-hooks
+# To bypass: git commit --no-verify
+
+set -e
+
+echo "🔍 Running pre-commit checks..."
+echo ""
+
+# Check if we're in the root directory
+if [ ! -f "Makefile" ]; then
+    echo "❌ Error: Makefile not found. Are you in the project root?"
+    exit 1
+fi
+
+# Get list of staged Python files
+STAGED_PY_FILES=$(git diff --cached --name-only --diff-filter=ACM | grep '\.py$' || true)
+
+if [ -z "$STAGED_PY_FILES" ]; then
+    echo "✓ No Python files staged, skipping lint checks"
+    exit 0
+fi
+
+echo "📝 Staged Python files:"
+echo "$STAGED_PY_FILES" | sed 's/^/  - /'
+echo ""
+
+# Run linting (will auto-fix and format)
+echo "🔧 Running make lint..."
+if make lint; then
+    echo ""
+    echo "✓ Linting passed"
+
+    # Re-stage any files that were auto-fixed
+    for file in $STAGED_PY_FILES; do
+        if [ -f "$file" ]; then
+            git add "$file"
+        fi
+    done
+
+    # Check if any files were modified
+    MODIFIED_FILES=$(git diff --name-only $STAGED_PY_FILES || true)
+    if [ -n "$MODIFIED_FILES" ]; then
+        echo ""
+        echo "📝 Auto-fixed files (re-staged):"
+        echo "$MODIFIED_FILES" | sed 's/^/  - /'
+        echo ""
+        echo "Files have been auto-fixed and re-staged."
+    fi
+else
+    echo ""
+    echo "❌ Linting failed"
+    echo ""
+    echo "Please fix the issues above and try again."
+    echo "Or use 'git commit --no-verify' to skip this check (not recommended)."
+    exit 1
+fi
+
+echo ""
+echo "✅ All pre-commit checks passed!"
+exit 0

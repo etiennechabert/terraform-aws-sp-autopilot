@@ -326,9 +326,7 @@ def test_send_dry_run_email_with_unknown_services(
     assert "AWSFutureService" in message
 
 
-def test_send_scheduled_email_none_coverage(
-    mock_sns_client, mock_config, mock_purchase_plans
-):
+def test_send_scheduled_email_none_coverage(mock_sns_client, mock_config, mock_purchase_plans):
     """Test scheduled email with None coverage (follow_aws strategy)."""
     with patch("email_notifications.local_mode.is_local_mode", return_value=False):
         send_scheduled_email(mock_sns_client, mock_config, mock_purchase_plans, None)
@@ -341,9 +339,7 @@ def test_send_scheduled_email_none_coverage(
     assert "Total Plans Queued: 3" in message
 
 
-def test_send_dry_run_email_none_coverage(
-    mock_sns_client, mock_config, mock_purchase_plans
-):
+def test_send_dry_run_email_none_coverage(mock_sns_client, mock_config, mock_purchase_plans):
     """Test dry run email with None coverage (follow_aws strategy)."""
     with patch("email_notifications.local_mode.is_local_mode", return_value=False):
         send_dry_run_email(mock_sns_client, mock_config, mock_purchase_plans, None)
