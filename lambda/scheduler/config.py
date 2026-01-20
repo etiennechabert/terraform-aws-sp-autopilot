@@ -93,6 +93,12 @@ CONFIG_SCHEMA = {
         "default": "ALL_UPFRONT",
         "env_var": "COMPUTE_SP_PAYMENT_OPTION",
     },
+    "database_sp_payment_option": {
+        "required": False,
+        "type": "str",
+        "default": "NO_UPFRONT",
+        "env_var": "DATABASE_SP_PAYMENT_OPTION",
+    },
     "sagemaker_sp_term": {
         "required": False,
         "type": "str",

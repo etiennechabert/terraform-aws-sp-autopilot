@@ -17,7 +17,7 @@ from __future__ import annotations
 
 import json
 import logging
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, cast
 
 
 if TYPE_CHECKING:
@@ -228,20 +228,29 @@ def handler(event: dict[str, Any], context: Any) -> dict[str, Any]:
 
     queue_module.purge_queue(clients["sqs"], config["queue_url"])
 
-    analyzer = SpendingAnalyzer(clients["savingsplans"], clients["ce"])
-    spending_data = analyzer.analyze_current_spending(config)
+    # Conditionally analyze spending based on strategy
+    # - fixed/dichotomy strategies need spending analysis for purchase calculations
+    # - follow_aws strategy doesn't need it (uses AWS recommendations only)
+    strategy_type = config["purchase_strategy_type"]
 
-    # Extract unknown services for email notification
-    unknown_services: list[str] = spending_data.pop("_unknown_services", [])
+    if strategy_type in ["fixed", "dichotomy"]:
+        analyzer = SpendingAnalyzer(clients["savingsplans"], clients["ce"])
+        spending_data = analyzer.analyze_current_spending(config)
 
+        # Extract coverage and unknown services for email notifications
+        unknown_services = cast(list[str], spending_data.pop("_unknown_services", []))
+        coverage = {
+            sp_type: data["summary"]["avg_coverage"]
+            for sp_type, data in spending_data.items()
+        }
+    else:
+        # follow_aws strategy - no spending analysis needed
+        spending_data = None
+        unknown_services = None
+        coverage = None
+
+    # Calculate purchases using selected strategy (strategies handle their own limits)
     purchase_plans = purchase_module.calculate_purchase_need(config, clients, spending_data)
-    purchase_plans = purchase_module.apply_purchase_limits(config, purchase_plans)
-
-    # Extract coverage percentages for email notifications
-    coverage = {
-        sp_type: data["summary"]["avg_coverage"]
-        for sp_type, data in spending_data.items()
-    }
 
     if config["dry_run"]:
         email_module.send_dry_run_email(

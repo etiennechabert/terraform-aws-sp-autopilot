@@ -28,7 +28,7 @@ def send_scheduled_email(
     sns_client: SNSClient,
     config: dict[str, Any],
     purchase_plans: list[dict[str, Any]],
-    coverage: dict[str, float],
+    coverage: dict[str, float] | None,
     unknown_services: list[str] | None = None,
 ) -> None:
     """
@@ -38,7 +38,7 @@ def send_scheduled_email(
         sns_client: Boto3 SNS client
         config: Configuration dictionary
         purchase_plans: List of planned purchases
-        coverage: Current coverage
+        coverage: Current coverage (None for follow_aws strategy)
         unknown_services: List of unknown services found (optional)
     """
     logger.info("Sending scheduled purchases email")
@@ -50,19 +50,28 @@ def send_scheduled_email(
         "",
         f"Total Plans Queued: {len(purchase_plans)}",
         "",
-        "Current Coverage:",
-        f"  Compute SP:  {coverage.get('compute', 0):.2f}%",
-        f"  Database SP: {coverage.get('database', 0):.2f}%",
-        f"  SageMaker SP: {coverage.get('sagemaker', 0):.2f}%",
-        "",
-        f"Target Coverage: {config.get('coverage_target_percent', 90):.2f}%",
-        "",
+    ]
+
+    # Add coverage info if available (fixed/dichotomy strategies)
+    if coverage is not None:
+        email_lines.extend([
+            "Current Coverage:",
+            f"  Compute SP:  {coverage.get('compute', 0):.2f}%",
+            f"  Database SP: {coverage.get('database', 0):.2f}%",
+            f"  SageMaker SP: {coverage.get('sagemaker', 0):.2f}%",
+            "",
+            f"Target Coverage: {config.get('coverage_target_percent', 90):.2f}%",
+            "",
+        ])
+
+    email_lines.extend([
         "Scheduled Purchase Plans:",
         "-" * 50,
-    ]
+    ])
 
     # Add details for each purchase plan
     total_annual_cost = 0.0
+
     for i, plan in enumerate(purchase_plans, 1):
         sp_type = plan.get("sp_type", "unknown")
         hourly_commitment = plan.get("hourly_commitment", 0.0)
@@ -73,24 +82,20 @@ def send_scheduled_email(
         annual_cost = hourly_commitment * 8760
         total_annual_cost += annual_cost
 
-        email_lines.extend(
-            [
-                f"{i}. {sp_type.upper()} Savings Plan",
-                f"   Hourly Commitment: ${hourly_commitment:.4f}/hour",
-                f"   Term: {term}",
-                f"   Payment Option: {payment_option}",
-                f"   Estimated Annual Cost: ${annual_cost:,.2f}",
-                "",
-            ]
-        )
-
-    email_lines.extend(
-        [
-            "-" * 50,
-            f"Total Estimated Annual Cost: ${total_annual_cost:,.2f}",
+        email_lines.extend([
+            f"{i}. {sp_type.upper()} Savings Plan",
+            f"   Hourly Commitment: ${hourly_commitment:.4f}/hour",
+            f"   Term: {term}",
+            f"   Payment Option: {payment_option}",
+            f"   Estimated Annual Cost: ${annual_cost:,.2f}",
             "",
-        ]
-    )
+        ])
+
+    email_lines.extend([
+        "-" * 50,
+        f"Total Estimated Annual Cost: ${total_annual_cost:,.2f}",
+        "",
+    ])
 
     # Add warning if unknown services detected
     if unknown_services:
@@ -173,7 +178,7 @@ def send_dry_run_email(
     sns_client: SNSClient,
     config: dict[str, Any],
     purchase_plans: list[dict[str, Any]],
-    coverage: dict[str, float],
+    coverage: dict[str, float] | None,
     unknown_services: list[str] | None = None,
 ) -> None:
     """
@@ -183,7 +188,7 @@ def send_dry_run_email(
         sns_client: Boto3 SNS client
         config: Configuration dictionary
         purchase_plans: List of what would be purchased
-        coverage: Current coverage
+        coverage: Current coverage (None for follow_aws strategy)
         unknown_services: List of unknown services found (optional)
     """
     logger.info("Sending dry run email")
@@ -197,19 +202,28 @@ def send_dry_run_email(
         "",
         f"Total Plans Analyzed: {len(purchase_plans)}",
         "",
-        "Current Coverage:",
-        f"  Compute SP:  {coverage.get('compute', 0):.2f}%",
-        f"  Database SP: {coverage.get('database', 0):.2f}%",
-        f"  SageMaker SP: {coverage.get('sagemaker', 0):.2f}%",
-        "",
-        f"Target Coverage: {config.get('coverage_target_percent', 90):.2f}%",
-        "",
+    ]
+
+    # Add coverage info if available (fixed/dichotomy strategies)
+    if coverage is not None:
+        email_lines.extend([
+            "Current Coverage:",
+            f"  Compute SP:  {coverage.get('compute', 0):.2f}%",
+            f"  Database SP: {coverage.get('database', 0):.2f}%",
+            f"  SageMaker SP: {coverage.get('sagemaker', 0):.2f}%",
+            "",
+            f"Target Coverage: {config.get('coverage_target_percent', 90):.2f}%",
+            "",
+        ])
+
+    email_lines.extend([
         "Purchase Plans (WOULD BE SCHEDULED if dry_run=false):",
         "-" * 50,
-    ]
+    ])
 
     # Add details for each purchase plan
     total_annual_cost = 0.0
+
     for i, plan in enumerate(purchase_plans, 1):
         sp_type = plan.get("sp_type", "unknown")
         hourly_commitment = plan.get("hourly_commitment", 0.0)
@@ -220,24 +234,20 @@ def send_dry_run_email(
         annual_cost = hourly_commitment * 8760
         total_annual_cost += annual_cost
 
-        email_lines.extend(
-            [
-                f"{i}. {sp_type.upper()} Savings Plan",
-                f"   Hourly Commitment: ${hourly_commitment:.4f}/hour",
-                f"   Term: {term}",
-                f"   Payment Option: {payment_option}",
-                f"   Estimated Annual Cost: ${annual_cost:,.2f}",
-                "",
-            ]
-        )
-
-    email_lines.extend(
-        [
-            "-" * 50,
-            f"Total Estimated Annual Cost: ${total_annual_cost:,.2f}",
+        email_lines.extend([
+            f"{i}. {sp_type.upper()} Savings Plan",
+            f"   Hourly Commitment: ${hourly_commitment:.4f}/hour",
+            f"   Term: {term}",
+            f"   Payment Option: {payment_option}",
+            f"   Estimated Annual Cost: ${annual_cost:,.2f}",
             "",
-        ]
-    )
+        ])
+
+    email_lines.extend([
+        "-" * 50,
+        f"Total Estimated Annual Cost: ${total_annual_cost:,.2f}",
+        "",
+    ])
 
     # Add warning if unknown services detected
     if unknown_services:

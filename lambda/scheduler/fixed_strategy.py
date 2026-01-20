@@ -33,18 +33,21 @@ Benefits:
 import logging
 from typing import Any
 
+from shared.spending_analyzer import SpendingAnalyzer
+
 
 # Configure logging
 logger = logging.getLogger()
 
 
 def calculate_purchase_need_fixed(
-    config: dict[str, Any], clients: dict[str, Any], spending_data: dict[str, dict[str, Any]]
+    config: dict[str, Any], clients: dict[str, Any], spending_data: dict[str, Any] | None = None
 ) -> list[dict[str, Any]]:
     """
     Calculate required purchases using FIXED strategy.
 
     Fixed strategy purchases a fixed percentage of uncovered spend at a time.
+    Analyzes current spending to calculate hourly commitment needs.
 
     Calculation:
     - Purchase percent = min(coverage_gap, max_purchase_percent)
@@ -52,13 +55,19 @@ def calculate_purchase_need_fixed(
 
     Args:
         config: Configuration dictionary
-        clients: AWS clients (not used by this strategy)
-        spending_data: Full spending analysis with time series and summary
+        clients: AWS clients (savingsplans, ce)
+        spending_data: Optional pre-fetched spending analysis (if None, will fetch it)
 
     Returns:
         list: Purchase plans to execute
     """
     logger.info("Calculating purchase need using FIXED strategy")
+
+    # Use provided spending data or fetch it
+    if spending_data is None:
+        analyzer = SpendingAnalyzer(clients["savingsplans"], clients["ce"])
+        spending_data = analyzer.analyze_current_spending(config)
+        spending_data.pop("_unknown_services", None)  # Remove metadata if we fetched it
 
     purchase_plans = []
     target_coverage = config["coverage_target_percent"]
@@ -70,22 +79,18 @@ def calculate_purchase_need_fixed(
             "key": "compute",
             "enabled_config": "enable_compute_sp",
             "payment_option_config": "compute_sp_payment_option",
-            "default_payment": "ALL_UPFRONT",
             "name": "Compute",
         },
         {
             "key": "database",
             "enabled_config": "enable_database_sp",
             "payment_option_config": "database_sp_payment_option",
-            "default_payment": "NO_UPFRONT",
             "name": "Database",
-            "term": "ONE_YEAR",
         },
         {
             "key": "sagemaker",
             "enabled_config": "enable_sagemaker_sp",
             "payment_option_config": "sagemaker_sp_payment_option",
-            "default_payment": "ALL_UPFRONT",
             "name": "SageMaker",
         },
     ]
@@ -102,7 +107,8 @@ def calculate_purchase_need_fixed(
 
         summary = data["summary"]
         current_coverage = summary["avg_coverage"]
-        avg_hourly_spend = summary["avg_hourly_total"]
+        avg_hourly_total = summary["avg_hourly_total"]
+        avg_hourly_covered = summary["avg_hourly_covered"]
 
         # Calculate coverage gap
         coverage_gap = target_coverage - current_coverage
@@ -110,20 +116,20 @@ def calculate_purchase_need_fixed(
         logger.info(
             f"{sp_type['name']} SP - Current: {current_coverage:.2f}%, "
             f"Target: {target_coverage:.2f}%, Gap: {coverage_gap:.2f}%, "
-            f"Avg hourly spend: ${avg_hourly_spend:.4f}/h"
+            f"Avg hourly spend: ${avg_hourly_total:.4f}/h"
         )
 
         if coverage_gap <= 0:
             logger.info(f"{sp_type['name']} SP coverage already meets or exceeds target")
             continue
 
-        if avg_hourly_spend <= 0:
+        if avg_hourly_total <= 0:
             logger.info(f"{sp_type['name']} SP has zero spend - skipping")
             continue
 
         # Apply fixed split logic: purchase up to max_purchase_percent
         purchase_percent = min(coverage_gap, max_purchase_percent)
-        hourly_commitment = avg_hourly_spend * (purchase_percent / 100.0)
+        hourly_commitment = avg_hourly_total * (purchase_percent / 100.0)
 
         # Apply minimum commitment threshold
         min_commitment = config.get("min_commitment_per_plan", 0.001)
@@ -134,23 +140,36 @@ def calculate_purchase_need_fixed(
             )
             continue
 
+        if key == "compute":
+            purchase_plan_term = config.get("compute_sp_term", "THREE_YEAR")
+        elif key == "sagemaker":
+            purchase_plan_term = config.get("sagemaker_sp_term", "THREE_YEAR")
+        elif key == "database":
+            purchase_plan_term = "ONE_YEAR"  # AWS constraint
+
         purchase_plan = {
+            "strategy": "fixed",
             "sp_type": key,
             "hourly_commitment": hourly_commitment,
-            "payment_option": config.get(
-                sp_type["payment_option_config"], sp_type["default_payment"]
-            ),
-            "strategy": "fixed",
             "purchase_percent": purchase_percent,
+            "payment_option": config[sp_type["payment_option_config"]],
+            "term": purchase_plan_term,
+            "details": {
+                "coverage": {
+                    "current": current_coverage,
+                    "target": target_coverage,
+                    "gap": coverage_gap,
+                },
+                "spending": {
+                    "total": avg_hourly_total,
+                    "covered": avg_hourly_covered,
+                    "uncovered": avg_hourly_total - avg_hourly_covered,
+                },
+                "strategy_params": {
+                    "max_purchase_percent": max_purchase_percent,
+                },
+            },
         }
-
-        # Set term based on SP type
-        if key == "compute":
-            purchase_plan["term"] = config.get("compute_sp_term", "THREE_YEAR")
-        elif key == "sagemaker":
-            purchase_plan["term"] = config.get("sagemaker_sp_term", "THREE_YEAR")
-        elif key == "database":
-            purchase_plan["term"] = "ONE_YEAR"  # AWS constraint
 
         purchase_plans.append(purchase_plan)
         logger.info(
