@@ -79,9 +79,7 @@ DATABASE_SERVICE_NAMES_LOWER = {svc.lower() for svc in DATABASE_SP_SERVICES}
 SAGEMAKER_SERVICE_NAMES_LOWER = {svc.lower() for svc in SAGEMAKER_SP_SERVICES}
 
 
-def group_coverage_by_sp_type(
-    coverage_data: list[dict[str, Any]]
-) -> dict[str, dict[str, Any]]:
+def group_coverage_by_sp_type(coverage_data: list[dict[str, Any]]) -> dict[str, dict[str, Any]]:
     """
     Group Cost Explorer coverage data by Savings Plan type with time series.
 
@@ -193,9 +191,7 @@ def group_coverage_by_sp_type(
 
         # Calculate summary statistics
         num_hours = len(result[sp_type]["timeseries"])
-        avg_coverage = (
-            (total_covered / total_spend * 100) if total_spend > 0 else 0.0
-        )
+        avg_coverage = (total_covered / total_spend * 100) if total_spend > 0 else 0.0
 
         # Calculate hourly rates (Savings Plans are $/hour)
         avg_hourly_covered = total_covered / num_hours if num_hours > 0 else 0.0
@@ -229,9 +225,7 @@ class SpendingAnalyzer:
     accurate coverage percentages and spending details by SP type (Compute, Database, SageMaker).
     """
 
-    def __init__(
-        self, savingsplans_client: SavingsPlansClient, ce_client: CostExplorerClient
-    ):
+    def __init__(self, savingsplans_client: SavingsPlansClient, ce_client: CostExplorerClient):
         """
         Initialize the spending analyzer.
 
@@ -363,12 +357,7 @@ class SpendingAnalyzer:
                         "End": end_time.strftime("%Y-%m-%dT%H:%M:%SZ"),
                     },
                     "Granularity": "HOURLY",
-                    "Filter": {
-                        "Dimensions": {
-                            "Key": "SERVICE",
-                            "Values": service_list
-                        }
-                    }
+                    "Filter": {"Dimensions": {"Key": "SERVICE", "Values": service_list}},
                     # No GroupBy - AWS aggregates across filtered services per hour
                 }
 
@@ -456,7 +445,9 @@ class SpendingAnalyzer:
                     discovered_services.add(service)
 
             # Check against our known services
-            all_known_services = set(COMPUTE_SP_SERVICES + DATABASE_SP_SERVICES + SAGEMAKER_SP_SERVICES)
+            all_known_services = set(
+                COMPUTE_SP_SERVICES + DATABASE_SP_SERVICES + SAGEMAKER_SP_SERVICES
+            )
             unknown_services = discovered_services - all_known_services
 
             if unknown_services:
@@ -478,4 +469,3 @@ class SpendingAnalyzer:
                 logger.debug("No coverage data available for validation (new account or no usage)")
                 return set()
             raise
-

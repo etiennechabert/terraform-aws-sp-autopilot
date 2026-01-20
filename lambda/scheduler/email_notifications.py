@@ -54,20 +54,24 @@ def send_scheduled_email(
 
     # Add coverage info if available (fixed/dichotomy strategies)
     if coverage is not None:
-        email_lines.extend([
-            "Current Coverage:",
-            f"  Compute SP:  {coverage.get('compute', 0):.2f}%",
-            f"  Database SP: {coverage.get('database', 0):.2f}%",
-            f"  SageMaker SP: {coverage.get('sagemaker', 0):.2f}%",
-            "",
-            f"Target Coverage: {config.get('coverage_target_percent', 90):.2f}%",
-            "",
-        ])
+        email_lines.extend(
+            [
+                "Current Coverage:",
+                f"  Compute SP:  {coverage.get('compute', 0):.2f}%",
+                f"  Database SP: {coverage.get('database', 0):.2f}%",
+                f"  SageMaker SP: {coverage.get('sagemaker', 0):.2f}%",
+                "",
+                f"Target Coverage: {config.get('coverage_target_percent', 90):.2f}%",
+                "",
+            ]
+        )
 
-    email_lines.extend([
-        "Scheduled Purchase Plans:",
-        "-" * 50,
-    ])
+    email_lines.extend(
+        [
+            "Scheduled Purchase Plans:",
+            "-" * 50,
+        ]
+    )
 
     # Add details for each purchase plan
     total_annual_cost = 0.0
@@ -82,20 +86,24 @@ def send_scheduled_email(
         annual_cost = hourly_commitment * 8760
         total_annual_cost += annual_cost
 
-        email_lines.extend([
-            f"{i}. {sp_type.upper()} Savings Plan",
-            f"   Hourly Commitment: ${hourly_commitment:.4f}/hour",
-            f"   Term: {term}",
-            f"   Payment Option: {payment_option}",
-            f"   Estimated Annual Cost: ${annual_cost:,.2f}",
-            "",
-        ])
+        email_lines.extend(
+            [
+                f"{i}. {sp_type.upper()} Savings Plan",
+                f"   Hourly Commitment: ${hourly_commitment:.4f}/hour",
+                f"   Term: {term}",
+                f"   Payment Option: {payment_option}",
+                f"   Estimated Annual Cost: ${annual_cost:,.2f}",
+                "",
+            ]
+        )
 
-    email_lines.extend([
-        "-" * 50,
-        f"Total Estimated Annual Cost: ${total_annual_cost:,.2f}",
-        "",
-    ])
+    email_lines.extend(
+        [
+            "-" * 50,
+            f"Total Estimated Annual Cost: ${total_annual_cost:,.2f}",
+            "",
+        ]
+    )
 
     # Add warning if unknown services detected
     if unknown_services:
@@ -206,20 +214,24 @@ def send_dry_run_email(
 
     # Add coverage info if available (fixed/dichotomy strategies)
     if coverage is not None:
-        email_lines.extend([
-            "Current Coverage:",
-            f"  Compute SP:  {coverage.get('compute', 0):.2f}%",
-            f"  Database SP: {coverage.get('database', 0):.2f}%",
-            f"  SageMaker SP: {coverage.get('sagemaker', 0):.2f}%",
-            "",
-            f"Target Coverage: {config.get('coverage_target_percent', 90):.2f}%",
-            "",
-        ])
+        email_lines.extend(
+            [
+                "Current Coverage:",
+                f"  Compute SP:  {coverage.get('compute', 0):.2f}%",
+                f"  Database SP: {coverage.get('database', 0):.2f}%",
+                f"  SageMaker SP: {coverage.get('sagemaker', 0):.2f}%",
+                "",
+                f"Target Coverage: {config.get('coverage_target_percent', 90):.2f}%",
+                "",
+            ]
+        )
 
-    email_lines.extend([
-        "Purchase Plans (WOULD BE SCHEDULED if dry_run=false):",
-        "-" * 50,
-    ])
+    email_lines.extend(
+        [
+            "Purchase Plans (WOULD BE SCHEDULED if dry_run=false):",
+            "-" * 50,
+        ]
+    )
 
     # Add details for each purchase plan
     total_annual_cost = 0.0
@@ -234,20 +246,24 @@ def send_dry_run_email(
         annual_cost = hourly_commitment * 8760
         total_annual_cost += annual_cost
 
-        email_lines.extend([
-            f"{i}. {sp_type.upper()} Savings Plan",
-            f"   Hourly Commitment: ${hourly_commitment:.4f}/hour",
-            f"   Term: {term}",
-            f"   Payment Option: {payment_option}",
-            f"   Estimated Annual Cost: ${annual_cost:,.2f}",
-            "",
-        ])
+        email_lines.extend(
+            [
+                f"{i}. {sp_type.upper()} Savings Plan",
+                f"   Hourly Commitment: ${hourly_commitment:.4f}/hour",
+                f"   Term: {term}",
+                f"   Payment Option: {payment_option}",
+                f"   Estimated Annual Cost: ${annual_cost:,.2f}",
+                "",
+            ]
+        )
 
-    email_lines.extend([
-        "-" * 50,
-        f"Total Estimated Annual Cost: ${total_annual_cost:,.2f}",
-        "",
-    ])
+    email_lines.extend(
+        [
+            "-" * 50,
+            f"Total Estimated Annual Cost: ${total_annual_cost:,.2f}",
+            "",
+        ]
+    )
 
     # Add warning if unknown services detected
     if unknown_services:

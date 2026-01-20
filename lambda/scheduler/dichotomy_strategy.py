@@ -265,5 +265,3 @@ def calculate_purchase_need_dichotomy(
 
     logger.info(f"Dichotomy purchase need calculated: {len(purchase_plans)} plans")
     return purchase_plans
-
-

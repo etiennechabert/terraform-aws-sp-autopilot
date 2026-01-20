@@ -143,7 +143,7 @@ class PurchaseOptimizer:
 
             logger.info(
                 f"{sp_type.capitalize()} optimization: "
-                f"Discount={discount_rate*100:.0f}% → Target={target_percentile_key} "
+                f"Discount={discount_rate * 100:.0f}% → Target={target_percentile_key} "
                 f"(${target_value:.2f}/hour) → "
                 f"Adjusted=${adjusted_commitment:.2f}/hour (aggressiveness={aggressiveness})"
             )

@@ -109,10 +109,7 @@ def calculate_current_coverage(config: dict[str, Any]) -> dict[str, float]:
     analyzer = SpendingAnalyzer(_ensure_savingsplans_client(), _ensure_ce_client())
     spending_data = analyzer.analyze_current_spending(config)
     spending_data.pop("_unknown_services", None)  # Remove metadata
-    return {
-        sp_type: data["summary"]["avg_coverage"]
-        for sp_type, data in spending_data.items()
-    }
+    return {sp_type: data["summary"]["avg_coverage"] for sp_type, data in spending_data.items()}
 
 
 def get_aws_recommendations(config: dict[str, Any]) -> dict[str, Any]:
@@ -223,7 +220,7 @@ def handler(event: dict[str, Any], context: Any) -> dict[str, Any]:
     clients = initialize_clients(
         config,
         "sp-autopilot-scheduler",
-        lambda msg: _send_error_notification(config["sns_topic_arn"], msg)
+        lambda msg: _send_error_notification(config["sns_topic_arn"], msg),
     )
 
     queue_module.purge_queue(clients["sqs"], config["queue_url"])
@@ -240,8 +237,7 @@ def handler(event: dict[str, Any], context: Any) -> dict[str, Any]:
         # Extract coverage and unknown services for email notifications
         unknown_services = cast(list[str], spending_data.pop("_unknown_services", []))
         coverage = {
-            sp_type: data["summary"]["avg_coverage"]
-            for sp_type, data in spending_data.items()
+            sp_type: data["summary"]["avg_coverage"] for sp_type, data in spending_data.items()
         }
     else:
         # follow_aws strategy - no spending analysis needed
@@ -254,29 +250,38 @@ def handler(event: dict[str, Any], context: Any) -> dict[str, Any]:
 
     if config["dry_run"]:
         email_module.send_dry_run_email(
-            clients["sns"], config, purchase_plans, coverage,
-            unknown_services if unknown_services else None
+            clients["sns"],
+            config,
+            purchase_plans,
+            coverage,
+            unknown_services if unknown_services else None,
         )
     else:
         queue_module.queue_purchase_intents(clients["sqs"], config, purchase_plans)
         email_module.send_scheduled_email(
-            clients["sns"], config, purchase_plans, coverage,
-            unknown_services if unknown_services else None
+            clients["sns"],
+            config,
+            purchase_plans,
+            coverage,
+            unknown_services if unknown_services else None,
         )
 
     return {
         "statusCode": 200,
-        "body": json.dumps({
-            "message": "Scheduler completed successfully",
-            "dry_run": config["dry_run"],
-            "purchases_planned": len(purchase_plans),
-        }),
+        "body": json.dumps(
+            {
+                "message": "Scheduler completed successfully",
+                "dry_run": config["dry_run"],
+                "purchases_planned": len(purchase_plans),
+            }
+        ),
     }
 
 
 def _send_error_notification(sns_topic_arn: str, error_msg: str) -> None:
     """Send error notification via SNS."""
     import boto3
+
     send_error_notification(
         sns_client=boto3.client("sns"),
         sns_topic_arn=sns_topic_arn,
