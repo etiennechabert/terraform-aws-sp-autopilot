@@ -30,7 +30,7 @@ module "savings_plans" {
   purchase_strategy = {
     coverage_target_percent = 85 # Target 85% coverage across organization
     max_coverage_cap        = 95 # Hard cap at 95% to maintain flexibility
-    lookback_days           = 30 # 30 days of usage history
+    lookback_days           = 13 # Max for HOURLY granularity (recommended)
     min_data_days           = 14 # Require at least 14 days of data
 
     # Moderate commitment growth for organization
