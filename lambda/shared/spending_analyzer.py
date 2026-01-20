@@ -343,7 +343,8 @@ class SpendingAnalyzer:
 
             for plan in plans:
                 end_str = plan.get("end")
-                if not end_str:
+                plan_id = plan.get("savingsPlanId")
+                if not end_str or not plan_id:
                     continue
 
                 # Parse end date
@@ -351,11 +352,11 @@ class SpendingAnalyzer:
 
                 # Exclude plans expiring within renewal window
                 if plan_end > renewal_threshold:
-                    valid_plan_ids.add(plan["savingsPlanId"])
+                    valid_plan_ids.add(plan_id)
                 else:
                     days_until_expiry = (plan_end - now).days
                     logger.info(
-                        f"Excluding plan {plan['savingsPlanId']} - expires in {days_until_expiry} days (within renewal window)"
+                        f"Excluding plan {plan_id} - expires in {days_until_expiry} days (within renewal window)"
                     )
 
             logger.info(f"Valid plans after filtering: {len(valid_plan_ids)}")

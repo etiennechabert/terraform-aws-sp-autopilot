@@ -251,14 +251,29 @@ def handler(event: dict[str, Any], context: Any) -> dict[str, Any]:
 
     # Check for unknown services at the end (after all work is done)
     if unknown_services:
-        raise ValueError(
-            f"Found {len(unknown_services)} service(s) with Savings Plans coverage that are not in our constants:\n"
-            f"{', '.join(sorted(unknown_services))}\n\n"
-            f"Analysis completed successfully but may have incomplete coverage data.\n"
-            f"This likely means AWS added new services that support Savings Plans.\n"
-            f"Please open an issue at: https://github.com/etiennechabert/terraform-aws-sp-autopilot/issues\n"
-            f"Include this error message so we can update the service constants."
+        error_msg = (
+            f"\n{'=' * 80}\n"
+            f"UNKNOWN SERVICES DETECTED\n"
+            f"{'=' * 80}\n\n"
+            f"Found {len(unknown_services)} service(s) with Savings Plans coverage that are NOT in our constants:\n\n"
+            f"{chr(10).join(f'  - {svc}' for svc in sorted(unknown_services))}\n\n"
+            f"Your Savings Plans analysis completed successfully, but coverage data may be incomplete.\n"
+            f"This likely means AWS added new services that support Savings Plans.\n\n"
+            f"{'=' * 80}\n"
+            f"ACTION REQUIRED\n"
+            f"{'=' * 80}\n\n"
+            f"Please open a GitHub issue to get these services added:\n\n"
+            f"1. Go to: https://github.com/etiennechabert/terraform-aws-sp-autopilot/issues/new\n\n"
+            f"2. Title: New AWS services support Savings Plans\n\n"
+            f"3. Copy-paste this message:\n\n"
+            f"---START COPY---\n"
+            f"AWS added {len(unknown_services)} new service(s) with Savings Plans coverage:\n\n"
+            f"{chr(10).join(f'- {svc}' for svc in sorted(unknown_services))}\n\n"
+            f"Please update the service constants in `lambda/shared/spending_analyzer.py`.\n"
+            f"---END COPY---\n\n"
+            f"{'=' * 80}\n"
         )
+        raise ValueError(error_msg)
 
     return {
         "statusCode": 200,
