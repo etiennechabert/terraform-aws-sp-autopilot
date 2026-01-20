@@ -108,6 +108,7 @@ def calculate_current_coverage(config: dict[str, Any]) -> dict[str, float]:
     """Calculate current coverage - backward compatible wrapper."""
     analyzer = SpendingAnalyzer(_ensure_savingsplans_client(), _ensure_ce_client())
     spending_data = analyzer.analyze_current_spending(config)
+    spending_data.pop("_unknown_services", None)  # Remove metadata
     return {
         sp_type: data["summary"]["avg_coverage"]
         for sp_type, data in spending_data.items()
@@ -230,6 +231,9 @@ def handler(event: dict[str, Any], context: Any) -> dict[str, Any]:
     analyzer = SpendingAnalyzer(clients["savingsplans"], clients["ce"])
     spending_data = analyzer.analyze_current_spending(config)
 
+    # Extract unknown services for validation at the end
+    unknown_services = spending_data.pop("_unknown_services", [])
+
     purchase_plans = purchase_module.calculate_purchase_need(config, clients, spending_data)
     purchase_plans = purchase_module.apply_purchase_limits(config, purchase_plans)
 
@@ -244,6 +248,17 @@ def handler(event: dict[str, Any], context: Any) -> dict[str, Any]:
     else:
         queue_module.queue_purchase_intents(clients["sqs"], config, purchase_plans)
         email_module.send_scheduled_email(clients["sns"], config, purchase_plans, coverage)
+
+    # Check for unknown services at the end (after all work is done)
+    if unknown_services:
+        raise ValueError(
+            f"Found {len(unknown_services)} service(s) with Savings Plans coverage that are not in our constants:\n"
+            f"{', '.join(sorted(unknown_services))}\n\n"
+            f"Analysis completed successfully but may have incomplete coverage data.\n"
+            f"This likely means AWS added new services that support Savings Plans.\n"
+            f"Please open an issue at: https://github.com/etiennechabert/terraform-aws-sp-autopilot/issues\n"
+            f"Include this error message so we can update the service constants."
+        )
 
     return {
         "statusCode": 200,

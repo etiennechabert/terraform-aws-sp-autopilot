@@ -287,7 +287,7 @@ class SpendingAnalyzer:
         valid_plan_ids = self._filter_active_plans(now, config["renewal_window_days"])
 
         # Step 2: Validate our service constants are complete
-        self._validate_service_constants(now)
+        unknown_services = self._validate_service_constants(now)
 
         # Step 3: Fetch coverage data from Cost Explorer
         lookback_days = config.get("lookback_days", 7)
@@ -305,6 +305,9 @@ class SpendingAnalyzer:
             f"SageMaker: {sp_type_data['sagemaker']['summary']['avg_coverage']:.2f}% "
             f"(${sp_type_data['sagemaker']['summary']['total_covered']:.2f}/${sp_type_data['sagemaker']['summary']['total_spend']:.2f})"
         )
+
+        # Include unknown services in result for handler to check
+        sp_type_data["_unknown_services"] = list(unknown_services)
 
         return sp_type_data
 
@@ -486,7 +489,7 @@ class SpendingAnalyzer:
 
         return all_coverages
 
-    def _validate_service_constants(self, now: datetime) -> None:
+    def _validate_service_constants(self, now: datetime) -> set[str]:
         """
         Validate that our service constants include all AWS services with SP coverage.
 
@@ -500,8 +503,10 @@ class SpendingAnalyzer:
         Args:
             now: Current timestamp
 
+        Returns:
+            set: Unknown services found (empty if all services are known)
+
         Raises:
-            ValueError: If unknown services are discovered with helpful error message
             ClientError: If AWS API call fails
         """
         end_time = now - timedelta(days=1)
@@ -534,27 +539,22 @@ class SpendingAnalyzer:
             unknown_services = discovered_services - all_known_services
 
             if unknown_services:
-                logger.error(
+                logger.warning(
                     f"Discovered {len(unknown_services)} unknown service(s) with Savings Plans coverage: "
-                    f"{sorted(unknown_services)}"
+                    f"{sorted(unknown_services)}. Analysis will continue with known services only."
                 )
-                raise ValueError(
-                    f"Found {len(unknown_services)} service(s) with Savings Plans coverage that are not in our constants:\n"
-                    f"{', '.join(sorted(unknown_services))}\n\n"
-                    f"This likely means AWS added new services that support Savings Plans.\n"
-                    f"Please open an issue at: https://github.com/etiennechabert/terraform-aws-sp-autopilot/issues\n"
-                    f"Include this error message so we can update the service constants."
+            else:
+                logger.debug(
+                    f"Service validation successful: {len(discovered_services)} services matched, "
+                    f"{len(all_known_services)} total known services"
                 )
 
-            logger.debug(
-                f"Service validation successful: {len(discovered_services)} services matched, "
-                f"{len(all_known_services)} total known services"
-            )
+            return unknown_services
 
         except ClientError as e:
             error_code = e.response.get("Error", {}).get("Code", "Unknown")
             if error_code == "DataUnavailableException":
                 logger.debug("No coverage data available for validation (new account or no usage)")
-                return
+                return set()
             raise
 
