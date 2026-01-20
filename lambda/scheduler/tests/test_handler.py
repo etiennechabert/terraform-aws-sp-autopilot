@@ -1016,7 +1016,7 @@ def test_handler_fixed_strategy_uses_spending_analyzer(mock_env_vars, monkeypatc
         # Args: (sns_client, config, purchase_plans, coverage, unknown_services)
         assert call_args[3] is not None  # coverage should be a dict
         assert call_args[3] == {"compute": 50.0}  # coverage extracted from spending_data
-        assert call_args[4] == []  # unknown_services
+        assert call_args[4] is None  # unknown_services (empty list converted to None)
 
         assert result["statusCode"] == 200
 
