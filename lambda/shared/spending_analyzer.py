@@ -243,14 +243,16 @@ class SpendingAnalyzer:
         """
         Analyze current Savings Plans spending and coverage with time series data.
 
-        Calculates spending/coverage excluding plans expiring within the renewal window,
-        as these will be renewed and shouldn't count toward current coverage for
-        purchase decisions.
+        Note: AWS Cost Explorer returns aggregated coverage data for all active plans.
+        The API does not support filtering by plan ID, so coverage includes all plans
+        regardless of expiration date.
 
         Args:
             config: Configuration dictionary containing:
-                - renewal_window_days: Days before expiry to exclude plans
-                - lookback_days: Days to look back for coverage data (default: 30)
+                - lookback_days: Days to look back for coverage data (default: 7)
+                - enable_compute_sp: Whether to fetch Compute SP data
+                - enable_database_sp: Whether to fetch Database SP data
+                - enable_sagemaker_sp: Whether to fetch SageMaker SP data
 
         Returns:
             dict: Time series and summary data by SP type:
@@ -277,17 +279,14 @@ class SpendingAnalyzer:
         """
         now = datetime.now(timezone.utc)
 
-        # Step 1: Filter out plans expiring within renewal window
-        valid_plan_ids = self._filter_active_plans(now, config["renewal_window_days"])
-
-        # Step 2: Validate our service constants are complete
+        # Step 1: Validate our service constants are complete
         unknown_services = self._validate_service_constants(now)
 
-        # Step 3: Fetch coverage data from Cost Explorer
+        # Step 2: Fetch coverage data from Cost Explorer
         lookback_days = config.get("lookback_days", 7)
         coverage_data = self._fetch_coverage_data(now, lookback_days, config)
 
-        # Step 4: Group coverage by SP type with time series
+        # Step 3: Group coverage by SP type with time series
         sp_type_data = group_coverage_by_sp_type(coverage_data)
 
         logger.info(
@@ -304,62 +303,6 @@ class SpendingAnalyzer:
         sp_type_data["_unknown_services"] = list(unknown_services)
 
         return sp_type_data
-
-    def _filter_active_plans(
-        self, now: datetime, renewal_window_days: int
-    ) -> set[str]:
-        """
-        Get IDs of active Savings Plans excluding those in renewal window.
-
-        Plans expiring within the renewal window are excluded from coverage calculations
-        because they will be renewed and shouldn't influence new purchase decisions.
-
-        Args:
-            now: Current timestamp
-            renewal_window_days: Days before expiry to exclude plans
-
-        Returns:
-            set: Set of valid Savings Plan IDs
-
-        Raises:
-            ClientError: If describe_savings_plans API call fails
-        """
-        valid_plan_ids = set()
-
-        try:
-            response = self.savingsplans_client.describe_savings_plans(
-                states=["active"], maxResults=100
-            )
-            plans = response.get("savingsPlans", [])
-
-            # Calculate renewal window threshold
-            renewal_threshold = now + timedelta(days=renewal_window_days)
-
-            for plan in plans:
-                end_str = plan.get("end")
-                plan_id = plan.get("savingsPlanId")
-                if not end_str or not plan_id:
-                    continue
-
-                # Parse end date
-                plan_end = datetime.fromisoformat(end_str.replace("Z", "+00:00"))
-
-                # Exclude plans expiring within renewal window
-                if plan_end > renewal_threshold:
-                    valid_plan_ids.add(plan_id)
-                else:
-                    days_until_expiry = (plan_end - now).days
-                    logger.info(
-                        f"Excluding plan {plan_id} - expires in {days_until_expiry} days (within renewal window)"
-                    )
-
-            logger.info(f"Valid plans after filtering: {len(valid_plan_ids)}")
-
-        except ClientError as e:
-            logger.error(f"Failed to describe Savings Plans: {e!s}")
-            raise
-
-        return valid_plan_ids
 
     def _fetch_coverage_data(
         self, now: datetime, lookback_days: int, config: dict[str, Any]
