@@ -5,7 +5,7 @@ Provides email formatting and sending functionality for Savings Plans reports.
 """
 
 import logging
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from typing import Any
 
 from botocore.exceptions import ClientError
@@ -41,7 +41,7 @@ def send_report_email(
     logger.info("Sending report email notification")
 
     # Format execution timestamp
-    execution_time = datetime.now(timezone.utc).isoformat()
+    execution_time = datetime.now(UTC).isoformat()
 
     # Build S3 URL
     bucket_name = config["reports_bucket"]

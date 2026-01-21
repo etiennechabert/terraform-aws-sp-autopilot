@@ -6,7 +6,7 @@ savings metrics, and active Savings Plans data.
 """
 
 import logging
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from typing import Any
 
 
@@ -31,7 +31,7 @@ def generate_html_report(
     logger.info("Generating HTML report")
 
     # Calculate report timestamp
-    report_timestamp = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S UTC")
+    report_timestamp = datetime.now(UTC).strftime("%Y-%m-%d %H:%M:%S UTC")
 
     # Calculate coverage summary
     avg_coverage = 0.0

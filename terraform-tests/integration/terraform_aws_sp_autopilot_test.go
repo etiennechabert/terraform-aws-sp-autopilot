@@ -187,7 +187,7 @@ func TestFullDeploymentAndCleanup(t *testing.T) {
 	require.NoError(t, err, "Failed to get Scheduler Lambda function configuration")
 	require.NotNil(t, schedulerConfig.Configuration, "Scheduler Lambda configuration should not be nil")
 
-	assert.Equal(t, "python3.11", *schedulerConfig.Configuration.Runtime, "Scheduler Lambda runtime should be python3.11")
+	assert.Equal(t, "python3.14", *schedulerConfig.Configuration.Runtime, "Scheduler Lambda runtime should be python3.14")
 	assert.Equal(t, "handler.handler", *schedulerConfig.Configuration.Handler, "Scheduler Lambda handler should be handler.handler")
 	assert.Equal(t, int64(300), *schedulerConfig.Configuration.Timeout, "Scheduler Lambda timeout should be 300 seconds")
 

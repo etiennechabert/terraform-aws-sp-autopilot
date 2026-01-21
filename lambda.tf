@@ -14,7 +14,7 @@ resource "aws_lambda_function" "scheduler" {
   # Deploy actual Lambda code with proper configuration
   role    = aws_iam_role.scheduler[0].arn
   handler = "handler.handler"
-  runtime = "python3.11"
+  runtime = "python3.14"
 
   # Performance configuration
   memory_size = local.lambda_scheduler_memory_size
@@ -62,7 +62,7 @@ resource "aws_lambda_function" "purchaser" {
   # Deploy actual Lambda code with proper configuration
   role    = aws_iam_role.purchaser[0].arn
   handler = "handler.handler"
-  runtime = "python3.11"
+  runtime = "python3.14"
 
   # Performance configuration
   memory_size = local.lambda_purchaser_memory_size
@@ -96,7 +96,7 @@ resource "aws_lambda_function" "reporter" {
   # Deploy actual Lambda code with proper configuration
   role    = aws_iam_role.reporter[0].arn
   handler = "handler.handler"
-  runtime = "python3.11"
+  runtime = "python3.14"
 
   # Performance configuration
   memory_size = local.lambda_reporter_memory_size
@@ -231,6 +231,10 @@ data "archive_file" "purchaser" {
     filename = "handler.py"
   }
   source {
+    content  = file("${path.module}/lambda/purchaser/config.py")
+    filename = "config.py"
+  }
+  source {
     content  = file("${path.module}/lambda/purchaser/validation.py")
     filename = "validation.py"
   }
@@ -280,6 +284,10 @@ data "archive_file" "reporter" {
   source {
     content  = file("${path.module}/lambda/reporter/handler.py")
     filename = "handler.py"
+  }
+  source {
+    content  = file("${path.module}/lambda/reporter/config.py")
+    filename = "config.py"
   }
 
   # Include shared module

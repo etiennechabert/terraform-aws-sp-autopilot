@@ -24,6 +24,8 @@ from botocore.exceptions import ClientError
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
 
+from datetime import UTC
+
 import handler
 
 
@@ -569,7 +571,7 @@ def test_purchase_api_error(mock_env_vars, mock_clients):
 
 def test_expiring_plans_renewal(mock_env_vars, mock_clients):
     """Expiring Compute SP should trigger coverage adjustment to force renewal."""
-    from datetime import datetime, timedelta, timezone
+    from datetime import datetime, timedelta
 
     # Mock SQS message
     purchase_intent = {
@@ -602,7 +604,7 @@ def test_expiring_plans_renewal(mock_env_vars, mock_clients):
     }
 
     # Mock expiring Compute SP (expires in 5 days)
-    end_time = (datetime.now(timezone.utc) + timedelta(days=5)).isoformat()
+    end_time = (datetime.now(UTC) + timedelta(days=5)).isoformat()
     mock_clients["savingsplans"].describe_savings_plans.return_value = {
         "savingsPlans": [
             {
@@ -634,7 +636,7 @@ def test_expiring_plans_renewal(mock_env_vars, mock_clients):
 
 def test_expiring_database_plans(mock_env_vars, mock_clients):
     """Expiring Database SP should trigger coverage adjustment."""
-    from datetime import datetime, timedelta, timezone
+    from datetime import datetime, timedelta
 
     # Mock SQS message for Database SP
     purchase_intent = {
@@ -671,7 +673,7 @@ def test_expiring_database_plans(mock_env_vars, mock_clients):
     }
 
     # Mock expiring Database SP
-    end_time = (datetime.now(timezone.utc) + timedelta(days=6)).isoformat()
+    end_time = (datetime.now(UTC) + timedelta(days=6)).isoformat()
     mock_clients["savingsplans"].describe_savings_plans.return_value = {
         "savingsPlans": [
             {
@@ -752,7 +754,7 @@ def test_general_exception_handling(mock_env_vars, mock_clients):
 
 def test_expiring_sagemaker_plans(mock_env_vars, mock_clients):
     """Expiring SageMaker SP should trigger coverage adjustment."""
-    from datetime import datetime, timedelta, timezone
+    from datetime import datetime, timedelta
 
     # Mock SQS message for SageMaker SP
     purchase_intent = {
@@ -785,7 +787,7 @@ def test_expiring_sagemaker_plans(mock_env_vars, mock_clients):
     }
 
     # Mock expiring SageMaker SP
-    end_time = (datetime.now(timezone.utc) + timedelta(days=4)).isoformat()
+    end_time = (datetime.now(UTC) + timedelta(days=4)).isoformat()
     mock_clients["savingsplans"].describe_savings_plans.return_value = {
         "savingsPlans": [
             {

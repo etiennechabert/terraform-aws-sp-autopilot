@@ -6,7 +6,7 @@ and Savings Plans APIs.
 """
 
 import logging
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 from typing import Any
 
 from botocore.exceptions import ClientError
@@ -34,7 +34,7 @@ def get_coverage_history(ce_client: Any, lookback_days: int = 30) -> list[dict[s
 
     try:
         # Calculate date range
-        end_date = datetime.now(timezone.utc).date()
+        end_date = datetime.now(UTC).date()
         start_date = end_date - timedelta(days=lookback_days)
 
         logger.info(f"Querying coverage from {start_date} to {end_date}")
@@ -106,7 +106,7 @@ def get_actual_cost_data(ce_client: Any, lookback_days: int = 30) -> dict[str, A
 
     try:
         # Calculate date range
-        end_date = datetime.now(timezone.utc).date()
+        end_date = datetime.now(UTC).date()
         start_date = end_date - timedelta(days=lookback_days)
 
         logger.info(f"Querying costs from {start_date} to {end_date}")
@@ -271,7 +271,7 @@ def get_savings_data(savingsplans_client: Any, ce_client: Any) -> dict[str, Any]
 
         # Get utilization and actual savings data from Cost Explorer
         try:
-            end_date = datetime.now(timezone.utc).date()
+            end_date = datetime.now(UTC).date()
             start_date = end_date - timedelta(days=30)  # Last 30 days for actual savings
 
             utilization_response = ce_client.get_savings_plans_utilization(

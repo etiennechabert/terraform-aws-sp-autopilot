@@ -7,7 +7,7 @@ Provides reusable utilities for:
 """
 
 import logging
-from typing import Any, Optional
+from typing import Any
 
 import boto3
 from botocore.exceptions import ClientError
@@ -20,7 +20,7 @@ logger.setLevel(logging.INFO)
 
 def get_assumed_role_session(
     role_arn: str, session_name: str = "sp-autopilot-session"
-) -> Optional[boto3.Session]:
+) -> boto3.Session | None:
     """
     Assume a cross-account role and return a session with temporary credentials.
 

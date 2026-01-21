@@ -14,7 +14,7 @@ from __future__ import annotations
 
 import json
 import logging
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 from typing import TYPE_CHECKING, Any
 
 import boto3
@@ -31,7 +31,6 @@ if TYPE_CHECKING:
 # Import with aliases to avoid shadowing when we create backward-compatible wrappers
 
 from shared import notifications
-from shared.config_validation import validate_reporter_config
 from shared.handler_utils import (
     initialize_clients,
     lambda_handler_wrapper,
@@ -213,7 +212,7 @@ def get_coverage_history(
 
     try:
         # Calculate date range
-        end_date = datetime.now(timezone.utc).date()
+        end_date = datetime.now(UTC).date()
         start_date = end_date - timedelta(days=lookback_days)
 
         logger.info(f"Querying coverage from {start_date} to {end_date}")
@@ -290,7 +289,7 @@ def get_actual_cost_data(
 
     try:
         # Calculate date range
-        end_date = datetime.now(timezone.utc).date()
+        end_date = datetime.now(UTC).date()
         start_date = end_date - timedelta(days=lookback_days)
 
         logger.info(f"Querying costs from {start_date} to {end_date}")
@@ -463,7 +462,7 @@ def get_savings_data(
 
         # Get utilization and actual savings data from Cost Explorer
         try:
-            end_date = datetime.now(timezone.utc).date()
+            end_date = datetime.now(UTC).date()
             start_date = end_date - timedelta(days=30)  # Last 30 days for actual savings
 
             utilization_response = ce_client.get_savings_plans_utilization(
@@ -808,7 +807,7 @@ def generate_html_report(
     logger.info("Generating HTML report")
 
     # Calculate report timestamp
-    report_timestamp = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S UTC")
+    report_timestamp = datetime.now(UTC).strftime("%Y-%m-%d %H:%M:%S UTC")
 
     # Calculate coverage summary
     avg_coverage = 0.0
@@ -1375,7 +1374,7 @@ def generate_json_report(
     logger.info("Generating JSON report")
 
     # Calculate report timestamp
-    report_timestamp = datetime.now(timezone.utc).isoformat()
+    report_timestamp = datetime.now(UTC).isoformat()
 
     # Calculate coverage summary
     avg_coverage = 0.0
@@ -1480,7 +1479,7 @@ def generate_csv_report(
     logger.info("Generating CSV report")
 
     # Calculate report timestamp
-    report_timestamp = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S UTC")
+    report_timestamp = datetime.now(UTC).strftime("%Y-%m-%d %H:%M:%S UTC")
 
     # Calculate coverage summary
     avg_coverage = 0.0
@@ -1642,7 +1641,7 @@ def send_report_email(
     logger.info("Sending report email notification")
 
     # Format execution timestamp
-    execution_time = datetime.now(timezone.utc).isoformat()
+    execution_time = datetime.now(UTC).isoformat()
 
     # Build S3 URL
     bucket_name = config["reports_bucket"]

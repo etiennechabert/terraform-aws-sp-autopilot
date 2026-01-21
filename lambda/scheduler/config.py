@@ -72,13 +72,13 @@ CONFIG_SCHEMA = {
     "lookback_days": {
         "required": False,
         "type": "int",
-        "default": "13",
+        "default": "30",
         "env_var": "LOOKBACK_DAYS",
     },
     "granularity": {
         "required": False,
         "type": "str",
-        "default": "HOURLY",
+        "default": "DAILY",
         "env_var": "GRANULARITY",
     },
     "min_commitment_per_plan": {
@@ -133,4 +133,6 @@ def load_configuration() -> dict[str, Any]:
     Returns:
         dict: Validated configuration dictionary
     """
-    return load_config_from_env(CONFIG_SCHEMA)
+    from shared.config_validation import validate_scheduler_config
+
+    return load_config_from_env(CONFIG_SCHEMA, validator=validate_scheduler_config)

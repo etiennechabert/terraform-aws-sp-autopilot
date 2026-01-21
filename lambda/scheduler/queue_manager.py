@@ -10,7 +10,7 @@ from __future__ import annotations
 import logging
 
 # Import queue adapter for local/AWS mode support
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from typing import TYPE_CHECKING, Any
 
 from botocore.exceptions import ClientError
@@ -72,7 +72,7 @@ def queue_purchase_intents(
     for plan in purchase_plans:
         try:
             # Generate unique client token for idempotency
-            timestamp = datetime.now(timezone.utc).isoformat()
+            timestamp = datetime.now(UTC).isoformat()
             sp_type = plan.get("sp_type", "unknown")
             term = plan.get("term", "unknown")
             commitment = plan.get("hourly_commitment", 0.0)

@@ -8,7 +8,7 @@ Used by Scheduler (purchase decisions), Purchaser (cap validation), and Reporter
 from __future__ import annotations
 
 import logging
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 from typing import TYPE_CHECKING, Any
 
 from botocore.exceptions import ClientError
@@ -275,7 +275,7 @@ class SpendingAnalyzer:
         Raises:
             ClientError: If AWS API calls fail
         """
-        now = datetime.now(timezone.utc)
+        now = datetime.now(UTC)
 
         # Step 1: Validate our service constants are complete
         granularity = config.get("granularity", "HOURLY")
