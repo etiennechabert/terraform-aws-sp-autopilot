@@ -22,6 +22,7 @@ Automates AWS Savings Plans purchases based on usage analysis, maintaining consi
 - [Outputs](#outputs)
 - [Advanced Usage](#advanced-usage)
 - [Cross-Account Setup for AWS Organizations](#cross-account-setup-for-aws-organizations)
+- [Data Granularity Configuration](#data-granularity-configuration)
 - [Requirements](#requirements)
 - [License](#license)
 - [Development](#development)
@@ -631,6 +632,63 @@ Two roles provide least privilege access: a shared read-only role for Scheduler 
 
 See [Organizations example](examples/organizations/README.md) for detailed setup instructions.
 
+## Data Granularity Configuration
+
+The module supports two granularity modes for Cost Explorer data analysis: **HOURLY** (recommended) and **DAILY** (compatibility mode).
+
+### Recommended: HOURLY Granularity
+
+**Hourly granularity provides significantly better Savings Plans purchase decisions** because **Savings Plans are purchased as an hourly commitment ($/hour)**. Analyzing data at the same granularity as the commitment ensures accurate purchase sizing.
+
+Hourly data reveals:
+- Peak vs. off-peak usage patterns
+- Workload variance and stability
+- More accurate spending percentiles (p50, p75, p90, p99)
+- Better risk assessment for purchase commitments
+
+**Cost:** Minimal - approximately **$0.01 per 1,000 hourly usage records per month**. For a typical AWS environment, this translates to ~$0.10-$1.00/month.
+
+**Configuration:**
+```hcl
+purchase_strategy = {
+  coverage_target_percent = 90
+  max_coverage_cap        = 95
+  lookback_days           = 13      # Up to 13 days for hourly
+  granularity             = "HOURLY" # Recommended
+  # ... other settings
+}
+```
+
+**AWS Account Requirement:** Hourly granularity must be enabled in AWS Cost Explorer settings:
+1. Go to AWS Console → Cost Explorer → Settings
+2. Enable "Hourly and resource level granularity"
+3. Note: Once enabled, this feature cannot be disabled (but cost is negligible)
+
+### Compatibility Mode: DAILY Granularity
+
+Use daily granularity only if:
+- Your AWS account doesn't have hourly granularity enabled
+- You need longer lookback periods (up to 90 days vs. 13 days for hourly)
+
+**Trade-off:** Daily granularity provides less accurate spending analysis, potentially leading to suboptimal purchase decisions.
+
+**Configuration:**
+```hcl
+purchase_strategy = {
+  coverage_target_percent = 90
+  max_coverage_cap        = 95
+  lookback_days           = 30      # Up to 90 days for daily
+  granularity             = "DAILY"
+  # ... other settings
+}
+```
+
+**Validation:** The module automatically enforces appropriate `lookback_days` limits:
+- HOURLY: Maximum 13 days (AWS Cost Explorer retains ~14 days of hourly data)
+- DAILY: Maximum 90 days
+
+> **💡 Best Practice:** Enable hourly granularity in your AWS account for optimal Savings Plans analysis. The minimal cost is far outweighed by improved purchase accuracy and potential savings.
+
 ## Requirements
 
 - **Terraform**: >= 1.0
@@ -730,3 +788,35 @@ Contributions are welcome! Please open an issue or pull request on GitHub.
 ## Support
 
 For questions, issues, or feature requests, please open a GitHub issue.
+
+## Development
+
+### Pre-commit Hooks
+
+This project uses git pre-commit hooks to ensure code quality. The hook automatically runs linting and formatting before each commit.
+
+To install the hook:
+```bash
+make install-hooks
+```
+
+The hook will:
+- Run `ruff` linting and formatting on staged Python files
+- Auto-fix issues when possible
+- Re-stage modified files
+- Prevent commits with linting errors
+
+To bypass the hook temporarily (not recommended):
+```bash
+git commit --no-verify
+```
+
+### Available Make Targets
+
+- `make lint` - Run linting and auto-fix issues
+- `make lint-check` - Check linting without fixing (CI mode)
+- `make format` - Format Python code with ruff
+- `make test` - Run all tests
+- `make install-hooks` - Install git pre-commit hooks
+- `make help` - Show available targets
+

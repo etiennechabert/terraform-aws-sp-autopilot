@@ -20,8 +20,9 @@ variable "purchase_strategy" {
   type = object({
     coverage_target_percent = number
     max_coverage_cap        = number
-    lookback_days           = optional(number, 30)
+    lookback_days           = optional(number, 13)
     min_data_days           = optional(number, 14)
+    granularity             = optional(string, "HOURLY")
     renewal_window_days     = optional(number, 7)
     min_commitment_per_plan = optional(number, 0.001)
 
@@ -32,8 +33,9 @@ variable "purchase_strategy" {
   default = {
     coverage_target_percent = 80
     max_coverage_cap        = 90
-    lookback_days           = 30
+    lookback_days           = 7
     min_data_days           = 14
+    granularity             = "DAILY"
     renewal_window_days     = 7
     min_commitment_per_plan = 0.001
 

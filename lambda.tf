@@ -39,7 +39,7 @@ resource "aws_lambda_function" "scheduler" {
       MIN_PURCHASE_PERCENT        = tostring(local.min_purchase_percent)
       RENEWAL_WINDOW_DAYS         = tostring(local.renewal_window_days)
       LOOKBACK_DAYS               = tostring(local.lookback_days)
-      MIN_DATA_DAYS               = tostring(local.min_data_days)
+      GRANULARITY                 = local.granularity
       MIN_COMMITMENT_PER_PLAN     = tostring(local.min_commitment_per_plan)
       COMPUTE_SP_TERM             = local.compute_term
       COMPUTE_SP_PAYMENT_OPTION   = local.compute_payment_option
@@ -204,6 +204,14 @@ data "archive_file" "scheduler" {
   source {
     content  = file("${path.module}/lambda/shared/config_validation.py")
     filename = "shared/config_validation.py"
+  }
+  source {
+    content  = file("${path.module}/lambda/shared/spending_analyzer.py")
+    filename = "shared/spending_analyzer.py"
+  }
+  source {
+    content  = file("${path.module}/lambda/shared/purchase_optimizer.py")
+    filename = "shared/purchase_optimizer.py"
   }
   source {
     content  = file("${path.module}/lambda/shared/__init__.py")

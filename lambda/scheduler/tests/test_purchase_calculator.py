@@ -25,12 +25,15 @@ def mock_config():
         "enable_database_sp": True,
         "enable_sagemaker_sp": True,
         "coverage_target_percent": 90.0,
+        "purchase_strategy_type": "follow_aws",
         "max_purchase_percent": 10.0,
         "min_commitment_per_plan": 0.001,
+        "lookback_days": 13,
         "compute_sp_payment_option": "ALL_UPFRONT",
-        "compute_sp_term_mix": {"three_year": 0.67, "one_year": 0.33},
+        "compute_sp_term": "THREE_YEAR",
+        "database_sp_payment_option": "NO_UPFRONT",
         "sagemaker_sp_payment_option": "ALL_UPFRONT",
-        "sagemaker_sp_term_mix": {"three_year": 0.67, "one_year": 0.33},
+        "sagemaker_sp_term": "THREE_YEAR",
     }
 
 
@@ -41,17 +44,28 @@ def mock_config():
 
 def test_calculate_purchase_need_compute_gap(mock_config):
     """Test purchase calculation with coverage gap for Compute SP."""
-    coverage = {"compute": 70.0, "database": 90.0, "sagemaker": 90.0}
-    recommendations = {
-        "compute": {
-            "HourlyCommitmentToPurchase": "5.50",
+    from unittest.mock import Mock, patch
+
+    # Only enable compute SP
+    mock_config["enable_compute_sp"] = True
+    mock_config["enable_database_sp"] = False
+    mock_config["enable_sagemaker_sp"] = False
+
+    # Create mock CE client
+    mock_ce_client = Mock()
+    mock_ce_client.get_savings_plans_purchase_recommendation.return_value = {
+        "Metadata": {
             "RecommendationId": "rec-12345",
+            "LookbackPeriodInDays": "13",
         },
-        "database": None,
-        "sagemaker": None,
+        "SavingsPlansPurchaseRecommendation": {
+            "SavingsPlansPurchaseRecommendationDetails": [{"HourlyCommitmentToPurchase": "5.50"}]
+        },
     }
 
-    result = purchase_calculator.calculate_purchase_need(mock_config, coverage, recommendations)
+    clients = {"ce": mock_ce_client}
+
+    result = purchase_calculator.calculate_purchase_need(mock_config, clients, spending_data=None)
 
     assert len(result) == 1
     assert result[0]["sp_type"] == "compute"
@@ -62,17 +76,28 @@ def test_calculate_purchase_need_compute_gap(mock_config):
 
 def test_calculate_purchase_need_database_gap(mock_config):
     """Test purchase calculation with coverage gap for Database SP."""
-    coverage = {"compute": 90.0, "database": 60.0, "sagemaker": 90.0}
-    recommendations = {
-        "compute": None,
-        "database": {
-            "HourlyCommitmentToPurchase": "2.75",
+    from unittest.mock import Mock
+
+    mock_config["enable_compute_sp"] = False
+    mock_config["enable_database_sp"] = True
+    mock_config["enable_sagemaker_sp"] = False
+    mock_config["database_sp_payment_option"] = "NO_UPFRONT"
+
+    # Create mock CE client
+    mock_ce_client = Mock()
+    mock_ce_client.get_savings_plans_purchase_recommendation.return_value = {
+        "Metadata": {
             "RecommendationId": "rec-db-456",
+            "LookbackPeriodInDays": "13",
         },
-        "sagemaker": None,
+        "SavingsPlansPurchaseRecommendation": {
+            "SavingsPlansPurchaseRecommendationDetails": [{"HourlyCommitmentToPurchase": "2.75"}]
+        },
     }
 
-    result = purchase_calculator.calculate_purchase_need(mock_config, coverage, recommendations)
+    clients = {"ce": mock_ce_client}
+
+    result = purchase_calculator.calculate_purchase_need(mock_config, clients, spending_data=None)
 
     assert len(result) == 1
     assert result[0]["sp_type"] == "database"
@@ -84,17 +109,27 @@ def test_calculate_purchase_need_database_gap(mock_config):
 
 def test_calculate_purchase_need_sagemaker_gap(mock_config):
     """Test purchase calculation with coverage gap for SageMaker SP."""
-    coverage = {"compute": 90.0, "database": 90.0, "sagemaker": 50.0}
-    recommendations = {
-        "compute": None,
-        "database": None,
-        "sagemaker": {
-            "HourlyCommitmentToPurchase": "3.25",
+    from unittest.mock import Mock
+
+    mock_config["enable_compute_sp"] = False
+    mock_config["enable_database_sp"] = False
+    mock_config["enable_sagemaker_sp"] = True
+
+    # Create mock CE client
+    mock_ce_client = Mock()
+    mock_ce_client.get_savings_plans_purchase_recommendation.return_value = {
+        "Metadata": {
             "RecommendationId": "rec-sm-789",
+            "LookbackPeriodInDays": "13",
+        },
+        "SavingsPlansPurchaseRecommendation": {
+            "SavingsPlansPurchaseRecommendationDetails": [{"HourlyCommitmentToPurchase": "3.25"}]
         },
     }
 
-    result = purchase_calculator.calculate_purchase_need(mock_config, coverage, recommendations)
+    clients = {"ce": mock_ce_client}
+
+    result = purchase_calculator.calculate_purchase_need(mock_config, clients, spending_data=None)
 
     assert len(result) == 1
     assert result[0]["sp_type"] == "sagemaker"
@@ -105,23 +140,51 @@ def test_calculate_purchase_need_sagemaker_gap(mock_config):
 
 def test_calculate_purchase_need_multiple_gaps(mock_config):
     """Test purchase calculation with multiple coverage gaps."""
-    coverage = {"compute": 70.0, "database": 60.0, "sagemaker": 50.0}
-    recommendations = {
-        "compute": {
-            "HourlyCommitmentToPurchase": "5.50",
-            "RecommendationId": "rec-compute",
-        },
-        "database": {
-            "HourlyCommitmentToPurchase": "2.75",
-            "RecommendationId": "rec-database",
-        },
-        "sagemaker": {
-            "HourlyCommitmentToPurchase": "3.25",
-            "RecommendationId": "rec-sagemaker",
-        },
-    }
+    from unittest.mock import Mock
 
-    result = purchase_calculator.calculate_purchase_need(mock_config, coverage, recommendations)
+    mock_config["enable_compute_sp"] = True
+    mock_config["enable_database_sp"] = True
+    mock_config["enable_sagemaker_sp"] = True
+    mock_config["database_sp_payment_option"] = "NO_UPFRONT"
+
+    # Create mock CE client that returns different results based on SP type
+    mock_ce_client = Mock()
+
+    def mock_recommendation(*args, **kwargs):
+        sp_type = kwargs.get("SavingsPlansType")
+        if sp_type == "COMPUTE_SP":
+            return {
+                "Metadata": {"RecommendationId": "rec-compute", "LookbackPeriodInDays": "13"},
+                "SavingsPlansPurchaseRecommendation": {
+                    "SavingsPlansPurchaseRecommendationDetails": [
+                        {"HourlyCommitmentToPurchase": "5.50"}
+                    ]
+                },
+            }
+        elif sp_type == "DATABASE_SP":
+            return {
+                "Metadata": {"RecommendationId": "rec-database", "LookbackPeriodInDays": "13"},
+                "SavingsPlansPurchaseRecommendation": {
+                    "SavingsPlansPurchaseRecommendationDetails": [
+                        {"HourlyCommitmentToPurchase": "2.75"}
+                    ]
+                },
+            }
+        elif sp_type == "SAGEMAKER_SP":
+            return {
+                "Metadata": {"RecommendationId": "rec-sagemaker", "LookbackPeriodInDays": "13"},
+                "SavingsPlansPurchaseRecommendation": {
+                    "SavingsPlansPurchaseRecommendationDetails": [
+                        {"HourlyCommitmentToPurchase": "3.25"}
+                    ]
+                },
+            }
+
+    mock_ce_client.get_savings_plans_purchase_recommendation.side_effect = mock_recommendation
+
+    clients = {"ce": mock_ce_client}
+
+    result = purchase_calculator.calculate_purchase_need(mock_config, clients, spending_data=None)
 
     assert len(result) == 3
     sp_types = [plan["sp_type"] for plan in result]
@@ -131,24 +194,19 @@ def test_calculate_purchase_need_multiple_gaps(mock_config):
 
 
 def test_calculate_purchase_need_no_gap(mock_config):
-    """Test when coverage already meets target."""
-    coverage = {"compute": 95.0, "database": 92.0, "sagemaker": 94.0}
-    recommendations = {
-        "compute": {
-            "HourlyCommitmentToPurchase": "5.50",
-            "RecommendationId": "rec-12345",
-        },
-        "database": {
-            "HourlyCommitmentToPurchase": "2.75",
-            "RecommendationId": "rec-db-456",
-        },
-        "sagemaker": {
-            "HourlyCommitmentToPurchase": "3.25",
-            "RecommendationId": "rec-sm-789",
-        },
+    """Test when no recommendations are available (e.g., already at target coverage)."""
+    from unittest.mock import Mock
+
+    # Create mock CE client that returns empty recommendations
+    mock_ce_client = Mock()
+    mock_ce_client.get_savings_plans_purchase_recommendation.return_value = {
+        "Metadata": {"RecommendationId": "rec-123", "LookbackPeriodInDays": "13"},
+        "SavingsPlansPurchaseRecommendation": {"SavingsPlansPurchaseRecommendationDetails": []},
     }
 
-    result = purchase_calculator.calculate_purchase_need(mock_config, coverage, recommendations)
+    clients = {"ce": mock_ce_client}
+
+    result = purchase_calculator.calculate_purchase_need(mock_config, clients, spending_data=None)
 
     # No purchases should be planned
     assert len(result) == 0
@@ -156,10 +214,18 @@ def test_calculate_purchase_need_no_gap(mock_config):
 
 def test_calculate_purchase_need_gap_but_no_recommendation(mock_config):
     """Test when there's a coverage gap but no AWS recommendation."""
-    coverage = {"compute": 70.0, "database": 90.0, "sagemaker": 90.0}
-    recommendations = {"compute": None, "database": None, "sagemaker": None}
+    from unittest.mock import Mock
 
-    result = purchase_calculator.calculate_purchase_need(mock_config, coverage, recommendations)
+    # Create mock CE client that returns empty recommendations
+    mock_ce_client = Mock()
+    mock_ce_client.get_savings_plans_purchase_recommendation.return_value = {
+        "Metadata": {"RecommendationId": "rec-123", "LookbackPeriodInDays": "13"},
+        "SavingsPlansPurchaseRecommendation": {"SavingsPlansPurchaseRecommendationDetails": []},
+    }
+
+    clients = {"ce": mock_ce_client}
+
+    result = purchase_calculator.calculate_purchase_need(mock_config, clients, spending_data=None)
 
     # No purchases can be planned without recommendations
     assert len(result) == 0
@@ -167,14 +233,20 @@ def test_calculate_purchase_need_gap_but_no_recommendation(mock_config):
 
 def test_calculate_purchase_need_zero_commitment(mock_config):
     """Test when recommendation has zero commitment."""
-    coverage = {"compute": 70.0, "database": 90.0, "sagemaker": 90.0}
-    recommendations = {
-        "compute": {"HourlyCommitmentToPurchase": "0", "RecommendationId": "rec-12345"},
-        "database": None,
-        "sagemaker": None,
+    from unittest.mock import Mock
+
+    # Create mock CE client that returns zero commitment
+    mock_ce_client = Mock()
+    mock_ce_client.get_savings_plans_purchase_recommendation.return_value = {
+        "Metadata": {"RecommendationId": "rec-12345", "LookbackPeriodInDays": "13"},
+        "SavingsPlansPurchaseRecommendation": {
+            "SavingsPlansPurchaseRecommendationDetails": [{"HourlyCommitmentToPurchase": "0"}]
+        },
     }
 
-    result = purchase_calculator.calculate_purchase_need(mock_config, coverage, recommendations)
+    clients = {"ce": mock_ce_client}
+
+    result = purchase_calculator.calculate_purchase_need(mock_config, clients, spending_data=None)
 
     # Zero commitment should be skipped
     assert len(result) == 0
@@ -182,22 +254,23 @@ def test_calculate_purchase_need_zero_commitment(mock_config):
 
 def test_calculate_purchase_need_sp_disabled(mock_config):
     """Test when SP type is disabled in config."""
+    from unittest.mock import Mock
+
     mock_config["enable_compute_sp"] = False
+    mock_config["enable_database_sp"] = False
+    mock_config["enable_sagemaker_sp"] = False
 
-    coverage = {"compute": 70.0, "database": 90.0, "sagemaker": 90.0}
-    recommendations = {
-        "compute": {
-            "HourlyCommitmentToPurchase": "5.50",
-            "RecommendationId": "rec-12345",
-        },
-        "database": None,
-        "sagemaker": None,
-    }
+    # Create mock CE client (shouldn't be called since all SPs disabled)
+    mock_ce_client = Mock()
 
-    result = purchase_calculator.calculate_purchase_need(mock_config, coverage, recommendations)
+    clients = {"ce": mock_ce_client}
 
-    # Should not plan purchase for disabled SP type
+    result = purchase_calculator.calculate_purchase_need(mock_config, clients, spending_data=None)
+
+    # Should not plan purchase for disabled SP types
     assert len(result) == 0
+    # Verify CE client was not called at all
+    assert mock_ce_client.get_savings_plans_purchase_recommendation.call_count == 0
 
 
 # ============================================================================
@@ -311,6 +384,39 @@ def test_apply_purchase_limits_mixed_filtering(mock_config):
     assert len(result) == 1
     assert result[0]["sp_type"] == "compute"
     assert result[0]["hourly_commitment"] == 0.1
+
+
+# ============================================================================
+# Error Handling Tests
+# ============================================================================
+
+
+def test_calculate_purchase_need_missing_strategy_type():
+    """Test error when purchase_strategy_type is missing from config."""
+    from unittest.mock import Mock
+
+    config = {
+        "enable_compute_sp": True,
+        # Missing: purchase_strategy_type
+    }
+    clients = {"ce": Mock()}
+
+    with pytest.raises(ValueError, match="Missing required configuration 'purchase_strategy_type'"):
+        purchase_calculator.calculate_purchase_need(config, clients, spending_data=None)
+
+
+def test_calculate_purchase_need_unknown_strategy():
+    """Test error when purchase_strategy_type is not in registry."""
+    from unittest.mock import Mock
+
+    config = {
+        "enable_compute_sp": True,
+        "purchase_strategy_type": "nonexistent_strategy",
+    }
+    clients = {"ce": Mock()}
+
+    with pytest.raises(ValueError, match="Unknown purchase strategy 'nonexistent_strategy'"):
+        purchase_calculator.calculate_purchase_need(config, clients, spending_data=None)
 
 
 # ============================================================================

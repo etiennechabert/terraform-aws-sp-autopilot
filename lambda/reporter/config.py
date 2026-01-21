@@ -59,4 +59,6 @@ def load_configuration() -> dict[str, Any]:
     Returns:
         dict: Validated configuration dictionary
     """
-    return load_config_from_env(CONFIG_SCHEMA)
+    from shared.config_validation import validate_reporter_config
+
+    return load_config_from_env(CONFIG_SCHEMA, validator=validate_reporter_config)

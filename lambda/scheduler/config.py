@@ -72,14 +72,14 @@ CONFIG_SCHEMA = {
     "lookback_days": {
         "required": False,
         "type": "int",
-        "default": "30",
+        "default": "13",
         "env_var": "LOOKBACK_DAYS",
     },
-    "min_data_days": {
+    "granularity": {
         "required": False,
-        "type": "int",
-        "default": "14",
-        "env_var": "MIN_DATA_DAYS",
+        "type": "str",
+        "default": "HOURLY",
+        "env_var": "GRANULARITY",
     },
     "min_commitment_per_plan": {
         "required": False,
@@ -98,6 +98,12 @@ CONFIG_SCHEMA = {
         "type": "str",
         "default": "ALL_UPFRONT",
         "env_var": "COMPUTE_SP_PAYMENT_OPTION",
+    },
+    "database_sp_payment_option": {
+        "required": False,
+        "type": "str",
+        "default": "NO_UPFRONT",
+        "env_var": "DATABASE_SP_PAYMENT_OPTION",
     },
     "sagemaker_sp_term": {
         "required": False,

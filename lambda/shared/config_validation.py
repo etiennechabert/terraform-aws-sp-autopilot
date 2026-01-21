@@ -20,6 +20,9 @@ VALID_PURCHASE_STRATEGIES = ["follow_aws", "fixed", "dichotomy"]
 # Valid values for report_format field
 VALID_REPORT_FORMATS = ["html", "json", "csv"]
 
+# Valid values for granularity field
+VALID_GRANULARITIES = ["HOURLY", "DAILY"]
+
 
 def _validate_percentage_range(
     value: Any, field_name: str, min_val: float = 0.0, max_val: float = 100.0
@@ -84,7 +87,7 @@ def validate_scheduler_config(config: dict[str, Any]) -> None:
     - Term values are valid (ONE_YEAR or THREE_YEAR)
     - Payment options are valid
     - Purchase strategy type is valid
-    - Logical constraints (min < max, lookback >= min_data_days)
+    - Logical constraints (min < max, lookback <= 13 days)
 
     Args:
         config: Dictionary containing scheduler configuration
@@ -137,24 +140,20 @@ def validate_scheduler_config(config: dict[str, Any]) -> None:
                 f"got {type(config['lookback_days']).__name__}: {config['lookback_days']}"
             )
 
-    if "min_data_days" in config:
-        _validate_positive_number(config["min_data_days"], "min_data_days")
-        if not isinstance(config["min_data_days"], int):
+        # Validate lookback_days based on granularity
+        granularity = config.get("granularity", "HOURLY")
+        if granularity == "HOURLY" and config["lookback_days"] > 13:
             raise ValueError(
-                f"Field 'min_data_days' must be an integer, "
-                f"got {type(config['min_data_days']).__name__}: {config['min_data_days']}"
+                f"Field 'lookback_days' must be 13 or less for HOURLY granularity. "
+                f"AWS Cost Explorer retains hourly data for ~14 days. With 1-day processing lag, "
+                f"13 days is the maximum reliable lookback period. "
+                f"Got {config['lookback_days']}"
             )
-
-    # Validate lookback_days >= min_data_days
-    if (
-        "lookback_days" in config
-        and "min_data_days" in config
-        and config["lookback_days"] < config["min_data_days"]
-    ):
-        raise ValueError(
-            f"Field 'lookback_days' ({config['lookback_days']}) must be greater than "
-            f"or equal to 'min_data_days' ({config['min_data_days']})"
-        )
+        if granularity == "DAILY" and config["lookback_days"] > 90:
+            raise ValueError(
+                f"Field 'lookback_days' must be 90 or less for DAILY granularity. "
+                f"Got {config['lookback_days']}"
+            )
 
     # Validate min_commitment_per_plan is non-negative
     if "min_commitment_per_plan" in config:
@@ -210,6 +209,15 @@ def validate_scheduler_config(config: dict[str, Any]) -> None:
             raise ValueError(
                 f"Invalid purchase_strategy_type: '{strategy_type}'. "
                 f"Must be one of: {', '.join(VALID_PURCHASE_STRATEGIES)}"
+            )
+
+    # Validate granularity
+    if "granularity" in config:
+        granularity = config["granularity"]
+        if granularity not in VALID_GRANULARITIES:
+            raise ValueError(
+                f"Invalid granularity: '{granularity}'. "
+                f"Must be one of: {', '.join(VALID_GRANULARITIES)}"
             )
 
 

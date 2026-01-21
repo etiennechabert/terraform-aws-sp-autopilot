@@ -30,9 +30,10 @@ def mock_env_vars(monkeypatch):
     monkeypatch.setenv("ENABLE_DATABASE_SP", "false")
     monkeypatch.setenv("ENABLE_SAGEMAKER_SP", "false")
     monkeypatch.setenv("COVERAGE_TARGET_PERCENT", "90")
+    monkeypatch.setenv("PURCHASE_STRATEGY_TYPE", "follow_aws")
     monkeypatch.setenv("MAX_PURCHASE_PERCENT", "10")
     monkeypatch.setenv("RENEWAL_WINDOW_DAYS", "7")
-    monkeypatch.setenv("LOOKBACK_DAYS", "30")
+    monkeypatch.setenv("LOOKBACK_DAYS", "13")
     monkeypatch.setenv("MIN_DATA_DAYS", "14")
     monkeypatch.setenv("MIN_COMMITMENT_PER_PLAN", "0.001")
     monkeypatch.setenv("COMPUTE_SP_TERM_MIX", '{"three_year": 0.67, "one_year": 0.33}')
@@ -109,8 +110,9 @@ def test_calculate_current_coverage_filters_expiring_plans(mock_env_vars):
     mock_ce_client.get_savings_plans_coverage.return_value = {
         "SavingsPlansCoverages": [
             {
-                "TimePeriod": {"Start": "2026-01-12", "End": "2026-01-13"},
-                "Coverage": {"CoveragePercentage": "75.5"},
+                "TimePeriod": {"Start": "2026-01-12T00:00:00Z", "End": "2026-01-13T00:00:00Z"},
+                "Coverage": {"SpendCoveredBySavingsPlans": "10.5", "TotalCost": "14.0"},
+                "Attributes": {"SERVICE": "Amazon Elastic Compute Cloud - Compute"},
             }
         ]
     }
@@ -120,7 +122,7 @@ def test_calculate_current_coverage_filters_expiring_plans(mock_env_vars):
     )
 
     assert "compute" in result
-    assert result["compute"] == 75.5
+    assert result["compute"] == 75.0
 
 
 def test_calculate_current_coverage_keeps_valid_plans(mock_env_vars):
@@ -147,8 +149,9 @@ def test_calculate_current_coverage_keeps_valid_plans(mock_env_vars):
     mock_ce_client.get_savings_plans_coverage.return_value = {
         "SavingsPlansCoverages": [
             {
-                "TimePeriod": {"Start": "2026-01-12", "End": "2026-01-13"},
-                "Coverage": {"CoveragePercentage": "85.0"},
+                "TimePeriod": {"Start": "2026-01-12T00:00:00Z", "End": "2026-01-13T00:00:00Z"},
+                "Coverage": {"SpendCoveredBySavingsPlans": "17.0", "TotalCost": "20.0"},
+                "Attributes": {"SERVICE": "Amazon Elastic Compute Cloud - Compute"},
             }
         ]
     }
@@ -740,302 +743,6 @@ def test_get_aws_recommendations_parallel_no_tasks(monkeypatch, mock_clients):
 # ============================================================================
 
 
-def test_calculate_purchase_need_positive_gap():
-    """Test that purchase plans are created when there's a coverage gap."""
-    config = {
-        "enable_compute_sp": True,
-        "enable_database_sp": False,
-        "enable_sagemaker_sp": False,
-        "coverage_target_percent": 90.0,
-        "compute_sp_payment_option": "ALL_UPFRONT",
-    }
-
-    coverage = {"compute": 70.0, "database": 0.0}
-
-    recommendations = {
-        "compute": {
-            "HourlyCommitmentToPurchase": "1.500",
-            "RecommendationId": "test-rec-123",
-        },
-        "database": None,
-    }
-
-    result = handler.calculate_purchase_need(config, coverage, recommendations)
-
-    assert len(result) == 1
-    assert result[0]["sp_type"] == "compute"
-    assert result[0]["hourly_commitment"] == 1.5
-    assert result[0]["recommendation_id"] == "test-rec-123"
-
-
-def test_calculate_purchase_need_no_gap():
-    """Test that no purchase plans are created when coverage meets target."""
-    config = {
-        "enable_compute_sp": True,
-        "enable_database_sp": False,
-        "enable_sagemaker_sp": False,
-        "coverage_target_percent": 90.0,
-    }
-
-    # Coverage already meets target
-    coverage = {"compute": 90.0, "database": 0.0}
-
-    recommendations = {
-        "compute": {
-            "HourlyCommitmentToPurchase": "1.500",
-            "RecommendationId": "test-rec-123",
-        },
-        "database": None,
-    }
-
-    result = handler.calculate_purchase_need(config, coverage, recommendations)
-
-    # Should return empty list (no gap, no purchase needed)
-    assert result == []
-
-
-def test_calculate_purchase_need_no_recommendation():
-    """Test that no purchase is made when AWS recommendation is None."""
-    config = {
-        "enable_compute_sp": True,
-        "enable_database_sp": False,
-        "enable_sagemaker_sp": False,
-        "coverage_target_percent": 90.0,
-    }
-
-    coverage = {"compute": 70.0, "database": 0.0}
-
-    # No recommendation available
-    recommendations = {"compute": None, "database": None}
-
-    result = handler.calculate_purchase_need(config, coverage, recommendations)
-
-    assert result == []
-
-
-def test_calculate_purchase_need_zero_commitment():
-    """Test that recommendations with $0/hour commitment are skipped."""
-    config = {
-        "enable_compute_sp": True,
-        "enable_database_sp": False,
-        "enable_sagemaker_sp": False,
-        "coverage_target_percent": 90.0,
-    }
-
-    coverage = {"compute": 70.0, "database": 0.0}
-
-    recommendations = {
-        "compute": {
-            "HourlyCommitmentToPurchase": "0.000",
-            "RecommendationId": "test-rec-123",
-        },
-        "database": None,
-    }
-
-    result = handler.calculate_purchase_need(config, coverage, recommendations)
-
-    assert result == []
-
-
-def test_calculate_purchase_need_database_sp():
-    """Test that Database SP purchase plans use NO_UPFRONT payment and ONE_YEAR term."""
-    config = {
-        "enable_compute_sp": False,
-        "enable_database_sp": True,
-        "enable_sagemaker_sp": False,
-        "coverage_target_percent": 90.0,
-    }
-
-    coverage = {"compute": 0.0, "database": 65.0}
-
-    recommendations = {
-        "compute": None,
-        "database": {
-            "HourlyCommitmentToPurchase": "2.500",
-            "RecommendationId": "test-db-rec-456",
-        },
-    }
-
-    result = handler.calculate_purchase_need(config, coverage, recommendations)
-
-    assert len(result) == 1
-    assert result[0]["sp_type"] == "database"
-    assert result[0]["hourly_commitment"] == 2.5
-    assert result[0]["recommendation_id"] == "test-db-rec-456"
-    assert result[0]["payment_option"] == "NO_UPFRONT"
-    assert result[0]["term"] == "ONE_YEAR"
-
-
-def test_calculate_purchase_need_database_no_gap():
-    """Test that no Database SP purchase is made when coverage meets target."""
-    config = {
-        "enable_compute_sp": False,
-        "enable_database_sp": True,
-        "enable_sagemaker_sp": False,
-        "coverage_target_percent": 90.0,
-    }
-
-    # Database coverage already meets target
-    coverage = {"compute": 0.0, "database": 92.0}
-
-    recommendations = {
-        "compute": None,
-        "database": {
-            "HourlyCommitmentToPurchase": "2.500",
-            "RecommendationId": "test-db-rec-789",
-        },
-    }
-
-    result = handler.calculate_purchase_need(config, coverage, recommendations)
-
-    # Should return empty list (no gap, no purchase needed)
-    assert result == []
-
-
-def test_calculate_purchase_need_database_zero_commitment():
-    """Test that Database SP recommendations with $0/hour commitment are skipped."""
-    config = {
-        "enable_compute_sp": False,
-        "enable_database_sp": True,
-        "enable_sagemaker_sp": False,
-        "coverage_target_percent": 90.0,
-    }
-
-    coverage = {"compute": 0.0, "database": 60.0}
-
-    recommendations = {
-        "compute": None,
-        "database": {
-            "HourlyCommitmentToPurchase": "0.000",
-            "RecommendationId": "test-db-rec-zero",
-        },
-    }
-
-    result = handler.calculate_purchase_need(config, coverage, recommendations)
-
-    assert result == []
-
-
-def test_calculate_purchase_need_database_no_recommendation():
-    """Test that no Database SP purchase is made when AWS recommendation is None."""
-    config = {
-        "enable_compute_sp": False,
-        "enable_database_sp": True,
-        "enable_sagemaker_sp": False,
-        "coverage_target_percent": 90.0,
-    }
-
-    coverage = {"compute": 0.0, "database": 60.0}
-
-    # No recommendation available
-    recommendations = {"compute": None, "database": None}
-
-    result = handler.calculate_purchase_need(config, coverage, recommendations)
-
-    assert result == []
-
-
-def test_calculate_purchase_need_sagemaker_sp():
-    """Test that SageMaker SP purchase plans use configured payment option."""
-    config = {
-        "enable_compute_sp": False,
-        "enable_database_sp": False,
-        "enable_sagemaker_sp": True,
-        "coverage_target_percent": 90.0,
-        "sagemaker_sp_payment_option": "ALL_UPFRONT",
-    }
-
-    coverage = {"compute": 0.0, "database": 0.0, "sagemaker": 55.0}
-
-    recommendations = {
-        "compute": None,
-        "database": None,
-        "sagemaker": {
-            "HourlyCommitmentToPurchase": "3.750",
-            "RecommendationId": "test-sm-rec-456",
-        },
-    }
-
-    result = handler.calculate_purchase_need(config, coverage, recommendations)
-
-    assert len(result) == 1
-    assert result[0]["sp_type"] == "sagemaker"
-    assert result[0]["hourly_commitment"] == 3.75
-    assert result[0]["recommendation_id"] == "test-sm-rec-456"
-    assert result[0]["payment_option"] == "ALL_UPFRONT"
-
-
-def test_calculate_purchase_need_sagemaker_no_gap():
-    """Test that no SageMaker SP purchase is made when coverage meets target."""
-    config = {
-        "enable_compute_sp": False,
-        "enable_database_sp": False,
-        "enable_sagemaker_sp": True,
-        "coverage_target_percent": 90.0,
-    }
-
-    # SageMaker coverage already meets target
-    coverage = {"compute": 0.0, "database": 0.0, "sagemaker": 93.0}
-
-    recommendations = {
-        "compute": None,
-        "database": None,
-        "sagemaker": {
-            "HourlyCommitmentToPurchase": "3.750",
-            "RecommendationId": "test-sm-rec-789",
-        },
-    }
-
-    result = handler.calculate_purchase_need(config, coverage, recommendations)
-
-    # Should return empty list (no gap, no purchase needed)
-    assert result == []
-
-
-def test_calculate_purchase_need_sagemaker_zero_commitment():
-    """Test that SageMaker SP recommendations with $0/hour commitment are skipped."""
-    config = {
-        "enable_compute_sp": False,
-        "enable_database_sp": False,
-        "enable_sagemaker_sp": True,
-        "coverage_target_percent": 90.0,
-    }
-
-    coverage = {"compute": 0.0, "database": 0.0, "sagemaker": 50.0}
-
-    recommendations = {
-        "compute": None,
-        "database": None,
-        "sagemaker": {
-            "HourlyCommitmentToPurchase": "0.000",
-            "RecommendationId": "test-sm-rec-zero",
-        },
-    }
-
-    result = handler.calculate_purchase_need(config, coverage, recommendations)
-
-    assert result == []
-
-
-def test_calculate_purchase_need_sagemaker_no_recommendation():
-    """Test that no SageMaker SP purchase is made when AWS recommendation is None."""
-    config = {
-        "enable_compute_sp": False,
-        "enable_database_sp": False,
-        "enable_sagemaker_sp": True,
-        "coverage_target_percent": 90.0,
-    }
-
-    coverage = {"compute": 0.0, "database": 0.0, "sagemaker": 50.0}
-
-    # No recommendation available
-    recommendations = {"compute": None, "database": None, "sagemaker": None}
-
-    result = handler.calculate_purchase_need(config, coverage, recommendations)
-
-    assert result == []
-
-
 # ============================================================================
 # Purchase Limits Tests
 # ============================================================================
@@ -1154,23 +861,23 @@ def test_handler_dry_run_mode(mock_env_vars):
     with (
         patch("boto3.client") as mock_boto3_client,
         patch("shared.handler_utils.initialize_clients", return_value=mock_clients),
-        patch("handler.queue_module.purge_queue"),
-        patch("handler.coverage_module.calculate_current_coverage") as mock_coverage,
-        patch("handler.recommendations_module.get_aws_recommendations") as mock_recs,
-        patch("handler.email_module.send_dry_run_email") as mock_email,
-        patch("handler.queue_module.queue_purchase_intents") as mock_queue,
+        patch("queue_manager.purge_queue"),
+        patch("purchase_calculator.calculate_purchase_need") as mock_purchase,
+        patch("email_notifications.send_dry_run_email") as mock_email,
+        patch("queue_manager.queue_purchase_intents") as mock_queue,
     ):
         # Configure boto3.client mock to return appropriate mocks
         mock_boto3_client.return_value = MagicMock()
 
-        mock_coverage.return_value = {"compute": 70.0, "database": 0.0}
-        mock_recs.return_value = {
-            "compute": {
-                "HourlyCommitmentToPurchase": "1.000",
-                "RecommendationId": "rec-123",
-            },
-            "database": None,
-        }
+        # Mock purchase_need to return a purchase plan
+        mock_purchase.return_value = [
+            {
+                "sp_type": "compute",
+                "hourly_commitment": 1.0,
+                "payment_option": "ALL_UPFRONT",
+                "recommendation_id": "rec-123",
+            }
+        ]
 
         result = handler.handler({}, None)
 
@@ -1197,23 +904,23 @@ def test_handler_production_mode(mock_env_vars, monkeypatch):
     with (
         patch("boto3.client") as mock_boto3_client,
         patch("shared.handler_utils.initialize_clients", return_value=mock_clients),
-        patch("handler.queue_module.purge_queue"),
-        patch("handler.coverage_module.calculate_current_coverage") as mock_coverage,
-        patch("handler.recommendations_module.get_aws_recommendations") as mock_recs,
-        patch("handler.email_module.send_scheduled_email") as mock_email,
-        patch("handler.queue_module.queue_purchase_intents") as mock_queue,
+        patch("queue_manager.purge_queue"),
+        patch("purchase_calculator.calculate_purchase_need") as mock_purchase,
+        patch("email_notifications.send_scheduled_email") as mock_email,
+        patch("queue_manager.queue_purchase_intents") as mock_queue,
     ):
         # Configure boto3.client mock to return appropriate mocks
         mock_boto3_client.return_value = MagicMock()
 
-        mock_coverage.return_value = {"compute": 70.0, "database": 0.0}
-        mock_recs.return_value = {
-            "compute": {
-                "HourlyCommitmentToPurchase": "1.000",
-                "RecommendationId": "rec-123",
-            },
-            "database": None,
-        }
+        # Mock purchase_need to return a purchase plan
+        mock_purchase.return_value = [
+            {
+                "sp_type": "compute",
+                "hourly_commitment": 1.0,
+                "payment_option": "ALL_UPFRONT",
+                "recommendation_id": "rec-123",
+            }
+        ]
 
         result = handler.handler({}, None)
 
@@ -1222,6 +929,95 @@ def test_handler_production_mode(mock_env_vars, monkeypatch):
         # Should call production email
         assert mock_email.call_count == 1
         # Should return success
+        assert result["statusCode"] == 200
+
+
+def test_handler_follow_aws_strategy_skips_spending_analyzer(mock_env_vars):
+    """Test that follow_aws strategy skips SpendingAnalyzer and passes coverage=None."""
+    # mock_env_vars already sets PURCHASE_STRATEGY_TYPE to follow_aws
+    mock_clients = {
+        "ce": MagicMock(),
+        "savingsplans": MagicMock(),
+        "sqs": MagicMock(),
+        "sns": MagicMock(),
+    }
+
+    with (
+        patch("boto3.client") as mock_boto3_client,
+        patch("shared.handler_utils.initialize_clients", return_value=mock_clients),
+        patch("queue_manager.purge_queue"),
+        patch("purchase_calculator.calculate_purchase_need") as mock_purchase,
+        patch("email_notifications.send_dry_run_email") as mock_email,
+        patch("handler.SpendingAnalyzer") as mock_analyzer,
+    ):
+        mock_boto3_client.return_value = MagicMock()
+        mock_purchase.return_value = []
+
+        result = handler.handler({}, None)
+
+        # Verify SpendingAnalyzer was NOT instantiated for follow_aws strategy
+        assert mock_analyzer.call_count == 0
+
+        # Verify email was called with coverage=None and unknown_services=None
+        mock_email.assert_called_once()
+        call_args = mock_email.call_args[0]
+        # Args: (sns_client, config, purchase_plans, coverage, unknown_services)
+        assert call_args[3] is None  # coverage should be None
+        assert call_args[4] is None  # unknown_services should be None
+
+        assert result["statusCode"] == 200
+
+
+def test_handler_fixed_strategy_uses_spending_analyzer(mock_env_vars, monkeypatch):
+    """Test that fixed strategy instantiates SpendingAnalyzer and passes coverage."""
+    monkeypatch.setenv("PURCHASE_STRATEGY_TYPE", "fixed")
+    monkeypatch.setenv("MAX_PURCHASE_PERCENT", "5")
+
+    mock_clients = {
+        "ce": MagicMock(),
+        "savingsplans": MagicMock(),
+        "sqs": MagicMock(),
+        "sns": MagicMock(),
+    }
+
+    mock_spending_data = {
+        "compute": {
+            "summary": {"avg_coverage": 50.0, "total_spend": 100.0, "total_covered": 50.0},
+            "timeseries": [],
+        },
+        "_unknown_services": [],
+    }
+
+    with (
+        patch("boto3.client") as mock_boto3_client,
+        patch("shared.handler_utils.initialize_clients", return_value=mock_clients),
+        patch("queue_manager.purge_queue"),
+        patch("purchase_calculator.calculate_purchase_need") as mock_purchase,
+        patch("email_notifications.send_dry_run_email") as mock_email,
+        patch("handler.SpendingAnalyzer") as mock_analyzer_class,
+    ):
+        mock_boto3_client.return_value = MagicMock()
+        mock_purchase.return_value = []
+
+        # Mock SpendingAnalyzer instance
+        mock_analyzer = MagicMock()
+        mock_analyzer.analyze_current_spending.return_value = mock_spending_data
+        mock_analyzer_class.return_value = mock_analyzer
+
+        result = handler.handler({}, None)
+
+        # Verify SpendingAnalyzer was instantiated for fixed strategy
+        assert mock_analyzer_class.call_count == 1
+        assert mock_analyzer.analyze_current_spending.call_count == 1
+
+        # Verify email was called with coverage dict (not None)
+        mock_email.assert_called_once()
+        call_args = mock_email.call_args[0]
+        # Args: (sns_client, config, purchase_plans, coverage, unknown_services)
+        assert call_args[3] is not None  # coverage should be a dict
+        assert call_args[3] == {"compute": 50.0}  # coverage extracted from spending_data
+        assert call_args[4] is None  # unknown_services (empty list converted to None)
+
         assert result["statusCode"] == 200
 
 

@@ -8,6 +8,7 @@ to fetch multiple recommendation types in parallel for improved performance.
 
 from __future__ import annotations
 
+import json
 import logging
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from typing import TYPE_CHECKING, Any
@@ -55,7 +56,7 @@ def _fetch_compute_sp_recommendation(
             PaymentOption="ALL_UPFRONT",
         )
 
-        logger.debug(f"Compute SP API response: {response}")
+        logger.debug(f"Compute SP API response:\n{json.dumps(response, indent=2, default=str)}")
 
         # Extract recommendation details first
         recommendation_details = response.get("SavingsPlansPurchaseRecommendation", {})
@@ -345,5 +346,5 @@ def get_aws_recommendations(
                     logger.error(f"Failed to fetch {key} recommendation: {e!s}")
                     raise
 
-    logger.info(f"Recommendations retrieved: {recommendations}")
+    logger.info(f"Recommendations retrieved:\n{json.dumps(recommendations, indent=2, default=str)}")
     return recommendations
