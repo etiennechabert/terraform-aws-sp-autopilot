@@ -5,7 +5,7 @@ Generates CSV-formatted reports containing coverage history and savings data.
 """
 
 import logging
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from typing import Any
 
 
@@ -29,7 +29,7 @@ def generate_csv_report(
     logger.info("Generating CSV report")
 
     # Calculate report timestamp
-    report_timestamp = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S UTC")
+    report_timestamp = datetime.now(UTC).strftime("%Y-%m-%d %H:%M:%S UTC")
 
     # Calculate coverage summary
     avg_coverage = 0.0

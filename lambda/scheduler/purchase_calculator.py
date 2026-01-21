@@ -16,7 +16,8 @@ Strategy Pattern:
 """
 
 import logging
-from typing import Any, Callable
+from collections.abc import Callable
+from typing import Any
 
 from dichotomy_strategy import calculate_purchase_need_dichotomy
 from fixed_strategy import calculate_purchase_need_fixed

@@ -6,7 +6,7 @@ Tests cover all 12 functions with edge cases to achieve >= 80% coverage.
 
 import os
 import sys
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 from unittest.mock import MagicMock, Mock, patch
 
 import pytest
@@ -81,7 +81,7 @@ def test_calculate_current_coverage_filters_expiring_plans(mock_env_vars):
     """Test that plans expiring within renewal_window_days are excluded."""
     cfg = config.load_configuration()
 
-    now = datetime.now(timezone.utc)
+    now = datetime.now(UTC)
 
     # Create mock clients
     mock_savingsplans_client = Mock()
@@ -129,7 +129,7 @@ def test_calculate_current_coverage_keeps_valid_plans(mock_env_vars):
     """Test that plans expiring after renewal window are kept."""
     cfg = config.load_configuration()
 
-    now = datetime.now(timezone.utc)
+    now = datetime.now(UTC)
     expiring_later = now + timedelta(days=30)
 
     # Create mock clients
@@ -1069,7 +1069,7 @@ def test_get_assumed_role_session_with_valid_arn():
                 "AccessKeyId": "AKIAIOSFODNN7EXAMPLE",
                 "SecretAccessKey": "wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY",
                 "SessionToken": "FwoGZXIvYXdzEBYaDBexampletoken",
-                "Expiration": datetime.now(timezone.utc),
+                "Expiration": datetime.now(UTC),
             }
         }
 

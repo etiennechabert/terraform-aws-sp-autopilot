@@ -7,7 +7,7 @@ plan filtering, error handling, and edge cases.
 
 import os
 import sys
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 from unittest.mock import Mock
 
 import pytest
@@ -407,7 +407,7 @@ def test_calculate_current_coverage_filters_expiring_plans(
 ):
     """Test coverage calculation with plans having different expiration dates."""
 
-    now = datetime.now(timezone.utc)
+    now = datetime.now(UTC)
 
     # Plan expiring in 3 days (should be excluded - within 7 day window)
     expiring_soon = now + timedelta(days=3)
@@ -486,7 +486,7 @@ def test_calculate_current_coverage_all_plans_expiring_soon(
     mock_savingsplans_client, mock_ce_client, mock_config
 ):
     """Test when all plans are expiring within renewal window."""
-    now = datetime.now(timezone.utc)
+    now = datetime.now(UTC)
     expiring_soon1 = now + timedelta(days=1)
     expiring_soon2 = now + timedelta(days=5)
 
@@ -530,7 +530,7 @@ def test_calculate_current_coverage_boundary_renewal_window(
     mock_savingsplans_client, mock_ce_client, mock_config
 ):
     """Test plans expiring exactly at renewal window boundary."""
-    now = datetime.now(timezone.utc)
+    now = datetime.now(UTC)
     # Exactly 7 days (should be excluded as it's not > renewal_window_days)
     expiring_exactly = now + timedelta(days=7)
     # 8 days (should be included)
@@ -575,7 +575,7 @@ def test_calculate_current_coverage_multiple_coverage_data_points(
     mock_savingsplans_client, mock_ce_client, mock_config
 ):
     """Test that all coverage data points are aggregated correctly."""
-    now = datetime.now(timezone.utc)
+    now = datetime.now(UTC)
     expiring_later = now + timedelta(days=30)
 
     mock_savingsplans_client.describe_savings_plans.return_value = {
@@ -622,7 +622,7 @@ def test_calculate_current_coverage_missing_coverage_percentage(
     mock_savingsplans_client, mock_ce_client, mock_config
 ):
     """Test handling when spend fields are missing from response."""
-    now = datetime.now(timezone.utc)
+    now = datetime.now(UTC)
     expiring_later = now + timedelta(days=30)
 
     mock_savingsplans_client.describe_savings_plans.return_value = {
@@ -658,7 +658,7 @@ def test_calculate_current_coverage_plan_without_end_date(
     mock_savingsplans_client, mock_ce_client, mock_config
 ):
     """Test handling plans without end date."""
-    now = datetime.now(timezone.utc)
+    now = datetime.now(UTC)
     expiring_later = now + timedelta(days=30)
 
     mock_savingsplans_client.describe_savings_plans.return_value = {
@@ -725,7 +725,7 @@ def test_calculate_current_coverage_get_coverage_error(
     """Test error handling when get_savings_plans_coverage fails."""
     from botocore.exceptions import ClientError
 
-    now = datetime.now(timezone.utc)
+    now = datetime.now(UTC)
     expiring_later = now + timedelta(days=30)
 
     mock_savingsplans_client.describe_savings_plans.return_value = {
@@ -758,7 +758,7 @@ def test_calculate_current_coverage_high_coverage_percentage(
     mock_savingsplans_client, mock_ce_client, mock_config
 ):
     """Test with very high coverage percentage (near 100%)."""
-    now = datetime.now(timezone.utc)
+    now = datetime.now(UTC)
     expiring_later = now + timedelta(days=30)
 
     mock_savingsplans_client.describe_savings_plans.return_value = {
@@ -795,7 +795,7 @@ def test_calculate_current_coverage_zero_coverage(
     mock_savingsplans_client, mock_ce_client, mock_config
 ):
     """Test with zero coverage percentage."""
-    now = datetime.now(timezone.utc)
+    now = datetime.now(UTC)
     expiring_later = now + timedelta(days=30)
 
     mock_savingsplans_client.describe_savings_plans.return_value = {
@@ -832,7 +832,7 @@ def test_calculate_current_coverage_with_groupby_multiple_types(
     aws_mock_builder, mock_savingsplans_client, mock_ce_client, mock_config
 ):
     """Test coverage calculation with only compute enabled."""
-    now = datetime.now(timezone.utc)
+    now = datetime.now(UTC)
     expiring_later = now + timedelta(days=30)
 
     # Only enable compute (default behavior)
@@ -865,7 +865,7 @@ def test_calculate_current_coverage_with_groupby_ec2_instance_sp(
     mock_savingsplans_client, mock_ce_client, mock_config
 ):
     """Test coverage calculation with compute services."""
-    now = datetime.now(timezone.utc)
+    now = datetime.now(UTC)
     expiring_later = now + timedelta(days=30)
 
     mock_savingsplans_client.describe_savings_plans.return_value = {
@@ -905,7 +905,7 @@ def test_calculate_current_coverage_with_groupby_rds_instance(
     mock_savingsplans_client, mock_ce_client, mock_config
 ):
     """Test coverage calculation with database services."""
-    now = datetime.now(timezone.utc)
+    now = datetime.now(UTC)
     expiring_later = now + timedelta(days=30)
 
     # Enable database SP type
@@ -948,7 +948,7 @@ def test_calculate_current_coverage_with_groupby_all_types(
     aws_mock_builder, mock_savingsplans_client, mock_ce_client, mock_config
 ):
     """Test coverage calculation with compute enabled."""
-    now = datetime.now(timezone.utc)
+    now = datetime.now(UTC)
     expiring_later = now + timedelta(days=30)
 
     # Only enable compute
@@ -981,7 +981,7 @@ def test_calculate_current_coverage_with_groupby_no_groups_fallback(
     mock_savingsplans_client, mock_ce_client, mock_config
 ):
     """Test with compute coverage only."""
-    now = datetime.now(timezone.utc)
+    now = datetime.now(UTC)
     expiring_later = now + timedelta(days=30)
 
     mock_savingsplans_client.describe_savings_plans.return_value = {

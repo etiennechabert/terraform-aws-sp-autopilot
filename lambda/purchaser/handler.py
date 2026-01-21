@@ -16,7 +16,7 @@ from __future__ import annotations
 
 import json
 import logging
-from datetime import date, datetime, timedelta, timezone
+from datetime import UTC, date, datetime, timedelta
 from typing import TYPE_CHECKING, Any
 
 import boto3
@@ -31,13 +31,19 @@ if TYPE_CHECKING:
 from validation import validate_purchase_intent
 
 from shared import handler_utils
-from shared.config_validation import validate_purchaser_config
 from shared.queue_adapter import QueueAdapter
 
 
 # Configure logging
 logger = logging.getLogger()
 logger.setLevel(logging.INFO)
+
+
+def load_configuration() -> dict[str, Any]:
+    """Load configuration - backward compatible wrapper."""
+    from config import load_configuration as config_load
+
+    return config_load()
 
 
 @handler_utils.lambda_handler_wrapper("Purchaser")
@@ -134,50 +140,6 @@ def handler(event: dict[str, Any], context: Any) -> dict[str, Any]:
         raise  # Re-raise to ensure Lambda fails visibly
 
 
-def load_configuration() -> dict[str, Any]:
-    """Load and validate configuration from environment variables."""
-    schema = {
-        "queue_url": {"required": True, "type": "str", "env_var": "QUEUE_URL"},
-        "sns_topic_arn": {"required": True, "type": "str", "env_var": "SNS_TOPIC_ARN"},
-        "max_coverage_cap": {
-            "required": False,
-            "type": "float",
-            "default": "95",
-            "env_var": "MAX_COVERAGE_CAP",
-        },
-        "renewal_window_days": {
-            "required": False,
-            "type": "int",
-            "default": "7",
-            "env_var": "RENEWAL_WINDOW_DAYS",
-        },
-        "lookback_days": {
-            "required": False,
-            "type": "int",
-            "default": "30",
-            "env_var": "LOOKBACK_DAYS",
-        },
-        "management_account_role_arn": {
-            "required": False,
-            "type": "str",
-            "env_var": "MANAGEMENT_ACCOUNT_ROLE_ARN",
-        },
-        "tags": {"required": False, "type": "json", "default": "{}", "env_var": "TAGS"},
-        "slack_webhook_url": {
-            "required": False,
-            "type": "str",
-            "env_var": "SLACK_WEBHOOK_URL",
-        },
-        "teams_webhook_url": {
-            "required": False,
-            "type": "str",
-            "env_var": "TEAMS_WEBHOOK_URL",
-        },
-    }
-
-    return handler_utils.load_config_from_env(schema, validator=validate_purchaser_config)
-
-
 def receive_messages(
     sqs_client: SQSClient, queue_url: str, max_messages: int = 10
 ) -> list[dict[str, Any]]:
@@ -222,8 +184,8 @@ def get_current_coverage(clients: dict[str, Any], config: dict[str, Any]) -> dic
     try:
         # Get date range for coverage query using configured lookback period
         # Cost Explorer has 24-48 hour data lag, so we query multiple days for stability
-        end_date = datetime.now(timezone.utc).date()
-        start_date = (datetime.now(timezone.utc) - timedelta(days=config["lookback_days"])).date()
+        end_date = datetime.now(UTC).date()
+        start_date = (datetime.now(UTC) - timedelta(days=config["lookback_days"])).date()
 
         # Get raw coverage from Cost Explorer
         raw_coverage = get_ce_coverage(clients["ce"], start_date, end_date, config)
@@ -374,7 +336,7 @@ def get_expiring_plans(
         response = savingsplans_client.describe_savings_plans(states=["active"])
 
         # Calculate expiration threshold
-        expiration_threshold = datetime.now(timezone.utc) + timedelta(days=renewal_window_days)
+        expiration_threshold = datetime.now(UTC) + timedelta(days=renewal_window_days)
 
         # Filter to plans expiring within the window
         expiring_plans = []
@@ -623,7 +585,7 @@ def execute_purchase(
         # Prepare tags - merge default tags with custom tags from config
         tags = {
             "ManagedBy": "terraform-aws-sp-autopilot",
-            "PurchaseDate": datetime.now(timezone.utc).isoformat(),
+            "PurchaseDate": datetime.now(UTC).isoformat(),
             "ClientToken": client_token,
         }
         tags.update(config.get("tags", {}))
@@ -740,7 +702,7 @@ def send_summary_email(
     logger.info("Sending summary email")
 
     # Format execution timestamp
-    execution_time = datetime.now(timezone.utc).isoformat()
+    execution_time = datetime.now(UTC).isoformat()
 
     # Build email subject
     total_purchases = (

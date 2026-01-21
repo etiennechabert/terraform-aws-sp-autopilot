@@ -6,7 +6,6 @@ to all spending.
 """
 
 import pytest
-
 from fixed_strategy import calculate_purchase_need_fixed
 
 

@@ -7,9 +7,9 @@ Lambdas to work with either real SQS queues or local filesystem-based queues.
 
 import json
 import logging
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
-from typing import Any, Optional
+from typing import Any
 
 from . import local_mode
 
@@ -22,7 +22,7 @@ class QueueAdapter:
     Adapter class for queue operations supporting both SQS and local filesystem.
     """
 
-    def __init__(self, sqs_client: Optional[Any] = None, queue_url: Optional[str] = None):
+    def __init__(self, sqs_client: Any | None = None, queue_url: str | None = None):
         """
         Initialize the queue adapter.
 
@@ -97,9 +97,7 @@ class QueueAdapter:
     def _send_message_local(self, message_body: dict[str, Any]) -> str:
         """Send message in local mode by writing to a JSON file."""
         # Generate a unique filename from client_token or timestamp
-        client_token = message_body.get(
-            "client_token", f"msg-{datetime.now(timezone.utc).timestamp()}"
-        )
+        client_token = message_body.get("client_token", f"msg-{datetime.now(UTC).timestamp()}")
         # Sanitize filename
         safe_filename = client_token.replace("/", "-").replace(":", "-")
         file_path = self.queue_dir / f"{safe_filename}.json"

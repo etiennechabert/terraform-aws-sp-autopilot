@@ -7,8 +7,8 @@ Lambdas to work with either real S3 buckets or local filesystem storage.
 
 import json
 import logging
-from datetime import datetime, timezone
-from typing import Any, Optional
+from datetime import UTC, datetime
+from typing import Any
 
 from . import local_mode
 
@@ -21,7 +21,7 @@ class StorageAdapter:
     Adapter class for storage operations supporting both S3 and local filesystem.
     """
 
-    def __init__(self, s3_client: Optional[Any] = None, bucket_name: Optional[str] = None):
+    def __init__(self, s3_client: Any | None = None, bucket_name: str | None = None):
         """
         Initialize the storage adapter.
 
@@ -48,7 +48,7 @@ class StorageAdapter:
         self,
         report_content: str,
         report_format: str = "html",
-        metadata: Optional[dict[str, str]] = None,
+        metadata: dict[str, str] | None = None,
     ) -> str:
         """
         Upload a report to storage.
@@ -72,10 +72,10 @@ class StorageAdapter:
         self,
         report_content: str,
         report_format: str,
-        metadata: Optional[dict[str, str]],
+        metadata: dict[str, str] | None,
     ) -> str:
         """Upload report in local mode by writing to a file."""
-        timestamp = datetime.now(timezone.utc).strftime("%Y-%m-%d_%H-%M-%S")
+        timestamp = datetime.now(UTC).strftime("%Y-%m-%d_%H-%M-%S")
         file_name = f"savings-plans-report_{timestamp}.{report_format}"
         file_path = self.reports_dir / file_name
 
@@ -89,7 +89,7 @@ class StorageAdapter:
                 metadata = {}
 
             metadata_with_defaults = {
-                "generated-at": datetime.now(timezone.utc).isoformat(),
+                "generated-at": datetime.now(UTC).isoformat(),
                 "generator": "sp-autopilot-reporter",
                 "format": report_format,
                 **metadata,
@@ -109,10 +109,10 @@ class StorageAdapter:
         self,
         report_content: str,
         report_format: str,
-        metadata: Optional[dict[str, str]],
+        metadata: dict[str, str] | None,
     ) -> str:
         """Upload report in AWS mode using S3 API."""
-        timestamp = datetime.now(timezone.utc).strftime("%Y-%m-%d_%H-%M-%S")
+        timestamp = datetime.now(UTC).strftime("%Y-%m-%d_%H-%M-%S")
         object_key = f"savings-plans-report_{timestamp}.{report_format}"
 
         # Determine content type
@@ -128,7 +128,7 @@ class StorageAdapter:
             metadata = {}
 
         metadata_with_defaults = {
-            "generated-at": datetime.now(timezone.utc).isoformat(),
+            "generated-at": datetime.now(UTC).isoformat(),
             "generator": "sp-autopilot-reporter",
             **metadata,
         }

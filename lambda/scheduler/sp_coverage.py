@@ -11,7 +11,6 @@ from typing import TYPE_CHECKING, Any
 
 from shared.spending_analyzer import (
     SpendingAnalyzer,
-    group_coverage_by_sp_type,
 )
 
 
