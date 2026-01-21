@@ -44,7 +44,7 @@ def mock_config():
 
 def test_calculate_purchase_need_compute_gap(mock_config):
     """Test purchase calculation with coverage gap for Compute SP."""
-    from unittest.mock import Mock, patch
+    from unittest.mock import Mock
 
     # Only enable compute SP
     mock_config["enable_compute_sp"] = True
@@ -161,7 +161,7 @@ def test_calculate_purchase_need_multiple_gaps(mock_config):
                     ]
                 },
             }
-        elif sp_type == "DATABASE_SP":
+        if sp_type == "DATABASE_SP":
             return {
                 "Metadata": {"RecommendationId": "rec-database", "LookbackPeriodInDays": "13"},
                 "SavingsPlansPurchaseRecommendation": {
@@ -170,7 +170,7 @@ def test_calculate_purchase_need_multiple_gaps(mock_config):
                     ]
                 },
             }
-        elif sp_type == "SAGEMAKER_SP":
+        if sp_type == "SAGEMAKER_SP":
             return {
                 "Metadata": {"RecommendationId": "rec-sagemaker", "LookbackPeriodInDays": "13"},
                 "SavingsPlansPurchaseRecommendation": {
@@ -417,6 +417,236 @@ def test_calculate_purchase_need_unknown_strategy():
 
     with pytest.raises(ValueError, match="Unknown purchase strategy 'nonexistent_strategy'"):
         purchase_calculator.calculate_purchase_need(config, clients, spending_data=None)
+
+
+# ============================================================================
+# Dichotomy Strategy Integration Tests
+# ============================================================================
+
+
+def test_calculate_purchase_need_dichotomy_strategy():
+    """Test dichotomy strategy integration through purchase calculator."""
+    from unittest.mock import Mock
+
+    config = {
+        "enable_compute_sp": True,
+        "enable_database_sp": False,
+        "enable_sagemaker_sp": False,
+        "coverage_target_percent": 90.0,
+        "purchase_strategy_type": "dichotomy",
+        "max_purchase_percent": 50.0,
+        "min_purchase_percent": 1.0,
+        "min_commitment_per_plan": 0.001,
+        "compute_sp_payment_option": "ALL_UPFRONT",
+        "compute_sp_term": "THREE_YEAR",
+    }
+
+    # Spending data showing 50% coverage with $10/hour total spend
+    spending_data = {
+        "compute": {
+            "summary": {
+                "avg_coverage": 50.0,
+                "avg_hourly_total": 10.0,
+                "avg_hourly_covered": 5.0,
+            }
+        }
+    }
+
+    clients = {"ce": Mock(), "savingsplans": Mock()}
+
+    result = purchase_calculator.calculate_purchase_need(config, clients, spending_data)
+
+    # At 50% coverage, target 90%, max 50%
+    # Dichotomy: try 50% → 100% > 90%, try 25% → 75% <= 90%
+    # Purchase 25% of $10/h = $2.50/h
+    assert len(result) == 1
+    assert result[0]["sp_type"] == "compute"
+    assert result[0]["strategy"] == "dichotomy"
+    assert result[0]["purchase_percent"] == 25.0
+    assert result[0]["hourly_commitment"] == 2.5
+
+
+def test_calculate_purchase_need_dichotomy_from_zero():
+    """Test dichotomy strategy from zero coverage."""
+    from unittest.mock import Mock
+
+    config = {
+        "enable_compute_sp": True,
+        "enable_database_sp": False,
+        "enable_sagemaker_sp": False,
+        "coverage_target_percent": 90.0,
+        "purchase_strategy_type": "dichotomy",
+        "max_purchase_percent": 50.0,
+        "min_purchase_percent": 1.0,
+        "min_commitment_per_plan": 0.001,
+        "compute_sp_payment_option": "ALL_UPFRONT",
+        "compute_sp_term": "THREE_YEAR",
+    }
+
+    # Starting from 0% coverage with $100/hour spend
+    spending_data = {
+        "compute": {
+            "summary": {
+                "avg_coverage": 0.0,
+                "avg_hourly_total": 100.0,
+                "avg_hourly_covered": 0.0,
+            }
+        }
+    }
+
+    clients = {"ce": Mock(), "savingsplans": Mock()}
+
+    result = purchase_calculator.calculate_purchase_need(config, clients, spending_data)
+
+    # At 0%, can use max 50%
+    # Purchase 50% of $100/h = $50/h
+    assert len(result) == 1
+    assert result[0]["purchase_percent"] == 50.0
+    assert result[0]["hourly_commitment"] == 50.0
+
+
+def test_calculate_purchase_need_dichotomy_near_target():
+    """Test dichotomy strategy near target coverage."""
+    from unittest.mock import Mock
+
+    config = {
+        "enable_compute_sp": True,
+        "enable_database_sp": False,
+        "enable_sagemaker_sp": False,
+        "coverage_target_percent": 90.0,
+        "purchase_strategy_type": "dichotomy",
+        "max_purchase_percent": 50.0,
+        "min_purchase_percent": 1.0,
+        "min_commitment_per_plan": 0.001,
+        "compute_sp_payment_option": "ALL_UPFRONT",
+        "compute_sp_term": "THREE_YEAR",
+    }
+
+    # At 87.5% coverage, close to 90% target
+    spending_data = {
+        "compute": {
+            "summary": {
+                "avg_coverage": 87.5,
+                "avg_hourly_total": 100.0,
+                "avg_hourly_covered": 87.5,
+            }
+        }
+    }
+
+    clients = {"ce": Mock(), "savingsplans": Mock()}
+
+    result = purchase_calculator.calculate_purchase_need(config, clients, spending_data)
+
+    # At 87.5%, target 90%, halve down to 1.5625% → round to 1.6%
+    # Purchase 1.6% of $100/h = $1.60/h
+    assert len(result) == 1
+    assert result[0]["purchase_percent"] == 1.6
+    assert result[0]["hourly_commitment"] == 1.6
+
+
+def test_calculate_purchase_need_dichotomy_multiple_sp_types():
+    """Test dichotomy strategy with multiple SP types enabled."""
+    from unittest.mock import Mock
+
+    config = {
+        "enable_compute_sp": True,
+        "enable_database_sp": True,
+        "enable_sagemaker_sp": True,
+        "coverage_target_percent": 90.0,
+        "purchase_strategy_type": "dichotomy",
+        "max_purchase_percent": 50.0,
+        "min_purchase_percent": 1.0,
+        "min_commitment_per_plan": 0.001,
+        "compute_sp_payment_option": "ALL_UPFRONT",
+        "compute_sp_term": "THREE_YEAR",
+        "database_sp_payment_option": "NO_UPFRONT",
+        "sagemaker_sp_payment_option": "ALL_UPFRONT",
+        "sagemaker_sp_term": "THREE_YEAR",
+    }
+
+    # Different coverage levels for each SP type
+    spending_data = {
+        "compute": {
+            "summary": {
+                "avg_coverage": 50.0,
+                "avg_hourly_total": 100.0,
+                "avg_hourly_covered": 50.0,
+            }
+        },
+        "database": {
+            "summary": {
+                "avg_coverage": 75.0,
+                "avg_hourly_total": 50.0,
+                "avg_hourly_covered": 37.5,
+            }
+        },
+        "sagemaker": {
+            "summary": {
+                "avg_coverage": 0.0,
+                "avg_hourly_total": 20.0,
+                "avg_hourly_covered": 0.0,
+            }
+        },
+    }
+
+    clients = {"ce": Mock(), "savingsplans": Mock()}
+
+    result = purchase_calculator.calculate_purchase_need(config, clients, spending_data)
+
+    # Should have 3 plans
+    assert len(result) == 3
+
+    # Compute: 50% → 25% purchase
+    compute_plan = [p for p in result if p["sp_type"] == "compute"][0]
+    assert compute_plan["purchase_percent"] == 25.0
+    assert compute_plan["hourly_commitment"] == 25.0
+
+    # Database: 75% → 12.5% purchase
+    database_plan = [p for p in result if p["sp_type"] == "database"][0]
+    assert database_plan["purchase_percent"] == 12.5
+    assert database_plan["hourly_commitment"] == 6.25
+    assert database_plan["term"] == "ONE_YEAR"
+
+    # SageMaker: 0% → 50% purchase
+    sagemaker_plan = [p for p in result if p["sp_type"] == "sagemaker"][0]
+    assert sagemaker_plan["purchase_percent"] == 50.0
+    assert sagemaker_plan["hourly_commitment"] == 10.0
+
+
+def test_calculate_purchase_need_dichotomy_at_target():
+    """Test dichotomy strategy when already at target."""
+    from unittest.mock import Mock
+
+    config = {
+        "enable_compute_sp": True,
+        "enable_database_sp": False,
+        "enable_sagemaker_sp": False,
+        "coverage_target_percent": 90.0,
+        "purchase_strategy_type": "dichotomy",
+        "max_purchase_percent": 50.0,
+        "min_purchase_percent": 1.0,
+        "min_commitment_per_plan": 0.001,
+        "compute_sp_payment_option": "ALL_UPFRONT",
+        "compute_sp_term": "THREE_YEAR",
+    }
+
+    # Already at target coverage
+    spending_data = {
+        "compute": {
+            "summary": {
+                "avg_coverage": 90.0,
+                "avg_hourly_total": 100.0,
+                "avg_hourly_covered": 90.0,
+            }
+        }
+    }
+
+    clients = {"ce": Mock(), "savingsplans": Mock()}
+
+    result = purchase_calculator.calculate_purchase_need(config, clients, spending_data)
+
+    # No purchase needed
+    assert len(result) == 0
 
 
 # ============================================================================
