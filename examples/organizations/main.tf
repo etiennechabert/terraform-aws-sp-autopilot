@@ -28,10 +28,10 @@ module "savings_plans" {
 
   # Purchase strategy - production targets for organization
   purchase_strategy = {
-    coverage_target_percent = 85 # Target 85% coverage across organization
-    max_coverage_cap        = 95 # Hard cap at 95% to maintain flexibility
-    lookback_days           = 13 # Max for HOURLY granularity (recommended)
-    min_data_days           = 14 # Require at least 14 days of data
+    coverage_target_percent = 85       # Target 85% coverage across organization
+    max_coverage_cap        = 95       # Hard cap at 95% to maintain flexibility
+    lookback_days           = 13       # Max for HOURLY granularity (recommended)
+    granularity             = "HOURLY" # Recommended for accurate analysis
 
     # Moderate commitment growth for organization
     fixed = {
@@ -42,14 +42,13 @@ module "savings_plans" {
   # Savings Plans configuration - both Compute and Database for comprehensive coverage
   sp_plans = {
     compute = {
-      enabled                = true
-      all_upfront_three_year = 0.67 # 67% in 3-year all-upfront (higher discount)
-      all_upfront_one_year   = 0.33 # 33% in 1-year all-upfront (flexibility for growth)
+      enabled   = true
+      plan_type = "all_upfront_three_year" # Maximum savings
     }
 
     database = {
-      enabled             = true
-      no_upfront_one_year = 1 # AWS constraint: only 1-year NO_UPFRONT available
+      enabled = true
+      # Database SPs are 1-year NO_UPFRONT only (AWS constraint)
     }
 
     sagemaker = {
