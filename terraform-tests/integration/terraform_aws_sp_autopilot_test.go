@@ -64,12 +64,12 @@ func TestFullDeploymentAndCleanup(t *testing.T) {
 			// Savings Plans configuration
 			"sp_plans": map[string]interface{}{
 				"compute": map[string]interface{}{
-					"enabled":              true,
-					"all_upfront_one_year": 1.0,
+					"enabled":   true,
+					"plan_type": "all_upfront_one_year",
 				},
 				"database": map[string]interface{}{
-					"enabled":             true,
-					"no_upfront_one_year": 1.0,
+					"enabled":   true,
+					"plan_type": "no_upfront_one_year",
 				},
 				"sagemaker": map[string]interface{}{
 					"enabled": false,
