@@ -71,6 +71,9 @@ func TestFullDeploymentAndCleanup(t *testing.T) {
 					"enabled":             true,
 					"no_upfront_one_year": 1.0,
 				},
+				"sagemaker": map[string]interface{}{
+					"enabled": false,
+				},
 			},
 			// EventBridge schedules - SAFETY: far future to prevent accidental triggers
 			"scheduler": map[string]interface{}{
