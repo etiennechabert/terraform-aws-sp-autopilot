@@ -23,13 +23,13 @@ cd ../shared && pip install -r requirements.txt
 
 ### 2. Configure AWS Credentials
 
-Create a `.env` file in the project root:
+Create a `.env.local` file in the project root:
 
 ```bash
-cp .env.example .env
+cp .env.local.example .env.local
 ```
 
-Edit `.env` and add your AWS credentials and test resource ARNs.
+Edit `.env.local` and add your AWS credentials and test resource ARNs.
 
 ### 3. VSCode Debugging
 
@@ -65,23 +65,23 @@ The `local_runner.py` utility simulates AWS Lambda execution locally:
 
 ```bash
 # Run scheduler locally
-python lambda/shared/local_runner.py scheduler
+python lambda/local_runner.py scheduler
 
 # Run purchaser locally
-python lambda/shared/local_runner.py purchaser
+python lambda/local_runner.py purchaser
 
 # Run reporter locally
-python lambda/shared/local_runner.py reporter
+python lambda/local_runner.py reporter
 ```
 
-This reads environment variables from `.env` and executes the Lambda handler with mock AWS context.
+This reads environment variables from `.env.local` and executes the Lambda handler with mock AWS context.
 
 ### Testing with Real AWS Resources
 
 To test with real AWS infrastructure:
 
 1. Deploy the Terraform module to a test AWS account
-2. Update `.env` with the actual resource ARNs (SQS queue, SNS topic, S3 bucket)
+2. Update `.env.local` with the actual resource ARNs (SQS queue, SNS topic, S3 bucket)
 3. **Keep `DRY_RUN=true`** to prevent actual Savings Plans purchases
 4. Run the Lambda functions locally
 
@@ -164,14 +164,14 @@ VSCode is configured to auto-format on save using ruff.
 
 ### Testing Purchase Logic
 
-1. **IMPORTANT:** Always keep `DRY_RUN=true` in `.env`
+1. **IMPORTANT:** Always keep `DRY_RUN=true` in `.env.local`
 2. Use "Debug Purchaser Lambda" configuration
 3. Set breakpoints in `handler.py`
 4. Inspect purchase intent messages from SQS
 
 ## Environment Variables Reference
 
-See `.env.example` for all available environment variables with descriptions.
+See `.env.local.example` for all available environment variables with descriptions.
 
 ### Critical Variables
 

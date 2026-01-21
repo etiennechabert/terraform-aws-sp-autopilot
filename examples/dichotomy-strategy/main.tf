@@ -59,10 +59,12 @@ module "savings_plans" {
 
     database = {
       enabled = false
+      # plan_type not needed when disabled
     }
 
     sagemaker = {
       enabled = false
+      # plan_type not needed when disabled
     }
   }
 

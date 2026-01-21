@@ -1,11 +1,4 @@
-# ============================================================================
-# CloudWatch Resources
-# ============================================================================
-# Purpose: Manages CloudWatch alarms and log groups for Lambda function monitoring
-
-# ============================================================================
-# CloudWatch Log Groups
-# ============================================================================
+# CloudWatch log groups and alarms for Lambda monitoring
 
 resource "aws_cloudwatch_log_group" "scheduler" {
   count = local.lambda_scheduler_enabled ? 1 : 0
@@ -49,11 +42,6 @@ resource "aws_cloudwatch_log_group" "reporter" {
   )
 }
 
-# ============================================================================
-# CloudWatch Alarms for Lambda Functions
-# ============================================================================
-
-# Scheduler Lambda - Error Alarm
 resource "aws_cloudwatch_metric_alarm" "scheduler_error_alarm" {
   count = local.lambda_scheduler_enabled && local.lambda_scheduler_error_alarm_enabled ? 1 : 0
 
@@ -82,7 +70,6 @@ resource "aws_cloudwatch_metric_alarm" "scheduler_error_alarm" {
   )
 }
 
-# Purchaser Lambda - Error Alarm
 resource "aws_cloudwatch_metric_alarm" "purchaser_error_alarm" {
   count = local.lambda_purchaser_enabled && local.lambda_purchaser_error_alarm_enabled ? 1 : 0
 
@@ -111,7 +98,6 @@ resource "aws_cloudwatch_metric_alarm" "purchaser_error_alarm" {
   )
 }
 
-# Reporter Lambda - Error Alarm
 resource "aws_cloudwatch_metric_alarm" "reporter_error_alarm" {
   count = local.lambda_reporter_enabled && local.lambda_reporter_error_alarm_enabled ? 1 : 0
 

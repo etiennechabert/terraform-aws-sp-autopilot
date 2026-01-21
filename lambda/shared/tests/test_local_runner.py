@@ -118,7 +118,7 @@ class TestLocalRunner:
     def test_mock_context_creation(self):
         """Test MockContext class from local_runner."""
 
-        local_runner_path = Path(__file__).parent.parent / "local_runner.py"
+        local_runner_path = Path(__file__).parent.parent.parent / "local_runner.py"
 
         # Import local_runner module
         import importlib.util

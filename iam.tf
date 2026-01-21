@@ -1,11 +1,6 @@
-# IAM Roles and Policies
-# Purpose: IAM roles and policies for Lambda functions in the Savings Plans Automation module
+# IAM roles and policies for Lambda functions
 
-# ============================================================================
-# Scheduler Lambda IAM Role and Policies
-# ============================================================================
 
-# Scheduler Lambda IAM Role
 resource "aws_iam_role" "scheduler" {
   count = local.lambda_scheduler_enabled ? 1 : 0
 
@@ -31,7 +26,6 @@ resource "aws_iam_role" "scheduler" {
   )
 }
 
-# Scheduler Lambda Policy - CloudWatch Logs
 resource "aws_iam_role_policy" "scheduler_cloudwatch_logs" {
   count = local.lambda_scheduler_enabled ? 1 : 0
 
@@ -51,7 +45,6 @@ resource "aws_iam_role_policy" "scheduler_cloudwatch_logs" {
   })
 }
 
-# Scheduler Lambda Policy - Cost Explorer
 resource "aws_iam_role_policy" "scheduler_cost_explorer" {
   count = local.lambda_scheduler_enabled ? 1 : 0
 
@@ -73,7 +66,6 @@ resource "aws_iam_role_policy" "scheduler_cost_explorer" {
   })
 }
 
-# Scheduler Lambda Policy - SQS
 resource "aws_iam_role_policy" "scheduler_sqs" {
   count = local.lambda_scheduler_enabled ? 1 : 0
 
@@ -94,7 +86,6 @@ resource "aws_iam_role_policy" "scheduler_sqs" {
   })
 }
 
-# Scheduler Lambda Policy - SNS
 resource "aws_iam_role_policy" "scheduler_sns" {
   count = local.lambda_scheduler_enabled ? 1 : 0
 
@@ -113,7 +104,6 @@ resource "aws_iam_role_policy" "scheduler_sns" {
   })
 }
 
-# Scheduler Lambda Policy - Savings Plans
 resource "aws_iam_role_policy" "scheduler_savingsplans" {
   count = local.lambda_scheduler_enabled ? 1 : 0
 
@@ -134,7 +124,6 @@ resource "aws_iam_role_policy" "scheduler_savingsplans" {
   })
 }
 
-# Scheduler Lambda Policy - Assume Role (conditional)
 resource "aws_iam_role_policy" "scheduler_assume_role" {
   count = local.lambda_scheduler_enabled && local.lambda_scheduler_assume_role_arn != null ? 1 : 0
 
@@ -151,11 +140,7 @@ resource "aws_iam_role_policy" "scheduler_assume_role" {
   })
 }
 
-# ============================================================================
-# Purchaser Lambda IAM Role and Policies
-# ============================================================================
 
-# Purchaser Lambda IAM Role
 resource "aws_iam_role" "purchaser" {
   count = local.lambda_purchaser_enabled ? 1 : 0
 
@@ -181,7 +166,6 @@ resource "aws_iam_role" "purchaser" {
   )
 }
 
-# Purchaser Lambda Policy - CloudWatch Logs
 resource "aws_iam_role_policy" "purchaser_cloudwatch_logs" {
   count = local.lambda_purchaser_enabled ? 1 : 0
 
@@ -201,7 +185,6 @@ resource "aws_iam_role_policy" "purchaser_cloudwatch_logs" {
   })
 }
 
-# Purchaser Lambda Policy - Cost Explorer
 resource "aws_iam_role_policy" "purchaser_cost_explorer" {
   count = local.lambda_purchaser_enabled ? 1 : 0
 
@@ -223,7 +206,6 @@ resource "aws_iam_role_policy" "purchaser_cost_explorer" {
   })
 }
 
-# Purchaser Lambda Policy - SQS
 resource "aws_iam_role_policy" "purchaser_sqs" {
   count = local.lambda_purchaser_enabled ? 1 : 0
 
@@ -244,7 +226,6 @@ resource "aws_iam_role_policy" "purchaser_sqs" {
   })
 }
 
-# Purchaser Lambda Policy - SNS
 resource "aws_iam_role_policy" "purchaser_sns" {
   count = local.lambda_purchaser_enabled ? 1 : 0
 
@@ -263,7 +244,6 @@ resource "aws_iam_role_policy" "purchaser_sns" {
   })
 }
 
-# Purchaser Lambda Policy - Savings Plans
 resource "aws_iam_role_policy" "purchaser_savingsplans" {
   count = local.lambda_purchaser_enabled ? 1 : 0
 
@@ -285,7 +265,6 @@ resource "aws_iam_role_policy" "purchaser_savingsplans" {
   })
 }
 
-# Purchaser Lambda Policy - Assume Role (conditional)
 resource "aws_iam_role_policy" "purchaser_assume_role" {
   count = local.lambda_purchaser_enabled && local.lambda_purchaser_assume_role_arn != null ? 1 : 0
 
@@ -302,11 +281,7 @@ resource "aws_iam_role_policy" "purchaser_assume_role" {
   })
 }
 
-# ============================================================================
-# Reporter Lambda IAM Role and Policies
-# ============================================================================
 
-# Reporter Lambda IAM Role
 resource "aws_iam_role" "reporter" {
   count = local.lambda_reporter_enabled ? 1 : 0
 
@@ -332,7 +307,6 @@ resource "aws_iam_role" "reporter" {
   )
 }
 
-# Reporter Lambda Policy - CloudWatch Logs
 resource "aws_iam_role_policy" "reporter_cloudwatch_logs" {
   count = local.lambda_reporter_enabled ? 1 : 0
 
@@ -352,7 +326,6 @@ resource "aws_iam_role_policy" "reporter_cloudwatch_logs" {
   })
 }
 
-# Reporter Lambda Policy - Cost Explorer
 resource "aws_iam_role_policy" "reporter_cost_explorer" {
   count = local.lambda_reporter_enabled ? 1 : 0
 
@@ -374,7 +347,6 @@ resource "aws_iam_role_policy" "reporter_cost_explorer" {
   })
 }
 
-# Reporter Lambda Policy - S3
 resource "aws_iam_role_policy" "reporter_s3" {
   count = local.lambda_reporter_enabled ? 1 : 0
 
@@ -395,7 +367,6 @@ resource "aws_iam_role_policy" "reporter_s3" {
   })
 }
 
-# Reporter Lambda Policy - SNS
 resource "aws_iam_role_policy" "reporter_sns" {
   count = local.lambda_reporter_enabled ? 1 : 0
 
@@ -414,7 +385,6 @@ resource "aws_iam_role_policy" "reporter_sns" {
   })
 }
 
-# Reporter Lambda Policy - Savings Plans
 resource "aws_iam_role_policy" "reporter_savingsplans" {
   count = local.lambda_reporter_enabled ? 1 : 0
 
@@ -435,7 +405,6 @@ resource "aws_iam_role_policy" "reporter_savingsplans" {
   })
 }
 
-# Reporter Lambda Policy - Assume Role (conditional)
 resource "aws_iam_role_policy" "reporter_assume_role" {
   count = local.lambda_reporter_enabled && local.lambda_reporter_assume_role_arn != null ? 1 : 0
 

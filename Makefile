@@ -44,7 +44,7 @@ test:
 install-hooks:
 	@echo "Installing pre-commit hooks..."
 	@mkdir -p .git/hooks
-	@cp -f scripts/hooks/pre-commit .git/hooks/pre-commit
+	@cp -f .github/hooks/pre-commit .git/hooks/pre-commit
 	@chmod +x .git/hooks/pre-commit
 	@echo "✓ Pre-commit hooks installed"
 	@echo ""
