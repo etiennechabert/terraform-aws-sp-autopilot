@@ -24,13 +24,15 @@ Use when:
 import logging
 from typing import Any
 
+import recommendations as recommendations_module
+
 
 # Configure logging
 logger = logging.getLogger()
 
 
 def calculate_purchase_need_follow_aws(
-    config: dict[str, Any], coverage: dict[str, float], recommendations: dict[str, Any]
+    config: dict[str, Any], clients: dict[str, Any], spending_data: dict[str, Any] | None = None
 ) -> list[dict[str, Any]]:
     """
     Calculate required purchases using FOLLOW_AWS strategy.
@@ -40,16 +42,19 @@ def calculate_purchase_need_follow_aws(
 
     Args:
         config: Configuration dictionary
-        coverage: Current coverage by SP type
-        recommendations: AWS recommendations
+        clients: AWS clients (ce, savingsplans, etc.)
+        spending_data: Unused (follow_aws doesn't need spending analysis)
 
     Returns:
         list: Purchase plans to execute
     """
     logger.info("Calculating purchase need using FOLLOW_AWS strategy")
 
+    # Fetch AWS recommendations (only data source this strategy needs)
+    # Note: spending_data is ignored - follow_aws only uses AWS recommendations
+    recommendations = recommendations_module.get_aws_recommendations(clients["ce"], config)
+
     purchase_plans = []
-    target_coverage = config["coverage_target_percent"]
 
     # SP types configuration
     sp_types = [
@@ -57,22 +62,18 @@ def calculate_purchase_need_follow_aws(
             "key": "compute",
             "enabled_config": "enable_compute_sp",
             "payment_option_config": "compute_sp_payment_option",
-            "default_payment": "ALL_UPFRONT",
             "name": "Compute",
         },
         {
             "key": "database",
             "enabled_config": "enable_database_sp",
             "payment_option_config": "database_sp_payment_option",
-            "default_payment": "NO_UPFRONT",
             "name": "Database",
-            "term": "ONE_YEAR",
         },
         {
             "key": "sagemaker",
             "enabled_config": "enable_sagemaker_sp",
             "payment_option_config": "sagemaker_sp_payment_option",
-            "default_payment": "ALL_UPFRONT",
             "name": "SageMaker",
         },
     ]
@@ -82,18 +83,6 @@ def calculate_purchase_need_follow_aws(
             continue
 
         key = sp_type["key"]
-        current_coverage = coverage.get(key, 0.0)
-        coverage_gap = target_coverage - current_coverage
-
-        logger.info(
-            f"{sp_type['name']} SP - Current: {current_coverage}%, "
-            f"Target: {target_coverage}%, Gap: {coverage_gap}%"
-        )
-
-        if coverage_gap <= 0:
-            logger.info(f"{sp_type['name']} SP coverage already meets or exceeds target")
-            continue
-
         recommendation = recommendations.get(key)
         if not recommendation:
             logger.info(
@@ -110,9 +99,7 @@ def calculate_purchase_need_follow_aws(
         purchase_plan = {
             "sp_type": key,
             "hourly_commitment": hourly_commitment_float,
-            "payment_option": config.get(
-                sp_type["payment_option_config"], sp_type["default_payment"]
-            ),
+            "payment_option": config[sp_type["payment_option_config"]],
             "recommendation_id": recommendation.get("RecommendationId", "unknown"),
             "strategy": "follow_aws",
         }

@@ -28,7 +28,8 @@ def send_scheduled_email(
     sns_client: SNSClient,
     config: dict[str, Any],
     purchase_plans: list[dict[str, Any]],
-    coverage: dict[str, float],
+    coverage: dict[str, float] | None,
+    unknown_services: list[str] | None = None,
 ) -> None:
     """
     Send email notification for scheduled purchases.
@@ -37,7 +38,8 @@ def send_scheduled_email(
         sns_client: Boto3 SNS client
         config: Configuration dictionary
         purchase_plans: List of planned purchases
-        coverage: Current coverage
+        coverage: Current coverage (None for follow_aws strategy)
+        unknown_services: List of unknown services found (optional)
     """
     logger.info("Sending scheduled purchases email")
 
@@ -48,19 +50,32 @@ def send_scheduled_email(
         "",
         f"Total Plans Queued: {len(purchase_plans)}",
         "",
-        "Current Coverage:",
-        f"  Compute SP:  {coverage.get('compute', 0):.2f}%",
-        f"  Database SP: {coverage.get('database', 0):.2f}%",
-        f"  SageMaker SP: {coverage.get('sagemaker', 0):.2f}%",
-        "",
-        f"Target Coverage: {config.get('coverage_target_percent', 90):.2f}%",
-        "",
-        "Scheduled Purchase Plans:",
-        "-" * 50,
     ]
+
+    # Add coverage info if available (fixed/dichotomy strategies)
+    if coverage is not None:
+        email_lines.extend(
+            [
+                "Current Coverage:",
+                f"  Compute SP:  {coverage.get('compute', 0):.2f}%",
+                f"  Database SP: {coverage.get('database', 0):.2f}%",
+                f"  SageMaker SP: {coverage.get('sagemaker', 0):.2f}%",
+                "",
+                f"Target Coverage: {config.get('coverage_target_percent', 90):.2f}%",
+                "",
+            ]
+        )
+
+    email_lines.extend(
+        [
+            "Scheduled Purchase Plans:",
+            "-" * 50,
+        ]
+    )
 
     # Add details for each purchase plan
     total_annual_cost = 0.0
+
     for i, plan in enumerate(purchase_plans, 1):
         sp_type = plan.get("sp_type", "unknown")
         hourly_commitment = plan.get("hourly_commitment", 0.0)
@@ -87,6 +102,51 @@ def send_scheduled_email(
             "-" * 50,
             f"Total Estimated Annual Cost: ${total_annual_cost:,.2f}",
             "",
+        ]
+    )
+
+    # Add warning if unknown services detected
+    if unknown_services:
+        email_lines.extend(
+            [
+                "⚠️  WARNING: UNKNOWN SERVICES DETECTED",
+                "=" * 50,
+                "",
+                f"Found {len(unknown_services)} service(s) with Savings Plans coverage",
+                "that are NOT in our service constants:",
+                "",
+            ]
+        )
+        for svc in sorted(unknown_services):
+            email_lines.append(f"  - {svc}")
+        email_lines.extend(
+            [
+                "",
+                "Your analysis completed but may have INCOMPLETE coverage data.",
+                "This likely means AWS added new services that support Savings Plans.",
+                "",
+                "ACTION REQUIRED:",
+                "1. Open issue: https://github.com/etiennechabert/terraform-aws-sp-autopilot/issues/new",
+                "2. Title: New AWS services support Savings Plans",
+                "3. Copy-paste:",
+                "",
+                f"   AWS added {len(unknown_services)} new service(s):",
+            ]
+        )
+        for svc in sorted(unknown_services):
+            email_lines.append(f"   - {svc}")
+        email_lines.extend(
+            [
+                "",
+                "   Please update lambda/shared/spending_analyzer.py",
+                "",
+                "=" * 50,
+                "",
+            ]
+        )
+
+    email_lines.extend(
+        [
             "CANCELLATION INSTRUCTIONS:",
             "To cancel these purchases before they execute:",
             "1. Purge the SQS queue to remove all pending purchase intents",
@@ -126,7 +186,8 @@ def send_dry_run_email(
     sns_client: SNSClient,
     config: dict[str, Any],
     purchase_plans: list[dict[str, Any]],
-    coverage: dict[str, float],
+    coverage: dict[str, float] | None,
+    unknown_services: list[str] | None = None,
 ) -> None:
     """
     Send email notification for dry run analysis.
@@ -135,7 +196,8 @@ def send_dry_run_email(
         sns_client: Boto3 SNS client
         config: Configuration dictionary
         purchase_plans: List of what would be purchased
-        coverage: Current coverage
+        coverage: Current coverage (None for follow_aws strategy)
+        unknown_services: List of unknown services found (optional)
     """
     logger.info("Sending dry run email")
 
@@ -148,19 +210,32 @@ def send_dry_run_email(
         "",
         f"Total Plans Analyzed: {len(purchase_plans)}",
         "",
-        "Current Coverage:",
-        f"  Compute SP:  {coverage.get('compute', 0):.2f}%",
-        f"  Database SP: {coverage.get('database', 0):.2f}%",
-        f"  SageMaker SP: {coverage.get('sagemaker', 0):.2f}%",
-        "",
-        f"Target Coverage: {config.get('coverage_target_percent', 90):.2f}%",
-        "",
-        "Purchase Plans (WOULD BE SCHEDULED if dry_run=false):",
-        "-" * 50,
     ]
+
+    # Add coverage info if available (fixed/dichotomy strategies)
+    if coverage is not None:
+        email_lines.extend(
+            [
+                "Current Coverage:",
+                f"  Compute SP:  {coverage.get('compute', 0):.2f}%",
+                f"  Database SP: {coverage.get('database', 0):.2f}%",
+                f"  SageMaker SP: {coverage.get('sagemaker', 0):.2f}%",
+                "",
+                f"Target Coverage: {config.get('coverage_target_percent', 90):.2f}%",
+                "",
+            ]
+        )
+
+    email_lines.extend(
+        [
+            "Purchase Plans (WOULD BE SCHEDULED if dry_run=false):",
+            "-" * 50,
+        ]
+    )
 
     # Add details for each purchase plan
     total_annual_cost = 0.0
+
     for i, plan in enumerate(purchase_plans, 1):
         sp_type = plan.get("sp_type", "unknown")
         hourly_commitment = plan.get("hourly_commitment", 0.0)
@@ -187,6 +262,51 @@ def send_dry_run_email(
             "-" * 50,
             f"Total Estimated Annual Cost: ${total_annual_cost:,.2f}",
             "",
+        ]
+    )
+
+    # Add warning if unknown services detected
+    if unknown_services:
+        email_lines.extend(
+            [
+                "⚠️  WARNING: UNKNOWN SERVICES DETECTED",
+                "=" * 50,
+                "",
+                f"Found {len(unknown_services)} service(s) with Savings Plans coverage",
+                "that are NOT in our service constants:",
+                "",
+            ]
+        )
+        for svc in sorted(unknown_services):
+            email_lines.append(f"  - {svc}")
+        email_lines.extend(
+            [
+                "",
+                "Your analysis completed but may have INCOMPLETE coverage data.",
+                "This likely means AWS added new services that support Savings Plans.",
+                "",
+                "ACTION REQUIRED:",
+                "1. Open issue: https://github.com/etiennechabert/terraform-aws-sp-autopilot/issues/new",
+                "2. Title: New AWS services support Savings Plans",
+                "3. Copy-paste:",
+                "",
+                f"   AWS added {len(unknown_services)} new service(s):",
+            ]
+        )
+        for svc in sorted(unknown_services):
+            email_lines.append(f"   - {svc}")
+        email_lines.extend(
+            [
+                "",
+                "   Please update lambda/shared/spending_analyzer.py",
+                "",
+                "=" * 50,
+                "",
+            ]
+        )
+
+    email_lines.extend(
+        [
             "TO ENABLE ACTUAL PURCHASES:",
             "1. Set the DRY_RUN environment variable to 'false'",
             "2. Update the Lambda configuration:",

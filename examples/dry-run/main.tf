@@ -34,7 +34,7 @@ module "savings_plans" {
   purchase_strategy = {
     coverage_target_percent = 60 # Very conservative 60% target
     max_coverage_cap        = 70 # Low ceiling to limit exposure
-    lookback_days           = 30 # 30 days of usage history
+    lookback_days           = 13 # Max for HOURLY granularity (recommended)
     min_data_days           = 21 # Require 3 weeks of data for confidence
 
     # Minimal purchase limits (won't be used in dry-run, but sets expectations)

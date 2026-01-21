@@ -71,7 +71,6 @@ def handler(event: dict[str, Any], context: Any) -> dict[str, Any]:
     try:
         # Load configuration from environment
         config = load_configuration()
-        validate_reporter_config(config)
 
         # Create error callback function
         def send_error_email(error_msg: str) -> None:

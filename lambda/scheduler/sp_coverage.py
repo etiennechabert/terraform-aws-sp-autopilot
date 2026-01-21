@@ -1,25 +1,23 @@
 """
 Coverage calculation module for Scheduler Lambda.
 
-Calculates current Savings Plans coverage, excluding plans expiring soon.
+This module provides backward-compatible wrapper functions for the shared
+SpendingAnalyzer class. New code should use SpendingAnalyzer directly.
 """
 
 from __future__ import annotations
 
-import logging
-from datetime import datetime, timedelta, timezone
 from typing import TYPE_CHECKING, Any
 
-from botocore.exceptions import ClientError
+from shared.spending_analyzer import (
+    SpendingAnalyzer,
+    group_coverage_by_sp_type,
+)
 
 
 if TYPE_CHECKING:
     from mypy_boto3_ce.client import CostExplorerClient
     from mypy_boto3_savingsplans.client import SavingsPlansClient
-
-
-# Configure logging
-logger = logging.getLogger()
 
 
 def calculate_current_coverage(
@@ -28,7 +26,10 @@ def calculate_current_coverage(
     config: dict[str, Any],
 ) -> dict[str, float]:
     """
-    Calculate current Savings Plans coverage, excluding plans expiring soon.
+    Calculate current Savings Plans coverage (backward compatible).
+
+    This is a wrapper around the shared SpendingAnalyzer class for backward
+    compatibility. New code should use SpendingAnalyzer directly.
 
     Args:
         savingsplans_client: Boto3 Savings Plans client
@@ -36,177 +37,10 @@ def calculate_current_coverage(
         config: Configuration dictionary
 
     Returns:
-        dict: Coverage percentages by SP type
+        dict: Coverage percentages by SP type:
+              {"compute": 82.97, "database": 0.0, "sagemaker": 0.0}
     """
-    logger.info("Calculating current coverage")
-
-    # Get current date for expiration filtering
-    now = datetime.now(timezone.utc)
-    renewal_window_days = config["renewal_window_days"]
-
-    # Get list of existing Savings Plans
-    try:
-        response = savingsplans_client.describe_savings_plans(states=["active"])
-        savings_plans = response.get("savingsPlans", [])
-        logger.info(f"Found {len(savings_plans)} active Savings Plans")
-
-        # Filter out plans expiring within renewal_window_days
-        # Why: Plans expiring soon will be replaced, so we exclude them from coverage calculations
-        # to avoid double-counting when their replacements are purchased. For example, if a plan
-        # expires in 5 days and renewal_window_days=30, we treat it as already expired to allow
-        # purchasing its replacement now.
-        valid_plan_ids = []
-        for plan in savings_plans:
-            # Only process plans with an end date (no-upfront plans always have end dates)
-            if "end" in plan:
-                # Parse end date from ISO 8601 format (e.g., "2024-12-31T23:59:59Z")
-                # AWS returns dates with 'Z' suffix; we convert to timezone-aware datetime
-                end_date = datetime.fromisoformat(plan["end"].replace("Z", "+00:00"))
-
-                # Calculate days remaining until expiration
-                # Using .days extracts only the day component (ignoring hours/minutes)
-                days_until_expiry = (end_date - now).days
-
-                # Include plan only if it expires AFTER the renewal window
-                # Example: renewal_window_days=30, plan expires in 45 days -> INCLUDE
-                # Example: renewal_window_days=30, plan expires in 15 days -> EXCLUDE
-                if days_until_expiry > renewal_window_days:
-                    valid_plan_ids.append(plan["savingsPlanId"])
-                    logger.debug(
-                        f"Including plan {plan['savingsPlanId']} - expires in {days_until_expiry} days"
-                    )
-                else:
-                    logger.info(
-                        f"Excluding plan {plan['savingsPlanId']} - expires in {days_until_expiry} days (within renewal window)"
-                    )
-
-        logger.info(f"Valid plans after filtering: {len(valid_plan_ids)}")
-
-    except ClientError as e:
-        logger.error(f"Failed to describe Savings Plans: {e!s}")
-        raise
-
-    # Get coverage from Cost Explorer
-    try:
-        # Query Cost Explorer using configured lookback period to get most recent coverage data
-        # Cost Explorer has 24-48 hour data lag, so we query multiple days and take the most
-        # recent data point using [-1] below. Using lookback_days ensures we have enough data
-        # even with weekend delays while keeping the setting configurable.
-        end_date = now.date()
-        start_date = end_date - timedelta(days=config.get("lookback_days", 7))
-
-        try:
-            # Call Cost Explorer API to get Savings Plans coverage metrics
-            # TimePeriod: Must be in ISO format (YYYY-MM-DD)
-            # Granularity: DAILY returns one data point per day in the time range
-            # GroupBy: Separates coverage by service to match AWS API requirements
-            # AWS now requires SERVICE as the dimension key (SAVINGS_PLANS_TYPE no longer supported)
-            response = ce_client.get_savings_plans_coverage(
-                TimePeriod={
-                    "Start": start_date.isoformat(),
-                    "End": end_date.isoformat(),
-                },
-                Granularity="DAILY",
-                GroupBy=[{"Type": "DIMENSION", "Key": "SERVICE"}],
-            )
-        except ClientError as e:
-            error_code = e.response["Error"]["Code"]
-            # Handle DataUnavailableException: Cost Explorer requires 24-48 hours of usage data
-            # before coverage metrics are available. This occurs in:
-            # 1. Newly created AWS accounts (< 48 hours old)
-            # 2. Accounts with no recent EC2/RDS/Lambda usage
-            # 3. Accounts that just activated Cost Explorer (takes ~24 hours to populate)
-            # In these cases, safely return 0% coverage to allow the system to make initial purchases
-            if error_code == "DataUnavailableException":
-                logger.warning(
-                    "Cost Explorer data not available (new account or no usage data). "
-                    "Returning 0% coverage."
-                )
-                return {"compute": 0.0, "database": 0.0, "sagemaker": 0.0}
-            raise
-
-        # Extract coverage data points from response
-        # Response structure: {"SavingsPlansCoverages": [{"TimePeriod": {...}, "Coverage": {...}}]}
-        coverage_by_time = response.get("SavingsPlansCoverages", [])
-
-        # Handle empty response: Can occur if the time period has no usage data
-        # Return 0% coverage to allow the system to make initial SP purchases
-        if not coverage_by_time:
-            logger.warning("No coverage data available from Cost Explorer")
-            return {"compute": 0.0, "database": 0.0, "sagemaker": 0.0}
-
-        # Get the most recent coverage data point using [-1] index
-        # Why [-1]: Cost Explorer returns data points ordered chronologically (oldest first)
-        # The last element contains the most recent coverage snapshot, which is what we need
-        # for making current purchase decisions
-        latest_coverage = coverage_by_time[-1]
-
-        # Initialize coverage dictionary
-        coverage = {"compute": 0.0, "database": 0.0, "sagemaker": 0.0}
-
-        # Extract coverage by SP type from grouped data
-        # When using GroupBy=["SERVICE"], the response structure is:
-        # {"Groups": [{"Attributes": {"SERVICE": "Amazon Elastic Compute Cloud - Compute"}, "Coverage": {"CoveragePercentage": "75.5"}}]}
-        coverage_groups = latest_coverage.get("Groups", [])
-
-        if coverage_groups:
-            # GroupBy returned separate coverage per service - map services to SP types
-            for group in coverage_groups:
-                service_name = group.get("Attributes", {}).get("SERVICE", "").lower()
-                coverage_data = group.get("Coverage", {})
-
-                if "CoveragePercentage" in coverage_data:
-                    percentage = float(coverage_data["CoveragePercentage"])
-
-                    # Map AWS services to SP types
-                    # Compute Savings Plans cover: EC2, Lambda, Fargate
-                    if any(
-                        svc in service_name
-                        for svc in [
-                            "ec2",
-                            "elastic compute cloud",
-                            "lambda",
-                            "fargate",
-                            "elastic container service",
-                        ]
-                    ):
-                        coverage["compute"] = max(coverage["compute"], percentage)
-                    # SageMaker Savings Plans cover: SageMaker
-                    elif "sagemaker" in service_name:
-                        coverage["sagemaker"] = percentage
-                    # Database Savings Plans cover: RDS, DynamoDB, Aurora
-                    elif any(
-                        svc in service_name
-                        for svc in [
-                            "rds",
-                            "relational database",
-                            "dynamodb",
-                            "aurora",
-                            "database migration",
-                        ]
-                    ):
-                        coverage["database"] = percentage
-
-            logger.info(
-                f"Coverage by type - Compute: {coverage['compute']}%, "
-                f"Database: {coverage['database']}%, SageMaker: {coverage['sagemaker']}%"
-            )
-        else:
-            # Fallback: No groups returned (shouldn't happen with GroupBy, but handle gracefully)
-            # Use aggregate coverage if available
-            coverage_data = latest_coverage.get("Coverage", {})
-            if "CoveragePercentage" in coverage_data:
-                aggregate_coverage = float(coverage_data["CoveragePercentage"])
-                logger.warning(
-                    f"GroupBy returned no groups, using aggregate coverage: {aggregate_coverage}%"
-                )
-                coverage["compute"] = aggregate_coverage
-            else:
-                logger.warning("No coverage data available")
-
-    except ClientError as e:
-        logger.error(f"Failed to get coverage from Cost Explorer: {e!s}")
-        raise
-
-    logger.info(f"Coverage calculated: {coverage}")
-    return coverage
+    analyzer = SpendingAnalyzer(savingsplans_client, ce_client)
+    spending_data = analyzer.analyze_current_spending(config)
+    spending_data.pop("_unknown_services", None)  # Remove metadata
+    return {sp_type: data["summary"]["avg_coverage"] for sp_type, data in spending_data.items()}

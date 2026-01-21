@@ -3,15 +3,16 @@ Purchase Calculator Module - Strategy dispatcher and shared utilities.
 
 This module contains:
 1. Strategy registry and dispatcher (calculate_purchase_need)
-2. Shared utilities (apply_purchase_limits)
 
 Strategy Pattern:
 - Each strategy is implemented in its own module (fixed_strategy.py, dichotomy_strategy.py, follow_aws_strategy.py)
+- Each strategy handles its own purchase limits (max_purchase_percent, min_commitment_per_plan)
 - Strategies are registered in PURCHASE_STRATEGIES registry
 - Contributors can add new strategies by:
   1. Creating a new strategy module (e.g., aggressive_strategy.py)
-  2. Implementing the strategy function: (config, coverage, recommendations) -> purchase_plans
-  3. Importing and registering in PURCHASE_STRATEGIES below
+  2. Implementing the strategy function: (config, clients, spending_data?) -> purchase_plans
+  3. Strategy handles its own data fetching and limit enforcement
+  4. Importing and registering in PURCHASE_STRATEGIES below
 """
 
 import logging
@@ -31,8 +32,9 @@ logger = logging.getLogger()
 # ============================================================================
 
 # Type alias for strategy functions
+# Strategies receive optional spending_data - handler pre-fetches if strategy needs it
 StrategyFunction = Callable[
-    [dict[str, Any], dict[str, float], dict[str, Any]], list[dict[str, Any]]
+    [dict[str, Any], dict[str, Any], dict[str, Any] | None], list[dict[str, Any]]
 ]
 
 
@@ -46,18 +48,18 @@ PURCHASE_STRATEGIES: dict[str, StrategyFunction] = {
 
 
 def calculate_purchase_need(
-    config: dict[str, Any], coverage: dict[str, float], recommendations: dict[str, Any]
+    config: dict[str, Any], clients: dict[str, Any], spending_data: dict[str, Any] | None = None
 ) -> list[dict[str, Any]]:
     """
     Calculate required purchases to reach target coverage using configured strategy.
 
     This function acts as a dispatcher to the appropriate strategy implementation.
-    Strategies are pluggable - see PURCHASE_STRATEGIES registry.
+    Handler pre-fetches spending_data for strategies that need it (fixed/dichotomy).
 
     Args:
         config: Configuration dictionary (must include "purchase_strategy_type")
-        coverage: Current coverage by SP type
-        recommendations: AWS recommendations
+        clients: Dictionary of AWS clients (ce, savingsplans, etc.)
+        spending_data: Optional pre-fetched spending analysis (for fixed/dichotomy strategies)
 
     Returns:
         list: Purchase plans to execute
@@ -65,7 +67,14 @@ def calculate_purchase_need(
     Raises:
         ValueError: If configured strategy is not registered
     """
-    strategy_type = config.get("purchase_strategy_type", "follow_aws")
+    strategy_type = config.get("purchase_strategy_type")
+
+    if not strategy_type:
+        available_strategies = ", ".join(PURCHASE_STRATEGIES.keys())
+        raise ValueError(
+            f"Missing required configuration 'purchase_strategy_type'. "
+            f"Available strategies: {available_strategies}"
+        )
 
     logger.info(f"Using purchase strategy: {strategy_type}")
 
@@ -79,15 +88,18 @@ def calculate_purchase_need(
             f"Available strategies: {available_strategies}"
         )
 
-    # Call strategy function
-    return strategy_func(config, coverage, recommendations)
+    # Call strategy function with optional spending_data
+    return strategy_func(config, clients, spending_data)
 
 
 def apply_purchase_limits(
     config: dict[str, Any], purchase_plans: list[dict[str, Any]]
 ) -> list[dict[str, Any]]:
     """
-    Apply max_purchase_percent limit to planned purchases.
+    DEPRECATED: Apply max_purchase_percent limit to planned purchases.
+
+    This function is no longer used. Strategies now handle their own limits internally.
+    Kept for backward compatibility with existing tests.
 
     Args:
         config: Configuration dictionary
