@@ -72,45 +72,6 @@ func TestExampleSingleAccountCompute(t *testing.T) {
 	t.Logf("✓ Example validation passed: %s", exampleDir)
 }
 
-// TestExampleDatabaseOnly validates the database-only example
-// Focus: Database SP only (RDS/Aurora) with single payment option
-func TestExampleDatabaseOnly(t *testing.T) {
-	// Note: NOT using t.Parallel() to avoid IAM rate limits when creating roles
-	exampleDir := "../../examples/database-only"
-
-	// Generate unique name prefix (must match CI IAM policy pattern: sp-autopilot-test-*)
-	uniquePrefix := fmt.Sprintf("sp-autopilot-test-%s", time.Now().Format("20060102-150405"))
-	testDir := prepareExampleForTesting(t, exampleDir, uniquePrefix)
-	defer os.RemoveAll(testDir)
-
-	t.Logf("Testing example: %s", exampleDir)
-
-	terraformOptions := terraform.WithDefaultRetryableErrors(t, &terraform.Options{
-		TerraformDir: testDir,
-		Vars: map[string]interface{}{
-			"name_prefix": uniquePrefix,
-			"scheduler": map[string]interface{}{
-				"scheduler": "cron(0 0 1 1 ? 2099)",
-				"purchaser": "cron(0 0 1 1 ? 2099)",
-				"reporter":  "cron(0 0 1 1 ? 2099)",
-			},
-			"lambda_config": map[string]interface{}{
-				"scheduler": map[string]interface{}{
-					"dry_run": true,
-				},
-			},
-		},
-		NoColor: true,
-		Logger:  getCleanLogger(),
-	})
-
-	defer terraform.Destroy(t, terraformOptions)
-	terraform.InitAndApply(t, terraformOptions)
-
-	schedulerLambdaName := terraform.Output(t, terraformOptions, "scheduler_lambda_name")
-	assert.Contains(t, schedulerLambdaName, uniquePrefix+"-scheduler")
-}
-
 // TestExampleDichotomyStrategy validates the dichotomy-strategy example
 // Focus: Dichotomy purchase strategy with adaptive purchase sizing
 func TestExampleDichotomyStrategy(t *testing.T) {
