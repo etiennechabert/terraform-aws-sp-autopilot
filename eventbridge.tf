@@ -1,11 +1,6 @@
-# AWS Savings Plans Automation Module - EventBridge Schedules
-# Purpose: Defines EventBridge schedules for automated Lambda function triggers
+# EventBridge schedules for Lambda triggers
 
-# ============================================================================
-# EventBridge Schedules
-# ============================================================================
 
-# Scheduler Lambda - Runs monthly to analyze usage and queue purchase recommendations
 resource "aws_cloudwatch_event_rule" "scheduler" {
   count = local.lambda_scheduler_enabled && local.scheduler_schedule != null ? 1 : 0
 
@@ -34,7 +29,6 @@ resource "aws_lambda_permission" "scheduler_eventbridge" {
   source_arn    = aws_cloudwatch_event_rule.scheduler[0].arn
 }
 
-# Purchaser Lambda - Runs monthly to execute approved Savings Plans purchases from queue
 resource "aws_cloudwatch_event_rule" "purchaser" {
   count = local.lambda_purchaser_enabled && local.purchaser_schedule != null ? 1 : 0
 
@@ -63,7 +57,6 @@ resource "aws_lambda_permission" "purchaser_eventbridge" {
   source_arn    = aws_cloudwatch_event_rule.purchaser[0].arn
 }
 
-# Reporter Lambda - Runs monthly to generate coverage and savings reports
 resource "aws_cloudwatch_event_rule" "reporter" {
   count = local.lambda_reporter_enabled && local.report_schedule != null ? 1 : 0
 

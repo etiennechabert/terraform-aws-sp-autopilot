@@ -1,8 +1,6 @@
-# AWS Savings Plans Automation Module - Configuration Variables
+# Module input variables
 
-# ============================================================================
 # Lambda Control & Configuration
-# ============================================================================
 
 variable "lambda_config" {
   description = "Lambda function configuration including enable/disable controls, performance settings, cross-account role ARNs, and error alarms"
@@ -35,9 +33,7 @@ variable "lambda_config" {
   default = {}
 }
 
-# ============================================================================
 # Purchase Strategy Configuration
-# ============================================================================
 
 variable "purchase_strategy" {
   description = "Purchase strategy configuration including coverage targets and risk management"
@@ -132,43 +128,48 @@ variable "purchase_strategy" {
   }
 }
 
-# ============================================================================
 # Savings Plans Configuration
-# ============================================================================
 
 variable "sp_plans" {
   description = "Savings Plans configuration for Compute, Database, and SageMaker"
   type = object({
-    compute = optional(object({
+    compute = object({
       enabled   = bool
-      plan_type = optional(string, "all_upfront_three_year")
-    }))
+      plan_type = optional(string)
+    })
 
-    database = optional(object({
-      enabled = bool
-      # AWS only supports 1-year NO_UPFRONT for Database SPs (fixed by AWS)
-    }))
-
-    sagemaker = optional(object({
+    database = object({
       enabled   = bool
-      plan_type = optional(string, "all_upfront_three_year")
-    }))
+      plan_type = optional(string) # AWS only supports "no_upfront_one_year" for Database SPs
+    })
+
+    sagemaker = object({
+      enabled   = bool
+      plan_type = optional(string)
+    })
   })
 
   # At least one SP type must be enabled
   validation {
     condition = (
-      try(var.sp_plans.compute.enabled, false) ||
-      try(var.sp_plans.database.enabled, false) ||
-      try(var.sp_plans.sagemaker.enabled, false)
+      var.sp_plans.compute.enabled ||
+      var.sp_plans.database.enabled ||
+      var.sp_plans.sagemaker.enabled
     )
     error_message = "At least one SP type (compute, database, or sagemaker) must be enabled."
+  }
+
+  # Compute plan_type is required when enabled
+  validation {
+    condition     = !var.sp_plans.compute.enabled || var.sp_plans.compute.plan_type != null
+    error_message = "Compute plan_type is required when compute is enabled."
   }
 
   # Compute plan_type must be valid
   validation {
     condition = (
-      try(var.sp_plans.compute.enabled, false) ?
+      !var.sp_plans.compute.enabled || var.sp_plans.compute.plan_type == null ?
+      true :
       contains([
         "all_upfront_three_year",
         "all_upfront_one_year",
@@ -176,16 +177,38 @@ variable "sp_plans" {
         "partial_upfront_one_year",
         "no_upfront_three_year",
         "no_upfront_one_year"
-      ], try(var.sp_plans.compute.plan_type, "all_upfront_three_year"))
-      : true
+      ], var.sp_plans.compute.plan_type)
     )
     error_message = "Compute plan_type must be one of: all_upfront_three_year, all_upfront_one_year, partial_upfront_three_year, partial_upfront_one_year, no_upfront_three_year, no_upfront_one_year."
+  }
+
+  # Database plan_type is required when enabled
+  validation {
+    condition     = !var.sp_plans.database.enabled || var.sp_plans.database.plan_type != null
+    error_message = "Database plan_type is required when database is enabled."
+  }
+
+  # Database plan_type must be valid (AWS only supports one option)
+  validation {
+    condition = (
+      !var.sp_plans.database.enabled || var.sp_plans.database.plan_type == null ?
+      true :
+      var.sp_plans.database.plan_type == "no_upfront_one_year"
+    )
+    error_message = "Database plan_type must be 'no_upfront_one_year' (AWS only supports 1-year NO_UPFRONT for Database SPs)."
+  }
+
+  # SageMaker plan_type is required when enabled
+  validation {
+    condition     = !var.sp_plans.sagemaker.enabled || var.sp_plans.sagemaker.plan_type != null
+    error_message = "SageMaker plan_type is required when sagemaker is enabled."
   }
 
   # SageMaker plan_type must be valid
   validation {
     condition = (
-      try(var.sp_plans.sagemaker.enabled, false) ?
+      !var.sp_plans.sagemaker.enabled || var.sp_plans.sagemaker.plan_type == null ?
+      true :
       contains([
         "all_upfront_three_year",
         "all_upfront_one_year",
@@ -193,16 +216,13 @@ variable "sp_plans" {
         "partial_upfront_one_year",
         "no_upfront_three_year",
         "no_upfront_one_year"
-      ], try(var.sp_plans.sagemaker.plan_type, "all_upfront_three_year"))
-      : true
+      ], var.sp_plans.sagemaker.plan_type)
     )
     error_message = "SageMaker plan_type must be one of: all_upfront_three_year, all_upfront_one_year, partial_upfront_three_year, partial_upfront_one_year, no_upfront_three_year, no_upfront_one_year."
   }
 }
 
-# ============================================================================
 # Scheduling
-# ============================================================================
 
 variable "scheduler" {
   description = "EventBridge cron schedules for each Lambda function. Set to null to disable a schedule."
@@ -218,9 +238,7 @@ variable "scheduler" {
   }
 }
 
-# ============================================================================
 # Notifications
-# ============================================================================
 
 variable "notifications" {
   description = "Notification configuration for email, Slack, and Teams"
@@ -237,9 +255,7 @@ variable "notifications" {
   }
 }
 
-# ============================================================================
 # Reporting
-# ============================================================================
 
 variable "reporting" {
   description = "Report generation and storage configuration"
@@ -305,9 +321,7 @@ variable "reporting" {
   }
 }
 
-# ============================================================================
 # Monitoring
-# ============================================================================
 
 variable "monitoring" {
   description = "CloudWatch monitoring and alarm configuration"
@@ -324,9 +338,7 @@ variable "monitoring" {
   }
 }
 
-# ============================================================================
 # Simple Top-Level Variables
-# ============================================================================
 
 variable "name_prefix" {
   description = "Prefix for all resource names. Allows multiple module deployments in the same AWS account."
@@ -350,9 +362,7 @@ variable "tags" {
   default     = {}
 }
 
-# ============================================================================
 # Encryption
-# ============================================================================
 
 variable "encryption" {
   description = "Encryption configuration for SNS, SQS, and S3"

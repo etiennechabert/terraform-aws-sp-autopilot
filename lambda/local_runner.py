@@ -6,9 +6,9 @@ This script allows you to run the Lambda functions locally with filesystem I/O
 instead of SQS and S3. This is useful for debugging and development.
 
 Usage:
-    python local_runner.py scheduler  [--dry-run]
-    python local_runner.py purchaser
-    python local_runner.py reporter [--format html|json]
+    python lambda/local_runner.py scheduler  [--dry-run]
+    python lambda/local_runner.py purchaser
+    python lambda/local_runner.py reporter [--format html|json]
 
 Environment:
     Set environment variables in .env.local file or via command line.
@@ -20,13 +20,13 @@ Environment:
 
 Example:
     # Run scheduler in dry-run mode
-    python local_runner.py scheduler --dry-run
+    python lambda/local_runner.py scheduler --dry-run
 
     # Run purchaser (processes local queue files)
-    python local_runner.py purchaser
+    python lambda/local_runner.py purchaser
 
     # Generate HTML report locally
-    python local_runner.py reporter --format html
+    python lambda/local_runner.py reporter --format html
 """
 
 import sys
@@ -34,10 +34,10 @@ import os
 import argparse
 from pathlib import Path
 
-# Load environment variables from .env.local if it exists
+# Load environment variables from .env.local if it exists (in project root)
 try:
     from dotenv import load_dotenv
-    env_file = Path(__file__).parent / ".env.local"
+    env_file = Path(__file__).parent.parent / ".env.local"
     if env_file.exists():
         print(f"Loading environment from {env_file}")
         load_dotenv(env_file)
@@ -51,14 +51,14 @@ except ImportError:
 # Set LOCAL_MODE before importing Lambda modules
 os.environ["LOCAL_MODE"] = "true"
 
-# Set default local data directory if not already set
+# Set default local data directory if not already set (in project root)
 if "LOCAL_DATA_DIR" not in os.environ:
-    default_data_dir = Path(__file__).parent / "local_data"
+    default_data_dir = Path(__file__).parent.parent / "local_data"
     os.environ["LOCAL_DATA_DIR"] = str(default_data_dir)
     print(f"LOCAL_DATA_DIR not set, using default: {default_data_dir}")
 
-# Add lambda directories to Python path
-lambda_dir = Path(__file__).parent / "lambda"
+# Add lambda directories to Python path (now sibling directories)
+lambda_dir = Path(__file__).parent
 sys.path.insert(0, str(lambda_dir / "scheduler"))
 sys.path.insert(0, str(lambda_dir / "purchaser"))
 sys.path.insert(0, str(lambda_dir / "reporter"))

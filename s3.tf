@@ -1,9 +1,5 @@
-# AWS Savings Plans Automation Module
-# Purpose: S3 bucket for report storage
+# S3 bucket for report storage
 
-# ============================================================================
-# S3 Bucket for Report Storage
-# ============================================================================
 
 resource "aws_s3_bucket" "reports" {
   bucket = "${local.module_name}-reports-${data.aws_caller_identity.current.account_id}"
@@ -16,7 +12,6 @@ resource "aws_s3_bucket" "reports" {
   )
 }
 
-# Enable versioning for report bucket
 resource "aws_s3_bucket_versioning" "reports" {
   bucket = aws_s3_bucket.reports.id
 
@@ -25,7 +20,6 @@ resource "aws_s3_bucket_versioning" "reports" {
   }
 }
 
-# Enable server-side encryption
 resource "aws_s3_bucket_server_side_encryption_configuration" "reports" {
   count = local.s3_encryption_enabled ? 1 : 0
 
@@ -39,7 +33,6 @@ resource "aws_s3_bucket_server_side_encryption_configuration" "reports" {
   }
 }
 
-# Block public access
 resource "aws_s3_bucket_public_access_block" "reports" {
   bucket = aws_s3_bucket.reports.id
 
@@ -49,7 +42,6 @@ resource "aws_s3_bucket_public_access_block" "reports" {
   restrict_public_buckets = true
 }
 
-# Lifecycle policy for automatic cleanup of old reports
 resource "aws_s3_bucket_lifecycle_configuration" "reports" {
   bucket = aws_s3_bucket.reports.id
 

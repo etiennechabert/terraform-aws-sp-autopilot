@@ -6,7 +6,7 @@
             "type": "debugpy",
             "request": "launch",
             "module": "lambda.scheduler.handler",
-            "envFile": "${workspaceFolder}/.env",
+            "envFile": "${workspaceFolder}/.env.local",
             "justMyCode": false,
             "env": {
                 "PYTHONPATH": "${workspaceFolder}/lambda:${workspaceFolder}",
@@ -39,7 +39,7 @@
             "type": "debugpy",
             "request": "launch",
             "module": "lambda.scheduler.handler",
-            "envFile": "${workspaceFolder}/.env",
+            "envFile": "${workspaceFolder}/.env.local",
             "justMyCode": false,
             "env": {
                 "PYTHONPATH": "${workspaceFolder}/lambda:${workspaceFolder}",
@@ -73,7 +73,7 @@
             "type": "debugpy",
             "request": "launch",
             "module": "lambda.scheduler.handler",
-            "envFile": "${workspaceFolder}/.env",
+            "envFile": "${workspaceFolder}/.env.local",
             "justMyCode": false,
             "env": {
                 "PYTHONPATH": "${workspaceFolder}/lambda:${workspaceFolder}",
@@ -106,7 +106,7 @@
             "type": "debugpy",
             "request": "launch",
             "module": "lambda.scheduler.handler",
-            "envFile": "${workspaceFolder}/.env",
+            "envFile": "${workspaceFolder}/.env.local",
             "justMyCode": false,
             "env": {
                 "PYTHONPATH": "${workspaceFolder}/lambda:${workspaceFolder}",
@@ -138,7 +138,7 @@
             "type": "debugpy",
             "request": "launch",
             "module": "lambda.purchaser.handler",
-            "envFile": "${workspaceFolder}/.env",
+            "envFile": "${workspaceFolder}/.env.local",
             "justMyCode": false,
             "env": {
                 "PYTHONPATH": "${workspaceFolder}",
@@ -160,7 +160,7 @@
             "type": "debugpy",
             "request": "launch",
             "module": "lambda.reporter.handler",
-            "envFile": "${workspaceFolder}/.env",
+            "envFile": "${workspaceFolder}/.env.local",
             "justMyCode": false,
             "env": {
                 "PYTHONPATH": "${workspaceFolder}",
@@ -183,11 +183,11 @@
             "name": "Debug Local Mode Runner",
             "type": "debugpy",
             "request": "launch",
-            "program": "${workspaceFolder}/lambda/shared/local_runner.py",
+            "program": "${workspaceFolder}/lambda/local_runner.py",
             "args": [
                 "scheduler"
             ],
-            "envFile": "${workspaceFolder}/.env",
+            "envFile": "${workspaceFolder}/.env.local",
             "justMyCode": false,
             "env": {
                 "PYTHONPATH": "${workspaceFolder}",
@@ -210,7 +210,7 @@
                 "-v",
                 "--no-cov"
             ],
-            "envFile": "${workspaceFolder}/.env",
+            "envFile": "${workspaceFolder}/.env.local",
             "justMyCode": false,
             "env": {
                 "PYTHONPATH": "${workspaceFolder}",
@@ -231,7 +231,7 @@
                 "-v",
                 "--no-cov"
             ],
-            "envFile": "${workspaceFolder}/.env",
+            "envFile": "${workspaceFolder}/.env.local",
             "justMyCode": false,
             "env": {
                 "PYTHONPATH": "${workspaceFolder}",
@@ -252,7 +252,7 @@
                 "-v",
                 "--no-cov"
             ],
-            "envFile": "${workspaceFolder}/.env",
+            "envFile": "${workspaceFolder}/.env.local",
             "justMyCode": false,
             "env": {
                 "PYTHONPATH": "${workspaceFolder}",
@@ -273,7 +273,7 @@
                 "-v",
                 "--no-cov"
             ],
-            "envFile": "${workspaceFolder}/.env",
+            "envFile": "${workspaceFolder}/.env.local",
             "justMyCode": false,
             "env": {
                 "PYTHONPATH": "${workspaceFolder}",

@@ -47,12 +47,13 @@ module "savings_plans" {
     }
 
     database = {
-      enabled = true
-      # Database SPs are 1-year NO_UPFRONT only (AWS constraint)
+      enabled   = true
+      plan_type = "no_upfront_one_year" # AWS only supports this option for Database SPs
     }
 
     sagemaker = {
       enabled = false
+      # plan_type not needed when disabled
     }
   }
 

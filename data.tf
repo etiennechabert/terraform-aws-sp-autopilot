@@ -1,22 +1,13 @@
-# AWS Savings Plans Automation Module
 # Data sources and local variables
 
-# ============================================================================
-# Data Sources
-# ============================================================================
 
 data "aws_caller_identity" "current" {}
 
 data "aws_region" "current" {}
 
-# ============================================================================
-# Local Variables - Transformation from Nested to Flat Structure
-# ============================================================================
 
 locals {
-  # ==========================================================================
   # Common Tags
-  # ==========================================================================
 
   common_tags = merge(
     {
@@ -29,9 +20,7 @@ locals {
   # Module name for resource naming (from name_prefix variable)
   module_name = var.name_prefix
 
-  # ==========================================================================
   # Lambda Enable Flags
-  # ==========================================================================
 
   lambda_scheduler_enabled = try(var.lambda_config.scheduler.enabled, true)
   lambda_purchaser_enabled = try(var.lambda_config.purchaser.enabled, true)
@@ -42,12 +31,10 @@ locals {
   lambda_purchaser_error_alarm_enabled = try(var.lambda_config.purchaser.error_alarm, true)
   lambda_reporter_error_alarm_enabled  = try(var.lambda_config.reporter.error_alarm, true)
 
-  # ==========================================================================
   # Compute SP Configuration
-  # ==========================================================================
 
-  compute_enabled   = try(var.sp_plans.compute.enabled, false)
-  compute_plan_type = try(var.sp_plans.compute.plan_type, "all_upfront_three_year")
+  compute_enabled   = var.sp_plans.compute.enabled
+  compute_plan_type = var.sp_plans.compute.plan_type # Guaranteed non-null when enabled=true by validation
 
   # Parse plan_type into term and payment_option
   compute_term = local.compute_enabled ? (
@@ -60,20 +47,17 @@ locals {
     "NO_UPFRONT"
   ) : "ALL_UPFRONT"
 
-  # ==========================================================================
   # Database SP Configuration
-  # ==========================================================================
 
-  database_enabled           = try(var.sp_plans.database.enabled, false)
-  database_sp_term           = "ONE_YEAR"   # AWS constraint
-  database_sp_payment_option = "NO_UPFRONT" # AWS constraint
+  database_enabled           = var.sp_plans.database.enabled
+  database_plan_type         = var.sp_plans.database.plan_type # Guaranteed "no_upfront_one_year" when enabled=true
+  database_sp_term           = "ONE_YEAR"                      # AWS constraint
+  database_sp_payment_option = "NO_UPFRONT"                    # AWS constraint
 
-  # ==========================================================================
   # SageMaker SP Configuration
-  # ==========================================================================
 
-  sagemaker_enabled   = try(var.sp_plans.sagemaker.enabled, false)
-  sagemaker_plan_type = try(var.sp_plans.sagemaker.plan_type, "all_upfront_three_year")
+  sagemaker_enabled   = var.sp_plans.sagemaker.enabled
+  sagemaker_plan_type = var.sp_plans.sagemaker.plan_type # Guaranteed non-null when enabled=true by validation
 
   # Parse plan_type into term and payment_option
   sagemaker_term = local.sagemaker_enabled ? (
@@ -86,9 +70,7 @@ locals {
     "NO_UPFRONT"
   ) : "ALL_UPFRONT"
 
-  # ==========================================================================
   # Purchase Strategy
-  # ==========================================================================
 
   purchase_strategy_type = (
     var.purchase_strategy.follow_aws != null ? "follow_aws" :
@@ -110,24 +92,18 @@ locals {
     1.0 # default for other strategies (not used, but included for consistency)
   )
 
-  # ==========================================================================
   # Scheduler Dry-Run Mode
-  # ==========================================================================
 
   dry_run = try(var.lambda_config.scheduler.dry_run, false)
 
-  # ==========================================================================
   # Notification Settings
-  # ==========================================================================
 
   notification_emails  = var.notifications.emails
   slack_webhook_url    = try(var.notifications.slack_webhook, null)
   teams_webhook_url    = try(var.notifications.teams_webhook, null)
   send_no_action_email = try(var.notifications.send_no_action, true)
 
-  # ==========================================================================
   # Reporting Settings
-  # ==========================================================================
 
   enable_reports        = try(var.reporting.enabled, true)
   report_format         = try(var.reporting.format, "html")
@@ -139,25 +115,19 @@ locals {
   s3_lifecycle_expiration_days            = try(var.reporting.s3_lifecycle.expiration_days, 365)
   s3_lifecycle_noncurrent_expiration_days = try(var.reporting.s3_lifecycle.noncurrent_expiration_days, 90)
 
-  # ==========================================================================
   # Monitoring Settings
-  # ==========================================================================
 
   enable_dlq_alarm          = try(var.monitoring.dlq_alarm, true)
   lambda_error_threshold    = try(var.monitoring.error_threshold, 1)
   low_utilization_threshold = try(var.monitoring.low_utilization_threshold, 70)
 
-  # ==========================================================================
   # Scheduling (null = disabled)
-  # ==========================================================================
 
   scheduler_schedule = var.scheduler.scheduler # Can be null to disable
   purchaser_schedule = var.scheduler.purchaser # Can be null to disable
   report_schedule    = var.scheduler.reporter  # Can be null to disable
 
-  # ==========================================================================
   # Lambda Configuration
-  # ==========================================================================
 
   lambda_scheduler_memory_size     = try(var.lambda_config.scheduler.memory_mb, 128)
   lambda_scheduler_timeout         = try(var.lambda_config.scheduler.timeout, 300)
@@ -171,9 +141,7 @@ locals {
   lambda_reporter_timeout         = try(var.lambda_config.reporter.timeout, 300)
   lambda_reporter_assume_role_arn = try(var.lambda_config.reporter.assume_role_arn, null)
 
-  # ==========================================================================
   # Purchase Strategy Settings (extract from nested object)
-  # ==========================================================================
 
   coverage_target_percent = var.purchase_strategy.coverage_target_percent
   max_coverage_cap        = var.purchase_strategy.max_coverage_cap
@@ -183,9 +151,7 @@ locals {
   renewal_window_days     = try(var.purchase_strategy.renewal_window_days, 7)
   min_commitment_per_plan = try(var.purchase_strategy.min_commitment_per_plan, 0.001)
 
-  # ==========================================================================
   # Encryption Settings
-  # ==========================================================================
 
   sns_kms_key           = try(var.encryption.sns_kms_key, "alias/aws/sns")
   sqs_kms_key           = try(var.encryption.sqs_kms_key, "alias/aws/sqs")

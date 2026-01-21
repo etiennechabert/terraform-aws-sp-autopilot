@@ -52,39 +52,25 @@ variable "purchase_strategy" {
 variable "sp_plans" {
   description = "Savings Plans configuration"
   type = object({
-    compute = optional(object({
-      enabled                    = bool
-      all_upfront_three_year     = optional(number, 0)
-      all_upfront_one_year       = optional(number, 0)
-      partial_upfront_three_year = optional(number, 0)
-      partial_upfront_one_year   = optional(number, 0)
-      no_upfront_three_year      = optional(number, 0)
-      no_upfront_one_year        = optional(number, 0)
-      partial_upfront_percent    = optional(number, 50)
-    }))
+    compute = object({
+      enabled   = bool
+      plan_type = optional(string)
+    })
 
-    database = optional(object({
-      enabled             = bool
-      no_upfront_one_year = optional(number, 1)
-    }))
+    database = object({
+      enabled   = bool
+      plan_type = optional(string)
+    })
 
-    sagemaker = optional(object({
-      enabled                    = bool
-      all_upfront_three_year     = optional(number, 0)
-      all_upfront_one_year       = optional(number, 0)
-      partial_upfront_three_year = optional(number, 0)
-      partial_upfront_one_year   = optional(number, 0)
-      no_upfront_three_year      = optional(number, 0)
-      no_upfront_one_year        = optional(number, 0)
-      partial_upfront_percent    = optional(number, 50)
-    }))
+    sagemaker = object({
+      enabled   = bool
+      plan_type = optional(string)
+    })
   })
   default = {
     compute = {
-      enabled                 = true
-      all_upfront_three_year  = 0.67
-      all_upfront_one_year    = 0.33
-      partial_upfront_percent = 50
+      enabled   = true
+      plan_type = "all_upfront_three_year"
     }
     database = {
       enabled = false
