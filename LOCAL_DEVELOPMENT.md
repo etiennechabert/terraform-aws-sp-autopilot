@@ -93,13 +93,13 @@ Use the `local_runner.py` script to execute any Lambda:
 
 ```bash
 # Run the Scheduler Lambda (analyzes coverage and queues purchase intents)
-python local_runner.py scheduler --dry-run
+python lambda/local_runner.py scheduler --dry-run
 
 # Run the Purchaser Lambda (processes queued intents)
-python local_runner.py purchaser
+python lambda/local_runner.py purchaser
 
 # Run the Reporter Lambda (generates coverage report)
-python local_runner.py reporter --format html
+python lambda/local_runner.py reporter --format html
 ```
 
 ### 4. Inspect Local Data
@@ -161,7 +161,7 @@ The local mode implementation uses **adapter pattern** to abstract AWS services:
 Analyze current coverage and see what would be purchased:
 
 ```bash
-python local_runner.py scheduler --dry-run
+python lambda/local_runner.py scheduler --dry-run
 ```
 
 This will:
@@ -182,7 +182,7 @@ Process the queued purchase intents (without actually purchasing):
 
 ```bash
 # Make sure DISABLE_PURCHASES=true in .env.local for safety
-python local_runner.py purchaser
+python lambda/local_runner.py purchaser
 ```
 
 This will:
@@ -196,7 +196,7 @@ This will:
 Generate a coverage report:
 
 ```bash
-python local_runner.py reporter --format html
+python lambda/local_runner.py reporter --format html
 ```
 
 This will:
@@ -223,13 +223,13 @@ Simulate a complete workflow:
 
 ```bash
 # 1. Analyze and queue purchase intents
-python local_runner.py scheduler --dry-run
+python lambda/local_runner.py scheduler --dry-run
 
 # 2. Process the queue (dry-run, no actual purchases)
-python local_runner.py purchaser
+python lambda/local_runner.py purchaser
 
 # 3. Generate a report
-python local_runner.py reporter --format html
+python lambda/local_runner.py reporter --format html
 ```
 
 ## Debugging with IDE
@@ -246,7 +246,7 @@ python local_runner.py reporter --format html
       "name": "Local Runner - Scheduler",
       "type": "python",
       "request": "launch",
-      "program": "${workspaceFolder}/local_runner.py",
+      "program": "${workspaceFolder}/lambda/local_runner.py",
       "args": ["scheduler", "--dry-run"],
       "console": "integratedTerminal",
       "envFile": "${workspaceFolder}/.env.local"
@@ -255,7 +255,7 @@ python local_runner.py reporter --format html
       "name": "Local Runner - Purchaser",
       "type": "python",
       "request": "launch",
-      "program": "${workspaceFolder}/local_runner.py",
+      "program": "${workspaceFolder}/lambda/local_runner.py",
       "args": ["purchaser"],
       "console": "integratedTerminal",
       "envFile": "${workspaceFolder}/.env.local"
@@ -264,7 +264,7 @@ python local_runner.py reporter --format html
       "name": "Local Runner - Reporter",
       "type": "python",
       "request": "launch",
-      "program": "${workspaceFolder}/local_runner.py",
+      "program": "${workspaceFolder}/lambda/local_runner.py",
       "args": ["reporter", "--format", "html"],
       "console": "integratedTerminal",
       "envFile": "${workspaceFolder}/.env.local"
@@ -278,7 +278,7 @@ python local_runner.py reporter --format html
 
 ### PyCharm
 
-1. Right-click `local_runner.py` → "Modify Run Configuration"
+1. Right-click `lambda/local_runner.py` → "Modify Run Configuration"
 2. Set script parameters: `scheduler --dry-run`
 3. Set environment variables file: `.env.local`
 4. Set breakpoints in Lambda handler files
@@ -374,7 +374,7 @@ ls -la local_data/queue/
 If empty, run the scheduler first:
 
 ```bash
-python local_runner.py scheduler --dry-run
+python lambda/local_runner.py scheduler --dry-run
 ```
 
 ### Issue: Reports not generating
@@ -392,7 +392,8 @@ aws ce get-cost-and-usage \
 
 ```
 terraform-aws-sp-autopilot/
-├── local_runner.py              # Main script for running Lambdas locally
+├── lambda/
+│   ├── local_runner.py          # Main script for running Lambdas locally
 ├── .env.local.example           # Example environment configuration
 ├── .env.local                   # Your local configuration (git-ignored)
 ├── local_data/                  # Local data directory (git-ignored)

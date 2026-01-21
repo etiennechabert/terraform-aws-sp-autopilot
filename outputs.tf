@@ -1,8 +1,5 @@
-# AWS Savings Plans Automation Module - Outputs
+# Module outputs
 
-# ============================================================================
-# SQS Queue Outputs
-# ============================================================================
 
 output "queue_url" {
   description = "URL of the purchase intents queue"
@@ -24,18 +21,12 @@ output "dlq_arn" {
   value       = aws_sqs_queue.purchase_intents_dlq.arn
 }
 
-# ============================================================================
-# SNS Topic Outputs
-# ============================================================================
 
 output "sns_topic_arn" {
   description = "ARN of the SNS topic for notifications"
   value       = aws_sns_topic.notifications.arn
 }
 
-# ============================================================================
-# Lambda Function Outputs
-# ============================================================================
 
 output "scheduler_lambda_arn" {
   description = "ARN of the Scheduler Lambda function"
@@ -67,9 +58,6 @@ output "reporter_lambda_name" {
   value       = local.lambda_reporter_enabled ? aws_lambda_function.reporter[0].function_name : null
 }
 
-# ============================================================================
-# EventBridge Schedule Outputs
-# ============================================================================
 
 output "scheduler_rule_arn" {
   description = "ARN of the EventBridge rule for Scheduler Lambda"
@@ -101,9 +89,6 @@ output "reporter_rule_name" {
   value       = local.lambda_reporter_enabled && local.report_schedule != null ? aws_cloudwatch_event_rule.reporter[0].name : null
 }
 
-# ============================================================================
-# S3 Bucket Outputs
-# ============================================================================
 
 output "reports_bucket_name" {
   description = "Name of the reports bucket"
@@ -115,9 +100,6 @@ output "reports_bucket_arn" {
   value       = aws_s3_bucket.reports.arn
 }
 
-# ============================================================================
-# IAM Role Outputs
-# ============================================================================
 
 output "scheduler_role_arn" {
   description = "ARN of the Scheduler Lambda execution role"
@@ -134,9 +116,6 @@ output "reporter_role_arn" {
   value       = local.lambda_reporter_enabled ? aws_iam_role.reporter[0].arn : null
 }
 
-# ============================================================================
-# CloudWatch Alarm Outputs
-# ============================================================================
 
 output "scheduler_error_alarm_arn" {
   description = "ARN of the Scheduler Lambda error alarm"
@@ -158,9 +137,6 @@ output "dlq_alarm_arn" {
   value       = local.enable_dlq_alarm ? aws_cloudwatch_metric_alarm.dlq_alarm[0].arn : null
 }
 
-# ============================================================================
-# Configuration Outputs
-# ============================================================================
 
 output "module_configuration" {
   description = "Module configuration summary"
@@ -181,9 +157,6 @@ output "module_configuration" {
   }
 }
 
-# ============================================================================
-# Database SP Monitoring Outputs
-# ============================================================================
 
 output "database_sp_configuration" {
   description = "Database Savings Plans configuration for monitoring"
@@ -215,9 +188,6 @@ output "lambda_environment_database_sp" {
   value       = local.database_enabled ? "true" : "false"
 }
 
-# ============================================================================
-# SageMaker SP Monitoring Outputs
-# ============================================================================
 
 output "sagemaker_sp_configuration" {
   description = "SageMaker Savings Plans configuration for monitoring"

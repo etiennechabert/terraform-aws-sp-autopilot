@@ -1,11 +1,5 @@
-# ============================================================================
-# SQS Resources
-# ============================================================================
-# Purpose: Manages SQS queues for Savings Plans purchase intents processing
+# SQS queues for purchase intents
 
-# ============================================================================
-# SQS Dead Letter Queue
-# ============================================================================
 
 resource "aws_sqs_queue" "purchase_intents_dlq" {
   name                              = "${local.module_name}-purchase-intents-dlq"
@@ -21,9 +15,6 @@ resource "aws_sqs_queue" "purchase_intents_dlq" {
   )
 }
 
-# ============================================================================
-# SQS Main Queue
-# ============================================================================
 
 resource "aws_sqs_queue" "purchase_intents" {
   name                              = "${local.module_name}-purchase-intents"
@@ -44,9 +35,6 @@ resource "aws_sqs_queue" "purchase_intents" {
   )
 }
 
-# ============================================================================
-# SQS Queue Access Policy
-# ============================================================================
 
 resource "aws_sqs_queue_policy" "purchase_intents" {
   count = local.lambda_scheduler_enabled ? 1 : 0
@@ -66,9 +54,6 @@ resource "aws_sqs_queue_policy" "purchase_intents" {
   })
 }
 
-# ============================================================================
-# CloudWatch Alarm for DLQ Depth
-# ============================================================================
 
 resource "aws_cloudwatch_metric_alarm" "dlq_alarm" {
   count = local.enable_dlq_alarm ? 1 : 0

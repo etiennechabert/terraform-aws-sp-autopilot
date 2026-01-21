@@ -1,9 +1,5 @@
-# Lambda Functions and Deployment Packages
-# Purpose: AWS Lambda functions for Savings Plans automation
+# Lambda functions and deployment packages
 
-# ============================================================================
-# Lambda Functions
-# ============================================================================
 
 resource "aws_lambda_function" "scheduler" {
   count = local.lambda_scheduler_enabled ? 1 : 0
@@ -124,11 +120,7 @@ resource "aws_lambda_function" "reporter" {
   tags = local.common_tags
 }
 
-# ============================================================================
-# Lambda Deployment Packages
-# ============================================================================
 
-# Scheduler Lambda deployment package
 data "archive_file" "scheduler" {
   type             = "zip"
   output_path      = "${path.module}/scheduler.zip"
@@ -219,7 +211,6 @@ data "archive_file" "scheduler" {
   }
 }
 
-# Purchaser Lambda deployment package
 data "archive_file" "purchaser" {
   type             = "zip"
   output_path      = "${path.module}/purchaser.zip"
@@ -274,7 +265,6 @@ data "archive_file" "purchaser" {
   }
 }
 
-# Reporter Lambda deployment package
 data "archive_file" "reporter" {
   type             = "zip"
   output_path      = "${path.module}/reporter.zip"
@@ -325,7 +315,6 @@ data "archive_file" "reporter" {
   }
 }
 
-# Create placeholder ZIP files
 data "archive_file" "scheduler_placeholder" {
   type        = "zip"
   output_path = "${path.module}/.terraform/scheduler_placeholder.zip"

@@ -1,6 +1,4 @@
-# ============================================================================
-# SNS Topic
-# ============================================================================
+# SNS topic for notifications
 
 resource "aws_sns_topic" "notifications" {
   name              = "${local.module_name}-notifications"
@@ -15,9 +13,6 @@ resource "aws_sns_topic" "notifications" {
   )
 }
 
-# ============================================================================
-# SNS Email Subscriptions
-# ============================================================================
 
 resource "aws_sns_topic_subscription" "email_notifications" {
   for_each = toset(local.notification_emails)
