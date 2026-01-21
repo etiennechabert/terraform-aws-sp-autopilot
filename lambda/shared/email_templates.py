@@ -35,7 +35,7 @@ Example Usage:
 """
 
 import logging
-from typing import Any, Optional
+from typing import Any
 
 
 # Configure logging
@@ -190,7 +190,7 @@ def build_list_section(
 
 
 def build_footer(
-    custom_message: Optional[str] = None,
+    custom_message: str | None = None,
     width: int = 50,
     include_separator: bool = True,
 ) -> list[str]:

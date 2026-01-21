@@ -7,7 +7,7 @@ Tests cover all utility functions with edge cases to achieve >= 80% coverage.
 import json
 import os
 import sys
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from unittest.mock import MagicMock, Mock, patch
 
 import pytest
@@ -569,7 +569,7 @@ def test_send_error_notification_includes_timestamp():
 
     with patch("shared.handler_utils.datetime") as mock_datetime:
         mock_datetime.now.return_value.isoformat.return_value = "2026-01-14T12:00:00+00:00"
-        mock_datetime.now.return_value = datetime(2026, 1, 14, 12, 0, 0, tzinfo=timezone.utc)
+        mock_datetime.now.return_value = datetime(2026, 1, 14, 12, 0, 0, tzinfo=UTC)
 
         handler_utils.send_error_notification(
             sns_client=mock_sns,

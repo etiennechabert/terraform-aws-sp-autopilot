@@ -10,8 +10,9 @@ from __future__ import annotations
 import json
 import logging
 import os
-from datetime import datetime, timezone
-from typing import TYPE_CHECKING, Any, Callable
+from collections.abc import Callable
+from datetime import UTC, datetime
+from typing import TYPE_CHECKING, Any
 
 from botocore.exceptions import ClientError
 
@@ -369,7 +370,7 @@ def send_error_notification(
     logger.error(f"Sending error notification for {lambda_name}")
 
     # Get current timestamp
-    timestamp = datetime.now(timezone.utc).isoformat()
+    timestamp = datetime.now(UTC).isoformat()
 
     # Validate required parameters
     if not sns_topic_arn:

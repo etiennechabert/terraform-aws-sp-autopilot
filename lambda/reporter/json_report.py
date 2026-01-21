@@ -6,7 +6,7 @@ Generates structured JSON reports containing coverage history and savings data.
 
 import json
 import logging
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from typing import Any
 
 
@@ -30,7 +30,7 @@ def generate_json_report(
     logger.info("Generating JSON report")
 
     # Calculate report timestamp
-    report_timestamp = datetime.now(timezone.utc).isoformat()
+    report_timestamp = datetime.now(UTC).isoformat()
 
     # Calculate coverage summary
     avg_coverage = 0.0
