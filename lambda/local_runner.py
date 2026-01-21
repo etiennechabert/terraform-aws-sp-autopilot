@@ -29,14 +29,16 @@ Example:
     python lambda/local_runner.py reporter --format html
 """
 
-import sys
-import os
 import argparse
+import os
+import sys
 from pathlib import Path
+
 
 # Load environment variables from .env.local if it exists (in project root)
 try:
     from dotenv import load_dotenv
+
     env_file = Path(__file__).parent.parent / ".env.local"
     if env_file.exists():
         print(f"Loading environment from {env_file}")
@@ -71,7 +73,9 @@ class MockContext:
     def __init__(self, function_name: str):
         self.function_name = f"local-{function_name}"
         self.memory_limit_in_mb = 512
-        self.invoked_function_arn = f"arn:aws:lambda:local:000000000000:function:local-{function_name}"
+        self.invoked_function_arn = (
+            f"arn:aws:lambda:local:000000000000:function:local-{function_name}"
+        )
         self.aws_request_id = f"local-request-{function_name}"
 
 
@@ -188,7 +192,7 @@ def run_reporter(args):
             report_files = sorted(
                 [f for f in reports_dir.glob("*") if not f.name.endswith(".meta.json")],
                 key=lambda p: p.stat().st_mtime,
-                reverse=True
+                reverse=True,
             )
             print(f"\nReports directory: {reports_dir}")
             print(f"Total reports: {len(report_files)}")
@@ -213,25 +217,23 @@ def main():
     parser = argparse.ArgumentParser(
         description="Run Lambda functions locally in debug mode",
         formatter_class=argparse.RawDescriptionHelpFormatter,
-        epilog=__doc__
+        epilog=__doc__,
     )
 
     parser.add_argument(
         "lambda_name",
         choices=["scheduler", "purchaser", "reporter"],
-        help="Name of the Lambda function to run"
+        help="Name of the Lambda function to run",
     )
 
     parser.add_argument(
-        "--dry-run",
-        action="store_true",
-        help="Run scheduler in dry-run mode (no queueing)"
+        "--dry-run", action="store_true", help="Run scheduler in dry-run mode (no queueing)"
     )
 
     parser.add_argument(
         "--format",
         choices=["html", "json"],
-        help="Report format for reporter Lambda (default: html)"
+        help="Report format for reporter Lambda (default: html)",
     )
 
     args = parser.parse_args()
@@ -244,7 +246,9 @@ def main():
     print(f"LOCAL_MODE: {os.environ.get('LOCAL_MODE')}")
     print(f"LOCAL_DATA_DIR: {os.environ.get('LOCAL_DATA_DIR')}")
     print(f"AWS_PROFILE: {os.environ.get('AWS_PROFILE', 'not set')}")
-    print(f"AWS_REGION: {os.environ.get('AWS_REGION', os.environ.get('AWS_DEFAULT_REGION', 'not set'))}")
+    print(
+        f"AWS_REGION: {os.environ.get('AWS_REGION', os.environ.get('AWS_DEFAULT_REGION', 'not set'))}"
+    )
 
     # Run the selected Lambda
     if args.lambda_name == "scheduler":
@@ -271,5 +275,6 @@ if __name__ == "__main__":
     except Exception as e:
         print(f"\n\nFatal error: {e}")
         import traceback
+
         traceback.print_exc()
         sys.exit(1)
