@@ -38,10 +38,10 @@ module "savings_plans" {
 
   # Purchase strategy - DICHOTOMY for adaptive sizing
   purchase_strategy = {
-    coverage_target_percent = 90 # Target 90% coverage
-    max_coverage_cap        = 95 # Safety cap at 95%
-    lookback_days           = 13 # Max for HOURLY granularity (recommended)
-    min_data_days           = 14 # Require at least 14 days of data
+    coverage_target_percent = 90       # Target 90% coverage
+    max_coverage_cap        = 95       # Safety cap at 95%
+    lookback_days           = 13       # Max for HOURLY granularity (recommended)
+    granularity             = "HOURLY" # Recommended for accurate analysis
 
     # Dichotomy strategy - exponentially decreasing purchase sizes
     dichotomy = {
@@ -50,14 +50,11 @@ module "savings_plans" {
     }
   }
 
-  # Savings Plans configuration - Compute with balanced term mix
+  # Savings Plans configuration - Compute only
   sp_plans = {
     compute = {
-      enabled                  = true
-      all_upfront_three_year   = 0.50 # 50% in 3-year all-upfront
-      all_upfront_one_year     = 0.30 # 30% in 1-year all-upfront
-      partial_upfront_one_year = 0.20 # 20% in 1-year partial-upfront
-      partial_upfront_percent  = 60   # Pay 60% upfront for partial plans
+      enabled   = true
+      plan_type = "all_upfront_three_year" # Maximum savings
     }
 
     database = {

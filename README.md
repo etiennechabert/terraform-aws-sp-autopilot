@@ -12,131 +12,94 @@ Automates AWS Savings Plans purchases based on usage analysis, maintaining consi
 
 ## Table of Contents
 
-- [Features](#features)
-- [Supported Savings Plan Types](#supported-savings-plan-types)
+- [Overview](#overview)
+  - [Key Features](#key-features)
+  - [Savings Plan Types](#savings-plan-types)
+- [Getting Started](#getting-started)
+  - [Quick Start](#quick-start)
+  - [Examples](#examples)
+  - [First Deployment](#first-deployment)
+- [Configuration](#configuration)
+  - [Purchase Strategies](#purchase-strategies)
+  - [Scheduling](#scheduling)
+  - [Notifications](#notifications)
+  - [Data Granularity](#data-granularity)
 - [Architecture](#architecture)
-- [Quick Start](#quick-start)
-- [Configuration Variables](#configuration-variables)
-- [Supported Services](#supported-services)
-- [Coverage Tracking](#coverage-tracking)
-- [Outputs](#outputs)
-- [Advanced Usage](#advanced-usage)
-- [Cross-Account Setup for AWS Organizations](#cross-account-setup-for-aws-organizations)
-- [Data Granularity Configuration](#data-granularity-configuration)
-- [Requirements](#requirements)
-- [License](#license)
-- [Development](#development)
+- [Advanced Topics](#advanced-topics)
+  - [AWS Organizations Setup](#aws-organizations-setup)
+  - [Gradual Rollout](#gradual-rollout)
+  - [Canceling Purchases](#canceling-purchases)
+- [Reference](#reference)
+  - [Configuration Variables](#configuration-variables)
+  - [Outputs](#outputs)
+  - [Supported Services](#supported-services)
+  - [Requirements](#requirements)
 - [Contributing](#contributing)
+  - [Development](#development)
+  - [Testing](#testing)
+  - [Pre-commit Hooks](#pre-commit-hooks)
 - [Support](#support)
+- [License](#license)
 
 **Additional Guides:**
 - [Concepts & Glossary](CONCEPTS.md)
 - [Error Patterns & Troubleshooting](ERROR_PATTERNS.md)
 - [Testing Guide](TESTING.md)
+- [Local Development](LOCAL_DEVELOPMENT.md)
 
-## Features
+## Overview
+
+### Key Features
 
 - **Automated Savings Plans purchasing** — Maintains target coverage without manual intervention
-- **Three Savings Plans types supported** — Compute, Database, and SageMaker independently tracked
+- **Three purchase strategies** — Fixed, Dichotomy, and Follow-AWS for different workload patterns
+- **Three SP types supported** — Compute, Database, and SageMaker independently tracked
 - **Human review window** — Configurable delay between scheduling and purchasing allows cancellation
 - **Risk management** — Spreads financial commitments over time with configurable purchase limits
 - **Coverage cap enforcement** — Hard ceiling prevents over-commitment if usage shrinks
-- **Email notifications** — SNS-based alerts for scheduling and purchasing activities
+- **Email & webhook notifications** — SNS, Slack, and Microsoft Teams integration
 - **Auditable and transparent** — All decisions logged, all purchases tracked with idempotency
 
-## Supported Savings Plan Types
+### Savings Plan Types
 
-### Compute Savings Plans
+| Type | Coverage | Terms | Payment Options | Max Discount | Configuration |
+|------|----------|-------|-----------------|--------------|---------------|
+| **Compute** | EC2, Lambda, Fargate | 1-year, 3-year | All/Partial/No Upfront | Up to 66% | Fully configurable |
+| **Database** | RDS, Aurora, DynamoDB, ElastiCache (Valkey), DocumentDB, Neptune, Keyspaces, Timestream, DMS | 1-year only ⚠️ | No Upfront only ⚠️ | Up to 35% | AWS constraints |
+| **SageMaker** | Training, Inference, Notebooks | 1-year, 3-year | All/Partial/No Upfront | Up to 64% | Fully configurable |
 
-| Attribute | Details |
-|-----------|---------|
-| **Coverage** | EC2, Lambda, Fargate |
-| **Terms** | 1-year, 3-year (configurable mix) |
-| **Payment Options** | All Upfront, Partial Upfront, No Upfront |
-| **Max Discount** | Up to 66% |
-| **Configuration** | Select specific plan type (term + payment option combination) |
+> ⚠️ **Database Savings Plans** have fixed AWS constraints: 1-year term, No Upfront payment only. Variables exist for validation but cannot be changed.
 
-### Database Savings Plans
+## Getting Started
 
-| Attribute | Details |
-|-----------|---------|
-| **Coverage** | RDS, Aurora, DynamoDB, ElastiCache (Valkey), DocumentDB, Neptune, Keyspaces, Timestream, DMS |
-| **Terms** | **1-year only** *(AWS constraint)* |
-| **Payment Options** | **No Upfront only** *(AWS constraint)* |
-| **Max Discount** | Up to 35% (serverless), up to 20% (provisioned) |
-| **Configuration** | Enable via `enable_database_sp = true` |
-
-> **⚠️ Important:** Database Savings Plans have fixed AWS constraints. The `database_sp_term` and `database_sp_payment_option` variables exist for validation only — they cannot be changed from `ONE_YEAR` and `NO_UPFRONT` respectively.
-
-### SageMaker Savings Plans
-
-| Attribute | Details |
-|-----------|---------|
-| **Coverage** | SageMaker training, inference (real-time and serverless), and notebook instances |
-| **Terms** | 1-year, 3-year (configurable mix) |
-| **Payment Options** | All Upfront, Partial Upfront, No Upfront |
-| **Max Discount** | Up to 64% |
-| **Configuration** | Enable via `enable_sagemaker_sp = true` |
-
-> **✓ Fully Configurable:** SageMaker Savings Plans offer complete flexibility in term and payment options, similar to Compute Savings Plans. You can select any `plan_type` such as `all_upfront_three_year`, `partial_upfront_one_year`, etc.
-
-## Architecture
-
-The module consists of two Lambda functions with an SQS queue between them:
-
-![Architecture Diagram](docs/architecture.svg)
-
-**Workflow:**
-
-1. **Scheduler Lambda** runs on configurable schedule (e.g., 1st of month)
-   - Purges any stale queue messages
-   - Fetches current coverage and AWS recommendations (separate calls for Compute, Database, and SageMaker)
-   - Calculates purchase need to reach target coverage
-   - Queues purchase intents to SQS (or sends email only if `dry_run = true`)
-
-2. **SQS Queue** holds purchase intents during review window
-   - Users can delete messages from queue to cancel unwanted purchases
-   - Messages include full purchase details and idempotency tokens
-
-3. **Purchaser Lambda** runs on separate schedule (e.g., 4th of month)
-   - Processes each message from queue
-   - Validates purchase won't exceed `max_coverage_cap` (checked separately for Compute, Database, and SageMaker)
-   - Executes purchase via AWS CreateSavingsPlan API
-   - Sends aggregated email summary of all purchases
-
-## Quick Start
-
-### Basic Usage
+### Quick Start
 
 ```hcl
 module "savings_plans" {
   source  = "etiennechabert/sp-autopilot/aws"
-  # version = "~> 1.0"  # Pin to version when using in production
+  version = "~> 1.0"
 
   purchase_strategy = {
     coverage_target_percent = 90
     max_coverage_cap        = 95
+    lookback_days           = 13      # Recommended for HOURLY granularity
+    granularity             = "HOURLY" # Recommended (requires Cost Explorer hourly data)
+
     fixed = {
-      max_purchase_percent = 10
+      max_purchase_percent = 10 # Purchase 10% of monthly spend per cycle
     }
   }
 
   sp_plans = {
-    compute = {
-      enabled              = true
-      plan_type = "all_upfront_one_year"
-    }
-    database = {
-      enabled = false
-    }
-    sagemaker = {
-      enabled = false
-    }
+    compute   = { enabled = true, plan_type = "all_upfront_one_year" }
+    database  = { enabled = false }
+    sagemaker = { enabled = false }
   }
 
   scheduler = {
-    scheduler = "cron(0 8 1 * ? *)"
-    purchaser = "cron(0 8 4 * ? *)"
+    scheduler = "cron(0 8 1 * ? *)"  # 1st of month at 8 AM UTC
+    purchaser = "cron(0 8 4 * ? *)"  # 4th of month (3-day review window)
+    reporter  = "cron(0 9 20 * ? *)" # 20th of month
   }
 
   notifications = {
@@ -144,302 +107,40 @@ module "savings_plans" {
   }
 
   lambda_config = {
-    scheduler = {
-      dry_run = true  # Start in dry-run mode (recommended)
-    }
+    scheduler = { dry_run = true } # Start in dry-run mode (recommended)
   }
 }
 ```
 
-This enables **Compute Savings Plans** (default). For other configurations:
+### Examples
 
-<details>
-<summary><b>Database Savings Plans Only</b></summary>
+See the [`examples/`](examples/) directory for complete, working examples:
 
-```hcl
-module "savings_plans" {
-  source  = "etiennechabert/sp-autopilot/aws"
-  # version = "~> 1.0"  # Pin to version when using in production
+- **[single-account-compute](examples/single-account-compute/)** — Basic single-account Compute SP deployment
+- **[organizations](examples/organizations/)** — AWS Organizations multi-account setup
+- **[dichotomy-strategy](examples/dichotomy-strategy/)** — Adaptive purchase strategy
 
-  purchase_strategy = {
-    coverage_target_percent = 90
-    max_coverage_cap        = 95
-    fixed = {
-      max_purchase_percent = 10
-    }
-  }
+Each example includes a full Terraform configuration with README explaining the use case.
 
-  sp_plans = {
-    compute = {
-      enabled = false
-    }
-    database = {
-      enabled = true
-    }
-    sagemaker = {
-      enabled = false
-    }
-  }
+### First Deployment
 
-  notifications = {
-    emails = ["database-team@example.com"]
-  }
+Recommended phased approach:
 
-  lambda_config = {
-    scheduler = {
-      dry_run = true
-    }
-  }
-}
-```
-</details>
+| Phase | Settings | Duration | Purpose |
+|-------|----------|----------|---------|
+| **1. Dry-Run** | `dry_run = true` | 1-2 weeks | Review email recommendations, verify configuration |
+| **2. Small Scale** | `dry_run = false`<br>`coverage_target = 70`<br>`max_purchase = 5%` | 2-4 weeks | Make small purchases, monitor results |
+| **3. Production** | `coverage_target = 90`<br>`max_purchase = 10%` | Ongoing | Scale up as confidence grows |
 
-<details>
-<summary><b>SageMaker Savings Plans Only</b></summary>
-
-```hcl
-module "savings_plans" {
-  source  = "etiennechabert/sp-autopilot/aws"
-  # version = "~> 1.0"  # Pin to version when using in production
-
-  purchase_strategy = {
-    coverage_target_percent = 90
-    max_coverage_cap        = 95
-    fixed = {
-      max_purchase_percent = 10
-    }
-  }
-
-  sp_plans = {
-    compute = {
-      enabled = false
-    }
-    database = {
-      enabled = false
-    }
-    sagemaker = {
-      enabled   = true
-      plan_type = "all_upfront_three_year"
-    }
-  }
-
-  notifications = {
-    emails = ["ml-team@example.com"]
-  }
-
-  lambda_config = {
-    scheduler = {
-      dry_run = true
-    }
-  }
-}
-```
-</details>
-
-<details>
-<summary><b>All Three SP Types (Production Example)</b></summary>
-
-```hcl
-module "savings_plans" {
-  source  = "etiennechabert/sp-autopilot/aws"
-  # version = "~> 1.0"  # Pin to version when using in production
-
-  purchase_strategy = {
-    coverage_target_percent = 90
-    max_coverage_cap        = 95
-    fixed = {
-      max_purchase_percent = 10
-    }
-  }
-
-  sp_plans = {
-    compute = {
-      enabled   = true
-      plan_type = "all_upfront_three_year"
-    }
-    database = {
-      enabled = true
-    }
-    sagemaker = {
-      enabled   = true
-      plan_type = "all_upfront_three_year"
-    }
-  }
-
-  scheduler = {
-    scheduler = "cron(0 8 1 * ? *)"  # 1st of month
-    purchaser = "cron(0 8 4 * ? *)"  # 4th of month - 3-day review window
-  }
-
-  notifications = {
-    emails = ["devops@example.com", "finops@example.com", "ml-team@example.com"]
-  }
-
-  lambda_config = {
-    scheduler = {
-      dry_run = false  # Production mode
-    }
-  }
-}
-```
-</details>
-
-<details>
-<summary><b>With Slack and Teams Webhook Notifications</b></summary>
-
-```hcl
-# Store webhook URLs in variables and mark as sensitive
-variable "slack_webhook_url" {
-  type      = string
-  sensitive = true
-  description = "Slack webhook URL for notifications"
-}
-
-variable "teams_webhook_url" {
-  type      = string
-  sensitive = true
-  description = "Microsoft Teams webhook URL for notifications"
-}
-
-module "savings_plans" {
-  source  = "etiennechabert/sp-autopilot/aws"
-  # version = "~> 1.0"  # Pin to version when using in production
-
-  purchase_strategy = {
-    coverage_target_percent = 90
-    max_coverage_cap        = 95
-    fixed = {
-      max_purchase_percent = 10
-    }
-  }
-
-  sp_plans = {
-    compute = {
-      enabled              = true
-      plan_type = "all_upfront_one_year"
-    }
-    database = {
-      enabled = false
-    }
-    sagemaker = {
-      enabled = false
-    }
-  }
-
-  notifications = {
-    emails        = ["devops@example.com"]
-    slack_webhook = var.slack_webhook_url
-    teams_webhook = var.teams_webhook_url
-  }
-
-  lambda_config = {
-    scheduler = {
-      dry_run = true
-    }
-  }
-}
-```
-
-> **🔒 Security Note:** Webhook URLs contain sensitive credentials. Always mark webhook URL variables as `sensitive = true` to prevent them from appearing in Terraform logs and output. Store webhook URLs in AWS Secrets Manager, HashiCorp Vault, or environment variables — never commit them directly to version control.
-
-</details>
-
-## Configuration Variables
-
-For complete variable documentation including `lambda_config`, `purchase_strategy`, `sp_plans`, `scheduler`, `notifications`, `monitoring`, and `reporting` configuration objects, see:
-
-- **[variables.tf](variables.tf)** — Full variable definitions with types, defaults, and validation rules
-- **[examples/](examples/)** — Working examples for common deployment scenarios
-
-## Supported Services
-
-### Compute Savings Plans Cover:
-
-- **Amazon EC2** — Elastic Compute Cloud instances (any family, size, region, OS, tenancy)
-- **AWS Lambda** — Serverless compute
-- **AWS Fargate** — Serverless containers for ECS and EKS
-
-### Database Savings Plans Cover:
-
-- **Amazon RDS** — Relational Database Service (MySQL, PostgreSQL, MariaDB, Oracle, SQL Server)
-- **Amazon Aurora** — MySQL and PostgreSQL-compatible relational database
-- **Amazon DynamoDB** — NoSQL key-value and document database
-- **Amazon ElastiCache (Valkey)** — In-memory caching service
-- **Amazon DocumentDB** — MongoDB-compatible document database
-- **Amazon Neptune** — Graph database service
-- **Amazon Keyspaces** — Cassandra-compatible database service
-- **Amazon Timestream** — Time series database service
-- **AWS Database Migration Service (DMS)** — Database migration workloads
-
-### SageMaker Savings Plans Cover:
-
-- **Amazon SageMaker Training** — ML model training jobs
-- **Amazon SageMaker Real-Time Inference** — Hosted model endpoints
-- **Amazon SageMaker Serverless Inference** — On-demand inference endpoints
-- **Amazon SageMaker Notebook Instances** — Jupyter notebook environments
-
-## Coverage Tracking
-
-**Important:** Coverage for Compute, Database, and SageMaker Savings Plans is tracked **separately**.
-
-- **Separate Recommendations:** Scheduler fetches separate AWS recommendations for Compute, Database, and SageMaker
-- **Independent Targets:** All SP types work toward the same `coverage_target_percent`, but separately
-- **Independent Caps:** The `max_coverage_cap` is enforced independently for each SP type
-- **Separate Email Sections:** Notifications show coverage percentages for each SP type separately
-
-When multiple SP types are enabled, email notifications show coverage and recommendations separately for each type, ensuring independent purchasing decisions and flexible workload management.
-
-## Outputs
-
-The module provides the following outputs for monitoring and integration:
-
-### Queue Outputs
-- `queue_url` — SQS queue URL for purchase intents
-- `queue_arn` — SQS queue ARN
-- `dlq_url` — Dead Letter Queue URL
-- `dlq_arn` — Dead Letter Queue ARN
-
-### Lambda Outputs
-- `scheduler_lambda_arn` — Scheduler Lambda function ARN
-- `scheduler_lambda_name` — Scheduler Lambda function name
-- `purchaser_lambda_arn` — Purchaser Lambda function ARN
-- `purchaser_lambda_name` — Purchaser Lambda function name
-
-### Notification Outputs
-- `sns_topic_arn` — SNS topic ARN for notifications
-
-### Configuration Outputs
-- `module_configuration` — Summary of current configuration
-- `database_sp_configuration` — Database SP specific configuration with supported services and AWS constraints
-- `lambda_environment_database_sp` — Database SP enable flag passed to Lambda functions
-
-### Example Usage
-
-```hcl
-output "sp_config" {
-  value = module.savings_plans.module_configuration
-}
-```
-
-## Advanced Usage
-
-### Gradual Rollout Strategy
-
-Recommended approach for new deployments:
-
-| Phase | Settings | Purpose |
-|-------|----------|---------|
-| **Week 1** | `dry_run = true` | Review email recommendations only |
-| **Week 2-4** | `dry_run = false`<br>`coverage_target_percent = 70`<br>`max_purchase_percent = 5` | Small purchases, monitor results |
-| **Month 2+** | `coverage_target_percent = 90`<br>`max_purchase_percent = 10` | Scale up as confidence grows |
+## Configuration
 
 ### Purchase Strategies
 
-The module supports two purchase strategies: **Simple** (default) and **Dichotomy** (adaptive).
+The module supports three purchase strategies:
 
-#### Simple Strategy
+#### Fixed Strategy (Default)
 
-Applies a fixed percentage to AWS recommendations. Best for stable workloads with predictable growth.
+Applies a fixed percentage to AWS recommendations. Best for stable workloads.
 
 ```hcl
 purchase_strategy = {
@@ -452,15 +153,11 @@ purchase_strategy = {
 }
 ```
 
-**Characteristics:**
-- Fixed purchase percentage every cycle
-- Linear ramp to target coverage
-- Predictable, easy to understand
-- Recommended for: Stable workloads, small adjustments
+**Characteristics:** Linear ramp to target, predictable, simple.
 
 #### Dichotomy Strategy
 
-Adaptively sizes purchases using exponential halving based on coverage gap. Best for new deployments and variable workloads.
+Adaptively sizes purchases using exponential halving. Best for new deployments and variable workloads.
 
 ```hcl
 purchase_strategy = {
@@ -469,354 +166,306 @@ purchase_strategy = {
 
   dichotomy = {
     max_purchase_percent = 50 # Maximum purchase size
-    min_purchase_percent = 1  # Minimum purchase granularity (never buy less than this)
+    min_purchase_percent = 1  # Minimum purchase granularity
   }
 }
 ```
 
-**How it works:**
-- Always starts with `max_purchase_percent`, halves until purchase doesn't exceed target
-- Example progression (max 50%, target 90%):
-  - Month 1: At 0% → Try 50% → 0+50=50% ✓ → Purchase 50%
-  - Month 2: At 50% → Try 50% (would be 100%) ✗ → Try 25% (would be 75%) ✓ → Purchase 25%
-  - Month 3: At 75% → Try 50% ✗ → Try 25% (would be 100%) ✗ → Try 12.5% (would be 87.5%) ✓ → Purchase 12.5%
-  - Month 4: At 87.5% → Keep halving until fits → Purchase 1.5625% (reaches 89.0625%)
+**How it works:** Always starts with `max_purchase_percent`, halves until purchase doesn't exceed target.
 
-**Characteristics:**
-- Adaptive purchase sizing (fast initially, slows near target)
-- Creates distributed, smaller commitments over time
-- Natural replacement of large expiring plans
-- Prevents over-commitment through exponential halving
-- Recommended for: New deployments, variable workloads, risk management
+Example progression (max 50%, target 90%):
+- Month 1: 0% → Purchase 50% → Reaches 50%
+- Month 2: 50% → Purchase 25% → Reaches 75%
+- Month 3: 75% → Purchase 12.5% → Reaches 87.5%
+- Month 4: 87.5% → Purchase 1.5625% → Reaches 89%
 
-**Comparison:**
+**Characteristics:** Fast initial ramp, slows near target, distributed commitments, lower over-commitment risk.
 
-| Aspect | Simple | Dichotomy |
-|--------|--------|-----------|
-| Purchase sizing | Fixed % | Exponentially decreasing |
-| Adaptation | Static | Dynamic based on gap |
-| Ramp-up speed | Linear | Fast initially, slows near target |
-| Coverage stability | Moderate | High (distributed purchases) |
-| Over-commitment risk | Higher | Lower |
-| Complexity | Very simple | Simple (automatic) |
+#### Follow-AWS Strategy
 
-**See also:** [Dichotomy Strategy Example](examples/dichotomy-strategy/) for detailed usage guide.
+Uses AWS Cost Explorer recommendations directly without modification.
+
+```hcl
+purchase_strategy = {
+  coverage_target_percent = 90 # Used for validation only
+  max_coverage_cap        = 95
+
+  follow_aws = {}
+}
+```
+
+**Use with caution:** AWS recommendations can be aggressive. Best combined with low `max_coverage_cap`.
+
+### Scheduling
+
+```hcl
+scheduler = {
+  scheduler = "cron(0 8 1 * ? *)"   # When to analyze and schedule purchases
+  purchaser = "cron(0 8 4 * ? *)"   # When to execute purchases
+  reporter  = "cron(0 9 20 * ? *)"  # When to generate monthly reports
+}
+```
+
+**Review Window:** Time between `scheduler` and `purchaser` runs allows canceling unwanted purchases.
+
+### Notifications
+
+#### Email
+
+```hcl
+notifications = {
+  emails         = ["devops@example.com", "finops@example.com"]
+  send_no_action = true # Get notified even when no purchases needed
+}
+```
+
+#### Slack & Microsoft Teams
+
+```hcl
+notifications = {
+  emails        = ["devops@example.com"]
+  slack_webhook = var.slack_webhook_url  # Mark as sensitive
+  teams_webhook = var.teams_webhook_url  # Mark as sensitive
+}
+```
+
+**Security:** Always mark webhook URLs as `sensitive = true` and store in AWS Secrets Manager or HashiCorp Vault.
+
+### Data Granularity
+
+#### HOURLY (Recommended)
+
+**Why:** Savings Plans are purchased as hourly commitments ($/hour). Analyzing data at hourly granularity provides accurate purchase sizing.
+
+```hcl
+purchase_strategy = {
+  lookback_days = 13      # Max for HOURLY
+  granularity   = "HOURLY" # Recommended
+  # ...
+}
+```
+
+**Benefits:**
+- Reveals peak vs. off-peak patterns
+- More accurate spending percentiles
+- Better risk assessment
+
+**Cost:** ~$0.10-$1.00/month (minimal)
+
+**Requirement:** Enable "Hourly and resource level granularity" in Cost Explorer settings.
+
+#### DAILY (Compatibility)
+
+Use only if hourly data isn't available.
+
+```hcl
+purchase_strategy = {
+  lookback_days = 30     # Up to 90 days for DAILY
+  granularity   = "DAILY"
+  # ...
+}
+```
+
+**Trade-off:** Less accurate analysis, potentially suboptimal purchases.
+
+## Architecture
+
+The module consists of three Lambda functions with SQS queue coordination:
+
+![Architecture Diagram](docs/architecture.svg)
+
+**Workflow:**
+
+1. **Scheduler Lambda** (e.g., 1st of month)
+   - Purges stale queue messages
+   - Analyzes current coverage (separate for Compute/Database/SageMaker)
+   - Gets AWS recommendations
+   - Applies purchase strategy
+   - Queues purchase intents to SQS (or emails only if `dry_run = true`)
+
+2. **SQS Queue** (review window)
+   - Holds purchase intents
+   - Users can delete messages to cancel purchases
+   - Messages include full details and idempotency tokens
+
+3. **Purchaser Lambda** (e.g., 4th of month)
+   - Processes queue messages
+   - Validates against `max_coverage_cap`
+   - Executes purchases via AWS CreateSavingsPlan API
+   - Sends email summary
+
+4. **Reporter Lambda** (e.g., 20th of month)
+   - Generates HTML spending reports
+   - Stores in S3
+   - Optionally emails stakeholders
+
+## Advanced Topics
+
+### AWS Organizations Setup
+
+For AWS Organizations, Savings Plans must be purchased from the **management account**. Deploy this module in a secondary account and configure cross-account roles.
+
+**Configuration:**
+
+```hcl
+lambda_config = {
+  scheduler = { assume_role_arn = "arn:aws:iam::123456789012:role/SPReadOnlyRole" }
+  purchaser = { assume_role_arn = "arn:aws:iam::123456789012:role/SPPurchaserRole" }
+  reporter  = { assume_role_arn = "arn:aws:iam::123456789012:role/SPReadOnlyRole" }
+}
+```
+
+**IAM Setup in Management Account:**
+
+1. **Read-Only Role** (Scheduler + Reporter):
+   - `ce:GetSavingsPlansPurchaseRecommendation`
+   - `ce:GetSavingsPlansCoverage`
+   - `savingsplans:DescribeSavingsPlans`
+
+2. **Purchaser Role** (write access):
+   - `savingsplans:CreateSavingsPlan`
+   - `savingsplans:DescribeSavingsPlans`
+   - `ce:GetSavingsPlansCoverage`
+
+See [organizations example](examples/organizations/README.md) for complete setup.
+
+### Gradual Rollout
+
+Recommended deployment approach:
+
+| Phase | Settings | Purpose |
+|-------|----------|---------|
+| **Week 1** | `dry_run = true` | Review recommendations only |
+| **Week 2-4** | `dry_run = false`, `coverage_target = 70`, `max_purchase = 5%` | Small purchases, monitor |
+| **Month 2+** | `coverage_target = 90`, `max_purchase = 10%` | Scale up |
 
 ### Canceling Purchases
 
-To cancel a scheduled purchase before it executes:
+To cancel scheduled purchases before execution:
 
-1. Navigate to AWS Console → SQS → Select queue `sp-autopilot-purchase-intents`
+1. Navigate to AWS Console → SQS → `sp-autopilot-purchase-intents` queue
 2. View messages in queue
-3. Delete messages for purchases you want to cancel
+3. Delete messages for unwanted purchases
 4. Purchaser Lambda will skip deleted messages
 
-**Note:** This must be done between scheduler run and purchaser run (during review window).
+**Timing:** Must be done between Scheduler and Purchaser runs (during review window).
 
-## Notification Setup
+## Reference
 
-### Slack Webhooks
+### Configuration Variables
 
-1. Go to `https://[workspace].slack.com/apps` → "Incoming Webhooks" → "Add to Slack"
-2. Select channel and copy webhook URL
-3. Configure: `notifications.slack_webhook = "https://hooks.slack.com/services/..."`
+Complete variable documentation:
+- **[variables.tf](variables.tf)** — Full definitions with types, defaults, validation
 
-### Microsoft Teams Webhooks
+Main configuration objects:
+- `purchase_strategy` — Coverage targets, purchase limits, strategy selection
+- `sp_plans` — Enable/configure Compute, Database, SageMaker
+- `scheduler` — Cron schedules for Scheduler, Purchaser, Reporter
+- `notifications` — Email addresses, webhook URLs
+- `lambda_config` — Per-Lambda settings (dry-run, assume roles, alarms)
+- `monitoring` — CloudWatch alarms, error thresholds
+- `reporting` — Report format, S3 storage, email delivery
 
-1. Teams channel → **•••** → **Connectors** → "Incoming Webhook" → **Configure**
-2. Copy webhook URL (only shown once)
-3. Configure: `notifications.teams_webhook = "https://[org].webhook.office.com/webhookb2/..."`
+### Outputs
 
-**Security:** Store webhook URLs in AWS Secrets Manager or HashiCorp Vault. Mark variables as `sensitive = true` to prevent exposure in Terraform logs. Never commit webhook URLs to version control.
+**Queue:**
+- `queue_url`, `queue_arn` — Purchase intents queue
+- `dlq_url`, `dlq_arn` — Dead letter queue
 
-## Cross-Account Setup for AWS Organizations
+**Lambdas:**
+- `scheduler_lambda_arn`, `scheduler_lambda_name`
+- `purchaser_lambda_arn`, `purchaser_lambda_name`
+- `reporter_lambda_arn`, `reporter_lambda_name`
 
-When using AWS Organizations, Savings Plans must be purchased from the **management account**. Deploy this module in a secondary account and configure cross-account access using per-Lambda roles for least privilege.
-
-### Configuration
-
-```hcl
-module "savings_plans" {
-  source  = "etiennechabert/sp-autopilot/aws"
-  # version = "~> 1.0"  # Pin to version when using in production
-
-  # Per-Lambda roles for least privilege access
-  lambda_config = {
-    scheduler = {
-      assume_role_arn = "arn:aws:iam::123456789012:role/SavingsPlansReadOnlyRole"
-    }
-    purchaser = {
-      assume_role_arn = "arn:aws:iam::123456789012:role/SavingsPlansPurchaserRole"
-    }
-    reporter = {
-      assume_role_arn = "arn:aws:iam::123456789012:role/SavingsPlansReadOnlyRole"
-    }
-  }
-  # ... other configuration
-}
-```
-
-### IAM Roles Setup in Management Account
-
-Two roles provide least privilege access: a shared read-only role for Scheduler and Reporter, and a unique Purchaser role with write permissions.
-
-#### 1. Read-Only Role (Scheduler and Reporter)
-
-**Trust Policy:**
-```json
-{
-  "Version": "2012-10-17",
-  "Statement": [{
-    "Effect": "Allow",
-    "Principal": {
-      "AWS": [
-        "arn:aws:iam::SECONDARY_ACCOUNT_ID:role/sp-autopilot-scheduler-role",
-        "arn:aws:iam::SECONDARY_ACCOUNT_ID:role/sp-autopilot-reporter-role"
-      ]
-    },
-    "Action": "sts:AssumeRole"
-  }]
-}
-```
-
-**Permissions Policy:**
-```json
-{
-  "Version": "2012-10-17",
-  "Statement": [{
-    "Effect": "Allow",
-    "Action": [
-      "ce:GetSavingsPlansPurchaseRecommendation",
-      "ce:GetSavingsPlansCoverage",
-      "ce:GetSavingsPlansUtilization",
-      "savingsplans:DescribeSavingsPlans"
-    ],
-    "Resource": "*"
-  }]
-}
-```
-
-#### 2. Purchaser Role (Write Permissions)
-
-**Trust Policy:**
-```json
-{
-  "Version": "2012-10-17",
-  "Statement": [{
-    "Effect": "Allow",
-    "Principal": {
-      "AWS": "arn:aws:iam::SECONDARY_ACCOUNT_ID:role/sp-autopilot-purchaser-role"
-    },
-    "Action": "sts:AssumeRole"
-  }]
-}
-```
-
-**Permissions Policy:**
-```json
-{
-  "Version": "2012-10-17",
-  "Statement": [{
-    "Effect": "Allow",
-    "Action": [
-      "savingsplans:CreateSavingsPlan",
-      "savingsplans:DescribeSavingsPlans",
-      "ce:GetSavingsPlansCoverage"
-    ],
-    "Resource": "*"
-  }]
-}
-```
-
-**Security Note:** Only the Purchaser Lambda has `CreateSavingsPlan` permissions. Scheduler and Reporter share a read-only role, simplifying management while maintaining least privilege.
-
-See [Organizations example](examples/organizations/README.md) for detailed setup instructions.
-
-## Data Granularity Configuration
-
-The module supports two granularity modes for Cost Explorer data analysis: **HOURLY** (recommended) and **DAILY** (compatibility mode).
-
-### Recommended: HOURLY Granularity
-
-**Hourly granularity provides significantly better Savings Plans purchase decisions** because **Savings Plans are purchased as an hourly commitment ($/hour)**. Analyzing data at the same granularity as the commitment ensures accurate purchase sizing.
-
-Hourly data reveals:
-- Peak vs. off-peak usage patterns
-- Workload variance and stability
-- More accurate spending percentiles (p50, p75, p90, p99)
-- Better risk assessment for purchase commitments
-
-**Cost:** Minimal - approximately **$0.01 per 1,000 hourly usage records per month**. For a typical AWS environment, this translates to ~$0.10-$1.00/month.
+**Notifications:**
+- `sns_topic_arn` — SNS topic for all notifications
 
 **Configuration:**
-```hcl
-purchase_strategy = {
-  coverage_target_percent = 90
-  max_coverage_cap        = 95
-  lookback_days           = 13      # Up to 13 days for hourly
-  granularity             = "HOURLY" # Recommended
-  # ... other settings
-}
-```
+- `module_configuration` — Summary of current settings
+- `database_sp_configuration` — Database SP constraints and services
 
-**AWS Account Requirement:** Hourly granularity must be enabled in AWS Cost Explorer settings:
-1. Go to AWS Console → Cost Explorer → Settings
-2. Enable "Hourly and resource level granularity"
-3. Note: Once enabled, this feature cannot be disabled (but cost is negligible)
+### Supported Services
 
-### Compatibility Mode: DAILY Granularity
+**Compute Savings Plans:** EC2 (any family/size/region/OS/tenancy), Lambda, Fargate
 
-Use daily granularity only if:
-- Your AWS account doesn't have hourly granularity enabled
-- You need longer lookback periods (up to 90 days vs. 13 days for hourly)
+**Database Savings Plans:** RDS, Aurora, DynamoDB, ElastiCache (Valkey), DocumentDB, Neptune, Keyspaces, Timestream, DMS
 
-**Trade-off:** Daily granularity provides less accurate spending analysis, potentially leading to suboptimal purchase decisions.
+**SageMaker Savings Plans:** Training, Real-Time Inference, Serverless Inference, Notebook Instances
 
-**Configuration:**
-```hcl
-purchase_strategy = {
-  coverage_target_percent = 90
-  max_coverage_cap        = 95
-  lookback_days           = 30      # Up to 90 days for daily
-  granularity             = "DAILY"
-  # ... other settings
-}
-```
+**Note:** Coverage is tracked independently for each SP type.
 
-**Validation:** The module automatically enforces appropriate `lookback_days` limits:
-- HOURLY: Maximum 13 days (AWS Cost Explorer retains ~14 days of hourly data)
-- DAILY: Maximum 90 days
+### Requirements
 
-> **💡 Best Practice:** Enable hourly granularity in your AWS account for optimal Savings Plans analysis. The minimal cost is far outweighed by improved purchase accuracy and potential savings.
-
-## Requirements
-
-- **Terraform**: >= 1.0
-- **AWS Provider**: >= 5.0
-- **IAM Permissions**: Lambda functions require permissions for:
-  - Cost Explorer API (GetSavingsPlansPurchaseRecommendation)
-  - Savings Plans API (CreateSavingsPlan, DescribeSavingsPlans)
-  - SQS (SendMessage, ReceiveMessage, DeleteMessage, PurgeQueue)
-  - SNS (Publish)
-  - CloudWatch Logs (for Lambda logging)
-
-## License
-
-This module is open-source software licensed under the Apache License 2.0.
-
-## Used By
-
-Using this module in production? We'd love to hear from you!
-
-**Add your company logo:**
-1. Fork this repo
-2. Add your logo to `docs/users/` (PNG/SVG, max 200px width)
-3. Submit a PR updating this section
-
-Your company here:
-<!-- Add your company logo and link below -->
-<!-- Example: [![Company Name](docs/users/company-logo.png)](https://company.com) -->
-
-*Be the first to showcase your use of terraform-aws-sp-autopilot!*
-
-## Development
-
-### Local Development and Debugging
-
-You can run and debug the Lambda functions locally on your development machine using the local runner.
-
-**Quick start using Make:**
-
-```bash
-# Setup local environment
-make setup
-
-# Edit .env.local with your AWS credentials
-
-# Run Lambdas
-make run-scheduler    # Analyzes coverage, queues intents (dry-run)
-make run-purchaser    # Processes queued intents
-make run-reporter     # Generates HTML report
-```
-
-**Or use Python directly:**
-
-```bash
-# Install development dependencies
-pip install -r requirements-dev.txt
-
-# Configure local environment
-cp .env.local.example .env.local
-# Edit .env.local with your AWS credentials
-
-# Run Lambdas locally with filesystem I/O
-python local_runner.py scheduler --dry-run
-python local_runner.py purchaser
-python local_runner.py reporter --format html
-```
-
-In local mode:
-- **SQS messages** → JSON files in `local_data/queue/`
-- **S3 reports** → Files in `local_data/reports/`
-- **AWS APIs** → Real Cost Explorer and Savings Plans APIs (read-only unless purchasing)
-
-This enables:
-- Fast iteration without AWS deployments
-- IDE breakpoint debugging
-- Inspection of queue messages and reports
-- Testing without AWS costs
-
-**See [LOCAL_DEVELOPMENT.md](LOCAL_DEVELOPMENT.md) for detailed instructions.**
-
-### Running Tests
-
-```bash
-# Run all tests
-pytest tests/ -v
-
-# Run local mode tests
-pytest tests/test_local_mode.py tests/test_local_runner.py -v
-
-# Run with coverage
-pytest tests/ --cov=lambda --cov-report=html
-```
+- **Terraform:** >= 1.0
+- **AWS Provider:** >= 5.0
+- **IAM Permissions:**
+  - Cost Explorer: `ce:GetSavingsPlansPurchaseRecommendation`, `ce:GetSavingsPlansCoverage`
+  - Savings Plans: `savingsplans:CreateSavingsPlan`, `savingsplans:DescribeSavingsPlans`
+  - SQS: `sqs:SendMessage`, `sqs:ReceiveMessage`, `sqs:DeleteMessage`, `sqs:PurgeQueue`
+  - SNS: `sns:Publish`
+  - CloudWatch Logs: Lambda logging
 
 ## Contributing
 
 Contributions are welcome! Please open an issue or pull request on GitHub.
 
-## Support
+### Development
 
-For questions, issues, or feature requests, please open a GitHub issue.
+#### Local Development
 
-## Development
+Run Lambda functions locally for fast iteration:
+
+```bash
+make setup           # Setup local environment
+# Edit .env.local with AWS credentials
+make run-scheduler   # Analyze coverage (dry-run)
+make run-purchaser   # Process queued intents
+make run-reporter    # Generate HTML report
+```
+
+See [LOCAL_DEVELOPMENT.md](LOCAL_DEVELOPMENT.md) for detailed instructions.
+
+### Testing
+
+```bash
+make test            # Run all tests
+make lint            # Run linting and auto-fix
+make lint-check      # Check linting (CI mode)
+```
+
+See [TESTING.md](TESTING.md) for testing guide.
 
 ### Pre-commit Hooks
 
-This project uses git pre-commit hooks to ensure code quality. The hook automatically runs linting and formatting before each commit.
+Install git hooks to ensure code quality:
 
-To install the hook:
 ```bash
 make install-hooks
 ```
 
-The hook will:
-- Run `ruff` linting and formatting on staged Python files
-- Auto-fix issues when possible
-- Re-stage modified files
-- Prevent commits with linting errors
+The hook automatically:
+- Runs ruff linting and formatting on staged Python files
+- Auto-fixes issues when possible
+- Re-stages modified files
+- Prevents commits with linting errors
 
-To bypass the hook temporarily (not recommended):
-```bash
-git commit --no-verify
-```
+Bypass temporarily (not recommended): `git commit --no-verify`
 
-### Available Make Targets
+**Available Make targets:**
+- `make lint` — Run linting and auto-fix
+- `make format` — Format Python code
+- `make test` — Run all tests
+- `make install-hooks` — Install pre-commit hooks
+- `make help` — Show all targets
 
-- `make lint` - Run linting and auto-fix issues
-- `make lint-check` - Check linting without fixing (CI mode)
-- `make format` - Format Python code with ruff
-- `make test` - Run all tests
-- `make install-hooks` - Install git pre-commit hooks
-- `make help` - Show available targets
+## Support
 
+For questions, issues, or feature requests, please open a [GitHub issue](https://github.com/etiennechabert/terraform-aws-sp-autopilot/issues).
+
+## License
+
+This module is open-source software licensed under the [Apache License 2.0](LICENSE).
+
+---
+
+**Using this module in production?** We'd love to hear from you! Submit a PR to add your company logo to our users showcase.
