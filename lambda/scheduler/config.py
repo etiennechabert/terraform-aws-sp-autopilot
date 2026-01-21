@@ -72,13 +72,13 @@ CONFIG_SCHEMA = {
     "lookback_days": {
         "required": False,
         "type": "int",
-        "default": "13",
+        "default": "30",
         "env_var": "LOOKBACK_DAYS",
     },
     "granularity": {
         "required": False,
         "type": "str",
-        "default": "HOURLY",
+        "default": "DAILY",
         "env_var": "GRANULARITY",
     },
     "min_commitment_per_plan": {

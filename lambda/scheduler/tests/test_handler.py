@@ -490,6 +490,7 @@ def test_get_aws_recommendations_lookback_period_mapping(mock_env_vars, monkeypa
 
     # Test 60 days -> SIXTY_DAYS
     monkeypatch.setenv("LOOKBACK_DAYS", "60")
+    monkeypatch.setenv("GRANULARITY", "DAILY")
     config = handler.load_configuration()
 
     with patch.object(handler.ce_client, "get_savings_plans_purchase_recommendation") as mock_rec:

@@ -32,6 +32,7 @@ def mock_env_vars(monkeypatch):
     monkeypatch.setenv("MIN_PURCHASE_PERCENT", "1")
     monkeypatch.setenv("RENEWAL_WINDOW_DAYS", "7")
     monkeypatch.setenv("LOOKBACK_DAYS", "30")
+    monkeypatch.setenv("GRANULARITY", "DAILY")
     monkeypatch.setenv("MIN_COMMITMENT_PER_PLAN", "0.001")
     monkeypatch.setenv("COMPUTE_SP_TERM", "THREE_YEAR")
     monkeypatch.setenv("COMPUTE_SP_PAYMENT_OPTION", "ALL_UPFRONT")
@@ -61,6 +62,7 @@ def test_load_configuration_defaults(mock_env_vars):
     assert cfg["min_purchase_percent"] == 1.0
     assert cfg["renewal_window_days"] == 7
     assert cfg["lookback_days"] == 30
+    assert cfg["granularity"] == "DAILY"
     assert cfg["min_commitment_per_plan"] == 0.001
     assert cfg["compute_sp_term"] == "THREE_YEAR"
     assert cfg["sagemaker_sp_term"] == "THREE_YEAR"
