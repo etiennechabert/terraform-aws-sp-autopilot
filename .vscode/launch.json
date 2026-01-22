@@ -192,7 +192,7 @@
                 "ENABLE_DATABASE_SP": "true",
                 "ENABLE_SAGEMAKER_SP": "true",
                 // Data collection settings
-                "LOOKBACK_DAYS": "7",
+                "LOOKBACK_DAYS": "30",
                 "GRANULARITY": "HOURLY",
                 // Alert settings
                 "LOW_UTILIZATION_THRESHOLD": "70",

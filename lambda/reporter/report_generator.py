@@ -53,10 +53,18 @@ def _prepare_chart_data(coverage_data: dict[str, Any]) -> str:
         coverage_data: Coverage data from SpendingAnalyzer with timeseries
 
     Returns:
-        str: JSON string with chart data (labels, covered, ondemand arrays)
+        str: JSON string with chart data for all tabs (global, compute, database, sagemaker)
     """
-    # Aggregate timeseries across all SP types (compute, database, sagemaker)
-    timeseries_map = {}
+    # Build timeseries maps for each SP type and global aggregate
+    timeseries_maps = {
+        "global": {},
+        "compute": {},
+        "database": {},
+        "sagemaker": {},
+    }
+
+    # Collect all unique timestamps and build per-type data
+    all_timestamps = set()
 
     for sp_type in ["compute", "database", "sagemaker"]:
         timeseries = coverage_data.get(sp_type, {}).get("timeseries", [])
@@ -66,47 +74,64 @@ def _prepare_chart_data(coverage_data: dict[str, Any]) -> str:
             total = item.get("total", 0.0)
             ondemand = total - covered
 
-            if timestamp not in timeseries_map:
-                timeseries_map[timestamp] = {"covered": 0.0, "ondemand": 0.0}
+            all_timestamps.add(timestamp)
 
-            timeseries_map[timestamp]["covered"] += covered
-            timeseries_map[timestamp]["ondemand"] += ondemand
+            # Store in per-type map
+            if timestamp not in timeseries_maps[sp_type]:
+                timeseries_maps[sp_type][timestamp] = {"covered": 0.0, "ondemand": 0.0}
+            timeseries_maps[sp_type][timestamp]["covered"] += covered
+            timeseries_maps[sp_type][timestamp]["ondemand"] += ondemand
 
-    # Sort by timestamp and format for chart
-    sorted_timestamps = sorted(timeseries_map.keys())
+            # Aggregate into global
+            if timestamp not in timeseries_maps["global"]:
+                timeseries_maps["global"][timestamp] = {"covered": 0.0, "ondemand": 0.0}
+            timeseries_maps["global"][timestamp]["covered"] += covered
+            timeseries_maps["global"][timestamp]["ondemand"] += ondemand
 
-    # Limit to last 168 hours (7 days) for readability, or show all if less
-    if len(sorted_timestamps) > 168:
-        sorted_timestamps = sorted_timestamps[-168:]
+    # Sort timestamps
+    sorted_timestamps = sorted(all_timestamps)
 
-    labels = []
-    timestamps = []  # Full timestamps for tooltip
-    covered_values = []
-    ondemand_values = []
+    # Build chart data for each type
+    def build_chart_data_for_type(type_name):
+        labels = []
+        timestamps = []
+        covered_values = []
+        ondemand_values = []
 
-    for ts in sorted_timestamps:
-        # Format timestamp for display (remove seconds, show date if needed)
-        if "T" in ts:
-            date_part, time_part = ts.split("T")
-            time_part = time_part[:5]  # HH:MM
-            # Show MM-DD HH:MM for multi-day view, or just HH:MM for single day
-            label = f"{date_part[5:]} {time_part}" if len(sorted_timestamps) > 24 else time_part
-        else:
-            label = ts[:10]  # Just date for daily granularity
+        type_map = timeseries_maps[type_name]
 
-        labels.append(label)
-        timestamps.append(ts)  # Store full timestamp for tooltip
-        covered_values.append(round(timeseries_map[ts]["covered"], 2))
-        ondemand_values.append(round(timeseries_map[ts]["ondemand"], 2))
+        for ts in sorted_timestamps:
+            # Format timestamp for display
+            if "T" in ts:
+                date_part, time_part = ts.split("T")
+                time_part = time_part[:5]  # HH:MM
+                label = f"{date_part[5:]} {time_part}" if len(sorted_timestamps) > 24 else time_part
+            else:
+                label = ts[:10]  # Just date for daily granularity
 
-    chart_data = {
-        "labels": labels,
-        "timestamps": timestamps,  # Full ISO timestamps for day-of-week calculation
-        "covered": covered_values,
-        "ondemand": ondemand_values,
+            labels.append(label)
+            timestamps.append(ts)
+
+            # Get values for this type (may be 0 if no data)
+            data = type_map.get(ts, {"covered": 0.0, "ondemand": 0.0})
+            covered_values.append(round(data["covered"], 2))
+            ondemand_values.append(round(data["ondemand"], 2))
+
+        return {
+            "labels": labels,
+            "timestamps": timestamps,
+            "covered": covered_values,
+            "ondemand": ondemand_values,
+        }
+
+    all_chart_data = {
+        "global": build_chart_data_for_type("global"),
+        "compute": build_chart_data_for_type("compute"),
+        "database": build_chart_data_for_type("database"),
+        "sagemaker": build_chart_data_for_type("sagemaker"),
     }
 
-    return json.dumps(chart_data)
+    return json.dumps(all_chart_data)
 
 
 def generate_html_report(
@@ -273,6 +298,69 @@ def generate_html_report(
             background-color: #f8f9fa;
             border-radius: 8px;
         }}
+        .tabs {{
+            display: flex;
+            gap: 10px;
+            margin-bottom: 20px;
+            border-bottom: 2px solid #e0e0e0;
+        }}
+        .tab {{
+            padding: 12px 24px;
+            cursor: pointer;
+            background: none;
+            border: none;
+            border-bottom: 3px solid transparent;
+            font-size: 14px;
+            font-weight: 500;
+            color: #6c757d;
+            transition: all 0.3s ease;
+        }}
+        .tab:hover {{
+            color: #232f3e;
+            background-color: #f8f9fa;
+        }}
+        .tab.active {{
+            color: #232f3e;
+            border-bottom-color: #ff9900;
+        }}
+        .tab-content {{
+            display: none;
+        }}
+        .tab-content.active {{
+            display: block;
+        }}
+        .tab-metrics {{
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+            margin-bottom: 20px;
+            padding: 15px;
+            background-color: #f8f9fa;
+            border-radius: 8px;
+        }}
+        .metric-card {{
+            background: white;
+            padding: 15px;
+            border-radius: 6px;
+            border-left: 4px solid #667eea;
+        }}
+        .metric-card.green {{
+            border-left-color: #56ab2f;
+        }}
+        .metric-card.orange {{
+            border-left-color: #ff9900;
+        }}
+        .metric-card h4 {{
+            margin: 0 0 8px 0;
+            font-size: 0.85em;
+            color: #6c757d;
+            font-weight: 500;
+        }}
+        .metric-card .metric-value {{
+            font-size: 1.5em;
+            font-weight: bold;
+            color: #232f3e;
+        }}
     </style>
 </head>
 <body>
@@ -337,8 +425,39 @@ def generate_html_report(
 
         <div class="section">
             <h2>Usage Over Time</h2>
-            <div class="chart-container">
-                <canvas id="usageChart"></canvas>
+
+            <div class="tabs">
+                <button class="tab active" onclick="switchTab('global')">Global (All Types)</button>
+                <button class="tab" onclick="switchTab('compute')">Compute</button>
+                <button class="tab" onclick="switchTab('database')">Database</button>
+                <button class="tab" onclick="switchTab('sagemaker')">SageMaker</button>
+            </div>
+
+            <div id="global-tab" class="tab-content active">
+                <div class="chart-container">
+                    <canvas id="globalChart"></canvas>
+                </div>
+            </div>
+
+            <div id="compute-tab" class="tab-content">
+                <div id="compute-metrics"></div>
+                <div class="chart-container">
+                    <canvas id="computeChart"></canvas>
+                </div>
+            </div>
+
+            <div id="database-tab" class="tab-content">
+                <div id="database-metrics"></div>
+                <div class="chart-container">
+                    <canvas id="databaseChart"></canvas>
+                </div>
+            </div>
+
+            <div id="sagemaker-tab" class="tab-content">
+                <div id="sagemaker-metrics"></div>
+                <div class="chart-container">
+                    <canvas id="sagemakerChart"></canvas>
+                </div>
             </div>
         </div>
 
@@ -478,110 +597,253 @@ def generate_html_report(
     # Prepare chart data from coverage timeseries
     chart_data = _prepare_chart_data(coverage_data)
 
+    # Extract per-type metrics
+    compute_summary = coverage_data.get("compute", {}).get("summary", {})
+    database_summary = coverage_data.get("database", {}).get("summary", {})
+    sagemaker_summary = coverage_data.get("sagemaker", {}).get("summary", {})
+
+    target_coverage = config.get("coverage_target_percent", 90.0)
+
+    # Extract savings breakdown by type
+    breakdown_by_type = savings_data.get("actual_savings", {}).get("breakdown_by_type", {})
+
+    def get_type_metrics(sp_type_key, summary, sp_type_name):
+        """Calculate metrics for a specific SP type"""
+        current_coverage = summary.get("avg_coverage", 0.0)
+        avg_total_cost = summary.get("avg_hourly_total", 0.0)
+        avg_covered_cost = summary.get("avg_hourly_covered", 0.0)
+        avg_ondemand_cost = avg_total_cost - avg_covered_cost
+
+        # Get utilization for this type
+        # Check if we have SP plans of this type and extract utilization
+        type_utilization = 0.0
+        type_keywords = {
+            "Compute": ["compute"],
+            "Database": ["rds", "database"],
+            "SageMaker": ["sagemaker"],
+        }
+        keywords = type_keywords.get(sp_type_name, [sp_type_name.lower()])
+
+        for plan in savings_data.get("plans", []):
+            plan_type = plan.get("plan_type", "").lower()
+            if any(keyword in plan_type for keyword in keywords):
+                # If we have plans of this type, use overall utilization as approximation
+                # Note: This is a simplification - ideally we'd query CE API per type
+                type_utilization = average_utilization
+                break
+
+        # Actual savings achieved
+        # Savings = what we would pay on-demand minus what we actually pay with SP
+        # SP typically offers 30-40% discount, so if covered_cost is what we pay:
+        # On-demand equivalent = covered_cost / (1 - discount_rate)
+        # Assuming 35% average discount: on_demand_equiv = covered_cost / 0.65
+        # Savings = on_demand_equiv - covered_cost
+        discount_rate = 0.35
+        ondemand_equivalent_for_covered = (
+            avg_covered_cost / (1 - discount_rate) if avg_covered_cost > 0 else 0
+        )
+        actual_savings_hourly = ondemand_equivalent_for_covered - avg_covered_cost
+        actual_savings_monthly = actual_savings_hourly * 730
+
+        # Calculate potential additional savings if we reach target coverage
+        if current_coverage < target_coverage and avg_total_cost > 0:
+            # Additional coverage percentage points needed
+            additional_coverage_points = target_coverage - current_coverage
+            # Additional hourly cost that would be covered
+            additional_covered_hourly = avg_total_cost * (additional_coverage_points / 100)
+            # Savings on that additional coverage (35% discount)
+            potential_additional_hourly = additional_covered_hourly * discount_rate
+            potential_additional_monthly = potential_additional_hourly * 730
+        else:
+            potential_additional_monthly = 0.0
+
+        return {
+            "current_coverage": current_coverage,
+            "utilization": type_utilization,
+            "actual_savings_monthly": actual_savings_monthly,
+            "potential_additional_savings": potential_additional_monthly,
+            "target_coverage": target_coverage,
+        }
+
+    compute_metrics = get_type_metrics("compute", compute_summary, "Compute")
+    database_metrics = get_type_metrics("database", database_summary, "Database")
+    sagemaker_metrics = get_type_metrics("sagemaker", sagemaker_summary, "SageMaker")
+
+    metrics_json = json.dumps(
+        {"compute": compute_metrics, "database": database_metrics, "sagemaker": sagemaker_metrics}
+    )
+
     html += f"""
     <script>
-        const ctx = document.getElementById('usageChart');
+        const allChartData = {chart_data};
+        const metricsData = {metrics_json};
 
-        const chartData = {chart_data};
+        // Tab switching function
+        function switchTab(tabName) {{
+            // Hide all tab contents
+            document.querySelectorAll('.tab-content').forEach(function(content) {{
+                content.classList.remove('active');
+            }});
 
-        new Chart(ctx, {{
-            type: 'bar',
-            data: {{
-                labels: chartData.labels,
-                datasets: [
-                    {{
-                        label: 'Covered by Savings Plans',
-                        data: chartData.covered,
-                        backgroundColor: 'rgba(86, 171, 47, 0.7)',
-                        borderColor: 'rgba(86, 171, 47, 1)',
-                        borderWidth: 1,
-                        stack: 'stack0'
-                    }},
-                    {{
-                        label: 'On-Demand Cost',
-                        data: chartData.ondemand,
-                        backgroundColor: 'rgba(244, 107, 69, 0.7)',
-                        borderColor: 'rgba(244, 107, 69, 1)',
-                        borderWidth: 1,
-                        stack: 'stack0'
-                    }}
-                ]
-            }},
-            options: {{
-                responsive: true,
-                maintainAspectRatio: false,
-                interaction: {{
-                    mode: 'index',
-                    intersect: false
+            // Remove active class from all tabs
+            document.querySelectorAll('.tab').forEach(function(tab) {{
+                tab.classList.remove('active');
+            }});
+
+            // Show selected tab content
+            document.getElementById(tabName + '-tab').classList.add('active');
+
+            // Add active class to clicked tab
+            event.target.classList.add('active');
+        }}
+
+        // Function to create chart for a specific type
+        function createChart(canvasId, chartData, title) {{
+            const ctx = document.getElementById(canvasId);
+
+            return new Chart(ctx, {{
+                type: 'bar',
+                data: {{
+                    labels: chartData.labels,
+                    datasets: [
+                        {{
+                            label: 'Covered by Savings Plans',
+                            data: chartData.covered,
+                            backgroundColor: 'rgba(86, 171, 47, 0.7)',
+                            borderColor: 'rgba(86, 171, 47, 1)',
+                            borderWidth: 1,
+                            stack: 'stack0'
+                        }},
+                        {{
+                            label: 'On-Demand Cost',
+                            data: chartData.ondemand,
+                            backgroundColor: 'rgba(244, 107, 69, 0.7)',
+                            borderColor: 'rgba(244, 107, 69, 1)',
+                            borderWidth: 1,
+                            stack: 'stack0'
+                        }}
+                    ]
                 }},
-                plugins: {{
-                    title: {{
-                        display: true,
-                        text: 'Hourly Usage: On-Demand vs Covered by Savings Plans',
-                        font: {{ size: 16 }}
+                options: {{
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    interaction: {{
+                        mode: 'index',
+                        intersect: false
                     }},
-                    legend: {{
-                        display: true,
-                        position: 'top'
-                    }},
-                    tooltip: {{
-                        callbacks: {{
-                            title: function(tooltipItems) {{
-                                const index = tooltipItems[0].dataIndex;
-                                const timestamp = chartData.timestamps[index];
+                    plugins: {{
+                        title: {{
+                            display: true,
+                            text: title,
+                            font: {{ size: 16 }}
+                        }},
+                        legend: {{
+                            display: true,
+                            position: 'top'
+                        }},
+                        tooltip: {{
+                            callbacks: {{
+                                title: function(tooltipItems) {{
+                                    const index = tooltipItems[0].dataIndex;
+                                    const timestamp = chartData.timestamps[index];
 
-                                // Parse timestamp and get day of week
-                                const date = new Date(timestamp);
-                                const days = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
-                                const dayName = days[date.getDay()];
+                                    const date = new Date(timestamp);
+                                    const days = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+                                    const dayName = days[date.getDay()];
 
-                                // Format: "01-17 06:00 (Friday)"
-                                const label = tooltipItems[0].label;
-                                return label + ' (' + dayName + ')';
-                            }},
-                            footer: function(tooltipItems) {{
-                                let covered = 0;
-                                let ondemand = 0;
+                                    const label = tooltipItems[0].label;
+                                    return label + ' (' + dayName + ')';
+                                }},
+                                footer: function(tooltipItems) {{
+                                    let covered = 0;
+                                    let ondemand = 0;
 
-                                tooltipItems.forEach(function(item) {{
-                                    if (item.dataset.label.includes('Covered')) {{
-                                        covered = item.parsed.y;
-                                    }} else {{
-                                        ondemand = item.parsed.y;
-                                    }}
-                                }});
+                                    tooltipItems.forEach(function(item) {{
+                                        if (item.dataset.label.includes('Covered')) {{
+                                            covered = item.parsed.y;
+                                        }} else {{
+                                            ondemand = item.parsed.y;
+                                        }}
+                                    }});
 
-                                const total = covered + ondemand;
-                                const coveragePercent = total > 0 ? (covered / total * 100).toFixed(1) : 0;
+                                    const total = covered + ondemand;
+                                    const coveragePercent = total > 0 ? (covered / total * 100).toFixed(1) : 0;
 
-                                return 'Total: $' + total.toFixed(2) + '\\nCoverage: ' + coveragePercent + '%';
+                                    return 'Total: $' + total.toFixed(2) + '\\nCoverage: ' + coveragePercent + '%';
+                                }}
                             }}
                         }}
-                    }}
-                }},
-                scales: {{
-                    x: {{
-                        stacked: true,
-                        title: {{
-                            display: true,
-                            text: 'Time Period'
-                        }}
                     }},
-                    y: {{
-                        stacked: true,
-                        title: {{
-                            display: true,
-                            text: 'Cost (USD)'
+                    scales: {{
+                        x: {{
+                            stacked: true,
+                            title: {{
+                                display: true,
+                                text: 'Time Period'
+                            }}
                         }},
-                        ticks: {{
-                            callback: function(value) {{
-                                return '$' + value.toFixed(2);
+                        y: {{
+                            stacked: true,
+                            title: {{
+                                display: true,
+                                text: 'Cost (USD)'
+                            }},
+                            ticks: {{
+                                callback: function(value) {{
+                                    return '$' + value.toFixed(2);
+                                }}
                             }}
                         }}
                     }}
                 }}
+            }});
+        }}
+
+        // Function to render metrics for a specific type
+        function renderMetrics(containerId, metrics, typeName) {{
+            const container = document.getElementById(containerId);
+
+            // Determine utilization color class
+            let utilizationClass = '';
+            if (metrics.utilization >= 95) {{
+                utilizationClass = 'green';
+            }} else if (metrics.utilization >= 80) {{
+                utilizationClass = 'orange';
             }}
-        }});
+
+            const html = `
+                <div class="tab-metrics">
+                    <div class="metric-card">
+                        <h4>Current Coverage</h4>
+                        <div class="metric-value">${{metrics.current_coverage.toFixed(1)}}%</div>
+                    </div>
+                    <div class="metric-card ${{utilizationClass}}">
+                        <h4>Utilization</h4>
+                        <div class="metric-value">${{metrics.utilization > 0 ? metrics.utilization.toFixed(1) + '%' : 'N/A'}}</div>
+                    </div>
+                    <div class="metric-card green">
+                        <h4>Actual Savings (30 days)</h4>
+                        <div class="metric-value">$$${{metrics.actual_savings_monthly.toLocaleString('en-US', {{maximumFractionDigits: 0}})}}</div>
+                    </div>
+                    <div class="metric-card orange">
+                        <h4>Potential at ${{metrics.target_coverage}}% Target</h4>
+                        <div class="metric-value">+$$${{metrics.potential_additional_savings.toLocaleString('en-US', {{maximumFractionDigits: 0}})}}</div>
+                    </div>
+                </div>
+            `;
+            container.innerHTML = html;
+        }}
+
+        // Create all charts
+        createChart('globalChart', allChartData.global, 'Hourly Usage: On-Demand vs Covered (All Types)');
+        createChart('computeChart', allChartData.compute, 'Compute Savings Plans - Hourly Usage');
+        createChart('databaseChart', allChartData.database, 'Database Savings Plans - Hourly Usage');
+        createChart('sagemakerChart', allChartData.sagemaker, 'SageMaker Savings Plans - Hourly Usage');
+
+        // Render metrics for each type
+        renderMetrics('compute-metrics', metricsData.compute, 'Compute');
+        renderMetrics('database-metrics', metricsData.database, 'Database');
+        renderMetrics('sagemaker-metrics', metricsData.sagemaker, 'SageMaker');
     </script>
 </body>
 </html>
