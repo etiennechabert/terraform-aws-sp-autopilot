@@ -168,9 +168,8 @@ def test_handler_fixed_strategy(mock_env_vars, mock_clients, aws_mock_builder, m
 
     assert response["statusCode"] == 200
 
-    # Fixed strategy uses SpendingAnalyzer which calls coverage and cost_and_usage APIs
+    # Fixed strategy uses SpendingAnalyzer which calls coverage API
     assert mock_clients["ce"].get_savings_plans_coverage.called
-    assert mock_clients["ce"].get_cost_and_usage.called
 
     email_call = mock_clients["sns"].publish.call_args[1]
     assert "Current Coverage" in email_call["Message"]
@@ -307,9 +306,8 @@ def test_handler_applies_max_purchase_percent(
 
     assert response["statusCode"] == 200
 
-    # Fixed strategy should analyze spending
+    # Fixed strategy should analyze spending via coverage API
     assert mock_clients["ce"].get_savings_plans_coverage.called
-    assert mock_clients["ce"].get_cost_and_usage.called
 
 
 def test_handler_filters_below_min_commitment(
@@ -429,9 +427,8 @@ def test_handler_expiring_plans_excluded_from_coverage(
     response = handler.handler({}, None)
 
     assert response["statusCode"] == 200
-    # Fixed strategy analyzes spending via coverage and cost APIs
+    # Fixed strategy analyzes spending via coverage API
     assert mock_clients["ce"].get_savings_plans_coverage.called
-    assert mock_clients["ce"].get_cost_and_usage.called
 
 
 def test_handler_all_sp_types_disabled(mock_env_vars, mock_clients, monkeypatch):
