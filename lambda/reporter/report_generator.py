@@ -8,7 +8,7 @@ from __future__ import annotations
 
 import json
 import logging
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 from typing import Any
 
 
@@ -301,6 +301,13 @@ def generate_html_report(
         tr:hover {{
             background-color: #f8f9fa;
         }}
+        .expiring-soon {{
+            background-color: #fff3cd !important;
+            border-left: 4px solid #ffc107;
+        }}
+        .expiring-soon:hover {{
+            background-color: #ffe8a1 !important;
+        }}
         .metric {{
             font-weight: bold;
             color: #232f3e;
@@ -555,71 +562,6 @@ def generate_html_report(
         </div>
 
         <div class="section">
-            <h2>Active Savings Plans</h2>
-"""
-
-    plans = savings_data.get("plans", [])
-    if plans:
-        html += f"""
-            <p>
-                <strong>Total Hourly Commitment:</strong> ${total_commitment:.4f}/hour
-                (${total_commitment * 730:,.2f}/month)
-                <br>
-                <strong>Average Utilization (30 days):</strong> {average_utilization:.2f}%
-            </p>
-            <table>
-                <thead>
-                    <tr>
-                        <th>Plan ID</th>
-                        <th>Type</th>
-                        <th>Hourly Commitment</th>
-                        <th>Term</th>
-                        <th>Payment Option</th>
-                        <th>Start Date</th>
-                        <th>End Date</th>
-                    </tr>
-                </thead>
-                <tbody>
-"""
-        for plan in plans:
-            plan_id = plan.get("plan_id", "Unknown")
-            plan_type = plan.get("plan_type", "Unknown")
-            hourly_commitment = plan.get("hourly_commitment", 0.0)
-            term_years = plan.get("term_years", 0)
-            payment_option = plan.get("payment_option", "Unknown")
-            start_date = plan.get("start_date", "Unknown")
-            end_date = plan.get("end_date", "Unknown")
-
-            # Format dates
-            if "T" in start_date:
-                start_date = start_date.split("T")[0]
-            if "T" in end_date:
-                end_date = end_date.split("T")[0]
-
-            html += f"""
-                    <tr>
-                        <td style="font-family: monospace; font-size: 0.85em;">{plan_id[:20]}...</td>
-                        <td>{plan_type}</td>
-                        <td class="metric">${hourly_commitment:.4f}/hr</td>
-                        <td>{term_years} year(s)</td>
-                        <td>{payment_option}</td>
-                        <td>{start_date}</td>
-                        <td>{end_date}</td>
-                    </tr>
-"""
-        html += """
-                </tbody>
-            </table>
-"""
-    else:
-        html += """
-            <div class="no-data">No active Savings Plans found</div>
-"""
-
-    html += """
-        </div>
-
-        <div class="section">
             <h2>Actual Savings Summary (Last 30 Days)</h2>
 """
 
@@ -645,6 +587,7 @@ def generate_html_report(
                     <tr>
                         <th>Plan Type</th>
                         <th>Active Plans</th>
+                        <th>Utilization</th>
                         <th>Total Hourly Commitment</th>
                         <th>Monthly Commitment</th>
                     </tr>
@@ -664,10 +607,14 @@ def generate_html_report(
             elif "EC2Instance" in plan_type:
                 plan_type_display = "EC2 Instance Savings Plans"
 
+            # Use average utilization as approximation for type utilization
+            type_utilization = average_utilization if plans_count_type > 0 else 0.0
+
             html += f"""
                     <tr>
                         <td><strong>{plan_type_display}</strong></td>
                         <td>{plans_count_type}</td>
+                        <td class="metric">{type_utilization:.1f}%</td>
                         <td class="metric">${total_commitment_type:.4f}/hr</td>
                         <td class="metric">${monthly_commitment:,.2f}/mo</td>
                     </tr>
@@ -675,6 +622,96 @@ def generate_html_report(
         html += """
                 </tbody>
             </table>
+"""
+
+    html += """
+        </div>
+
+        <div class="section">
+            <h2>Active Savings Plans</h2>
+"""
+
+    plans = savings_data.get("plans", [])
+    if plans:
+        # Sort plans by end date (earliest expiration first)
+        sorted_plans = sorted(
+            plans,
+            key=lambda p: p.get("end_date", "9999-12-31"),
+        )
+
+        # Calculate date 3 months from now for expiration highlighting
+        three_months_from_now = datetime.now(UTC) + timedelta(days=90)
+
+        html += f"""
+            <p>
+                <strong>Total Hourly Commitment:</strong> ${total_commitment:.4f}/hour
+                (${total_commitment * 730:,.2f}/month)
+                <br>
+                <strong>Average Utilization (30 days):</strong> {average_utilization:.2f}%
+            </p>
+            <table>
+                <thead>
+                    <tr>
+                        <th>Plan ID</th>
+                        <th>Type</th>
+                        <th>Hourly Commitment</th>
+                        <th>Term</th>
+                        <th>Payment Option</th>
+                        <th>Start Date</th>
+                        <th>End Date</th>
+                    </tr>
+                </thead>
+                <tbody>
+"""
+        for plan in sorted_plans:
+            plan_id = plan.get("plan_id", "Unknown")
+            plan_type = plan.get("plan_type", "Unknown")
+            hourly_commitment = plan.get("hourly_commitment", 0.0)
+            term_years = plan.get("term_years", 0)
+            payment_option = plan.get("payment_option", "Unknown")
+            start_date = plan.get("start_date", "Unknown")
+            end_date = plan.get("end_date", "Unknown")
+
+            # Format dates
+            start_date_display = start_date
+            end_date_display = end_date
+            if "T" in start_date:
+                start_date_display = start_date.split("T")[0]
+            if "T" in end_date:
+                end_date_display = end_date.split("T")[0]
+
+            # Check if expiring within 3 months
+            expiring_soon = False
+            try:
+                if "T" in end_date:
+                    end_date_parsed = datetime.fromisoformat(end_date.replace("Z", "+00:00"))
+                else:
+                    end_date_parsed = datetime.strptime(end_date, "%Y-%m-%d").replace(tzinfo=UTC)
+                if end_date_parsed <= three_months_from_now:
+                    expiring_soon = True
+            except Exception:
+                pass
+
+            row_class = 'class="expiring-soon"' if expiring_soon else ""
+
+            html += f"""
+                    <tr {row_class}>
+                        <td style="font-family: monospace; font-size: 0.85em;">{plan_id[:20]}...</td>
+                        <td>{plan_type}</td>
+                        <td class="metric">${hourly_commitment:.4f}/hr</td>
+                        <td>{term_years} year(s)</td>
+                        <td>{payment_option}</td>
+                        <td>{start_date_display}</td>
+                        <td>{end_date_display}</td>
+                    </tr>
+"""
+        html += """
+                </tbody>
+            </table>
+"""
+    else:
+        html += """
+            <div class="no-data">No active Savings Plans found</div>
 """
 
     html += f"""
