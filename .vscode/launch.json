@@ -12,6 +12,8 @@
                 "PYTHONPATH": "${workspaceFolder}/lambda:${workspaceFolder}",
                 "AWS_REGION": "us-east-1",
                 "AWS_DEFAULT_REGION": "us-east-1",
+                // Local mode
+                "LOCAL_MODE": "true",
                 // Logging
                 "LOG_LEVEL": "INFO",
                 "BOTO_DEBUG": "false",
@@ -45,6 +47,8 @@
                 "PYTHONPATH": "${workspaceFolder}/lambda:${workspaceFolder}",
                 "AWS_REGION": "us-east-1",
                 "AWS_DEFAULT_REGION": "us-east-1",
+                // Local mode
+                "LOCAL_MODE": "true",
                 // Logging
                 "LOG_LEVEL": "INFO",
                 "BOTO_DEBUG": "false",
@@ -79,6 +83,8 @@
                 "PYTHONPATH": "${workspaceFolder}/lambda:${workspaceFolder}",
                 "AWS_REGION": "us-east-1",
                 "AWS_DEFAULT_REGION": "us-east-1",
+                // Local mode
+                "LOCAL_MODE": "true",
                 // Logging
                 "LOG_LEVEL": "INFO",
                 "BOTO_DEBUG": "false",
@@ -112,6 +118,8 @@
                 "PYTHONPATH": "${workspaceFolder}/lambda:${workspaceFolder}",
                 "AWS_REGION": "us-east-1",
                 "AWS_DEFAULT_REGION": "us-east-1",
+                // Local mode
+                "LOCAL_MODE": "true",
                 // Logging
                 "LOG_LEVEL": "INFO",
                 "BOTO_DEBUG": "false",
@@ -141,9 +149,11 @@
             "envFile": "${workspaceFolder}/.env.local",
             "justMyCode": false,
             "env": {
-                "PYTHONPATH": "${workspaceFolder}",
+                "PYTHONPATH": "${workspaceFolder}/lambda:${workspaceFolder}",
                 "AWS_REGION": "us-east-1",
                 "AWS_DEFAULT_REGION": "us-east-1",
+                // Local mode
+                "LOCAL_MODE": "true",
                 // Logging
                 "LOG_LEVEL": "INFO",
                 "BOTO_DEBUG": "false",
@@ -163,18 +173,30 @@
             "envFile": "${workspaceFolder}/.env.local",
             "justMyCode": false,
             "env": {
-                "PYTHONPATH": "${workspaceFolder}",
+                "PYTHONPATH": "${workspaceFolder}/lambda:${workspaceFolder}",
                 "AWS_REGION": "us-east-1",
                 "AWS_DEFAULT_REGION": "us-east-1",
+                // Local mode
+                "LOCAL_MODE": "true",
                 // Logging
                 "LOG_LEVEL": "INFO",
                 "BOTO_DEBUG": "false",
                 // Required environment variables
                 "REPORTS_BUCKET": "test-reports-bucket",
                 "SNS_TOPIC_ARN": "arn:aws:sns:us-east-1:123456789012:test-topic",
+                // Report configuration
                 "REPORT_FORMAT": "html",
                 "EMAIL_REPORTS": "false",
-                "LOW_UTILIZATION_THRESHOLD": "70"
+                // Savings Plans types to include in report
+                "ENABLE_COMPUTE_SP": "true",
+                "ENABLE_DATABASE_SP": "false",
+                "ENABLE_SAGEMAKER_SP": "false",
+                // Data collection settings
+                "LOOKBACK_DAYS": "7",
+                "GRANULARITY": "HOURLY",
+                // Alert settings
+                "LOW_UTILIZATION_THRESHOLD": "70",
+                "LOW_UTILIZATION_ALERT_ENABLED": "false"
             },
             "console": "integratedTerminal",
             "cwd": "${workspaceFolder}/lambda/reporter"
@@ -190,9 +212,11 @@
             "envFile": "${workspaceFolder}/.env.local",
             "justMyCode": false,
             "env": {
-                "PYTHONPATH": "${workspaceFolder}",
+                "PYTHONPATH": "${workspaceFolder}/lambda:${workspaceFolder}",
                 "AWS_REGION": "us-east-1",
                 "AWS_DEFAULT_REGION": "us-east-1",
+                // Local mode
+                "LOCAL_MODE": "true",
                 // Logging
                 "LOG_LEVEL": "INFO",
                 "BOTO_DEBUG": "false"
@@ -213,7 +237,7 @@
             "envFile": "${workspaceFolder}/.env.local",
             "justMyCode": false,
             "env": {
-                "PYTHONPATH": "${workspaceFolder}",
+                "PYTHONPATH": "${workspaceFolder}/lambda:${workspaceFolder}",
                 "AWS_REGION": "us-east-1",
                 "LOG_LEVEL": "INFO",
                 "BOTO_DEBUG": "false"
@@ -234,7 +258,7 @@
             "envFile": "${workspaceFolder}/.env.local",
             "justMyCode": false,
             "env": {
-                "PYTHONPATH": "${workspaceFolder}",
+                "PYTHONPATH": "${workspaceFolder}/lambda:${workspaceFolder}",
                 "AWS_REGION": "us-east-1",
                 "LOG_LEVEL": "INFO",
                 "BOTO_DEBUG": "false"
@@ -255,34 +279,13 @@
             "envFile": "${workspaceFolder}/.env.local",
             "justMyCode": false,
             "env": {
-                "PYTHONPATH": "${workspaceFolder}",
+                "PYTHONPATH": "${workspaceFolder}/lambda:${workspaceFolder}",
                 "AWS_REGION": "us-east-1",
                 "LOG_LEVEL": "INFO",
                 "BOTO_DEBUG": "false"
             },
             "console": "integratedTerminal",
             "cwd": "${workspaceFolder}/lambda/reporter"
-        },
-        {
-            "name": "Run Shared Module Tests",
-            "type": "debugpy",
-            "request": "launch",
-            "module": "pytest",
-            "args": [
-                "tests/",
-                "-v",
-                "--no-cov"
-            ],
-            "envFile": "${workspaceFolder}/.env.local",
-            "justMyCode": false,
-            "env": {
-                "PYTHONPATH": "${workspaceFolder}",
-                "AWS_REGION": "us-east-1",
-                "LOG_LEVEL": "INFO",
-                "BOTO_DEBUG": "false"
-            },
-            "console": "integratedTerminal",
-            "cwd": "${workspaceFolder}/lambda/shared"
         }
     ]
 }
