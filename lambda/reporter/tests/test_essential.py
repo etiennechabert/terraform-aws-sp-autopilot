@@ -357,3 +357,28 @@ def test_handler_low_utilization_alert_not_triggered(
     call_args = mock_clients["sns"].publish.call_args[1]
     assert "Low Utilization Alert" not in call_args["Subject"]
     assert "Report" in call_args["Subject"]
+
+
+def test_handler_initialize_clients_failure_triggers_error_notification(mock_env_vars):
+    """Test that initialize_clients failure triggers error notification callback."""
+    # Mock the underlying get_clients (called by initialize_clients) to fail
+    # This lets initialize_clients execute its error handling path
+    error_response = {"Error": {"Code": "AccessDenied", "Message": "Unable to assume role"}}
+
+    with patch("shared.handler_utils.get_clients") as mock_get_clients:
+        with patch("handler._send_error_notification") as mock_error_notif:
+            # Make get_clients raise error - initialize_clients will catch it
+            mock_get_clients.side_effect = ClientError(error_response, "AssumeRole")
+
+            # Execute handler - should raise error
+            with pytest.raises(ClientError) as exc_info:
+                handler.handler({}, {})
+
+            # Verify error was raised
+            assert exc_info.value.response["Error"]["Code"] == "AccessDenied"
+
+            # Verify error notification callback was called
+            assert mock_error_notif.called
+            call_args = mock_error_notif.call_args[0]
+            # Should contain SNS topic ARN and error message
+            assert len(call_args) >= 2
