@@ -183,15 +183,14 @@ def generate_html_report(
 
     report_timestamp = datetime.now(UTC).strftime("%Y-%m-%d %H:%M:%S UTC")
 
-    # Extract coverage summary
+    # Extract coverage summary per type
     compute_coverage = coverage_data.get("compute", {}).get("summary", {}).get("avg_coverage", 0.0)
-
-    # Calculate overall current coverage from timeseries
-    current_coverage = 0.0
-    for sp_type in ["compute", "database", "sagemaker"]:
-        timeseries = coverage_data.get(sp_type, {}).get("timeseries", [])
-        if timeseries:
-            current_coverage = max(current_coverage, timeseries[-1].get("coverage", 0.0))
+    database_coverage = (
+        coverage_data.get("database", {}).get("summary", {}).get("avg_coverage", 0.0)
+    )
+    sagemaker_coverage = (
+        coverage_data.get("sagemaker", {}).get("summary", {}).get("avg_coverage", 0.0)
+    )
 
     # Extract savings summary
     plans_count = savings_data.get("plans_count", 0)
@@ -471,24 +470,28 @@ def generate_html_report(
         <div class="subtitle">Generated: {report_timestamp}</div>
 
         <div class="summary">
-            <div class="summary-card blue">
-                <h3>Current Coverage</h3>
-                <div class="value">{current_coverage:.1f}%</div>
-            </div>
             <div class="summary-card green">
                 <h3>Compute Coverage</h3>
                 <div class="value">{compute_coverage:.1f}%</div>
+            </div>
+            <div class="summary-card green">
+                <h3>Database Coverage</h3>
+                <div class="value">{database_coverage:.1f}%</div>
+            </div>
+            <div class="summary-card green">
+                <h3>SageMaker Coverage</h3>
+                <div class="value">{sagemaker_coverage:.1f}%</div>
             </div>
             <div class="summary-card orange">
                 <h3>Active Plans</h3>
                 <div class="value">{plans_count}</div>
             </div>
             <div class="summary-card">
-                <h3>Actual Net Savings (30 days)</h3>
+                <h3>Net Savings (30d)</h3>
                 <div class="value">${net_savings:,.0f}</div>
             </div>
-            <div class="summary-card green">
-                <h3>Savings Percentage</h3>
+            <div class="summary-card">
+                <h3>Savings %</h3>
                 <div class="value">{savings_percentage:.1f}%</div>
             </div>
         </div>
@@ -949,11 +952,11 @@ def generate_html_report(
 
                 let recommendation = '';
                 if (variability < 20) {{
-                    recommendation = `Low variability (${{variability}}%). Consider covering close to P95 ($$${{stats.p95}}/hr) for maximum savings with minimal risk.`;
+                    recommendation = `Low variability (${{variability}}%). Consider covering close to P95 (${{stats.p95}}/hr) for maximum savings with minimal risk.`;
                 }} else if (variability < 40) {{
-                    recommendation = `Moderate variability (${{variability}}%). Consider covering P75-P90 ($$${{stats.p75}}-$$${{stats.p90}}/hr) to balance savings and risk.`;
+                    recommendation = `Moderate variability (${{variability}}%). Consider covering P75-P90 (${{stats.p75}}-${{stats.p90}}/hr) to balance savings and risk.`;
                 }} else {{
-                    recommendation = `High variability (${{variability}}%). Consider covering P50-P75 ($$${{stats.p50}}-$$${{stats.p75}}/hr) to avoid over-commitment during low usage periods.`;
+                    recommendation = `High variability (${{variability}}%). Consider covering P50-P75 (${{stats.p50}}-${{stats.p75}}/hr) to avoid over-commitment during low usage periods.`;
                 }}
 
                 optimizationHtml = `
@@ -962,27 +965,27 @@ def generate_html_report(
                         <div class="percentile-grid">
                             <div class="percentile-item">
                                 <div class="percentile-label">Min Hourly</div>
-                                <div class="percentile-value">$$${{stats.min}}</div>
+                                <div class="percentile-value">${{stats.min}}</div>
                             </div>
                             <div class="percentile-item">
                                 <div class="percentile-label">P50 (Median)</div>
-                                <div class="percentile-value">$$${{stats.p50}}</div>
+                                <div class="percentile-value">${{stats.p50}}</div>
                             </div>
                             <div class="percentile-item">
                                 <div class="percentile-label">P75</div>
-                                <div class="percentile-value">$$${{stats.p75}}</div>
+                                <div class="percentile-value">${{stats.p75}}</div>
                             </div>
                             <div class="percentile-item">
                                 <div class="percentile-label">P90</div>
-                                <div class="percentile-value">$$${{stats.p90}}</div>
+                                <div class="percentile-value">${{stats.p90}}</div>
                             </div>
                             <div class="percentile-item">
                                 <div class="percentile-label">P95</div>
-                                <div class="percentile-value">$$${{stats.p95}}</div>
+                                <div class="percentile-value">${{stats.p95}}</div>
                             </div>
                             <div class="percentile-item">
                                 <div class="percentile-label">Max Hourly</div>
-                                <div class="percentile-value">$$${{stats.max}}</div>
+                                <div class="percentile-value">${{stats.max}}</div>
                             </div>
                         </div>
                         <div class="recommendation">
@@ -1004,11 +1007,11 @@ def generate_html_report(
                     </div>
                     <div class="metric-card green">
                         <h4>Actual Savings (30 days)</h4>
-                        <div class="metric-value">$$${{metrics.actual_savings_monthly.toLocaleString('en-US', {{maximumFractionDigits: 0}})}}</div>
+                        <div class="metric-value">${{metrics.actual_savings_monthly.toLocaleString('en-US', {{maximumFractionDigits: 0}})}}</div>
                     </div>
                     <div class="metric-card orange">
                         <h4>Potential at ${{metrics.target_coverage}}% Target</h4>
-                        <div class="metric-value">+$$${{metrics.potential_additional_savings.toLocaleString('en-US', {{maximumFractionDigits: 0}})}}</div>
+                        <div class="metric-value">+${{metrics.potential_additional_savings.toLocaleString('en-US', {{maximumFractionDigits: 0}})}}</div>
                     </div>
                 </div>
                 ${{optimizationHtml}}
