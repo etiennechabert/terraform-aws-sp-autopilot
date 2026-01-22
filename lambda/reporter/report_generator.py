@@ -78,15 +78,25 @@ def _prepare_chart_data(coverage_data: dict[str, Any]) -> str:
 
             # Store in per-type map
             if timestamp not in timeseries_maps[sp_type]:
-                timeseries_maps[sp_type][timestamp] = {"covered": 0.0, "ondemand": 0.0}
+                timeseries_maps[sp_type][timestamp] = {
+                    "covered": 0.0,
+                    "ondemand": 0.0,
+                    "total": 0.0,
+                }
             timeseries_maps[sp_type][timestamp]["covered"] += covered
             timeseries_maps[sp_type][timestamp]["ondemand"] += ondemand
+            timeseries_maps[sp_type][timestamp]["total"] += total
 
             # Aggregate into global
             if timestamp not in timeseries_maps["global"]:
-                timeseries_maps["global"][timestamp] = {"covered": 0.0, "ondemand": 0.0}
+                timeseries_maps["global"][timestamp] = {
+                    "covered": 0.0,
+                    "ondemand": 0.0,
+                    "total": 0.0,
+                }
             timeseries_maps["global"][timestamp]["covered"] += covered
             timeseries_maps["global"][timestamp]["ondemand"] += ondemand
+            timeseries_maps["global"][timestamp]["total"] += total
 
     # Sort timestamps
     sorted_timestamps = sorted(all_timestamps)
@@ -97,6 +107,7 @@ def _prepare_chart_data(coverage_data: dict[str, Any]) -> str:
         timestamps = []
         covered_values = []
         ondemand_values = []
+        total_costs = []
 
         type_map = timeseries_maps[type_name]
 
@@ -113,15 +124,32 @@ def _prepare_chart_data(coverage_data: dict[str, Any]) -> str:
             timestamps.append(ts)
 
             # Get values for this type (may be 0 if no data)
-            data = type_map.get(ts, {"covered": 0.0, "ondemand": 0.0})
+            data = type_map.get(ts, {"covered": 0.0, "ondemand": 0.0, "total": 0.0})
             covered_values.append(round(data["covered"], 2))
             ondemand_values.append(round(data["ondemand"], 2))
+            total_costs.append(round(data["total"], 2))
+
+        # Calculate statistics for optimal coverage recommendation
+        total_costs_nonzero = [c for c in total_costs if c > 0]
+        stats = {}
+        if total_costs_nonzero:
+            sorted_costs = sorted(total_costs_nonzero)
+            n = len(sorted_costs)
+            stats = {
+                "min": round(sorted_costs[0], 2),
+                "max": round(sorted_costs[-1], 2),
+                "p50": round(sorted_costs[int(n * 0.50)], 2),
+                "p75": round(sorted_costs[int(n * 0.75)], 2),
+                "p90": round(sorted_costs[int(n * 0.90)], 2),
+                "p95": round(sorted_costs[int(n * 0.95)], 2),
+            }
 
         return {
             "labels": labels,
             "timestamps": timestamps,
             "covered": covered_values,
             "ondemand": ondemand_values,
+            "stats": stats,
         }
 
     all_chart_data = {
@@ -360,6 +388,49 @@ def generate_html_report(
             font-size: 1.5em;
             font-weight: bold;
             color: #232f3e;
+        }}
+        .optimization-section {{
+            margin-top: 20px;
+            padding: 15px;
+            background-color: #fff3cd;
+            border-left: 4px solid #ffc107;
+            border-radius: 6px;
+        }}
+        .optimization-section h4 {{
+            margin: 0 0 10px 0;
+            font-size: 0.95em;
+            color: #856404;
+            font-weight: 600;
+        }}
+        .percentile-grid {{
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+            gap: 10px;
+            margin-top: 10px;
+        }}
+        .percentile-item {{
+            text-align: center;
+            padding: 8px;
+            background: white;
+            border-radius: 4px;
+        }}
+        .percentile-label {{
+            font-size: 0.75em;
+            color: #6c757d;
+            margin-bottom: 4px;
+        }}
+        .percentile-value {{
+            font-size: 1.1em;
+            font-weight: bold;
+            color: #232f3e;
+        }}
+        .recommendation {{
+            margin-top: 12px;
+            padding: 10px;
+            background: white;
+            border-radius: 4px;
+            font-size: 0.9em;
+            color: #856404;
         }}
     </style>
 </head>
@@ -800,7 +871,7 @@ def generate_html_report(
         }}
 
         // Function to render metrics for a specific type
-        function renderMetrics(containerId, metrics, typeName) {{
+        function renderMetrics(containerId, metrics, typeName, stats) {{
             const container = document.getElementById(containerId);
 
             // Determine utilization color class
@@ -809,6 +880,57 @@ def generate_html_report(
                 utilizationClass = 'green';
             }} else if (metrics.utilization >= 80) {{
                 utilizationClass = 'orange';
+            }}
+
+            let optimizationHtml = '';
+            if (stats && Object.keys(stats).length > 0) {{
+                // Calculate optimal coverage recommendation based on percentiles
+                const range = stats.max - stats.min;
+                const variability = (range / stats.max * 100).toFixed(0);
+
+                let recommendation = '';
+                if (variability < 20) {{
+                    recommendation = `Low variability (${{variability}}%). Consider covering close to P95 ($$${{stats.p95}}/hr) for maximum savings with minimal risk.`;
+                }} else if (variability < 40) {{
+                    recommendation = `Moderate variability (${{variability}}%). Consider covering P75-P90 ($$${{stats.p75}}-$$${{stats.p90}}/hr) to balance savings and risk.`;
+                }} else {{
+                    recommendation = `High variability (${{variability}}%). Consider covering P50-P75 ($$${{stats.p50}}-$$${{stats.p75}}/hr) to avoid over-commitment during low usage periods.`;
+                }}
+
+                optimizationHtml = `
+                    <div class="optimization-section">
+                        <h4>📊 Coverage Optimization Guide</h4>
+                        <div class="percentile-grid">
+                            <div class="percentile-item">
+                                <div class="percentile-label">Min Hourly</div>
+                                <div class="percentile-value">$$${{stats.min}}</div>
+                            </div>
+                            <div class="percentile-item">
+                                <div class="percentile-label">P50 (Median)</div>
+                                <div class="percentile-value">$$${{stats.p50}}</div>
+                            </div>
+                            <div class="percentile-item">
+                                <div class="percentile-label">P75</div>
+                                <div class="percentile-value">$$${{stats.p75}}</div>
+                            </div>
+                            <div class="percentile-item">
+                                <div class="percentile-label">P90</div>
+                                <div class="percentile-value">$$${{stats.p90}}</div>
+                            </div>
+                            <div class="percentile-item">
+                                <div class="percentile-label">P95</div>
+                                <div class="percentile-value">$$${{stats.p95}}</div>
+                            </div>
+                            <div class="percentile-item">
+                                <div class="percentile-label">Max Hourly</div>
+                                <div class="percentile-value">$$${{stats.max}}</div>
+                            </div>
+                        </div>
+                        <div class="recommendation">
+                            <strong>💡 Recommendation:</strong> ${{recommendation}}
+                        </div>
+                    </div>
+                `;
             }}
 
             const html = `
@@ -830,6 +952,7 @@ def generate_html_report(
                         <div class="metric-value">+$$${{metrics.potential_additional_savings.toLocaleString('en-US', {{maximumFractionDigits: 0}})}}</div>
                     </div>
                 </div>
+                ${{optimizationHtml}}
             `;
             container.innerHTML = html;
         }}
@@ -841,9 +964,9 @@ def generate_html_report(
         createChart('sagemakerChart', allChartData.sagemaker, 'SageMaker Savings Plans - Hourly Usage');
 
         // Render metrics for each type
-        renderMetrics('compute-metrics', metricsData.compute, 'Compute');
-        renderMetrics('database-metrics', metricsData.database, 'Database');
-        renderMetrics('sagemaker-metrics', metricsData.sagemaker, 'SageMaker');
+        renderMetrics('compute-metrics', metricsData.compute, 'Compute', allChartData.compute.stats);
+        renderMetrics('database-metrics', metricsData.database, 'Database', allChartData.database.stats);
+        renderMetrics('sagemaker-metrics', metricsData.sagemaker, 'SageMaker', allChartData.sagemaker.stats);
     </script>
 </body>
 </html>
