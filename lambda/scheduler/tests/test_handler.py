@@ -73,8 +73,10 @@ def mock_clients():
 def test_handler_dry_run_mode(mock_env_vars, mock_clients, aws_mock_builder):
     """Test handler in dry-run mode sends email but doesn't queue."""
     mock_clients["sqs"].purge_queue.return_value = {}
-    mock_clients["ce"].get_savings_plans_purchase_recommendation.return_value = (
-        aws_mock_builder.recommendation("compute", hourly_commitment=1.0)
+    mock_clients[
+        "ce"
+    ].get_savings_plans_purchase_recommendation.return_value = aws_mock_builder.recommendation(
+        "compute", hourly_commitment=1.0
     )
     mock_clients["sns"].publish.return_value = {"MessageId": "test-msg"}
 
@@ -97,8 +99,10 @@ def test_handler_production_mode(mock_env_vars, mock_clients, aws_mock_builder, 
     monkeypatch.setenv("DRY_RUN", "false")
 
     mock_clients["sqs"].purge_queue.return_value = {}
-    mock_clients["ce"].get_savings_plans_purchase_recommendation.return_value = (
-        aws_mock_builder.recommendation("compute", hourly_commitment=1.0)
+    mock_clients[
+        "ce"
+    ].get_savings_plans_purchase_recommendation.return_value = aws_mock_builder.recommendation(
+        "compute", hourly_commitment=1.0
     )
     mock_clients["sqs"].send_message.return_value = {"MessageId": "msg-123"}
     mock_clients["sns"].publish.return_value = {"MessageId": "test-msg"}
@@ -120,8 +124,10 @@ def test_handler_production_mode(mock_env_vars, mock_clients, aws_mock_builder, 
 def test_handler_follow_aws_strategy(mock_env_vars, mock_clients, aws_mock_builder):
     """Test follow_aws strategy gets recommendations and applies limits."""
     mock_clients["sqs"].purge_queue.return_value = {}
-    mock_clients["ce"].get_savings_plans_purchase_recommendation.return_value = (
-        aws_mock_builder.recommendation("compute", hourly_commitment=10.0)
+    mock_clients[
+        "ce"
+    ].get_savings_plans_purchase_recommendation.return_value = aws_mock_builder.recommendation(
+        "compute", hourly_commitment=10.0
     )
     mock_clients["sns"].publish.return_value = {"MessageId": "test-msg"}
 
@@ -145,9 +151,9 @@ def test_handler_fixed_strategy(mock_env_vars, mock_clients, aws_mock_builder, m
 
     mock_clients["sqs"].purge_queue.return_value = {}
 
-    mock_clients["savingsplans"].describe_savings_plans.return_value = (
-        aws_mock_builder.describe_savings_plans(plans_count=0)
-    )
+    mock_clients[
+        "savingsplans"
+    ].describe_savings_plans.return_value = aws_mock_builder.describe_savings_plans(plans_count=0)
 
     mock_clients["ce"].get_savings_plans_coverage.return_value = aws_mock_builder.coverage(
         coverage_percentage=50.0
@@ -172,8 +178,10 @@ def test_handler_fixed_strategy(mock_env_vars, mock_clients, aws_mock_builder, m
 def test_handler_compute_sp_enabled(mock_env_vars, mock_clients, aws_mock_builder):
     """Test Compute SP recommendations are fetched when enabled."""
     mock_clients["sqs"].purge_queue.return_value = {}
-    mock_clients["ce"].get_savings_plans_purchase_recommendation.return_value = (
-        aws_mock_builder.recommendation("compute", hourly_commitment=2.5)
+    mock_clients[
+        "ce"
+    ].get_savings_plans_purchase_recommendation.return_value = aws_mock_builder.recommendation(
+        "compute", hourly_commitment=2.5
     )
     mock_clients["sns"].publish.return_value = {"MessageId": "test-msg"}
 
@@ -192,8 +200,10 @@ def test_handler_database_sp_enabled(mock_env_vars, mock_clients, aws_mock_build
     monkeypatch.setenv("ENABLE_DATABASE_SP", "true")
 
     mock_clients["sqs"].purge_queue.return_value = {}
-    mock_clients["ce"].get_savings_plans_purchase_recommendation.return_value = (
-        aws_mock_builder.recommendation("database", hourly_commitment=1.25)
+    mock_clients[
+        "ce"
+    ].get_savings_plans_purchase_recommendation.return_value = aws_mock_builder.recommendation(
+        "database", hourly_commitment=1.25
     )
     mock_clients["sns"].publish.return_value = {"MessageId": "test-msg"}
 
@@ -211,8 +221,10 @@ def test_handler_sagemaker_sp_enabled(mock_env_vars, mock_clients, aws_mock_buil
     monkeypatch.setenv("ENABLE_SAGEMAKER_SP", "true")
 
     mock_clients["sqs"].purge_queue.return_value = {}
-    mock_clients["ce"].get_savings_plans_purchase_recommendation.return_value = (
-        aws_mock_builder.recommendation("sagemaker", hourly_commitment=3.75)
+    mock_clients[
+        "ce"
+    ].get_savings_plans_purchase_recommendation.return_value = aws_mock_builder.recommendation(
+        "sagemaker", hourly_commitment=3.75
     )
     mock_clients["sns"].publish.return_value = {"MessageId": "test-msg"}
 
@@ -241,9 +253,9 @@ def test_handler_multiple_sp_types_enabled(
             return aws_mock_builder.recommendation("database", hourly_commitment=2.5)
         return aws_mock_builder.recommendation("compute", empty=True)
 
-    mock_clients["ce"].get_savings_plans_purchase_recommendation.side_effect = (
-        mock_recommendation_side_effect
-    )
+    mock_clients[
+        "ce"
+    ].get_savings_plans_purchase_recommendation.side_effect = mock_recommendation_side_effect
     mock_clients["sns"].publish.return_value = {"MessageId": "test-msg"}
 
     response = handler.handler({}, None)
@@ -255,8 +267,10 @@ def test_handler_multiple_sp_types_enabled(
 def test_handler_no_recommendations(mock_env_vars, mock_clients, aws_mock_builder):
     """Test handling when AWS returns empty recommendation list."""
     mock_clients["sqs"].purge_queue.return_value = {}
-    mock_clients["ce"].get_savings_plans_purchase_recommendation.return_value = (
-        aws_mock_builder.recommendation("compute", empty=True)
+    mock_clients[
+        "ce"
+    ].get_savings_plans_purchase_recommendation.return_value = aws_mock_builder.recommendation(
+        "compute", empty=True
     )
     mock_clients["sns"].publish.return_value = {"MessageId": "test-msg"}
 
@@ -277,8 +291,10 @@ def test_handler_applies_max_purchase_percent(
     monkeypatch.setenv("MAX_PURCHASE_PERCENT", "10")
 
     mock_clients["sqs"].purge_queue.return_value = {}
-    mock_clients["ce"].get_savings_plans_purchase_recommendation.return_value = (
-        aws_mock_builder.recommendation("compute", hourly_commitment=10.0)
+    mock_clients[
+        "ce"
+    ].get_savings_plans_purchase_recommendation.return_value = aws_mock_builder.recommendation(
+        "compute", hourly_commitment=10.0
     )
     mock_clients["sns"].publish.return_value = {"MessageId": "test-msg"}
 
@@ -299,8 +315,10 @@ def test_handler_filters_below_min_commitment(
     monkeypatch.setenv("MIN_COMMITMENT_PER_PLAN", "0.5")
 
     mock_clients["sqs"].purge_queue.return_value = {}
-    mock_clients["ce"].get_savings_plans_purchase_recommendation.return_value = (
-        aws_mock_builder.recommendation("compute", hourly_commitment=10.0)
+    mock_clients[
+        "ce"
+    ].get_savings_plans_purchase_recommendation.return_value = aws_mock_builder.recommendation(
+        "compute", hourly_commitment=10.0
     )
     mock_clients["sns"].publish.return_value = {"MessageId": "test-msg"}
 
@@ -318,8 +336,10 @@ def test_handler_lookback_period_mapping(
     monkeypatch.setenv("LOOKBACK_DAYS", "7")
 
     mock_clients["sqs"].purge_queue.return_value = {}
-    mock_clients["ce"].get_savings_plans_purchase_recommendation.return_value = (
-        aws_mock_builder.recommendation("compute", empty=True)
+    mock_clients[
+        "ce"
+    ].get_savings_plans_purchase_recommendation.return_value = aws_mock_builder.recommendation(
+        "compute", empty=True
     )
     mock_clients["sns"].publish.return_value = {"MessageId": "test-msg"}
 
@@ -355,7 +375,12 @@ def test_handler_queue_purge_error(mock_env_vars, mock_clients):
         mock_boto_client.return_value = mock_clients["sns"]
 
         mock_clients["sqs"].purge_queue.side_effect = ClientError(
-            {"Error": {"Code": "AWS.SimpleQueueService.NonExistentQueue", "Message": "Queue not found"}},
+            {
+                "Error": {
+                    "Code": "AWS.SimpleQueueService.NonExistentQueue",
+                    "Message": "Queue not found",
+                }
+            },
             "PurgeQueue",
         )
 
@@ -371,8 +396,10 @@ def test_handler_term_mix_splitting(mock_env_vars, mock_clients, aws_mock_builde
     monkeypatch.setenv("COMPUTE_SP_TERM_MIX", '{"three_year": 0.5, "one_year": 0.5}')
 
     mock_clients["sqs"].purge_queue.return_value = {}
-    mock_clients["ce"].get_savings_plans_purchase_recommendation.return_value = (
-        aws_mock_builder.recommendation("compute", hourly_commitment=10.0)
+    mock_clients[
+        "ce"
+    ].get_savings_plans_purchase_recommendation.return_value = aws_mock_builder.recommendation(
+        "compute", hourly_commitment=10.0
     )
     mock_clients["sns"].publish.return_value = {"MessageId": "test-msg"}
 
@@ -467,8 +494,10 @@ def test_handler_parallel_recommendation_fetching(
 def test_handler_sns_notification_sent(mock_env_vars, mock_clients, aws_mock_builder):
     """Test SNS notification is sent with correct structure."""
     mock_clients["sqs"].purge_queue.return_value = {}
-    mock_clients["ce"].get_savings_plans_purchase_recommendation.return_value = (
-        aws_mock_builder.recommendation("compute", hourly_commitment=1.0)
+    mock_clients[
+        "ce"
+    ].get_savings_plans_purchase_recommendation.return_value = aws_mock_builder.recommendation(
+        "compute", hourly_commitment=1.0
     )
     mock_clients["sns"].publish.return_value = {"MessageId": "test-msg"}
 
@@ -490,8 +519,10 @@ def test_handler_queues_purchases_in_production(
     monkeypatch.setenv("DRY_RUN", "false")
 
     mock_clients["sqs"].purge_queue.return_value = {}
-    mock_clients["ce"].get_savings_plans_purchase_recommendation.return_value = (
-        aws_mock_builder.recommendation("compute", hourly_commitment=1.0)
+    mock_clients[
+        "ce"
+    ].get_savings_plans_purchase_recommendation.return_value = aws_mock_builder.recommendation(
+        "compute", hourly_commitment=1.0
     )
     mock_clients["sqs"].send_message.return_value = {"MessageId": "msg-123"}
     mock_clients["sns"].publish.return_value = {"MessageId": "test-msg"}
@@ -538,9 +569,9 @@ def test_handler_dichotomy_strategy(mock_env_vars, mock_clients, aws_mock_builde
 
     mock_clients["sqs"].purge_queue.return_value = {}
 
-    mock_clients["savingsplans"].describe_savings_plans.return_value = (
-        aws_mock_builder.describe_savings_plans(plans_count=1)
-    )
+    mock_clients[
+        "savingsplans"
+    ].describe_savings_plans.return_value = aws_mock_builder.describe_savings_plans(plans_count=1)
 
     mock_clients["ce"].get_savings_plans_coverage.return_value = aws_mock_builder.coverage(
         coverage_percentage=60.0
@@ -590,8 +621,10 @@ def test_handler_empty_recommendations_all_sp_types(
 def test_handler_payment_options_applied(mock_env_vars, mock_clients, aws_mock_builder):
     """Test payment options from config are applied to recommendations."""
     mock_clients["sqs"].purge_queue.return_value = {}
-    mock_clients["ce"].get_savings_plans_purchase_recommendation.return_value = (
-        aws_mock_builder.recommendation("compute", hourly_commitment=1.0)
+    mock_clients[
+        "ce"
+    ].get_savings_plans_purchase_recommendation.return_value = aws_mock_builder.recommendation(
+        "compute", hourly_commitment=1.0
     )
     mock_clients["sns"].publish.return_value = {"MessageId": "test-msg"}
 
@@ -606,8 +639,10 @@ def test_handler_payment_options_applied(mock_env_vars, mock_clients, aws_mock_b
 def test_handler_successful_response_structure(mock_env_vars, mock_clients, aws_mock_builder):
     """Test handler returns correct response structure."""
     mock_clients["sqs"].purge_queue.return_value = {}
-    mock_clients["ce"].get_savings_plans_purchase_recommendation.return_value = (
-        aws_mock_builder.recommendation("compute", hourly_commitment=1.0)
+    mock_clients[
+        "ce"
+    ].get_savings_plans_purchase_recommendation.return_value = aws_mock_builder.recommendation(
+        "compute", hourly_commitment=1.0
     )
     mock_clients["sns"].publish.return_value = {"MessageId": "test-msg"}
 
