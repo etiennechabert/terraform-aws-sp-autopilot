@@ -2,6 +2,21 @@
 Comprehensive unit tests for Scheduler Lambda handler.
 
 Tests cover all 12 functions with edge cases to achieve >= 80% coverage.
+
+⚠️ MIGRATION NEEDED ⚠️
+These tests use an older pattern that doesn't fully comply with TESTING.md:
+- Many tests mock internal functions (purchase_calculator, email_notifications, etc.)
+- Some tests use module-level client mocking (handler.ce_client, etc.)
+
+Per TESTING.md, tests should:
+1. Call handler.handler() as entry point only
+2. Mock only AWS client responses (not internal functions)
+3. Use the mock_clients fixture (which mocks initialize_clients)
+
+The mock_clients fixture has been updated to the correct pattern. Individual tests
+should be migrated incrementally to use it properly. See:
+- lambda/purchaser/tests/test_integration.py (gold standard)
+- lambda/reporter/tests/test_essential.py (recently migrated)
 """
 
 import os
@@ -45,31 +60,37 @@ def mock_env_vars(monkeypatch):
 
 @pytest.fixture
 def mock_clients():
-    """Set up mock AWS clients for handler module."""
-    # Store original values
-    orig_ce = handler.ce_client
-    orig_sqs = handler.sqs_client
-    orig_sns = handler.sns_client
-    orig_sp = handler.savingsplans_client
+    """
+    Mock AWS clients at the initialization boundary.
 
-    # Set up mock clients
-    handler.ce_client = MagicMock()
-    handler.sqs_client = MagicMock()
-    handler.sns_client = MagicMock()
-    handler.savingsplans_client = MagicMock()
+    This fixture follows TESTING.md guidelines:
+    - Mocks at shared.handler_utils.initialize_clients boundary
+    - Allows handler to be tested as a black box
+    - Tests actual integration between modules
 
-    yield {
-        "ce": handler.ce_client,
-        "sqs": handler.sqs_client,
-        "sns": handler.sns_client,
-        "savingsplans": handler.savingsplans_client,
-    }
+    NOTE: Some tests in this file still use module-level client mocking
+    (handler.ce_client, etc.) for backward compatibility with wrapper functions.
+    These should be migrated to call handler.handler() directly and use this fixture.
+    """
+    with patch("shared.handler_utils.initialize_clients") as mock_init:
+        mock_ce = MagicMock()
+        mock_sqs = MagicMock()
+        mock_sns = MagicMock()
+        mock_sp = MagicMock()
 
-    # Restore original values
-    handler.ce_client = orig_ce
-    handler.sqs_client = orig_sqs
-    handler.sns_client = orig_sns
-    handler.savingsplans_client = orig_sp
+        mock_init.return_value = {
+            "ce": mock_ce,
+            "sqs": mock_sqs,
+            "sns": mock_sns,
+            "savingsplans": mock_sp,
+        }
+
+        yield {
+            "ce": mock_ce,
+            "sqs": mock_sqs,
+            "sns": mock_sns,
+            "savingsplans": mock_sp,
+        }
 
 
 # ============================================================================
