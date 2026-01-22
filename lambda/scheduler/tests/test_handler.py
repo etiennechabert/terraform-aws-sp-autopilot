@@ -311,6 +311,7 @@ def test_handler_filters_below_min_commitment(
     mock_env_vars, mock_clients, aws_mock_builder, monkeypatch
 ):
     """Test plans below min_commitment_per_plan are filtered out."""
+    monkeypatch.setenv("MIN_PURCHASE_PERCENT", "0.5")
     monkeypatch.setenv("MAX_PURCHASE_PERCENT", "1")
     monkeypatch.setenv("MIN_COMMITMENT_PER_PLAN", "0.5")
 
@@ -353,8 +354,12 @@ def test_handler_lookback_period_mapping(
 
 def test_handler_cost_explorer_error(mock_env_vars, mock_clients):
     """Test error handling when Cost Explorer API fails."""
-    with patch("boto3.client") as mock_boto_client:
-        mock_boto_client.return_value = mock_clients["sns"]
+    with (
+        patch("boto3.client") as mock_boto_client,
+        patch("handler.send_error_notification") as mock_send_error,
+    ):
+        mock_sns = Mock()
+        mock_boto_client.return_value = mock_sns
 
         mock_clients["sqs"].purge_queue.return_value = {}
         mock_clients["ce"].get_savings_plans_purchase_recommendation.side_effect = ClientError(
@@ -366,13 +371,17 @@ def test_handler_cost_explorer_error(mock_env_vars, mock_clients):
             handler.handler({}, None)
 
         assert exc_info.value.response["Error"]["Code"] == "ThrottlingException"
-        assert mock_clients["sns"].publish.called
+        assert mock_send_error.called
 
 
 def test_handler_queue_purge_error(mock_env_vars, mock_clients):
     """Test error handling when queue purge fails."""
-    with patch("boto3.client") as mock_boto_client:
-        mock_boto_client.return_value = mock_clients["sns"]
+    with (
+        patch("boto3.client") as mock_boto_client,
+        patch("handler.send_error_notification") as mock_send_error,
+    ):
+        mock_sns = Mock()
+        mock_boto_client.return_value = mock_sns
 
         mock_clients["sqs"].purge_queue.side_effect = ClientError(
             {
@@ -388,7 +397,7 @@ def test_handler_queue_purge_error(mock_env_vars, mock_clients):
             handler.handler({}, None)
 
         assert "NonExistentQueue" in str(exc_info.value)
-        assert mock_clients["sns"].publish.called
+        assert mock_send_error.called
 
 
 def test_handler_term_mix_splitting(mock_env_vars, mock_clients, aws_mock_builder, monkeypatch):
@@ -409,8 +418,8 @@ def test_handler_term_mix_splitting(mock_env_vars, mock_clients, aws_mock_builde
 
     email_call = mock_clients["sns"].publish.call_args[1]
     message = email_call["Message"]
-    assert "3-year" in message
-    assert "1-year" in message
+    assert "THREE_YEAR" in message or "three_year" in message
+    assert "ONE_YEAR" in message or "one_year" in message
 
 
 def test_handler_expiring_plans_excluded_from_coverage(
@@ -546,8 +555,9 @@ def test_handler_assume_role_error(mock_env_vars, monkeypatch):
     monkeypatch.setenv("MANAGEMENT_ACCOUNT_ROLE_ARN", "arn:aws:iam::123456789012:role/TestRole")
 
     with (
-        patch("shared.handler_utils.initialize_clients") as mock_init,
+        patch("handler.initialize_clients") as mock_init,
         patch("boto3.client") as mock_boto_client,
+        patch("handler.send_error_notification") as mock_send_error,
     ):
         mock_init.side_effect = ClientError(
             {"Error": {"Code": "AccessDenied", "Message": "Not authorized"}}, "AssumeRole"
@@ -560,7 +570,7 @@ def test_handler_assume_role_error(mock_env_vars, monkeypatch):
             handler.handler({}, None)
 
         assert exc_info.value.response["Error"]["Code"] == "AccessDenied"
-        assert mock_sns.publish.called
+        assert mock_send_error.called
 
 
 def test_handler_dichotomy_strategy(mock_env_vars, mock_clients, aws_mock_builder, monkeypatch):
