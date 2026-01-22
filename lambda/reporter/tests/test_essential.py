@@ -1,19 +1,16 @@
 """
 Essential integration tests for Reporter Lambda.
-Focuses on core business logic and critical paths only.
+
+Tests the full handler execution path with various scenarios.
+All tests follow TESTING.md guidelines:
+- Test through handler.handler() entry point only
+- Mock only AWS client responses
+- Use aws_mock_builder for consistent responses
 """
 
+import json
 import os
 import sys
-
-
-# Set up environment variables BEFORE importing handler
-os.environ["AWS_ACCESS_KEY_ID"] = "testing"
-os.environ["AWS_SECRET_ACCESS_KEY"] = "testing"
-os.environ["AWS_SECURITY_TOKEN"] = "testing"
-os.environ["AWS_SESSION_TOKEN"] = "testing"
-os.environ["AWS_DEFAULT_REGION"] = "us-east-1"
-
 from unittest.mock import Mock, patch
 
 import pytest
@@ -35,171 +32,343 @@ def mock_env_vars(monkeypatch):
     monkeypatch.setenv("SNS_TOPIC_ARN", "arn:aws:sns:us-east-1:123456789012:test-topic")
     monkeypatch.setenv("REPORT_FORMAT", "html")
     monkeypatch.setenv("EMAIL_REPORTS", "true")
+    monkeypatch.setenv("LOOKBACK_DAYS", "7")
+    monkeypatch.setenv("GRANULARITY", "HOURLY")
+    monkeypatch.setenv("ENABLE_COMPUTE_SP", "true")
+    monkeypatch.setenv("ENABLE_DATABASE_SP", "false")
+    monkeypatch.setenv("ENABLE_SAGEMAKER_SP", "false")
+    monkeypatch.setenv("LOW_UTILIZATION_THRESHOLD", "70")
+    monkeypatch.setenv("LOW_UTILIZATION_ALERT_ENABLED", "false")
 
 
-def test_handler_success_with_email(mock_env_vars):
-    """Test successful report generation and email notification."""
-    with (
-        patch("handler.get_coverage_history") as mock_coverage,
-        patch("handler.get_savings_data") as mock_savings,
-        patch("handler.generate_html_report") as mock_html,
-        patch("handler.upload_report_to_s3") as mock_upload,
-        patch("handler.send_report_email") as mock_email,
-        patch("handler.initialize_clients") as mock_init,
-    ):
-        # Mock client initialization
+@pytest.fixture
+def mock_clients():
+    """Mock AWS clients at the initialization boundary."""
+    with patch("shared.handler_utils.initialize_clients") as mock_init:
+        mock_ce = Mock()
+        mock_sp = Mock()
+        mock_s3 = Mock()
+        mock_sns = Mock()
+
         mock_init.return_value = {
-            "ce": Mock(),
-            "savingsplans": Mock(),
-            "s3": Mock(),
-            "sns": Mock(),
+            "ce": mock_ce,
+            "savingsplans": mock_sp,
+            "s3": mock_s3,
+            "sns": mock_sns,
         }
 
-        # Mock data collection
-        mock_coverage.return_value = [{"timestamp": "2026-01-15", "coverage_percentage": 75.0}]
-        mock_savings.return_value = {
-            "total_commitment": 1000.0,
-            "plans_count": 2,
-            "estimated_savings": 200.0,
+        yield {
+            "ce": mock_ce,
+            "savingsplans": mock_sp,
+            "s3": mock_s3,
+            "sns": mock_sns,
         }
-        mock_html.return_value = "<html>Report</html>"
-        mock_upload.return_value = "report_2026-01-15.html"
-
-        response = handler.handler({}, {})
-
-        assert response["statusCode"] == 200
-        assert "completed successfully" in response["body"]
-        mock_email.assert_called_once()
 
 
-def test_handler_success_without_email(mock_env_vars, monkeypatch):
-    """Test successful report generation without email."""
+def test_handler_success_with_active_plans(mock_env_vars, mock_clients, aws_mock_builder):
+    """Test successful report generation with active Savings Plans."""
+    # Mock SpendingAnalyzer - Cost Explorer coverage data
+    mock_clients["ce"].get_savings_plans_coverage.return_value = aws_mock_builder.coverage(
+        coverage_percentage=75.0
+    )
+
+    # Mock get_savings_plans_summary - Savings Plans data
+    mock_clients[
+        "savingsplans"
+    ].describe_savings_plans.return_value = aws_mock_builder.describe_savings_plans(plans_count=2)
+
+    # Mock get_savings_plans_summary - utilization and savings
+    mock_clients[
+        "ce"
+    ].get_savings_plans_utilization.return_value = aws_mock_builder.get_savings_plans_utilization(
+        utilization_percentage=85.0
+    )
+
+    # Mock S3 upload
+    mock_clients["s3"].put_object.return_value = {}
+
+    # Mock SNS email notification
+    mock_clients["sns"].publish.return_value = {"MessageId": "test-message-id"}
+
+    # Execute handler
+    response = handler.handler({}, {})
+
+    # Verify success response
+    assert response["statusCode"] == 200
+    body = json.loads(response["body"])
+    assert "completed successfully" in body["message"]
+    assert "s3_object_key" in body
+    assert body["active_plans"] == 2
+
+    # Verify S3 upload was called
+    assert mock_clients["s3"].put_object.called
+    s3_call = mock_clients["s3"].put_object.call_args[1]
+    assert s3_call["Bucket"] == "test-bucket"
+    assert "savings-plans-report_" in s3_call["Key"]
+
+    # Verify email was sent (EMAIL_REPORTS=true)
+    assert mock_clients["sns"].publish.called
+    sns_call = mock_clients["sns"].publish.call_args[1]
+    assert sns_call["TopicArn"] == "arn:aws:sns:us-east-1:123456789012:test-topic"
+    assert "Savings Plans Report" in sns_call["Subject"]
+
+
+def test_handler_success_without_email(mock_env_vars, mock_clients, aws_mock_builder, monkeypatch):
+    """Test successful report generation without email notification."""
     monkeypatch.setenv("EMAIL_REPORTS", "false")
 
-    with (
-        patch("handler.get_coverage_history") as mock_coverage,
-        patch("handler.get_savings_data") as mock_savings,
-        patch("handler.generate_html_report") as mock_html,
-        patch("handler.upload_report_to_s3") as mock_upload,
-        patch("handler.send_report_email") as mock_email,
-        patch("handler.initialize_clients") as mock_init,
-    ):
-        mock_init.return_value = {
-            "ce": Mock(),
-            "savingsplans": Mock(),
-            "s3": Mock(),
-            "sns": Mock(),
-        }
-        mock_coverage.return_value = []
-        mock_savings.return_value = {"total_commitment": 0, "plans_count": 0}
-        mock_html.return_value = "<html>Empty Report</html>"
-        mock_upload.return_value = "report_2026-01-15.html"
+    # Mock AWS responses
+    mock_clients["ce"].get_savings_plans_coverage.return_value = aws_mock_builder.coverage(
+        coverage_percentage=50.0
+    )
+    mock_clients[
+        "savingsplans"
+    ].describe_savings_plans.return_value = aws_mock_builder.describe_savings_plans(plans_count=1)
+    mock_clients[
+        "ce"
+    ].get_savings_plans_utilization.return_value = aws_mock_builder.get_savings_plans_utilization(
+        utilization_percentage=80.0
+    )
+    mock_clients["s3"].put_object.return_value = {}
 
-        response = handler.handler({}, {})
+    # Execute handler
+    response = handler.handler({}, {})
 
-        assert response["statusCode"] == 200
-        mock_email.assert_not_called()
+    # Verify success
+    assert response["statusCode"] == 200
+    assert mock_clients["s3"].put_object.called
 
-
-def test_get_coverage_history_success():
-    """Test successful coverage history retrieval."""
-    with patch.object(handler.ce_client, "get_savings_plans_coverage") as mock_get:
-        mock_get.return_value = {
-            "SavingsPlansCoverages": [
-                {
-                    "TimePeriod": {"Start": "2026-01-10", "End": "2026-01-11"},
-                    "Coverage": {
-                        "CoveragePercentage": "75.5",
-                        "CoverageHours": {
-                            "OnDemandHours": "100",
-                            "CoveredHours": "300",
-                            "TotalRunningHours": "400",
-                        },
-                    },
-                }
-            ]
-        }
-
-        result = handler.get_coverage_history(lookback_days=2)
-
-        assert len(result) == 1
-        assert result[0]["coverage_percentage"] == 75.5
-        assert result[0]["on_demand_hours"] == 100.0
+    # Verify email was NOT sent (EMAIL_REPORTS=false)
+    assert not mock_clients["sns"].publish.called
 
 
-def test_get_savings_data_with_active_plans():
-    """Test savings data retrieval with active plans."""
-    with (
-        patch.object(handler.savingsplans_client, "describe_savings_plans") as mock_describe,
-        patch.object(handler.ce_client, "get_savings_plans_utilization") as mock_util,
-    ):
-        mock_describe.return_value = {
-            "savingsPlans": [
-                {
-                    "savingsPlanId": "sp-123",
-                    "savingsPlanType": "Compute",
-                    "commitment": "10.50",
-                    "state": "active",
-                }
-            ]
-        }
-        mock_util.return_value = {"Total": {"Utilization": {"UtilizationPercentage": "85.5"}}}
+def test_handler_success_with_no_active_plans(mock_env_vars, mock_clients, aws_mock_builder):
+    """Test successful execution when no Savings Plans exist."""
+    # Mock no coverage (no plans)
+    mock_clients["ce"].get_savings_plans_coverage.return_value = aws_mock_builder.coverage(
+        coverage_percentage=0.0
+    )
 
-        result = handler.get_savings_data()
+    # Mock no active plans
+    mock_clients[
+        "savingsplans"
+    ].describe_savings_plans.return_value = aws_mock_builder.describe_savings_plans(plans_count=0)
 
-        assert result["plans_count"] == 1
-        assert result["total_commitment"] == 10.50
+    # Mock utilization (no data)
+    mock_clients[
+        "ce"
+    ].get_savings_plans_utilization.return_value = aws_mock_builder.get_savings_plans_utilization(
+        utilization_percentage=0.0
+    )
 
+    mock_clients["s3"].put_object.return_value = {}
+    mock_clients["sns"].publish.return_value = {"MessageId": "test-message-id"}
 
-def test_upload_report_to_s3_success(mock_env_vars):
-    """Test successful S3 upload."""
-    config = handler.load_configuration()
+    # Execute handler
+    response = handler.handler({}, {})
 
-    with patch.object(handler.s3_client, "put_object") as mock_put:
-        mock_put.return_value = {}
+    # Verify success even with no plans
+    assert response["statusCode"] == 200
+    body = json.loads(response["body"])
+    assert body["active_plans"] == 0
 
-        report_content = "<html>Test Report</html>"
-        result = handler.upload_report_to_s3(config, report_content, "html")
-
-        assert result.startswith("savings-plans-report_")
-        assert result.endswith(".html")
-        mock_put.assert_called_once()
+    # Report still generated and uploaded
+    assert mock_clients["s3"].put_object.called
 
 
-def test_send_report_email_success(mock_env_vars):
-    """Test successful email notification."""
-    config = handler.load_configuration()
+def test_handler_csv_format(mock_env_vars, mock_clients, aws_mock_builder, monkeypatch):
+    """Test report generation in CSV format."""
+    monkeypatch.setenv("REPORT_FORMAT", "csv")
 
-    with patch.object(handler.sns_client, "publish") as mock_publish:
-        mock_publish.return_value = {}
+    # Mock AWS responses
+    mock_clients["ce"].get_savings_plans_coverage.return_value = aws_mock_builder.coverage(
+        coverage_percentage=75.0
+    )
+    mock_clients[
+        "savingsplans"
+    ].describe_savings_plans.return_value = aws_mock_builder.describe_savings_plans(plans_count=1)
+    mock_clients[
+        "ce"
+    ].get_savings_plans_utilization.return_value = aws_mock_builder.get_savings_plans_utilization(
+        utilization_percentage=85.0
+    )
+    mock_clients["s3"].put_object.return_value = {}
+    mock_clients["sns"].publish.return_value = {"MessageId": "test-message-id"}
 
-        coverage_summary = {"current": 75.0, "trend": "up"}
-        savings_summary = {"total_commitment": 1000.0}
+    # Execute handler
+    response = handler.handler({}, {})
 
-        handler.send_report_email(config, "report_key.html", coverage_summary, savings_summary)
+    # Verify success
+    assert response["statusCode"] == 200
 
-        mock_publish.assert_called_once()
-        call_args = mock_publish.call_args[1]
-        assert call_args["TopicArn"] == config["sns_topic_arn"]
-        assert "Savings Plans Report" in call_args["Subject"]
+    # Verify S3 upload uses .csv extension
+    s3_call = mock_clients["s3"].put_object.call_args[1]
+    assert s3_call["Key"].endswith(".csv")
+    assert s3_call["ContentType"] == "text/csv"
 
 
-def test_api_error_handling(mock_env_vars):
-    """Test error handling when AWS API calls fail."""
-    with (
-        patch("handler.get_coverage_history") as mock_coverage,
-        patch("handler.initialize_clients") as mock_init,
-    ):
-        mock_init.return_value = {
-            "ce": Mock(),
-            "savingsplans": Mock(),
-            "s3": Mock(),
-            "sns": Mock(),
-        }
+def test_handler_json_format(mock_env_vars, mock_clients, aws_mock_builder, monkeypatch):
+    """Test report generation in JSON format."""
+    monkeypatch.setenv("REPORT_FORMAT", "json")
 
-        # Simulate API error
-        error_response = {"Error": {"Code": "ThrottlingException", "Message": "Rate exceeded"}}
-        mock_coverage.side_effect = ClientError(error_response, "GetSavingsPlansCoverage")
+    # Mock AWS responses
+    mock_clients["ce"].get_savings_plans_coverage.return_value = aws_mock_builder.coverage(
+        coverage_percentage=75.0
+    )
+    mock_clients[
+        "savingsplans"
+    ].describe_savings_plans.return_value = aws_mock_builder.describe_savings_plans(plans_count=1)
+    mock_clients[
+        "ce"
+    ].get_savings_plans_utilization.return_value = aws_mock_builder.get_savings_plans_utilization(
+        utilization_percentage=85.0
+    )
+    mock_clients["s3"].put_object.return_value = {}
+    mock_clients["sns"].publish.return_value = {"MessageId": "test-message-id"}
 
-        with pytest.raises(ClientError):
-            handler.handler({}, {})
+    # Execute handler
+    response = handler.handler({}, {})
+
+    # Verify success
+    assert response["statusCode"] == 200
+
+    # Verify S3 upload uses .json extension
+    s3_call = mock_clients["s3"].put_object.call_args[1]
+    assert s3_call["Key"].endswith(".json")
+    assert s3_call["ContentType"] == "application/json"
+
+
+def test_handler_failure_cost_explorer_unavailable(mock_env_vars, mock_clients):
+    """Test error handling when Cost Explorer API fails."""
+    # Mock Cost Explorer failure
+    error_response = {
+        "Error": {"Code": "ServiceUnavailableException", "Message": "Service unavailable"}
+    }
+    mock_clients["ce"].get_savings_plans_coverage.side_effect = ClientError(
+        error_response, "GetSavingsPlansCoverage"
+    )
+
+    # Execute handler - should propagate error
+    with pytest.raises(ClientError) as exc_info:
+        handler.handler({}, {})
+
+    assert exc_info.value.response["Error"]["Code"] == "ServiceUnavailableException"
+
+
+def test_handler_failure_savings_plans_api_error(mock_env_vars, mock_clients, aws_mock_builder):
+    """Test error handling when Savings Plans API fails."""
+    # Mock successful Cost Explorer call
+    mock_clients["ce"].get_savings_plans_coverage.return_value = aws_mock_builder.coverage(
+        coverage_percentage=75.0
+    )
+
+    # Mock Savings Plans API failure
+    error_response = {"Error": {"Code": "ThrottlingException", "Message": "Rate exceeded"}}
+    mock_clients["savingsplans"].describe_savings_plans.side_effect = ClientError(
+        error_response, "DescribeSavingsPlans"
+    )
+
+    # Execute handler - should propagate error
+    with pytest.raises(ClientError) as exc_info:
+        handler.handler({}, {})
+
+    assert exc_info.value.response["Error"]["Code"] == "ThrottlingException"
+
+
+def test_handler_failure_s3_upload_error(mock_env_vars, mock_clients, aws_mock_builder):
+    """Test error handling when S3 upload fails."""
+    # Mock successful data collection
+    mock_clients["ce"].get_savings_plans_coverage.return_value = aws_mock_builder.coverage(
+        coverage_percentage=75.0
+    )
+    mock_clients[
+        "savingsplans"
+    ].describe_savings_plans.return_value = aws_mock_builder.describe_savings_plans(plans_count=2)
+    mock_clients[
+        "ce"
+    ].get_savings_plans_utilization.return_value = aws_mock_builder.get_savings_plans_utilization(
+        utilization_percentage=85.0
+    )
+
+    # Mock S3 upload failure
+    error_response = {"Error": {"Code": "NoSuchBucket", "Message": "Bucket does not exist"}}
+    mock_clients["s3"].put_object.side_effect = ClientError(error_response, "PutObject")
+
+    # Execute handler - should propagate error
+    with pytest.raises(ClientError) as exc_info:
+        handler.handler({}, {})
+
+    assert exc_info.value.response["Error"]["Code"] == "NoSuchBucket"
+
+
+def test_handler_low_utilization_alert_triggered(
+    mock_env_vars, mock_clients, aws_mock_builder, monkeypatch
+):
+    """Test low utilization alert is sent when utilization below threshold."""
+    monkeypatch.setenv("LOW_UTILIZATION_ALERT_ENABLED", "true")
+    monkeypatch.setenv("LOW_UTILIZATION_THRESHOLD", "75")
+
+    # Mock AWS responses with low utilization (65%)
+    mock_clients["ce"].get_savings_plans_coverage.return_value = aws_mock_builder.coverage(
+        coverage_percentage=80.0
+    )
+    mock_clients[
+        "savingsplans"
+    ].describe_savings_plans.return_value = aws_mock_builder.describe_savings_plans(plans_count=2)
+    mock_clients["ce"].get_savings_plans_utilization.return_value = (
+        aws_mock_builder.get_savings_plans_utilization(
+            utilization_percentage=65.0
+        )  # Below 75% threshold
+    )
+    mock_clients["s3"].put_object.return_value = {}
+    mock_clients["sns"].publish.return_value = {"MessageId": "test-message-id"}
+
+    # Execute handler
+    response = handler.handler({}, {})
+
+    # Verify success
+    assert response["statusCode"] == 200
+
+    # Verify SNS was called twice: once for alert, once for report email
+    assert mock_clients["sns"].publish.call_count == 2
+
+    # Verify first call is low utilization alert
+    first_call = mock_clients["sns"].publish.call_args_list[0][1]
+    assert "Low Savings Plans Utilization Alert" in first_call["Subject"]
+    assert "65" in first_call["Subject"]  # Current utilization
+    assert "75" in first_call["Subject"]  # Threshold
+
+
+def test_handler_low_utilization_alert_not_triggered(
+    mock_env_vars, mock_clients, aws_mock_builder, monkeypatch
+):
+    """Test no low utilization alert when utilization above threshold."""
+    monkeypatch.setenv("LOW_UTILIZATION_ALERT_ENABLED", "true")
+    monkeypatch.setenv("LOW_UTILIZATION_THRESHOLD", "75")
+
+    # Mock AWS responses with high utilization (85%)
+    mock_clients["ce"].get_savings_plans_coverage.return_value = aws_mock_builder.coverage(
+        coverage_percentage=80.0
+    )
+    mock_clients[
+        "savingsplans"
+    ].describe_savings_plans.return_value = aws_mock_builder.describe_savings_plans(plans_count=2)
+    mock_clients["ce"].get_savings_plans_utilization.return_value = (
+        aws_mock_builder.get_savings_plans_utilization(
+            utilization_percentage=85.0
+        )  # Above 75% threshold
+    )
+    mock_clients["s3"].put_object.return_value = {}
+    mock_clients["sns"].publish.return_value = {"MessageId": "test-message-id"}
+
+    # Execute handler
+    response = handler.handler({}, {})
+
+    # Verify success
+    assert response["statusCode"] == 200
+
+    # Verify SNS was called only once (for report email, not alert)
+    assert mock_clients["sns"].publish.call_count == 1
+    call_args = mock_clients["sns"].publish.call_args[1]
+    assert "Low Utilization Alert" not in call_args["Subject"]
+    assert "Report" in call_args["Subject"]
