@@ -2,41 +2,6 @@
     "version": "0.2.0",
     "configurations": [
         {
-            "name": "Scheduler - Local Run",
-            "type": "debugpy",
-            "request": "launch",
-            "module": "lambda.scheduler.handler",
-            "envFile": "${workspaceFolder}/.env.local",
-            "justMyCode": false,
-            "env": {
-                "PYTHONPATH": "${workspaceFolder}/lambda:${workspaceFolder}",
-                "AWS_REGION": "us-east-1",
-                "AWS_DEFAULT_REGION": "us-east-1",
-                // Local mode
-                "LOCAL_MODE": "true",
-                // Logging
-                "LOG_LEVEL": "INFO",
-                "BOTO_DEBUG": "false",
-                // Required environment variables
-                "QUEUE_URL": "https://sqs.us-east-1.amazonaws.com/123456789012/test-queue",
-                "SNS_TOPIC_ARN": "arn:aws:sns:us-east-1:123456789012:test-topic",
-                "DRY_RUN": "true",
-                "ENABLE_COMPUTE_SP": "true",
-                "ENABLE_SAGEMAKER_SP": "true",
-                "COVERAGE_TARGET_PERCENT": "90",
-                "PURCHASE_STRATEGY_TYPE": "fixed",
-                "MAX_PURCHASE_PERCENT": "10",
-                "MIN_PURCHASE_PERCENT": "1",
-                "COMPUTE_SP_TERM": "THREE_YEAR",
-                "RENEWAL_WINDOW_DAYS": "7",
-                "LOOKBACK_DAYS": "13",
-                "MIN_COMMITMENT_PER_PLAN": "0",
-                "COMPUTE_SP_PAYMENT_OPTION": "NO_UPFRONT"
-            },
-            "console": "integratedTerminal",
-            "cwd": "${workspaceFolder}/lambda/scheduler"
-        },
-        {
             "name": "Scheduler - Fixed Strategy",
             "type": "debugpy",
             "request": "launch",
@@ -166,7 +131,7 @@
             "cwd": "${workspaceFolder}/lambda/purchaser"
         },
         {
-            "name": "Reporter - Local Run",
+            "name": "Reporter - HTML Format",
             "type": "debugpy",
             "request": "launch",
             "module": "lambda.reporter.handler",
@@ -186,6 +151,78 @@
                 "SNS_TOPIC_ARN": "arn:aws:sns:us-east-1:123456789012:test-topic",
                 // Report configuration
                 "REPORT_FORMAT": "html",
+                "EMAIL_REPORTS": "false",
+                // Savings Plans types to include in report
+                "ENABLE_COMPUTE_SP": "true",
+                "ENABLE_DATABASE_SP": "true",
+                "ENABLE_SAGEMAKER_SP": "true",
+                // Data collection settings
+                "LOOKBACK_DAYS": "30",
+                "GRANULARITY": "HOURLY",
+                // Alert settings
+                "LOW_UTILIZATION_THRESHOLD": "70",
+                "LOW_UTILIZATION_ALERT_ENABLED": "false"
+            },
+            "console": "integratedTerminal",
+            "cwd": "${workspaceFolder}/lambda/reporter"
+        },
+        {
+            "name": "Reporter - JSON Format",
+            "type": "debugpy",
+            "request": "launch",
+            "module": "lambda.reporter.handler",
+            "envFile": "${workspaceFolder}/.env.local",
+            "justMyCode": false,
+            "env": {
+                "PYTHONPATH": "${workspaceFolder}/lambda:${workspaceFolder}",
+                "AWS_REGION": "us-east-1",
+                "AWS_DEFAULT_REGION": "us-east-1",
+                // Local mode
+                "LOCAL_MODE": "true",
+                // Logging
+                "LOG_LEVEL": "INFO",
+                "BOTO_DEBUG": "false",
+                // Required environment variables
+                "REPORTS_BUCKET": "test-reports-bucket",
+                "SNS_TOPIC_ARN": "arn:aws:sns:us-east-1:123456789012:test-topic",
+                // Report configuration
+                "REPORT_FORMAT": "json",
+                "EMAIL_REPORTS": "false",
+                // Savings Plans types to include in report
+                "ENABLE_COMPUTE_SP": "true",
+                "ENABLE_DATABASE_SP": "true",
+                "ENABLE_SAGEMAKER_SP": "true",
+                // Data collection settings
+                "LOOKBACK_DAYS": "30",
+                "GRANULARITY": "HOURLY",
+                // Alert settings
+                "LOW_UTILIZATION_THRESHOLD": "70",
+                "LOW_UTILIZATION_ALERT_ENABLED": "false"
+            },
+            "console": "integratedTerminal",
+            "cwd": "${workspaceFolder}/lambda/reporter"
+        },
+        {
+            "name": "Reporter - CSV Format",
+            "type": "debugpy",
+            "request": "launch",
+            "module": "lambda.reporter.handler",
+            "envFile": "${workspaceFolder}/.env.local",
+            "justMyCode": false,
+            "env": {
+                "PYTHONPATH": "${workspaceFolder}/lambda:${workspaceFolder}",
+                "AWS_REGION": "us-east-1",
+                "AWS_DEFAULT_REGION": "us-east-1",
+                // Local mode
+                "LOCAL_MODE": "true",
+                // Logging
+                "LOG_LEVEL": "INFO",
+                "BOTO_DEBUG": "false",
+                // Required environment variables
+                "REPORTS_BUCKET": "test-reports-bucket",
+                "SNS_TOPIC_ARN": "arn:aws:sns:us-east-1:123456789012:test-topic",
+                // Report configuration
+                "REPORT_FORMAT": "csv",
                 "EMAIL_REPORTS": "false",
                 // Savings Plans types to include in report
                 "ENABLE_COMPUTE_SP": "true",
