@@ -439,6 +439,18 @@ def generate_html_report(
             font-size: 0.9em;
             color: #856404;
         }}
+        .info-box {{
+            margin-top: 10px;
+            padding: 12px;
+            background: #e7f3ff;
+            border-left: 4px solid #2193b0;
+            border-radius: 4px;
+            font-size: 0.85em;
+            color: #004085;
+        }}
+        .info-box strong {{
+            color: #003366;
+        }}
         .params-grid {{
             display: grid;
             grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
@@ -990,6 +1002,16 @@ def generate_html_report(
                         </div>
                         <div class="recommendation">
                             <strong>💡 Recommendation:</strong> ${{recommendation}}
+                        </div>
+                        <div class="info-box">
+                            <strong>📘 How to Choose Your Coverage Level:</strong><br>
+                            Savings Plans commit you to a $/hr rate in exchange for a discount (typically 30-40%).
+                            You save money when actual usage exceeds your commitment, but lose money when usage drops below it.<br><br>
+                            <strong>Decision factors:</strong><br>
+                            • <strong>Higher discount (35-40%):</strong> Can commit more aggressively (P90-P95) - the discount cushions you during low usage<br>
+                            • <strong>Lower discount (20-30%):</strong> Be conservative (P50-P75) - less margin for error if usage drops<br>
+                            • <strong>Break-even example:</strong> With 35% discount, you break even if usage is >65% of commitment.
+                            Covering P75 means 75% of hours exceed this level = profitable most of the time.
                         </div>
                     </div>
                 `;
