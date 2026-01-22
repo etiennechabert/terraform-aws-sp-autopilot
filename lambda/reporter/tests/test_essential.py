@@ -44,7 +44,8 @@ def mock_env_vars(monkeypatch):
 @pytest.fixture
 def mock_clients():
     """Mock AWS clients at the initialization boundary."""
-    with patch("shared.handler_utils.initialize_clients") as mock_init:
+    # Patch in handler module since initialize_clients is imported directly
+    with patch("handler.initialize_clients") as mock_init:
         mock_ce = Mock()
         mock_sp = Mock()
         mock_s3 = Mock()
