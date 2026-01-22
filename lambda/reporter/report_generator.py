@@ -397,39 +397,17 @@ def generate_html_report(
             color: #232f3e;
         }}
         .optimization-section {{
-            margin-top: 20px;
-            padding: 15px;
+            margin-top: 12px;
+            padding: 10px;
             background-color: #fff3cd;
             border-left: 4px solid #ffc107;
-            border-radius: 6px;
-        }}
-        .optimization-section h4 {{
-            margin: 0 0 10px 0;
-            font-size: 0.95em;
-            color: #856404;
-            font-weight: 600;
-        }}
-        .percentile-grid {{
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
-            gap: 10px;
-            margin-top: 10px;
-        }}
-        .percentile-item {{
-            text-align: center;
-            padding: 8px;
-            background: white;
             border-radius: 4px;
         }}
-        .percentile-label {{
-            font-size: 0.75em;
-            color: #6c757d;
-            margin-bottom: 4px;
-        }}
-        .percentile-value {{
-            font-size: 1.1em;
-            font-weight: bold;
-            color: #232f3e;
+        .optimization-section h4 {{
+            margin: 0 0 6px 0;
+            font-size: 0.9em;
+            color: #856404;
+            font-weight: 600;
         }}
         .recommendation {{
             margin-top: 12px;
@@ -451,17 +429,141 @@ def generate_html_report(
         .info-box strong {{
             color: #003366;
         }}
-        .params-grid {{
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
-            gap: 10px;
-            padding: 15px;
-            background-color: #f8f9fa;
-            border-radius: 6px;
+        .calculator {{
+            margin-top: 8px;
+            padding: 8px 10px;
+            background: #f0f8ff;
+            border-left: 4px solid #2193b0;
+            border-radius: 4px;
         }}
-        .param-item {{
+        .calculator h4 {{
+            margin: 0 0 8px 0;
+            font-size: 0.9em;
+            color: #003366;
+        }}
+        .calculator-grid {{
+            display: grid;
+            grid-template-columns: 1fr 2fr;
+            gap: 15px;
+            align-items: start;
+        }}
+        .slider-container {{
+            margin: 6px 0;
+        }}
+        .slider-label {{
             display: flex;
             justify-content: space-between;
+            margin-bottom: 8px;
+            font-size: 0.9em;
+            color: #004085;
+        }}
+        .slider-label strong {{
+            color: #003366;
+        }}
+        input[type="range"] {{
+            width: 100%;
+            height: 8px;
+            border-radius: 5px;
+            background: #d3d3d3;
+            outline: none;
+            -webkit-appearance: none;
+        }}
+        input[type="range"]::-webkit-slider-thumb {{
+            -webkit-appearance: none;
+            appearance: none;
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            background: #2193b0;
+            cursor: pointer;
+        }}
+        input[type="range"]::-moz-range-thumb {{
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            background: #2193b0;
+            cursor: pointer;
+            border: none;
+        }}
+        .percentile-item.highlighted {{
+            background: #28a745 !important;
+            color: white;
+            font-weight: bold;
+            box-shadow: 0 0 10px rgba(40, 167, 69, 0.5);
+        }}
+        .percentile-item.highlighted .percentile-label {{
+            color: rgba(255, 255, 255, 0.9);
+        }}
+        .percentile-item.highlighted .percentile-value {{
+            color: white;
+        }}
+        .result-text {{
+            margin-top: 8px;
+            padding: 8px;
+            background: white;
+            border-radius: 3px;
+            font-size: 0.85em;
+            color: #004085;
+            line-height: 1.4;
+        }}
+        .discount-presets {{
+            display: flex;
+            gap: 8px;
+            margin: 10px 0;
+            flex-wrap: wrap;
+        }}
+        .discount-btn {{
+            padding: 4px 8px;
+            border: 2px solid #d3d3d3;
+            background: white;
+            border-radius: 3px;
+            cursor: pointer;
+            font-size: 0.75em;
+            color: #004085;
+            transition: all 0.2s;
+        }}
+        .discount-btn:hover {{
+            border-color: #2193b0;
+            background: #f0f8ff;
+        }}
+        .discount-btn.active {{
+            border-color: #2193b0;
+            background: #2193b0;
+            color: white;
+            font-weight: bold;
+        }}
+        .discount-input {{
+            width: 50px;
+            padding: 4px 6px;
+            border: 2px solid #2193b0;
+            background: white;
+            border-radius: 3px;
+            font-size: 0.75em;
+            color: #004085;
+            text-align: center;
+            font-weight: 600;
+        }}
+        .discount-input:focus {{
+            outline: none;
+            border-color: #1a7a8f;
+            box-shadow: 0 0 0 3px rgba(33, 147, 176, 0.1);
+        }}
+        .coverage-slider-label {{
+            font-size: 0.85em;
+            color: #004085;
+            margin: 8px 0 6px 0;
+            font-weight: 500;
+        }}
+        .params-inline {{
+            display: flex;
+            flex-wrap: wrap;
+            align-items: center;
+            gap: 8px;
+            padding: 12px 15px;
+            background-color: #f8f9fa;
+            border-radius: 6px;
+            font-size: 0.9em;
+        }}
             padding: 8px 12px;
             background: white;
             border-radius: 4px;
@@ -473,6 +575,10 @@ def generate_html_report(
         }}
         .param-value {{
             color: #6c757d;
+        }}
+        .param-separator {{
+            color: #adb5bd;
+            font-weight: bold;
         }}
     </style>
 </head>
@@ -502,39 +608,20 @@ def generate_html_report(
                 <h3>Net Savings (30d)</h3>
                 <div class="value">${net_savings:,.0f}</div>
             </div>
-            <div class="summary-card">
-                <h3>Savings %</h3>
-                <div class="value">{savings_percentage:.1f}%</div>
-            </div>
         </div>
 
         <div class="section">
             <h2>Report Parameters</h2>
-            <div class="params-grid">
-                <div class="param-item">
-                    <span class="param-label">Lookback Period</span>
-                    <span class="param-value">{config.get("lookback_days", "N/A")} days</span>
-                </div>
-                <div class="param-item">
-                    <span class="param-label">Granularity</span>
-                    <span class="param-value">{config.get("granularity", "N/A")}</span>
-                </div>
-                <div class="param-item">
-                    <span class="param-label">Compute SP</span>
-                    <span class="param-value">{"✓ Enabled" if config.get("enable_compute_sp", True) else "✗ Disabled"}</span>
-                </div>
-                <div class="param-item">
-                    <span class="param-label">Database SP</span>
-                    <span class="param-value">{"✓ Enabled" if config.get("enable_database_sp", False) else "✗ Disabled"}</span>
-                </div>
-                <div class="param-item">
-                    <span class="param-label">SageMaker SP</span>
-                    <span class="param-value">{"✓ Enabled" if config.get("enable_sagemaker_sp", False) else "✗ Disabled"}</span>
-                </div>
-                <div class="param-item">
-                    <span class="param-label">Low Util. Threshold</span>
-                    <span class="param-value">{config.get("low_utilization_threshold", "N/A")}%</span>
-                </div>
+            <div class="params-inline">
+                <span class="param-label">Lookback Period:</span> <span class="param-value">{config.get("lookback_days", "N/A")} days</span>
+                <span class="param-separator">•</span>
+                <span class="param-label">Granularity:</span> <span class="param-value">{config.get("granularity", "N/A")}</span>
+                <span class="param-separator">•</span>
+                <span class="param-label">Compute SP:</span> <span class="param-value">{"✓ Enabled" if config.get("enable_compute_sp", True) else "✗ Disabled"}</span>
+                <span class="param-separator">•</span>
+                <span class="param-label">Database SP:</span> <span class="param-value">{"✓ Enabled" if config.get("enable_database_sp", False) else "✗ Disabled"}</span>
+                <span class="param-separator">•</span>
+                <span class="param-label">SageMaker SP:</span> <span class="param-value">{"✓ Enabled" if config.get("enable_sagemaker_sp", False) else "✗ Disabled"}</span>
             </div>
         </div>
 
@@ -823,6 +910,12 @@ def generate_html_report(
         const allChartData = {chart_data};
         const metricsData = {metrics_json};
 
+        // Store stats globally for calculator
+        const typeStats = {{}};
+        const typeCharts = {{}};
+        const typeDiscount = {{}};
+        const typeCoverage = {{}};
+
         // Tab switching function
         function switchTab(tabName) {{
             // Hide all tab contents
@@ -843,10 +936,10 @@ def generate_html_report(
         }}
 
         // Function to create chart for a specific type
-        function createChart(canvasId, chartData, title) {{
+        function createChart(canvasId, chartData, title, typeName) {{
             const ctx = document.getElementById(canvasId);
 
-            return new Chart(ctx, {{
+            const chart = new Chart(ctx, {{
                 type: 'bar',
                 data: {{
                     labels: chartData.labels,
@@ -942,6 +1035,240 @@ def generate_html_report(
                     }}
                 }}
             }});
+
+            // Store chart instance if typeName provided
+            if (typeName) {{
+                typeCharts[typeName] = chart;
+            }}
+
+            return chart;
+        }}
+
+        // Function to set discount percentage
+        // Calculate savings details for a given coverage level
+        function calculateSavingsDetails(typeName, discount, coverage) {{
+            const stats = typeStats[typeName];
+            if (!stats) return null;
+
+            // Coverage is % of minimum usage (100% = commit at min usage level)
+            const baseRate = stats.min;
+            const commitmentPerHour = baseRate * (coverage / 100);
+            const discountRate = discount / 100;
+            const monthlyCommitment = commitmentPerHour * 730;
+
+            // Estimate percentage of hours where usage exceeds commitment
+            let percentageAboveCommitment = 0;
+            if (commitmentPerHour <= stats.min) {{
+                percentageAboveCommitment = 100;
+            }} else if (commitmentPerHour >= stats.max) {{
+                percentageAboveCommitment = 0;
+            }} else if (commitmentPerHour <= stats.p50) {{
+                const ratio = (commitmentPerHour - stats.min) / (stats.p50 - stats.min);
+                percentageAboveCommitment = 100 - (ratio * 50);
+            }} else if (commitmentPerHour <= stats.p75) {{
+                const ratio = (commitmentPerHour - stats.p50) / (stats.p75 - stats.p50);
+                percentageAboveCommitment = 50 - (ratio * 25);
+            }} else if (commitmentPerHour <= stats.p90) {{
+                const ratio = (commitmentPerHour - stats.p75) / (stats.p90 - stats.p75);
+                percentageAboveCommitment = 25 - (ratio * 15);
+            }} else if (commitmentPerHour <= stats.p95) {{
+                const ratio = (commitmentPerHour - stats.p90) / (stats.p95 - stats.p90);
+                percentageAboveCommitment = 10 - (ratio * 5);
+            }} else {{
+                const ratio = (commitmentPerHour - stats.p95) / (stats.max - stats.p95);
+                percentageAboveCommitment = 5 - (ratio * 5);
+            }}
+
+            // Correct economic model:
+            // Assume average usage = P50 (median)
+            //
+            // Cost WITHOUT Savings Plan:
+            // - Pay on-demand for all usage: P50 * 730
+            //
+            // Cost WITH Savings Plan at commitment C:
+            // - If C <= P50: pay C*(1-discount) + (P50-C)*1.0 = P50 - C*discount
+            // - If C > P50: pay C*(1-discount) for all 730 hours (locked in, wasting excess)
+            //
+            // Savings:
+            // - If C <= P50: savings = C * discount * 730 (discount applies to committed portion)
+            // - If C > P50: savings = [P50 - C*(1-discount)] * 730 (can be negative if over-committed)
+            //
+            // Special case: C = 0 means no Savings Plan, so savings = 0
+
+            const avgUsagePerHour = stats.p50;
+            let netMonthlySavings;
+
+            if (commitmentPerHour === 0) {{
+                // No commitment = no Savings Plan = no savings
+                netMonthlySavings = 0;
+            }} else if (commitmentPerHour <= avgUsagePerHour) {{
+                // Commitment below average usage: you benefit from discount on committed portion
+                // You pay: commitment*(1-discount) + (P50-commitment)*1.0
+                // Without SP you pay: P50*1.0
+                // Savings = P50 - [commitment*(1-discount) + (P50-commitment)]
+                //         = P50 - commitment + commitment*discount - P50 + commitment
+                //         = commitment * discount
+                netMonthlySavings = commitmentPerHour * discountRate * 730;
+            }} else {{
+                // Commitment above average usage: you're locked into paying more than you use
+                // You pay: commitment*(1-discount) for all hours
+                // Without SP you pay: P50*1.0
+                // Savings = P50 - commitment*(1-discount)
+                //         = P50 - commitment + commitment*discount
+                // This can be negative (loss) if commitment is too high
+                netMonthlySavings = (avgUsagePerHour - commitmentPerHour * (1 - discountRate)) * 730;
+            }}
+
+            return {{
+                commitmentPerHour,
+                monthlyCommitment,
+                percentageAboveCommitment,
+                netMonthlySavings
+            }};
+        }}
+
+        // Calculate optimal coverage by brute-forcing all values from 0 to max usage
+        function getOptimalCoverage(typeName, discount) {{
+            const stats = typeStats[typeName];
+            if (!stats) return 100;
+
+            let maxSavings = -Infinity;
+            let optimalCoverage = 100; // Default fallback (100% = minimum usage)
+
+            // Calculate maximum reasonable coverage: never commit above historical max usage
+            // max coverage = (max_usage / min_usage) * 100
+            const maxReasonableCoverage = Math.ceil((stats.max / stats.min) * 100);
+
+            // Test all coverage levels from 0 to max reasonable coverage
+            for (let coverage = 0; coverage <= maxReasonableCoverage; coverage++) {{
+                const details = calculateSavingsDetails(typeName, discount, coverage);
+                if (details && details.netMonthlySavings > maxSavings) {{
+                    maxSavings = details.netMonthlySavings;
+                    optimalCoverage = coverage;
+                }}
+            }}
+
+            return optimalCoverage;
+        }}
+
+        function setDiscount(typeName, discountPercent, buttonElement) {{
+            // Normalize typeName to lowercase for ID matching
+            const typeKey = typeName.toLowerCase();
+
+            // Update active button - remove 'active' from all buttons in this tab
+            const buttons = document.querySelectorAll(`#${{typeKey}}-tab .discount-btn`);
+            buttons.forEach(btn => btn.classList.remove('active'));
+
+            // Add 'active' to clicked button
+            if (buttonElement) {{
+                buttonElement.classList.add('active');
+            }}
+
+            // Store discount
+            typeDiscount[typeName] = discountPercent;
+
+            // Update input field
+            const inputElem = document.getElementById('discount-' + typeName + '-input');
+            if (inputElem) inputElem.value = discountPercent;
+
+            // Calculate optimal coverage and update slider
+            const optimalCoverage = getOptimalCoverage(typeName, discountPercent);
+            const sliderElem = document.getElementById('coverage-' + typeName + '-slider');
+            if (sliderElem) sliderElem.value = optimalCoverage;
+
+            // Recalculate with optimal coverage
+            updateCoverage(typeName, optimalCoverage);
+        }}
+
+        function setDiscountFromInput(typeName, discountPercent) {{
+            // Parse and validate
+            const discount = parseInt(discountPercent) || 0;
+            const clampedDiscount = Math.max(0, Math.min(100, discount));
+
+            // Normalize typeName to lowercase for ID matching
+            const typeKey = typeName.toLowerCase();
+
+            // Clear active state from preset buttons
+            const buttons = document.querySelectorAll(`#${{typeKey}}-tab .discount-btn`);
+            buttons.forEach(btn => btn.classList.remove('active'));
+
+            // Store discount
+            typeDiscount[typeName] = clampedDiscount;
+
+            // Calculate optimal coverage and update slider
+            const optimalCoverage = getOptimalCoverage(typeName, clampedDiscount);
+            const sliderElem = document.getElementById('coverage-' + typeName + '-slider');
+            if (sliderElem) sliderElem.value = optimalCoverage;
+
+            // Recalculate with optimal coverage
+            updateCoverage(typeName, optimalCoverage);
+        }}
+
+        // Function to update coverage based on slider
+        function updateCoverage(typeName, coveragePercent) {{
+            const stats = typeStats[typeName];
+            if (!stats) return;
+
+            const discount = typeDiscount[typeName] || 35;
+            const coverage = parseInt(coveragePercent);
+            typeCoverage[typeName] = coverage;
+
+            // Update coverage label
+            const labelElem = document.getElementById('coverage-' + typeName + '-label');
+            if (labelElem) labelElem.textContent = coverage + '%';
+
+            // Calculate savings using shared helper function
+            const savingsDetails = calculateSavingsDetails(typeName, discount, coverage);
+            if (!savingsDetails) return;
+
+            const {{ commitmentPerHour, monthlyCommitment, percentageAboveCommitment, netMonthlySavings }} = savingsDetails;
+            const isProfit = netMonthlySavings > 0;
+
+            // Update result
+            const resultElem = document.getElementById('result-' + typeName);
+            if (resultElem) {{
+                const color = isProfit ? '#28a745' : '#dc3545';
+                const icon = isProfit ? '💰' : '⚠️';
+                const label = isProfit ? 'Estimated monthly savings' : 'Estimated monthly loss';
+
+                resultElem.innerHTML = `
+                    ${{icon}} <strong>Commit at ${{coverage}}%</strong> of minimum ($${{commitmentPerHour.toFixed(2)}}/hr) with ${{discount}}% discount<br>
+                    <strong style="color: ${{color}}; font-size: 1.1em;">${{label}}: $${{Math.abs(netMonthlySavings).toLocaleString('en-US', {{maximumFractionDigits: 0}})}}</strong><br>
+                    <span style="font-size: 0.9em; color: #6c757d;">Monthly commitment: $${{monthlyCommitment.toLocaleString('en-US', {{maximumFractionDigits: 0}})}} | Usage exceeds commitment ~${{percentageAboveCommitment.toFixed(1)}}% of the time</span>
+                `;
+            }}
+
+            // Update chart line
+            updateChartLine(typeName, commitmentPerHour);
+        }}
+
+        // Function to update the commitment line on the chart
+        function updateChartLine(typeName, commitmentValue) {{
+            const chart = typeCharts[typeName];
+            if (!chart) return;
+
+            // Check if line dataset exists, if not create it
+            const lineDatasetIndex = chart.data.datasets.findIndex(ds => ds.label === 'Commitment Level');
+
+            if (lineDatasetIndex === -1) {{
+                // Add new dataset for the line
+                chart.data.datasets.push({{
+                    label: 'Commitment Level',
+                    data: Array(chart.data.labels.length).fill(commitmentValue),
+                    type: 'line',
+                    borderColor: '#ff6b6b',
+                    borderWidth: 3,
+                    borderDash: [10, 5],
+                    pointRadius: 0,
+                    fill: false,
+                    order: 0
+                }});
+            }} else {{
+                // Update existing line
+                chart.data.datasets[lineDatasetIndex].data = Array(chart.data.labels.length).fill(commitmentValue);
+            }}
+
+            chart.update();
         }}
 
         // Function to render metrics for a specific type
@@ -971,47 +1298,60 @@ def generate_html_report(
                     recommendation = `High variability (${{variability}}%). Consider covering P50-P75 (${{stats.p50}}-${{stats.p75}}/hr) to avoid over-commitment during low usage periods.`;
                 }}
 
+                // Calculate what % of min equals P50, max
+                const p50Percent = Math.round((stats.p50 / stats.min) * 100);
+                const maxPercent = Math.ceil((stats.max / stats.min) * 100);
+
                 optimizationHtml = `
                     <div class="optimization-section">
                         <h4>📊 Coverage Optimization Guide</h4>
-                        <div class="percentile-grid">
-                            <div class="percentile-item">
-                                <div class="percentile-label">Min Hourly</div>
-                                <div class="percentile-value">${{stats.min}}</div>
+
+                        <div class="calculator">
+                            <h4>🎯 Calculate Your Optimal Coverage</h4>
+
+                            <div class="calculator-grid">
+                                <div>
+                                    <div style="font-size: 0.8em; color: #004085; margin-bottom: 4px; font-weight: 500;">
+                                        Discount %
+                                    </div>
+                                    <div class="discount-presets" style="flex-wrap: wrap; gap: 4px;">
+                                        <button class="discount-btn" onclick="setDiscount('${{typeName}}', 20, this)">20%</button>
+                                        <button class="discount-btn" onclick="setDiscount('${{typeName}}', 25, this)">25%</button>
+                                        <button class="discount-btn" onclick="setDiscount('${{typeName}}', 30, this)">30%</button>
+                                        <button class="discount-btn active" onclick="setDiscount('${{typeName}}', 35, this)">35%</button>
+                                        <button class="discount-btn" onclick="setDiscount('${{typeName}}', 40, this)">40%</button>
+                                        <div style="display: flex; align-items: center; gap: 4px; margin-top: 4px;">
+                                            <span style="font-size: 0.75em; color: #6c757d;">or</span>
+                                            <input type="number" class="discount-input" id="discount-${{typeName}}-input"
+                                                   value="35" min="0" max="100" step="1"
+                                                   oninput="setDiscountFromInput('${{typeName}}', this.value)"
+                                                   placeholder="%" style="width: 60px;" />
+                                            <span style="font-size: 0.75em; color: #6c757d;">%</span>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div>
+                                    <div class="coverage-slider-label" style="margin: 0 0 4px 0;">
+                                        Coverage Level (% of min usage)
+                                        <span style="float: right; color: #2193b0; font-weight: bold;" id="coverage-${{typeName}}-label">100%</span>
+                                    </div>
+                                    <input type="range" min="0" max="${{maxPercent}}" value="100" step="1"
+                                           id="coverage-${{typeName}}-slider"
+                                           data-max="${{maxPercent}}"
+                                           oninput="updateCoverage('${{typeName}}', this.value)">
+                                    <div style="display: flex; justify-content: space-between; font-size: 0.65em; color: #6c757d; margin-top: 2px;">
+                                        <span>0%</span>
+                                        <span>100% ($${{stats.min}}/hr)</span>
+                                        <span>${{p50Percent}}% ($${{stats.p50}}/hr)</span>
+                                        <span>${{maxPercent}}% ($${{stats.max}}/hr)</span>
+                                    </div>
+                                </div>
                             </div>
-                            <div class="percentile-item">
-                                <div class="percentile-label">P50 (Median)</div>
-                                <div class="percentile-value">${{stats.p50}}</div>
+
+                            <div class="result-text" id="result-${{typeName}}" style="margin-top: 8px;">
+                                Calculating...
                             </div>
-                            <div class="percentile-item">
-                                <div class="percentile-label">P75</div>
-                                <div class="percentile-value">${{stats.p75}}</div>
-                            </div>
-                            <div class="percentile-item">
-                                <div class="percentile-label">P90</div>
-                                <div class="percentile-value">${{stats.p90}}</div>
-                            </div>
-                            <div class="percentile-item">
-                                <div class="percentile-label">P95</div>
-                                <div class="percentile-value">${{stats.p95}}</div>
-                            </div>
-                            <div class="percentile-item">
-                                <div class="percentile-label">Max Hourly</div>
-                                <div class="percentile-value">${{stats.max}}</div>
-                            </div>
-                        </div>
-                        <div class="recommendation">
-                            <strong>💡 Recommendation:</strong> ${{recommendation}}
-                        </div>
-                        <div class="info-box">
-                            <strong>📘 How to Choose Your Coverage Level:</strong><br>
-                            Savings Plans commit you to a $/hr rate in exchange for a discount (typically 30-40%).
-                            You save money when actual usage exceeds your commitment, but lose money when usage drops below it.<br><br>
-                            <strong>Decision factors:</strong><br>
-                            • <strong>Higher discount (35-40%):</strong> Can commit more aggressively (P90-P95) - the discount cushions you during low usage<br>
-                            • <strong>Lower discount (20-30%):</strong> Be conservative (P50-P75) - less margin for error if usage drops<br>
-                            • <strong>Break-even example:</strong> With 35% discount, you break even if usage is >65% of commitment.
-                            Covering P75 means 75% of hours exceed this level = profitable most of the time.
                         </div>
                     </div>
                 `;
@@ -1039,13 +1379,22 @@ def generate_html_report(
                 ${{optimizationHtml}}
             `;
             container.innerHTML = html;
+
+            // Store stats globally for calculator access
+            if (stats && Object.keys(stats).length > 0) {{
+                typeStats[typeName] = stats;
+                typeDiscount[typeName] = 35;
+                typeCoverage[typeName] = 1;
+                // Initialize calculator with defaults (35% discount, P75)
+                updateCoverage(typeName, 1);
+            }}
         }}
 
         // Create all charts
-        createChart('globalChart', allChartData.global, 'Hourly Usage: On-Demand vs Covered (All Types)');
-        createChart('computeChart', allChartData.compute, 'Compute Savings Plans - Hourly Usage');
-        createChart('databaseChart', allChartData.database, 'Database Savings Plans - Hourly Usage');
-        createChart('sagemakerChart', allChartData.sagemaker, 'SageMaker Savings Plans - Hourly Usage');
+        createChart('globalChart', allChartData.global, 'Hourly Usage: On-Demand vs Covered (All Types)', null);
+        createChart('computeChart', allChartData.compute, 'Compute Savings Plans - Hourly Usage', 'Compute');
+        createChart('databaseChart', allChartData.database, 'Database Savings Plans - Hourly Usage', 'Database');
+        createChart('sagemakerChart', allChartData.sagemaker, 'SageMaker Savings Plans - Hourly Usage', 'SageMaker');
 
         // Render metrics for each type
         renderMetrics('compute-metrics', metricsData.compute, 'Compute', allChartData.compute.stats);
