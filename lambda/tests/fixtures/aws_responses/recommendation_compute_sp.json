@@ -5,33 +5,48 @@
         "AdditionalMetadata": "{}"
     },
     "SavingsPlansPurchaseRecommendation": {
-        "SavingsPlansPurchaseRecommendationSummary": [
-            {
-                "HourlyCommitmentToPurchase": "1.500",
-                "EstimatedSavingsAmount": "350.00",
-                "CurrentMinimumHourlyOnDemandSpend": "500.00",
-                "CurrentMaximumHourlyOnDemandSpend": "550.00",
-                "CurrentAverageHourlyOnDemandSpend": "525.00",
-                "RecommendationDetailId": "rec-detail-12345",
-                "SavingsPlansType": "COMPUTE_SP",
-                "TermInYears": "THREE_YEARS",
-                "PaymentOption": "ALL_UPFRONT",
-                "AccountId": "123456789012"
-            }
-        ],
+        "AccountScope": "Payer",
+        "SavingsPlansType": "COMPUTE_SP",
+        "TermInYears": "THREE_YEARS",
+        "PaymentOption": "ALL_UPFRONT",
+        "LookbackPeriodInDays": "SEVEN_DAYS",
         "SavingsPlansPurchaseRecommendationDetails": [
             {
+                "SavingsPlansDetails": {
+                    "Region": "",
+                    "InstanceFamily": "",
+                    "OfferingId": "off-aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee"
+                },
+                "AccountId": "123456789012",
+                "UpfrontCost": "0",
+                "EstimatedROI": "25.0000000000",
+                "CurrencyCode": "USD",
+                "EstimatedSPCost": "1800.0000000000",
+                "EstimatedOnDemandCost": "450.0000000000",
+                "EstimatedOnDemandCostWithCurrentCommitment": "2500.0000000000",
+                "EstimatedSavingsAmount": "600.0000000000",
+                "EstimatedSavingsPercentage": "20.0000000000",
                 "HourlyCommitmentToPurchase": "1.500",
-                "EstimatedSavingsAmount": "350.00",
-                "CurrentMinimumHourlyOnDemandSpend": "500.00",
-                "CurrentMaximumHourlyOnDemandSpend": "550.00",
-                "CurrentAverageHourlyOnDemandSpend": "525.00",
-                "RecommendationDetailId": "rec-detail-12345",
-                "SavingsPlansType": "COMPUTE_SP",
-                "TermInYears": "THREE_YEARS",
-                "PaymentOption": "ALL_UPFRONT",
-                "AccountId": "123456789012"
+                "EstimatedAverageUtilization": "90.0000000000",
+                "EstimatedMonthlySavingsAmount": "2500.0000000000",
+                "CurrentMinimumHourlyOnDemandSpend": "5.5000000000",
+                "CurrentMaximumHourlyOnDemandSpend": "48.2500000000",
+                "CurrentAverageHourlyOnDemandSpend": "22.0000000000",
+                "RecommendationDetailId": "detail-aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee"
             }
-        ]
+        ],
+        "SavingsPlansPurchaseRecommendationSummary": {
+            "EstimatedROI": "25.0000000000",
+            "CurrencyCode": "USD",
+            "EstimatedTotalCost": "2200.0000000000",
+            "CurrentOnDemandSpend": "2500.0000000000",
+            "EstimatedSavingsAmount": "600.0000000000",
+            "TotalRecommendationCount": "1",
+            "DailyCommitmentToPurchase": "36.0000000000",
+            "HourlyCommitmentToPurchase": "1.500",
+            "EstimatedSavingsPercentage": "20.0000000000",
+            "EstimatedMonthlySavingsAmount": "2500.0000000000",
+            "EstimatedOnDemandCostWithCurrentCommitment": "2500.0000000000"
+        }
     }
 }
