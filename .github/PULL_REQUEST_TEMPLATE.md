@@ -25,7 +25,7 @@
 - [ ] Only AWS client responses are mocked (no internal functions or shared modules)
 - [ ] Using `aws_mock_builder` for AWS response structures
 - [ ] Verified behavior through handler outputs and AWS call assertions
-- [ ] Tests would FAIL if unused code was deleted (no dead code testing)
+- [ ] Tests exercise real code paths (deleting used code breaks tests, deleting unused code doesn't)
 - [ ] Coverage meets minimum 80% threshold
 
 **General testing:**
