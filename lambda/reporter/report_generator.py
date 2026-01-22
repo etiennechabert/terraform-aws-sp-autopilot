@@ -236,19 +236,19 @@ def generate_html_report(
         .subtitle {{
             color: #6c757d;
             font-size: 0.9em;
-            margin-bottom: 30px;
+            margin-bottom: 15px;
         }}
         .summary {{
             display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
-            gap: 20px;
-            margin-bottom: 30px;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 12px;
+            margin-bottom: 20px;
         }}
         .summary-card {{
             background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
             color: white;
-            padding: 20px;
-            border-radius: 8px;
+            padding: 12px 15px;
+            border-radius: 6px;
             box-shadow: 0 2px 4px rgba(0,0,0,0.1);
         }}
         .summary-card.green {{
@@ -261,24 +261,25 @@ def generate_html_report(
             background: linear-gradient(135deg, #f46b45 0%, #eea849 100%);
         }}
         .summary-card h3 {{
-            margin: 0 0 10px 0;
-            font-size: 0.9em;
+            margin: 0 0 6px 0;
+            font-size: 0.8em;
             font-weight: 500;
             opacity: 0.9;
         }}
         .summary-card .value {{
-            font-size: 2em;
+            font-size: 1.6em;
             font-weight: bold;
             margin: 0;
         }}
         .section {{
-            margin-bottom: 40px;
+            margin-bottom: 25px;
         }}
         h2 {{
             color: #232f3e;
             border-bottom: 2px solid #e0e0e0;
-            padding-bottom: 8px;
-            margin-bottom: 15px;
+            padding-bottom: 6px;
+            margin-bottom: 12px;
+            font-size: 1.3em;
         }}
         table {{
             width: 100%;
@@ -432,6 +433,29 @@ def generate_html_report(
             font-size: 0.9em;
             color: #856404;
         }}
+        .params-grid {{
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 10px;
+            padding: 15px;
+            background-color: #f8f9fa;
+            border-radius: 6px;
+        }}
+        .param-item {{
+            display: flex;
+            justify-content: space-between;
+            padding: 8px 12px;
+            background: white;
+            border-radius: 4px;
+            font-size: 0.9em;
+        }}
+        .param-label {{
+            font-weight: 600;
+            color: #232f3e;
+        }}
+        .param-value {{
+            color: #6c757d;
+        }}
     </style>
 </head>
 <body>
@@ -464,34 +488,32 @@ def generate_html_report(
 
         <div class="section">
             <h2>Report Parameters</h2>
-            <table>
-                <tbody>
-                    <tr>
-                        <td style="font-weight: bold; width: 250px;">Lookback Period</td>
-                        <td>{config.get("lookback_days", "N/A")} days</td>
-                    </tr>
-                    <tr>
-                        <td style="font-weight: bold;">Data Granularity</td>
-                        <td>{config.get("granularity", "N/A")}</td>
-                    </tr>
-                    <tr>
-                        <td style="font-weight: bold;">Compute Savings Plans</td>
-                        <td>{"✓ Enabled" if config.get("enable_compute_sp", True) else "✗ Disabled"}</td>
-                    </tr>
-                    <tr>
-                        <td style="font-weight: bold;">Database Savings Plans</td>
-                        <td>{"✓ Enabled" if config.get("enable_database_sp", False) else "✗ Disabled"}</td>
-                    </tr>
-                    <tr>
-                        <td style="font-weight: bold;">SageMaker Savings Plans</td>
-                        <td>{"✓ Enabled" if config.get("enable_sagemaker_sp", False) else "✗ Disabled"}</td>
-                    </tr>
-                    <tr>
-                        <td style="font-weight: bold;">Low Utilization Threshold</td>
-                        <td>{config.get("low_utilization_threshold", "N/A")}%</td>
-                    </tr>
-                </tbody>
-            </table>
+            <div class="params-grid">
+                <div class="param-item">
+                    <span class="param-label">Lookback Period</span>
+                    <span class="param-value">{config.get("lookback_days", "N/A")} days</span>
+                </div>
+                <div class="param-item">
+                    <span class="param-label">Granularity</span>
+                    <span class="param-value">{config.get("granularity", "N/A")}</span>
+                </div>
+                <div class="param-item">
+                    <span class="param-label">Compute SP</span>
+                    <span class="param-value">{"✓ Enabled" if config.get("enable_compute_sp", True) else "✗ Disabled"}</span>
+                </div>
+                <div class="param-item">
+                    <span class="param-label">Database SP</span>
+                    <span class="param-value">{"✓ Enabled" if config.get("enable_database_sp", False) else "✗ Disabled"}</span>
+                </div>
+                <div class="param-item">
+                    <span class="param-label">SageMaker SP</span>
+                    <span class="param-value">{"✓ Enabled" if config.get("enable_sagemaker_sp", False) else "✗ Disabled"}</span>
+                </div>
+                <div class="param-item">
+                    <span class="param-label">Low Util. Threshold</span>
+                    <span class="param-value">{config.get("low_utilization_threshold", "N/A")}%</span>
+                </div>
+            </div>
         </div>
 
         <div class="section">
