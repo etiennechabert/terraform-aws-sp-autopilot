@@ -27,6 +27,36 @@ CONFIG_SCHEMA = {
         "default": "false",
         "env_var": "EMAIL_REPORTS",
     },
+    "enable_compute_sp": {
+        "required": False,
+        "type": "bool",
+        "default": "true",
+        "env_var": "ENABLE_COMPUTE_SP",
+    },
+    "enable_database_sp": {
+        "required": False,
+        "type": "bool",
+        "default": "false",
+        "env_var": "ENABLE_DATABASE_SP",
+    },
+    "enable_sagemaker_sp": {
+        "required": False,
+        "type": "bool",
+        "default": "false",
+        "env_var": "ENABLE_SAGEMAKER_SP",
+    },
+    "lookback_days": {
+        "required": False,
+        "type": "int",
+        "default": "30",
+        "env_var": "LOOKBACK_DAYS",
+    },
+    "granularity": {
+        "required": False,
+        "type": "str",
+        "default": "DAILY",
+        "env_var": "GRANULARITY",
+    },
     "management_account_role_arn": {
         "required": False,
         "type": "str",

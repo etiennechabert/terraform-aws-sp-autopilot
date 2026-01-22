@@ -1,0 +1,228 @@
+"""
+Notification Module for Reporter Lambda.
+
+Handles email notifications and alerts for the Reporter Lambda.
+"""
+
+from __future__ import annotations
+
+import logging
+from datetime import UTC, datetime
+from typing import TYPE_CHECKING, Any
+
+
+if TYPE_CHECKING:
+    from mypy_boto3_sns.client import SNSClient
+
+
+logger = logging.getLogger(__name__)
+
+
+def check_and_alert_low_utilization(
+    sns_client: SNSClient, config: dict[str, Any], savings_data: dict[str, Any]
+) -> None:
+    """
+    Check if Savings Plans utilization is below threshold and send alert if needed.
+
+    Args:
+        sns_client: Boto3 SNS client
+        config: Configuration dictionary
+        savings_data: Savings Plans summary data
+    """
+    threshold = config.get("low_utilization_threshold", 70.0)
+    average_utilization = savings_data.get("average_utilization", 0.0)
+    plans_count = savings_data.get("plans_count", 0)
+
+    if plans_count == 0:
+        logger.info("No active Savings Plans - skipping low utilization check")
+        return
+
+    if average_utilization >= threshold:
+        logger.info(
+            f"Utilization {average_utilization:.2f}% is above threshold {threshold:.2f}% - no alert needed"
+        )
+        return
+
+    logger.warning(
+        f"Low utilization detected: {average_utilization:.2f}% (threshold: {threshold:.2f}%)"
+    )
+
+    subject = (
+        f"Low Savings Plans Utilization Alert: {average_utilization:.1f}% "
+        f"(threshold: {threshold:.0f}%)"
+    )
+
+    body_lines = [
+        "Savings Plans utilization has fallen below the configured threshold.",
+        "",
+        f"Current Utilization: {average_utilization:.2f}%",
+        f"Alert Threshold: {threshold:.2f}%",
+        f"Active Plans: {plans_count}",
+        f"Total Commitment: ${savings_data.get('total_commitment', 0.0):.4f}/hour",
+        "",
+        "This may indicate:",
+        "• Decreased compute usage requiring plan adjustment",
+        "• Over-commitment relative to actual usage",
+        "• Opportunity to optimize Savings Plans portfolio",
+        "",
+        "Review your Savings Plans inventory and usage patterns to optimize costs.",
+    ]
+
+    try:
+        sns_client.publish(
+            TopicArn=config["sns_topic_arn"],
+            Subject=subject,
+            Message="\n".join(body_lines),
+        )
+        logger.info("Low utilization alert sent via SNS")
+    except Exception as e:
+        logger.error(f"Failed to send SNS alert: {e}")
+        raise
+
+    # Send Slack/Teams notifications (non-fatal)
+    try:
+        slack_webhook_url = config.get("slack_webhook_url")
+        if slack_webhook_url:
+            from shared import notifications
+
+            slack_message = notifications.format_slack_message(
+                subject, body_lines, severity="warning"
+            )
+            if notifications.send_slack_notification(slack_webhook_url, slack_message):
+                logger.info("Low utilization alert sent via Slack")
+    except Exception as e:
+        logger.warning(f"Slack notification error (non-fatal): {e}")
+
+    try:
+        teams_webhook_url = config.get("teams_webhook_url")
+        if teams_webhook_url:
+            from shared import notifications
+
+            teams_message = notifications.format_teams_message(subject, body_lines)
+            if notifications.send_teams_notification(teams_webhook_url, teams_message):
+                logger.info("Low utilization alert sent via Teams")
+    except Exception as e:
+        logger.warning(f"Teams notification error (non-fatal): {e}")
+
+
+def send_report_email(
+    sns_client: SNSClient,
+    config: dict[str, Any],
+    s3_object_key: str,
+    coverage_data: dict[str, Any],
+    savings_data: dict[str, Any],
+) -> None:
+    """
+    Send email notification with S3 report link and summary.
+
+    Args:
+        sns_client: Boto3 SNS client
+        config: Configuration dictionary
+        s3_object_key: S3 object key of uploaded report
+        coverage_data: Coverage data from SpendingAnalyzer
+        savings_data: Savings Plans summary data
+    """
+    logger.info("Sending report email notification")
+
+    execution_time = datetime.now(UTC).isoformat()
+    bucket_name = config["reports_bucket"]
+    s3_url = f"https://{bucket_name}.s3.amazonaws.com/{s3_object_key}"
+    s3_console_url = (
+        f"https://s3.console.aws.amazon.com/s3/object/{bucket_name}?prefix={s3_object_key}"
+    )
+
+    # Extract metrics
+    compute_coverage = coverage_data.get("compute", {}).get("summary", {}).get("avg_coverage", 0.0)
+    plans_count = savings_data.get("plans_count", 0)
+    total_commitment = savings_data.get("total_commitment", 0.0)
+    average_utilization = savings_data.get("average_utilization", 0.0)
+
+    actual_savings = savings_data.get("actual_savings", {})
+    net_savings = actual_savings.get("net_savings", 0.0)
+    on_demand_equivalent = actual_savings.get("on_demand_equivalent_cost", 0.0)
+    actual_sp_cost = actual_savings.get("actual_sp_cost", 0.0)
+    savings_percentage = actual_savings.get("savings_percentage", 0.0)
+    breakdown_by_type = actual_savings.get("breakdown_by_type", {})
+
+    subject = f"Savings Plans Report - {compute_coverage:.1f}% Coverage, ${net_savings:,.0f}/mo Actual Savings"
+
+    body_lines = [
+        "AWS Savings Plans - Coverage & Savings Report",
+        "=" * 60,
+        f"Report Generated: {execution_time}",
+        "",
+        "COVERAGE SUMMARY:",
+        "-" * 60,
+        f"Compute Coverage: {compute_coverage:.2f}%",
+        "",
+        "SAVINGS SUMMARY:",
+        "-" * 60,
+        f"Active Savings Plans: {plans_count}",
+        f"Total Hourly Commitment: ${total_commitment:.4f}/hour (${total_commitment * 730:,.2f}/month)",
+        f"Average Utilization (30 days): {average_utilization:.2f}%",
+        "",
+        "ACTUAL SAVINGS SUMMARY (30 days):",
+        "-" * 60,
+        f"On-Demand Equivalent Cost: ${on_demand_equivalent:,.2f}",
+        f"Actual Savings Plans Cost: ${actual_sp_cost:,.2f}",
+        f"Net Savings: ${net_savings:,.2f}",
+        f"Savings Percentage: {savings_percentage:.2f}%",
+    ]
+
+    if breakdown_by_type:
+        body_lines.append("")
+        body_lines.append("Breakdown by Plan Type:")
+        for plan_type, breakdown in breakdown_by_type.items():
+            plans_count_type = breakdown.get("plans_count", 0)
+            total_commitment_type = breakdown.get("total_commitment", 0.0)
+            body_lines.append(
+                f"  {plan_type}: {plans_count_type} plan(s), ${total_commitment_type:.4f}/hr"
+            )
+
+    body_lines.extend(
+        [
+            "",
+            "REPORT ACCESS:",
+            "-" * 60,
+            f"S3 Location: s3://{bucket_name}/{s3_object_key}",
+            f"Direct Link: {s3_url}",
+            f"Console Link: {s3_console_url}",
+            "",
+            "-" * 60,
+            "This is an automated report from AWS Savings Plans Automation.",
+        ]
+    )
+
+    try:
+        sns_client.publish(
+            TopicArn=config["sns_topic_arn"],
+            Subject=subject,
+            Message="\n".join(body_lines),
+        )
+        logger.info("Report email sent via SNS")
+    except Exception as e:
+        logger.error(f"Failed to send report email: {e}")
+        raise
+
+    # Send Slack/Teams notifications (non-fatal)
+    try:
+        slack_webhook_url = config.get("slack_webhook_url")
+        if slack_webhook_url:
+            from shared import notifications
+
+            slack_message = notifications.format_slack_message(subject, body_lines, severity="info")
+            if notifications.send_slack_notification(slack_webhook_url, slack_message):
+                logger.info("Report email sent via Slack")
+    except Exception as e:
+        logger.warning(f"Slack notification error (non-fatal): {e}")
+
+    try:
+        teams_webhook_url = config.get("teams_webhook_url")
+        if teams_webhook_url:
+            from shared import notifications
+
+            teams_message = notifications.format_teams_message(subject, body_lines)
+            if notifications.send_teams_notification(teams_webhook_url, teams_message):
+                logger.info("Report email sent via Teams")
+    except Exception as e:
+        logger.warning(f"Teams notification error (non-fatal): {e}")
