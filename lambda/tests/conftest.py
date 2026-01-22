@@ -2,6 +2,17 @@
 Shared pytest fixtures for all Lambda tests.
 
 Provides AWS API response fixtures loaded from real anonymized AWS responses.
+
+⚠️ IMPORTANT: Before writing or modifying tests, read TESTING.md ⚠️
+
+All Lambda tests MUST follow these rules:
+1. Test ONLY through handler.handler(event, context) entry point
+2. Mock ONLY AWS client responses (never internal functions or shared modules)
+3. Use aws_mock_builder for consistent AWS response structures
+4. Verify behavior through handler outputs and AWS calls
+
+Non-compliant tests will be rejected in code review.
+See: ../../TESTING.md for complete guidelines.
 """
 
 import json
