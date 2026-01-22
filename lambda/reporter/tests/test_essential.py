@@ -368,7 +368,7 @@ def test_handler_initialize_clients_failure_triggers_error_notification(mock_env
     with (
         patch("shared.handler_utils.get_clients") as mock_get_clients,
         patch("boto3.client") as mock_boto3_client,
-        patch("shared.handler_utils.send_error_notification") as mock_send_error,
+        patch("handler.send_error_notification") as mock_send_error,
     ):
         # Make get_clients raise error - initialize_clients will catch it
         mock_get_clients.side_effect = ClientError(error_response, "AssumeRole")
