@@ -85,12 +85,24 @@ def mock_clients():
             "savingsplans": mock_sp,
         }
 
+        # Assign to module-level variables for backward compatibility with old tests
+        handler.ce_client = mock_ce
+        handler.sqs_client = mock_sqs
+        handler.sns_client = mock_sns
+        handler.savingsplans_client = mock_sp
+
         yield {
             "ce": mock_ce,
             "sqs": mock_sqs,
             "sns": mock_sns,
             "savingsplans": mock_sp,
         }
+
+        # Clean up after test
+        handler.ce_client = None
+        handler.sqs_client = None
+        handler.sns_client = None
+        handler.savingsplans_client = None
 
 
 # ============================================================================
