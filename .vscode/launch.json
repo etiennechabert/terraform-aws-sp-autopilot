@@ -2,7 +2,7 @@
     "version": "0.2.0",
     "configurations": [
         {
-            "name": "Debug Scheduler Lambda",
+            "name": "Scheduler - Local Run",
             "type": "debugpy",
             "request": "launch",
             "module": "lambda.scheduler.handler",
@@ -142,7 +142,7 @@
             "cwd": "${workspaceFolder}/lambda/scheduler"
         },
         {
-            "name": "Debug Purchaser Lambda",
+            "name": "Purchaser - Local Run",
             "type": "debugpy",
             "request": "launch",
             "module": "lambda.purchaser.handler",
@@ -166,7 +166,7 @@
             "cwd": "${workspaceFolder}/lambda/purchaser"
         },
         {
-            "name": "Debug Reporter Lambda",
+            "name": "Reporter - Local Run",
             "type": "debugpy",
             "request": "launch",
             "module": "lambda.reporter.handler",
@@ -225,7 +225,7 @@
             "cwd": "${workspaceFolder}"
         },
         {
-            "name": "Run Scheduler Tests",
+            "name": "Test - Scheduler",
             "type": "debugpy",
             "request": "launch",
             "module": "pytest",
@@ -246,7 +246,7 @@
             "cwd": "${workspaceFolder}/lambda/scheduler"
         },
         {
-            "name": "Run Purchaser Tests",
+            "name": "Test - Purchaser",
             "type": "debugpy",
             "request": "launch",
             "module": "pytest",
@@ -267,7 +267,7 @@
             "cwd": "${workspaceFolder}/lambda/purchaser"
         },
         {
-            "name": "Run Reporter Tests",
+            "name": "Test - Reporter",
             "type": "debugpy",
             "request": "launch",
             "module": "pytest",
