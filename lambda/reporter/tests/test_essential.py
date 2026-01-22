@@ -367,7 +367,7 @@ def test_handler_initialize_clients_failure_triggers_error_notification(mock_env
 
     with (
         patch("shared.handler_utils.get_clients") as mock_get_clients,
-        patch("handler.boto3") as mock_boto3,
+        patch("boto3.client") as mock_boto3_client,
         patch("shared.handler_utils.send_error_notification") as mock_send_error,
     ):
         # Make get_clients raise error - initialize_clients will catch it
@@ -375,7 +375,7 @@ def test_handler_initialize_clients_failure_triggers_error_notification(mock_env
 
         # Mock boto3.client to return a mock SNS client
         mock_sns = Mock()
-        mock_boto3.client.return_value = mock_sns
+        mock_boto3_client.return_value = mock_sns
 
         # Execute handler - should raise error
         with pytest.raises(ClientError) as exc_info:
@@ -385,7 +385,7 @@ def test_handler_initialize_clients_failure_triggers_error_notification(mock_env
         assert exc_info.value.response["Error"]["Code"] == "AccessDenied"
 
         # Verify boto3.client was called to create SNS client
-        mock_boto3.client.assert_called_with("sns")
+        mock_boto3_client.assert_called_with("sns")
 
         # Verify send_error_notification was called with correct args
         assert mock_send_error.called
