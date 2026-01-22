@@ -367,10 +367,15 @@ def test_handler_initialize_clients_failure_triggers_error_notification(mock_env
 
     with (
         patch("shared.handler_utils.get_clients") as mock_get_clients,
-        patch("handler._send_error_notification") as mock_error_notif,
+        patch("handler.boto3") as mock_boto3,
+        patch("shared.handler_utils.send_error_notification") as mock_send_error,
     ):
         # Make get_clients raise error - initialize_clients will catch it
         mock_get_clients.side_effect = ClientError(error_response, "AssumeRole")
+
+        # Mock boto3.client to return a mock SNS client
+        mock_sns = Mock()
+        mock_boto3.client.return_value = mock_sns
 
         # Execute handler - should raise error
         with pytest.raises(ClientError) as exc_info:
@@ -379,8 +384,12 @@ def test_handler_initialize_clients_failure_triggers_error_notification(mock_env
         # Verify error was raised
         assert exc_info.value.response["Error"]["Code"] == "AccessDenied"
 
-        # Verify error notification callback was called
-        assert mock_error_notif.called
-        call_args = mock_error_notif.call_args[0]
-        # Should contain SNS topic ARN and error message
-        assert len(call_args) >= 2
+        # Verify boto3.client was called to create SNS client
+        mock_boto3.client.assert_called_with("sns")
+
+        # Verify send_error_notification was called with correct args
+        assert mock_send_error.called
+        call_kwargs = mock_send_error.call_args[1]
+        assert call_kwargs["sns_client"] == mock_sns
+        assert call_kwargs["lambda_name"] == "Reporter"
+        assert "AccessDenied" in call_kwargs["error_message"]
