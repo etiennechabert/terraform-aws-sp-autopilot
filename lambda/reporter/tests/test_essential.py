@@ -365,20 +365,22 @@ def test_handler_initialize_clients_failure_triggers_error_notification(mock_env
     # This lets initialize_clients execute its error handling path
     error_response = {"Error": {"Code": "AccessDenied", "Message": "Unable to assume role"}}
 
-    with patch("shared.handler_utils.get_clients") as mock_get_clients:
-        with patch("handler._send_error_notification") as mock_error_notif:
-            # Make get_clients raise error - initialize_clients will catch it
-            mock_get_clients.side_effect = ClientError(error_response, "AssumeRole")
+    with (
+        patch("shared.handler_utils.get_clients") as mock_get_clients,
+        patch("handler._send_error_notification") as mock_error_notif,
+    ):
+        # Make get_clients raise error - initialize_clients will catch it
+        mock_get_clients.side_effect = ClientError(error_response, "AssumeRole")
 
-            # Execute handler - should raise error
-            with pytest.raises(ClientError) as exc_info:
-                handler.handler({}, {})
+        # Execute handler - should raise error
+        with pytest.raises(ClientError) as exc_info:
+            handler.handler({}, {})
 
-            # Verify error was raised
-            assert exc_info.value.response["Error"]["Code"] == "AccessDenied"
+        # Verify error was raised
+        assert exc_info.value.response["Error"]["Code"] == "AccessDenied"
 
-            # Verify error notification callback was called
-            assert mock_error_notif.called
-            call_args = mock_error_notif.call_args[0]
-            # Should contain SNS topic ARN and error message
-            assert len(call_args) >= 2
+        # Verify error notification callback was called
+        assert mock_error_notif.called
+        call_args = mock_error_notif.call_args[0]
+        # Should contain SNS topic ARN and error message
+        assert len(call_args) >= 2
