@@ -14,6 +14,8 @@ from __future__ import annotations
 
 import json
 import logging
+import webbrowser
+from pathlib import Path
 from typing import Any
 
 import notifications as notifications_module
@@ -26,6 +28,7 @@ from shared.handler_utils import (
     load_config_from_env,
     send_error_notification,
 )
+from shared.local_mode import is_local_mode
 from shared.savings_plans_metrics import get_savings_plans_summary
 from shared.spending_analyzer import SpendingAnalyzer
 from shared.storage_adapter import StorageAdapter
@@ -105,6 +108,15 @@ def handler(event: dict[str, Any], context: Any) -> dict[str, Any]:
         logger.info("Report email notification sent")
     else:
         logger.info("Email notifications disabled - skipping email")
+
+    # Auto-open report in browser if running locally (developer convenience)
+    if is_local_mode() and config["report_format"] == "html":
+        file_path = Path(s3_object_key)
+        if file_path.exists():
+            logger.info(f"Opening report in browser: {file_path}")
+            webbrowser.open(f"file://{file_path.absolute()}")
+        else:
+            logger.warning(f"Report file not found for auto-open: {file_path}")
 
     return {
         "statusCode": 200,
