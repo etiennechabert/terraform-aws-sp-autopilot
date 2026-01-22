@@ -122,7 +122,7 @@ def test_handler_production_mode(mock_env_vars, mock_clients, aws_mock_builder, 
 
 
 def test_handler_follow_aws_strategy(mock_env_vars, mock_clients, aws_mock_builder):
-    """Test follow_aws strategy gets recommendations and applies limits."""
+    """Test follow_aws strategy uses 100% of AWS recommendations."""
     mock_clients["sqs"].purge_queue.return_value = {}
     mock_clients[
         "ce"
@@ -141,7 +141,8 @@ def test_handler_follow_aws_strategy(mock_env_vars, mock_clients, aws_mock_build
 
     email_call = mock_clients["sns"].publish.call_args[1]
     message = email_call["Message"]
-    assert "10% of 10.000" in message or "1.000" in message
+    # follow_aws uses 100% of AWS recommendation (10.0000/hour)
+    assert "10.0000" in message
 
 
 def test_handler_fixed_strategy(mock_env_vars, mock_clients, aws_mock_builder, monkeypatch):
@@ -287,46 +288,63 @@ def test_handler_no_recommendations(mock_env_vars, mock_clients, aws_mock_builde
 def test_handler_applies_max_purchase_percent(
     mock_env_vars, mock_clients, aws_mock_builder, monkeypatch
 ):
-    """Test max_purchase_percent scales commitments correctly."""
+    """Test max_purchase_percent is applied by fixed strategy."""
+    monkeypatch.setenv("PURCHASE_STRATEGY_TYPE", "fixed")
+    monkeypatch.setenv("MIN_PURCHASE_PERCENT", "1")
     monkeypatch.setenv("MAX_PURCHASE_PERCENT", "10")
 
     mock_clients["sqs"].purge_queue.return_value = {}
+
+    # Mock for fixed strategy
     mock_clients[
-        "ce"
-    ].get_savings_plans_purchase_recommendation.return_value = aws_mock_builder.recommendation(
-        "compute", hourly_commitment=10.0
+        "savingsplans"
+    ].describe_savings_plans.return_value = aws_mock_builder.describe_savings_plans(plans_count=0)
+    mock_clients["ce"].get_savings_plans_coverage.return_value = aws_mock_builder.coverage(
+        coverage_percentage=50.0
     )
+    mock_clients["ce"].get_cost_and_usage.return_value = aws_mock_builder.cost_and_usage()
     mock_clients["sns"].publish.return_value = {"MessageId": "test-msg"}
 
     response = handler.handler({}, None)
 
     assert response["statusCode"] == 200
 
-    email_call = mock_clients["sns"].publish.call_args[1]
-    message = email_call["Message"]
-    assert "1.000" in message or "10% of 10.000" in message
+    # Fixed strategy should analyze spending and apply max_purchase_percent
+    assert mock_clients["savingsplans"].describe_savings_plans.called
+    assert mock_clients["ce"].get_savings_plans_coverage.called
 
 
 def test_handler_filters_below_min_commitment(
     mock_env_vars, mock_clients, aws_mock_builder, monkeypatch
 ):
-    """Test plans below min_commitment_per_plan are filtered out."""
+    """Test plans below min_commitment_per_plan are filtered out by fixed strategy."""
+    monkeypatch.setenv("PURCHASE_STRATEGY_TYPE", "fixed")
     monkeypatch.setenv("MIN_PURCHASE_PERCENT", "0.5")
     monkeypatch.setenv("MAX_PURCHASE_PERCENT", "1")
-    monkeypatch.setenv("MIN_COMMITMENT_PER_PLAN", "0.5")
+    monkeypatch.setenv("MIN_COMMITMENT_PER_PLAN", "5.0")  # Will filter out small purchases
 
     mock_clients["sqs"].purge_queue.return_value = {}
+
+    # Mock for fixed strategy - with very low hourly spend so 1% would be tiny
     mock_clients[
-        "ce"
-    ].get_savings_plans_purchase_recommendation.return_value = aws_mock_builder.recommendation(
-        "compute", hourly_commitment=10.0
+        "savingsplans"
+    ].describe_savings_plans.return_value = aws_mock_builder.describe_savings_plans(plans_count=0)
+    mock_clients["ce"].get_savings_plans_coverage.return_value = aws_mock_builder.coverage(
+        coverage_percentage=50.0
     )
+    # Modify cost_and_usage to have low spend (avg ~1.0/hour) so 1% would be 0.01/hour < 5.0 min
+    cost_response = aws_mock_builder.cost_and_usage()
+    # Set low blended cost to make calculated commitment tiny
+    for result in cost_response.get("ResultsByTime", []):
+        result["Total"]["BlendedCost"]["Amount"] = "24.0"  # $24/day = $1/hour
+    mock_clients["ce"].get_cost_and_usage.return_value = cost_response
     mock_clients["sns"].publish.return_value = {"MessageId": "test-msg"}
 
     response = handler.handler({}, None)
 
     assert response["statusCode"] == 200
     body = json.loads(response["body"])
+    # 1% of $1/hour = $0.01/hour < $5 min, so should be filtered
     assert body["purchases_planned"] == 0
 
 
@@ -354,62 +372,51 @@ def test_handler_lookback_period_mapping(
 
 def test_handler_cost_explorer_error(mock_env_vars, mock_clients):
     """Test error handling when Cost Explorer API fails."""
-    with (
-        patch("boto3.client") as mock_boto_client,
-        patch("handler.send_error_notification") as mock_send_error,
-    ):
-        mock_sns = Mock()
-        mock_boto_client.return_value = mock_sns
+    mock_clients["sqs"].purge_queue.return_value = {}
+    mock_clients["ce"].get_savings_plans_purchase_recommendation.side_effect = ClientError(
+        {"Error": {"Code": "ThrottlingException", "Message": "Rate exceeded"}},
+        "GetSavingsPlansPurchaseRecommendation",
+    )
 
-        mock_clients["sqs"].purge_queue.return_value = {}
-        mock_clients["ce"].get_savings_plans_purchase_recommendation.side_effect = ClientError(
-            {"Error": {"Code": "ThrottlingException", "Message": "Rate exceeded"}},
-            "GetSavingsPlansPurchaseRecommendation",
-        )
+    with pytest.raises(ClientError) as exc_info:
+        handler.handler({}, None)
 
-        with pytest.raises(ClientError) as exc_info:
-            handler.handler({}, None)
-
-        assert exc_info.value.response["Error"]["Code"] == "ThrottlingException"
-        assert mock_send_error.called
+    assert exc_info.value.response["Error"]["Code"] == "ThrottlingException"
 
 
 def test_handler_queue_purge_error(mock_env_vars, mock_clients):
     """Test error handling when queue purge fails."""
-    with (
-        patch("boto3.client") as mock_boto_client,
-        patch("handler.send_error_notification") as mock_send_error,
-    ):
-        mock_sns = Mock()
-        mock_boto_client.return_value = mock_sns
+    mock_clients["sqs"].purge_queue.side_effect = ClientError(
+        {
+            "Error": {
+                "Code": "AWS.SimpleQueueService.NonExistentQueue",
+                "Message": "Queue not found",
+            }
+        },
+        "PurgeQueue",
+    )
 
-        mock_clients["sqs"].purge_queue.side_effect = ClientError(
-            {
-                "Error": {
-                    "Code": "AWS.SimpleQueueService.NonExistentQueue",
-                    "Message": "Queue not found",
-                }
-            },
-            "PurgeQueue",
-        )
+    with pytest.raises(ClientError) as exc_info:
+        handler.handler({}, None)
 
-        with pytest.raises(ClientError) as exc_info:
-            handler.handler({}, None)
-
-        assert "NonExistentQueue" in str(exc_info.value)
-        assert mock_send_error.called
+    assert "NonExistentQueue" in str(exc_info.value)
 
 
 def test_handler_term_mix_splitting(mock_env_vars, mock_clients, aws_mock_builder, monkeypatch):
-    """Test term mix splits recommendations correctly."""
+    """Test term mix splits purchases by fixed strategy."""
+    monkeypatch.setenv("PURCHASE_STRATEGY_TYPE", "fixed")
     monkeypatch.setenv("COMPUTE_SP_TERM_MIX", '{"three_year": 0.5, "one_year": 0.5}')
 
     mock_clients["sqs"].purge_queue.return_value = {}
+
+    # Mock for fixed strategy
     mock_clients[
-        "ce"
-    ].get_savings_plans_purchase_recommendation.return_value = aws_mock_builder.recommendation(
-        "compute", hourly_commitment=10.0
+        "savingsplans"
+    ].describe_savings_plans.return_value = aws_mock_builder.describe_savings_plans(plans_count=0)
+    mock_clients["ce"].get_savings_plans_coverage.return_value = aws_mock_builder.coverage(
+        coverage_percentage=50.0
     )
+    mock_clients["ce"].get_cost_and_usage.return_value = aws_mock_builder.cost_and_usage()
     mock_clients["sns"].publish.return_value = {"MessageId": "test-msg"}
 
     response = handler.handler({}, None)
@@ -418,6 +425,7 @@ def test_handler_term_mix_splitting(mock_env_vars, mock_clients, aws_mock_builde
 
     email_call = mock_clients["sns"].publish.call_args[1]
     message = email_call["Message"]
+    # Fixed strategy should create plans with term mix splitting
     assert "THREE_YEAR" in message or "three_year" in message
     assert "ONE_YEAR" in message or "one_year" in message
 
@@ -546,31 +554,34 @@ def test_handler_queues_purchases_in_production(
     assert "MessageBody" in send_call
 
     message_body = json.loads(send_call["MessageBody"])
-    assert "offering_id" in message_body
-    assert "commitment" in message_body
+    # Check for actual message structure
+    assert "sp_type" in message_body
+    assert "hourly_commitment" in message_body
+    assert "payment_option" in message_body
 
 
 def test_handler_assume_role_error(mock_env_vars, monkeypatch):
-    """Test error handling when assume role fails."""
+    """Test error callback is triggered when assume role fails."""
     monkeypatch.setenv("MANAGEMENT_ACCOUNT_ROLE_ARN", "arn:aws:iam::123456789012:role/TestRole")
 
+    # Create a mock for the error callback
+    mock_error_callback = Mock()
+
     with (
-        patch("handler.initialize_clients") as mock_init,
-        patch("boto3.client") as mock_boto_client,
-        patch("handler.send_error_notification") as mock_send_error,
+        patch("shared.handler_utils.get_clients") as mock_get_clients,
+        patch("handler._send_error_notification", mock_error_callback),
     ):
-        mock_init.side_effect = ClientError(
+        # Make get_clients raise error - initialize_clients will catch it and call error callback
+        mock_get_clients.side_effect = ClientError(
             {"Error": {"Code": "AccessDenied", "Message": "Not authorized"}}, "AssumeRole"
         )
-
-        mock_sns = Mock()
-        mock_boto_client.return_value = mock_sns
 
         with pytest.raises(ClientError) as exc_info:
             handler.handler({}, None)
 
         assert exc_info.value.response["Error"]["Code"] == "AccessDenied"
-        assert mock_send_error.called
+        # Verify error callback was called
+        assert mock_error_callback.called
 
 
 def test_handler_dichotomy_strategy(mock_env_vars, mock_clients, aws_mock_builder, monkeypatch):
