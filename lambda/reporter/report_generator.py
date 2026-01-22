@@ -80,6 +80,7 @@ def _prepare_chart_data(coverage_data: dict[str, Any]) -> str:
         sorted_timestamps = sorted_timestamps[-168:]
 
     labels = []
+    timestamps = []  # Full timestamps for tooltip
     covered_values = []
     ondemand_values = []
 
@@ -94,11 +95,13 @@ def _prepare_chart_data(coverage_data: dict[str, Any]) -> str:
             label = ts[:10]  # Just date for daily granularity
 
         labels.append(label)
+        timestamps.append(ts)  # Store full timestamp for tooltip
         covered_values.append(round(timeseries_map[ts]["covered"], 2))
         ondemand_values.append(round(timeseries_map[ts]["ondemand"], 2))
 
     chart_data = {
         "labels": labels,
+        "timestamps": timestamps,  # Full ISO timestamps for day-of-week calculation
         "covered": covered_values,
         "ondemand": ondemand_values,
     }
@@ -523,12 +526,35 @@ def generate_html_report(
                     }},
                     tooltip: {{
                         callbacks: {{
+                            title: function(tooltipItems) {{
+                                const index = tooltipItems[0].dataIndex;
+                                const timestamp = chartData.timestamps[index];
+
+                                // Parse timestamp and get day of week
+                                const date = new Date(timestamp);
+                                const days = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+                                const dayName = days[date.getDay()];
+
+                                // Format: "01-17 06:00 (Friday)"
+                                const label = tooltipItems[0].label;
+                                return label + ' (' + dayName + ')';
+                            }},
                             footer: function(tooltipItems) {{
-                                let total = 0;
-                                tooltipItems.forEach(function(tooltipItem) {{
-                                    total += tooltipItem.parsed.y;
+                                let covered = 0;
+                                let ondemand = 0;
+
+                                tooltipItems.forEach(function(item) {{
+                                    if (item.dataset.label.includes('Covered')) {{
+                                        covered = item.parsed.y;
+                                    }} else {{
+                                        ondemand = item.parsed.y;
+                                    }}
                                 }});
-                                return 'Total: $' + total.toFixed(2);
+
+                                const total = covered + ondemand;
+                                const coveragePercent = total > 0 ? (covered / total * 100).toFixed(1) : 0;
+
+                                return 'Total: $' + total.toFixed(2) + '\\nCoverage: ' + coveragePercent + '%';
                             }}
                         }}
                     }}

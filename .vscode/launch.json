@@ -189,8 +189,8 @@
                 "EMAIL_REPORTS": "false",
                 // Savings Plans types to include in report
                 "ENABLE_COMPUTE_SP": "true",
-                "ENABLE_DATABASE_SP": "false",
-                "ENABLE_SAGEMAKER_SP": "false",
+                "ENABLE_DATABASE_SP": "true",
+                "ENABLE_SAGEMAKER_SP": "true",
                 // Data collection settings
                 "LOOKBACK_DAYS": "7",
                 "GRANULARITY": "HOURLY",
