@@ -19,6 +19,7 @@ def generate_report(
     coverage_data: dict[str, Any],
     savings_data: dict[str, Any],
     report_format: str = "html",
+    config: dict[str, Any] | None = None,
 ) -> str:
     """
     Generate report in specified format.
@@ -27,6 +28,7 @@ def generate_report(
         coverage_data: Coverage data from SpendingAnalyzer
         savings_data: Savings Plans summary from savings_plans_metrics
         report_format: Format - "html", "json", or "csv"
+        config: Configuration parameters used for the report
 
     Returns:
         str: Generated report content
@@ -35,26 +37,93 @@ def generate_report(
         ValueError: If report_format is invalid
     """
     if report_format == "json":
-        return generate_json_report(coverage_data, savings_data)
+        return generate_json_report(coverage_data, savings_data, config)
     if report_format == "csv":
-        return generate_csv_report(coverage_data, savings_data)
+        return generate_csv_report(coverage_data, savings_data, config)
     if report_format == "html":
-        return generate_html_report(coverage_data, savings_data)
+        return generate_html_report(coverage_data, savings_data, config)
     raise ValueError(f"Invalid report format: {report_format}")
 
 
-def generate_html_report(coverage_data: dict[str, Any], savings_data: dict[str, Any]) -> str:
+def _prepare_chart_data(coverage_data: dict[str, Any]) -> str:
+    """
+    Prepare chart data from coverage timeseries for Chart.js visualization.
+
+    Args:
+        coverage_data: Coverage data from SpendingAnalyzer with timeseries
+
+    Returns:
+        str: JSON string with chart data (labels, covered, ondemand arrays)
+    """
+    # Aggregate timeseries across all SP types (compute, database, sagemaker)
+    timeseries_map = {}
+
+    for sp_type in ["compute", "database", "sagemaker"]:
+        timeseries = coverage_data.get(sp_type, {}).get("timeseries", [])
+        for item in timeseries:
+            timestamp = item.get("timestamp", "")
+            covered = item.get("covered", 0.0)
+            total = item.get("total", 0.0)
+            ondemand = total - covered
+
+            if timestamp not in timeseries_map:
+                timeseries_map[timestamp] = {"covered": 0.0, "ondemand": 0.0}
+
+            timeseries_map[timestamp]["covered"] += covered
+            timeseries_map[timestamp]["ondemand"] += ondemand
+
+    # Sort by timestamp and format for chart
+    sorted_timestamps = sorted(timeseries_map.keys())
+
+    # Limit to last 168 hours (7 days) for readability, or show all if less
+    if len(sorted_timestamps) > 168:
+        sorted_timestamps = sorted_timestamps[-168:]
+
+    labels = []
+    covered_values = []
+    ondemand_values = []
+
+    for ts in sorted_timestamps:
+        # Format timestamp for display (remove seconds, show date if needed)
+        if "T" in ts:
+            date_part, time_part = ts.split("T")
+            time_part = time_part[:5]  # HH:MM
+            # Show MM-DD HH:MM for multi-day view, or just HH:MM for single day
+            label = f"{date_part[5:]} {time_part}" if len(sorted_timestamps) > 24 else time_part
+        else:
+            label = ts[:10]  # Just date for daily granularity
+
+        labels.append(label)
+        covered_values.append(round(timeseries_map[ts]["covered"], 2))
+        ondemand_values.append(round(timeseries_map[ts]["ondemand"], 2))
+
+    chart_data = {
+        "labels": labels,
+        "covered": covered_values,
+        "ondemand": ondemand_values,
+    }
+
+    return json.dumps(chart_data)
+
+
+def generate_html_report(
+    coverage_data: dict[str, Any],
+    savings_data: dict[str, Any],
+    config: dict[str, Any] | None = None,
+) -> str:
     """
     Generate HTML report with coverage trends and savings metrics.
 
     Args:
         coverage_data: Coverage data from SpendingAnalyzer
         savings_data: Savings Plans summary from savings_plans_metrics
+        config: Configuration parameters used for the report
 
     Returns:
         str: HTML report content
     """
     logger.info("Generating HTML report")
+    config = config or {}
 
     report_timestamp = datetime.now(UTC).strftime("%Y-%m-%d %H:%M:%S UTC")
 
@@ -85,6 +154,7 @@ def generate_html_report(coverage_data: dict[str, Any], savings_data: dict[str, 
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Savings Plans Coverage & Savings Report</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
     <style>
         body {{
             font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
@@ -192,6 +262,14 @@ def generate_html_report(coverage_data: dict[str, Any], savings_data: dict[str, 
             color: #6c757d;
             font-style: italic;
         }}
+        .chart-container {{
+            position: relative;
+            height: 400px;
+            margin: 20px 0;
+            padding: 20px;
+            background-color: #f8f9fa;
+            border-radius: 8px;
+        }}
     </style>
 </head>
 <body>
@@ -219,6 +297,45 @@ def generate_html_report(coverage_data: dict[str, Any], savings_data: dict[str, 
             <div class="summary-card green">
                 <h3>Savings Percentage</h3>
                 <div class="value">{savings_percentage:.1f}%</div>
+            </div>
+        </div>
+
+        <div class="section">
+            <h2>Report Parameters</h2>
+            <table>
+                <tbody>
+                    <tr>
+                        <td style="font-weight: bold; width: 250px;">Lookback Period</td>
+                        <td>{config.get("lookback_days", "N/A")} days</td>
+                    </tr>
+                    <tr>
+                        <td style="font-weight: bold;">Data Granularity</td>
+                        <td>{config.get("granularity", "N/A")}</td>
+                    </tr>
+                    <tr>
+                        <td style="font-weight: bold;">Compute Savings Plans</td>
+                        <td>{"✓ Enabled" if config.get("enable_compute_sp", True) else "✗ Disabled"}</td>
+                    </tr>
+                    <tr>
+                        <td style="font-weight: bold;">Database Savings Plans</td>
+                        <td>{"✓ Enabled" if config.get("enable_database_sp", False) else "✗ Disabled"}</td>
+                    </tr>
+                    <tr>
+                        <td style="font-weight: bold;">SageMaker Savings Plans</td>
+                        <td>{"✓ Enabled" if config.get("enable_sagemaker_sp", False) else "✗ Disabled"}</td>
+                    </tr>
+                    <tr>
+                        <td style="font-weight: bold;">Low Utilization Threshold</td>
+                        <td>{config.get("low_utilization_threshold", "N/A")}%</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+
+        <div class="section">
+            <h2>Usage Over Time</h2>
+            <div class="chart-container">
+                <canvas id="usageChart"></canvas>
             </div>
         </div>
 
@@ -353,6 +470,93 @@ def generate_html_report(coverage_data: dict[str, Any], savings_data: dict[str, 
             <p>Generated: {report_timestamp}</p>
         </div>
     </div>
+"""
+
+    # Prepare chart data from coverage timeseries
+    chart_data = _prepare_chart_data(coverage_data)
+
+    html += f"""
+    <script>
+        const ctx = document.getElementById('usageChart');
+
+        const chartData = {chart_data};
+
+        new Chart(ctx, {{
+            type: 'bar',
+            data: {{
+                labels: chartData.labels,
+                datasets: [
+                    {{
+                        label: 'Covered by Savings Plans',
+                        data: chartData.covered,
+                        backgroundColor: 'rgba(86, 171, 47, 0.7)',
+                        borderColor: 'rgba(86, 171, 47, 1)',
+                        borderWidth: 1,
+                        stack: 'stack0'
+                    }},
+                    {{
+                        label: 'On-Demand Cost',
+                        data: chartData.ondemand,
+                        backgroundColor: 'rgba(244, 107, 69, 0.7)',
+                        borderColor: 'rgba(244, 107, 69, 1)',
+                        borderWidth: 1,
+                        stack: 'stack0'
+                    }}
+                ]
+            }},
+            options: {{
+                responsive: true,
+                maintainAspectRatio: false,
+                interaction: {{
+                    mode: 'index',
+                    intersect: false
+                }},
+                plugins: {{
+                    title: {{
+                        display: true,
+                        text: 'Hourly Usage: On-Demand vs Covered by Savings Plans',
+                        font: {{ size: 16 }}
+                    }},
+                    legend: {{
+                        display: true,
+                        position: 'top'
+                    }},
+                    tooltip: {{
+                        callbacks: {{
+                            footer: function(tooltipItems) {{
+                                let total = 0;
+                                tooltipItems.forEach(function(tooltipItem) {{
+                                    total += tooltipItem.parsed.y;
+                                }});
+                                return 'Total: $' + total.toFixed(2);
+                            }}
+                        }}
+                    }}
+                }},
+                scales: {{
+                    x: {{
+                        stacked: true,
+                        title: {{
+                            display: true,
+                            text: 'Time Period'
+                        }}
+                    }},
+                    y: {{
+                        stacked: true,
+                        title: {{
+                            display: true,
+                            text: 'Cost (USD)'
+                        }},
+                        ticks: {{
+                            callback: function(value) {{
+                                return '$' + value.toFixed(2);
+                            }}
+                        }}
+                    }}
+                }}
+            }}
+        }});
+    </script>
 </body>
 </html>
 """
@@ -361,18 +565,24 @@ def generate_html_report(coverage_data: dict[str, Any], savings_data: dict[str, 
     return html
 
 
-def generate_json_report(coverage_data: dict[str, Any], savings_data: dict[str, Any]) -> str:
+def generate_json_report(
+    coverage_data: dict[str, Any],
+    savings_data: dict[str, Any],
+    config: dict[str, Any] | None = None,
+) -> str:
     """
     Generate JSON report with coverage trends and savings metrics.
 
     Args:
         coverage_data: Coverage data from SpendingAnalyzer
         savings_data: Savings Plans summary from savings_plans_metrics
+        config: Configuration parameters used for the report
 
     Returns:
         str: JSON report content
     """
     logger.info("Generating JSON report")
+    config = config or {}
 
     report_timestamp = datetime.now(UTC).isoformat()
 
@@ -402,6 +612,14 @@ def generate_json_report(coverage_data: dict[str, Any], savings_data: dict[str, 
             "generated_at": report_timestamp,
             "report_type": "savings_plans_coverage_and_savings",
             "generator": "sp-autopilot-reporter",
+        },
+        "report_parameters": {
+            "lookback_days": config.get("lookback_days"),
+            "granularity": config.get("granularity"),
+            "enable_compute_sp": config.get("enable_compute_sp"),
+            "enable_database_sp": config.get("enable_database_sp"),
+            "enable_sagemaker_sp": config.get("enable_sagemaker_sp"),
+            "low_utilization_threshold": config.get("low_utilization_threshold"),
         },
         "coverage_summary": {
             "compute": {
@@ -440,7 +658,11 @@ def generate_json_report(coverage_data: dict[str, Any], savings_data: dict[str, 
     return json_content
 
 
-def generate_csv_report(coverage_data: dict[str, Any], savings_data: dict[str, Any]) -> str:
+def generate_csv_report(
+    coverage_data: dict[str, Any],
+    savings_data: dict[str, Any],
+    config: dict[str, Any] | None = None,
+) -> str:
     """
     Generate CSV report with coverage trends and savings metrics.
 

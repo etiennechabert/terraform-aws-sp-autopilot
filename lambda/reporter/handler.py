@@ -84,7 +84,7 @@ def handler(event: dict[str, Any], context: Any) -> dict[str, Any]:
 
     # Generate report
     report_content = report_generator.generate_report(
-        coverage_data, savings_data, config["report_format"]
+        coverage_data, savings_data, config["report_format"], config
     )
     logger.info(
         f"Report generated ({len(report_content)} bytes, format: {config['report_format']})"
