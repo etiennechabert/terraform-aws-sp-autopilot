@@ -16,8 +16,10 @@
 ## Checklist
 
 - [ ] Self-review completed
-- [ ] For Lambda changes: Read and followed [TESTING.md](../TESTING.md) guidelines
 - [ ] Tests pass locally (run `pytest` in lambda directory)
+- [ ] For Lambda changes: Followed [TESTING.md](../TESTING.md) guidelines:
+  - Tests call `handler.handler()` as entry point (not internal functions)
+  - Only AWS client responses are mocked (not shared modules or internal code)
 
 ## Related Issues
 
