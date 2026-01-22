@@ -122,9 +122,7 @@ def test_handler_success_without_email(mock_env_vars, mock_clients, aws_mock_bui
     mock_clients[
         "savingsplans"
     ].describe_savings_plans.return_value = aws_mock_builder.describe_savings_plans(plans_count=1)
-    mock_clients[
-        "ce"
-    ].get_savings_plans_utilization.return_value = aws_mock_builder.utilization(
+    mock_clients["ce"].get_savings_plans_utilization.return_value = aws_mock_builder.utilization(
         utilization_percentage=80.0
     )
     mock_clients["s3"].put_object.return_value = {}
@@ -153,9 +151,7 @@ def test_handler_success_with_no_active_plans(mock_env_vars, mock_clients, aws_m
     ].describe_savings_plans.return_value = aws_mock_builder.describe_savings_plans(plans_count=0)
 
     # Mock utilization (no data)
-    mock_clients[
-        "ce"
-    ].get_savings_plans_utilization.return_value = aws_mock_builder.utilization(
+    mock_clients["ce"].get_savings_plans_utilization.return_value = aws_mock_builder.utilization(
         utilization_percentage=0.0
     )
 
@@ -185,9 +181,7 @@ def test_handler_csv_format(mock_env_vars, mock_clients, aws_mock_builder, monke
     mock_clients[
         "savingsplans"
     ].describe_savings_plans.return_value = aws_mock_builder.describe_savings_plans(plans_count=1)
-    mock_clients[
-        "ce"
-    ].get_savings_plans_utilization.return_value = aws_mock_builder.utilization(
+    mock_clients["ce"].get_savings_plans_utilization.return_value = aws_mock_builder.utilization(
         utilization_percentage=85.0
     )
     mock_clients["s3"].put_object.return_value = {}
@@ -216,9 +210,7 @@ def test_handler_json_format(mock_env_vars, mock_clients, aws_mock_builder, monk
     mock_clients[
         "savingsplans"
     ].describe_savings_plans.return_value = aws_mock_builder.describe_savings_plans(plans_count=1)
-    mock_clients[
-        "ce"
-    ].get_savings_plans_utilization.return_value = aws_mock_builder.utilization(
+    mock_clients["ce"].get_savings_plans_utilization.return_value = aws_mock_builder.utilization(
         utilization_percentage=85.0
     )
     mock_clients["s3"].put_object.return_value = {}
@@ -282,9 +274,7 @@ def test_handler_failure_s3_upload_error(mock_env_vars, mock_clients, aws_mock_b
     mock_clients[
         "savingsplans"
     ].describe_savings_plans.return_value = aws_mock_builder.describe_savings_plans(plans_count=2)
-    mock_clients[
-        "ce"
-    ].get_savings_plans_utilization.return_value = aws_mock_builder.utilization(
+    mock_clients["ce"].get_savings_plans_utilization.return_value = aws_mock_builder.utilization(
         utilization_percentage=85.0
     )
 
@@ -314,9 +304,7 @@ def test_handler_low_utilization_alert_triggered(
         "savingsplans"
     ].describe_savings_plans.return_value = aws_mock_builder.describe_savings_plans(plans_count=2)
     mock_clients["ce"].get_savings_plans_utilization.return_value = (
-        aws_mock_builder.utilization(
-            utilization_percentage=65.0
-        )  # Below 75% threshold
+        aws_mock_builder.utilization(utilization_percentage=65.0)  # Below 75% threshold
     )
     mock_clients["s3"].put_object.return_value = {}
     mock_clients["sns"].publish.return_value = {"MessageId": "test-message-id"}
@@ -352,9 +340,7 @@ def test_handler_low_utilization_alert_not_triggered(
         "savingsplans"
     ].describe_savings_plans.return_value = aws_mock_builder.describe_savings_plans(plans_count=2)
     mock_clients["ce"].get_savings_plans_utilization.return_value = (
-        aws_mock_builder.utilization(
-            utilization_percentage=85.0
-        )  # Above 75% threshold
+        aws_mock_builder.utilization(utilization_percentage=85.0)  # Above 75% threshold
     )
     mock_clients["s3"].put_object.return_value = {}
     mock_clients["sns"].publish.return_value = {"MessageId": "test-message-id"}
