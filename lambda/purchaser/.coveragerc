@@ -1,4 +1,6 @@
 [run]
+source = .
+relative_files = True
 omit =
     tests/*
     */tests/*
