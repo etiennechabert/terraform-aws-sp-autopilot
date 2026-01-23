@@ -140,10 +140,11 @@ def _prepare_chart_data(coverage_data: dict[str, Any]) -> str:
             stats = {
                 "min": round(sorted_costs[0], 2),
                 "max": round(sorted_costs[-1], 2),
+                "p10": round(sorted_costs[int(n * 0.10)], 2),
+                "p25": round(sorted_costs[int(n * 0.25)], 2),
                 "p50": round(sorted_costs[int(n * 0.50)], 2),
                 "p75": round(sorted_costs[int(n * 0.75)], 2),
                 "p90": round(sorted_costs[int(n * 0.90)], 2),
-                "p95": round(sorted_costs[int(n * 0.95)], 2),
             }
 
         return {
@@ -578,10 +579,21 @@ def generate_html_report(
         </div>
 
         <div class="section">
-            <h2>🔮 Next Scheduled Purchase Forecast</h2>
+            <h2>🔮 Next Scheduled Purchase Forecast</h2>"""
+
+    # Get strategy name from first forecast item if available, otherwise from config
+    strategy_name = "unknown"
+    if purchase_forecast and len(purchase_forecast) > 0:
+        strategy_name = purchase_forecast[0].get(
+            "strategy", config.get("purchase_strategy_type", "unknown")
+        )
+    else:
+        strategy_name = config.get("purchase_strategy_type", "unknown")
+
+    html += f"""
             <p style="color: #6c757d; font-size: 0.9em; margin-bottom: 15px;">
                 <strong>This is what the Scheduler will purchase on its next run</strong> based on current configuration.
-                Strategy: <strong>{config.get("purchase_strategy_type", "unknown").upper()}</strong> |
+                Strategy: <strong>{strategy_name.upper()}</strong> |
                 Target: <strong>{config.get("coverage_target_percent", 80):.0f}%</strong> |
                 Max Purchase: <strong>{config.get("max_purchase_percent", 20):.0f}%</strong>
             </p>
@@ -829,6 +841,15 @@ def generate_html_report(
     # Extract savings breakdown by type
     breakdown_by_type = savings_data.get("actual_savings", {}).get("breakdown_by_type", {})
 
+    # Get total actual savings from AWS (the real data!)
+    total_net_savings_monthly = savings_data.get("actual_savings", {}).get("net_savings", 0.0)
+
+    # Calculate total covered cost across all types to allocate savings proportionally
+    total_covered_cost = sum(
+        coverage_data.get(sp_type, {}).get("summary", {}).get("avg_hourly_covered", 0.0)
+        for sp_type in ["compute", "database", "sagemaker"]
+    )
+
     def get_type_metrics(sp_type_key, summary, sp_type_name):
         """Calculate metrics for a specific SP type"""
         current_coverage = summary.get("avg_coverage", 0.0)
@@ -853,27 +874,31 @@ def generate_html_report(
                 type_utilization = average_utilization
                 break
 
-        # Actual savings achieved
-        # Savings = what we would pay on-demand minus what we actually pay with SP
-        # SP typically offers 30-40% discount, so if covered_cost is what we pay:
-        # On-demand equivalent = covered_cost / (1 - discount_rate)
-        # Assuming 35% average discount: on_demand_equiv = covered_cost / 0.65
-        # Savings = on_demand_equiv - covered_cost
-        discount_rate = 0.35
-        ondemand_equivalent_for_covered = (
-            avg_covered_cost / (1 - discount_rate) if avg_covered_cost > 0 else 0
-        )
-        actual_savings_hourly = ondemand_equivalent_for_covered - avg_covered_cost
-        actual_savings_monthly = actual_savings_hourly * 730
+        # Actual savings achieved - allocate proportionally from AWS total savings
+        # AWS gives us total savings across all types, not per-type breakdown
+        # Allocate based on this type's proportion of total covered cost
+        if total_covered_cost > 0 and avg_covered_cost > 0:
+            allocation_ratio = avg_covered_cost / total_covered_cost
+            actual_savings_monthly = total_net_savings_monthly * allocation_ratio
+        else:
+            actual_savings_monthly = 0.0
 
         # Calculate potential additional savings if we reach target coverage
-        if current_coverage < target_coverage and avg_total_cost > 0:
+        # Use the actual observed savings rate from AWS data
+        if current_coverage < target_coverage and avg_total_cost > 0 and avg_covered_cost > 0:
+            # Calculate actual discount rate from AWS data for this type
+            # Savings rate = actual_savings_monthly / (avg_covered_cost * 730)
+            if total_net_savings_monthly > 0 and total_covered_cost > 0:
+                observed_savings_rate = total_net_savings_monthly / (total_covered_cost * 730)
+            else:
+                observed_savings_rate = 0.35  # Fallback to 35% if no data
+
             # Additional coverage percentage points needed
             additional_coverage_points = target_coverage - current_coverage
             # Additional hourly cost that would be covered
             additional_covered_hourly = avg_total_cost * (additional_coverage_points / 100)
-            # Savings on that additional coverage (35% discount)
-            potential_additional_hourly = additional_covered_hourly * discount_rate
+            # Savings on that additional coverage using observed rate
+            potential_additional_hourly = additional_covered_hourly * observed_savings_rate
             potential_additional_monthly = potential_additional_hourly * 730
         else:
             potential_additional_monthly = 0.0
@@ -967,6 +992,44 @@ def generate_html_report(
                         }}
                     }};
                 }}
+            }}
+
+            // Add percentile lines if we have stats
+            if (chartData.stats && Object.keys(chartData.stats).length > 0) {{
+                const stats = chartData.stats;
+
+                // Define percentiles to show with their styling (alternate left/right positions)
+                const percentiles = [
+                    {{ key: 'p10', label: 'P10', color: 'rgba(150, 150, 150, 0.4)', dash: [2, 2], position: 'start' }},
+                    {{ key: 'p25', label: 'P25', color: 'rgba(150, 150, 150, 0.5)', dash: [3, 3], position: 'end' }},
+                    {{ key: 'p50', label: 'P50', color: 'rgba(100, 100, 100, 0.6)', dash: [4, 4], position: 'start' }},
+                    {{ key: 'p75', label: 'P75', color: 'rgba(150, 150, 150, 0.5)', dash: [3, 3], position: 'end' }},
+                    {{ key: 'p90', label: 'P90', color: 'rgba(150, 150, 150, 0.4)', dash: [2, 2], position: 'start' }}
+                ];
+
+                percentiles.forEach(function(p) {{
+                    if (stats[p.key]) {{
+                        annotations[p.key] = {{
+                            type: 'line',
+                            yMin: stats[p.key],
+                            yMax: stats[p.key],
+                            borderColor: p.color,
+                            borderWidth: 1,
+                            borderDash: p.dash,
+                            label: {{
+                                display: true,
+                                content: p.label + ': $' + stats[p.key].toFixed(2),
+                                position: p.position,
+                                backgroundColor: 'rgba(255, 255, 255, 0.9)',
+                                color: '#666',
+                                font: {{
+                                    size: 9
+                                }},
+                                padding: 2
+                            }}
+                        }};
+                    }}
+                }});
             }}
 
             return new Chart(ctx, {{
@@ -1090,7 +1153,7 @@ def generate_html_report(
 
                 let recommendation = '';
                 if (variability < 20) {{
-                    recommendation = `Low variability (${{variability}}%). Consider covering close to P95 (${{stats.p95}}/hr) for maximum savings with minimal risk.`;
+                    recommendation = `Low variability (${{variability}}%). Consider covering close to P90 (${{stats.p90}}/hr) for maximum savings with minimal risk.`;
                 }} else if (variability < 40) {{
                     recommendation = `Moderate variability (${{variability}}%). Consider covering P75-P90 (${{stats.p75}}-${{stats.p90}}/hr) to balance savings and risk.`;
                 }} else {{
@@ -1103,27 +1166,31 @@ def generate_html_report(
                         <div class="percentile-grid">
                             <div class="percentile-item">
                                 <div class="percentile-label">Min Hourly</div>
-                                <div class="percentile-value">${{stats.min}}</div>
+                                <div class="percentile-value">${{stats.min}}/h</div>
+                            </div>
+                            <div class="percentile-item">
+                                <div class="percentile-label">P10</div>
+                                <div class="percentile-value">${{stats.p10}}/h</div>
+                            </div>
+                            <div class="percentile-item">
+                                <div class="percentile-label">P25</div>
+                                <div class="percentile-value">${{stats.p25}}/h</div>
                             </div>
                             <div class="percentile-item">
                                 <div class="percentile-label">P50 (Median)</div>
-                                <div class="percentile-value">${{stats.p50}}</div>
+                                <div class="percentile-value">${{stats.p50}}/h</div>
                             </div>
                             <div class="percentile-item">
                                 <div class="percentile-label">P75</div>
-                                <div class="percentile-value">${{stats.p75}}</div>
+                                <div class="percentile-value">${{stats.p75}}/h</div>
                             </div>
                             <div class="percentile-item">
                                 <div class="percentile-label">P90</div>
-                                <div class="percentile-value">${{stats.p90}}</div>
-                            </div>
-                            <div class="percentile-item">
-                                <div class="percentile-label">P95</div>
-                                <div class="percentile-value">${{stats.p95}}</div>
+                                <div class="percentile-value">${{stats.p90}}/h</div>
                             </div>
                             <div class="percentile-item">
                                 <div class="percentile-label">Max Hourly</div>
-                                <div class="percentile-value">${{stats.max}}</div>
+                                <div class="percentile-value">${{stats.max}}/h</div>
                             </div>
                         </div>
                         <div class="recommendation">
@@ -1134,7 +1201,7 @@ def generate_html_report(
                             Savings Plans commit you to a $/hr rate in exchange for a discount (typically 30-40%).
                             You save money when actual usage exceeds your commitment, but lose money when usage drops below it.<br><br>
                             <strong>Decision factors:</strong><br>
-                            • <strong>Higher discount (35-40%):</strong> Can commit more aggressively (P90-P95) - the discount cushions you during low usage<br>
+                            • <strong>Higher discount (35-40%):</strong> Can commit more aggressively (P75-P90) - the discount cushions you during low usage<br>
                             • <strong>Lower discount (20-30%):</strong> Be conservative (P50-P75) - less margin for error if usage drops<br>
                             • <strong>Break-even example:</strong> With 35% discount, you break even if usage is >65% of commitment.
                             Covering P75 means 75% of hours exceed this level = profitable most of the time.
@@ -1155,11 +1222,11 @@ def generate_html_report(
                     </div>
                     <div class="metric-card green">
                         <h4>Actual Savings (30 days)</h4>
-                        <div class="metric-value">${{metrics.actual_savings_monthly.toLocaleString('en-US', {{maximumFractionDigits: 0}})}}</div>
+                        <div class="metric-value">$${{metrics.actual_savings_monthly.toLocaleString('en-US', {{maximumFractionDigits: 0}})}}</div>
                     </div>
                     <div class="metric-card orange">
                         <h4>Potential at ${{metrics.target_coverage}}% Target</h4>
-                        <div class="metric-value">+${{metrics.potential_additional_savings.toLocaleString('en-US', {{maximumFractionDigits: 0}})}}</div>
+                        <div class="metric-value">+$${{metrics.potential_additional_savings.toLocaleString('en-US', {{maximumFractionDigits: 0}})}}</div>
                     </div>
                 </div>
                 ${{optimizationHtml}}
