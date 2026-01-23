@@ -20,6 +20,7 @@ def generate_report(
     savings_data: dict[str, Any],
     report_format: str = "html",
     config: dict[str, Any] | None = None,
+    purchase_forecast: list[dict[str, Any]] | None = None,
 ) -> str:
     """
     Generate report in specified format.
@@ -29,6 +30,7 @@ def generate_report(
         savings_data: Savings Plans summary from savings_plans_metrics
         report_format: Format - "html", "json", or "csv"
         config: Configuration parameters used for the report
+        purchase_forecast: Forecasted purchases from Scheduler simulation
 
     Returns:
         str: Generated report content
@@ -37,11 +39,11 @@ def generate_report(
         ValueError: If report_format is invalid
     """
     if report_format == "json":
-        return generate_json_report(coverage_data, savings_data, config)
+        return generate_json_report(coverage_data, savings_data, config, purchase_forecast)
     if report_format == "csv":
-        return generate_csv_report(coverage_data, savings_data, config)
+        return generate_csv_report(coverage_data, savings_data, config, purchase_forecast)
     if report_format == "html":
-        return generate_html_report(coverage_data, savings_data, config)
+        return generate_html_report(coverage_data, savings_data, config, purchase_forecast)
     raise ValueError(f"Invalid report format: {report_format}")
 
 
@@ -166,6 +168,7 @@ def generate_html_report(
     coverage_data: dict[str, Any],
     savings_data: dict[str, Any],
     config: dict[str, Any] | None = None,
+    purchase_forecast: list[dict[str, Any]] | None = None,
 ) -> str:
     """
     Generate HTML report with coverage trends and savings metrics.
@@ -174,6 +177,7 @@ def generate_html_report(
         coverage_data: Coverage data from SpendingAnalyzer
         savings_data: Savings Plans summary from savings_plans_metrics
         config: Configuration parameters used for the report
+        purchase_forecast: Forecasted purchases from Scheduler simulation
 
     Returns:
         str: HTML report content
@@ -574,87 +578,79 @@ def generate_html_report(
         </div>
 
         <div class="section">
-            <h2>Coverage Gap Analysis & Forecast</h2>
+            <h2>🔮 Next Scheduled Purchase Forecast</h2>
             <p style="color: #6c757d; font-size: 0.9em; margin-bottom: 15px;">
-                Estimated hourly commitment needed to reach target coverage levels.
-                These estimates help predict what the Scheduler might purchase on its next run.
+                <strong>This is what the Scheduler will purchase on its next run</strong> based on current configuration.
+                Strategy: <strong>{config.get("purchase_strategy_type", "unknown").upper()}</strong> |
+                Target: <strong>{config.get("coverage_target_percent", 80):.0f}%</strong> |
+                Max Purchase: <strong>{config.get("max_purchase_percent", 20):.0f}%</strong>
             </p>
 """
 
-    # Calculate gap analysis for each SP type
-    target_levels = [70, 80, 90, 95]
+    if purchase_forecast and len(purchase_forecast) > 0:
+        total_forecast_commitment = sum(p["commitment"] for p in purchase_forecast)
+        total_forecast_monthly = sum(p["monthly_cost"] for p in purchase_forecast)
 
-    for sp_type_key, sp_type_name in [
-        ("compute", "Compute"),
-        ("database", "Database"),
-        ("sagemaker", "SageMaker"),
-    ]:
-        summary = coverage_data.get(sp_type_key, {}).get("summary", {})
-        current_coverage = summary.get("avg_coverage", 0.0)
-        avg_hourly_total = summary.get("avg_hourly_total", 0.0)
+        html += f"""
+            <div style="background: #e7f3ff; padding: 15px; border-left: 4px solid #2193b0; border-radius: 4px; margin-bottom: 20px;">
+                <h3 style="margin: 0 0 10px 0; color: #003366;">📊 Purchase Summary</h3>
+                <p style="margin: 0; font-size: 0.95em;">
+                    <strong>{len(purchase_forecast)} purchase(s) planned</strong><br>
+                    <strong>Total Hourly Commitment:</strong> ${total_forecast_commitment:.2f}/hr<br>
+                    <strong>Total Monthly Cost:</strong> ${total_forecast_monthly:,.0f}/mo
+                </p>
+            </div>
 
-        if avg_hourly_total > 0:
-            html += f"""
-            <h3 style="margin-top: 15px; color: #232f3e;">{sp_type_name} Savings Plans</h3>
-            <p style="font-size: 0.9em;">
-                <strong>Current Coverage:</strong> {current_coverage:.1f}% |
-                <strong>Avg Hourly Spend:</strong> ${avg_hourly_total:.2f}/hr
-            </p>
-            <table style="margin-bottom: 20px;">
+            <table>
                 <thead>
                     <tr>
-                        <th>Target Coverage</th>
-                        <th>Gap to Fill</th>
-                        <th>Est. Hourly Commitment</th>
-                        <th>Est. Monthly Cost</th>
-                        <th>Status</th>
+                        <th>SP Type</th>
+                        <th>Current Coverage</th>
+                        <th>Target</th>
+                        <th>Planned Commitment</th>
+                        <th>Monthly Cost</th>
+                        <th>New Coverage</th>
+                        <th>Reason</th>
                     </tr>
                 </thead>
                 <tbody>
 """
-            for target in target_levels:
-                if current_coverage >= target:
-                    status = "✓ Already Met"
-                    gap = 0.0
-                    needed_commitment = 0.0
-                    monthly_cost = 0.0
-                    row_style = 'style="background-color: #d4edda;"'
-                else:
-                    gap = target - current_coverage
-                    # Calculate needed commitment: gap percentage of current on-demand spend
-                    avg_hourly_ondemand = avg_hourly_total * (1 - current_coverage / 100)
-                    # Proportionally scale the on-demand spend we need to cover
-                    needed_commitment = (
-                        avg_hourly_ondemand * (gap / (100 - current_coverage))
-                        if current_coverage < 100
-                        else 0
-                    )
-                    monthly_cost = needed_commitment * 730
-                    status = f"📈 Need {gap:.1f}%"
-                    row_style = ""
-
-                html += f"""
-                    <tr {row_style}>
-                        <td><strong>{target}%</strong></td>
-                        <td>{gap:.1f}%</td>
-                        <td class="metric">${needed_commitment:.2f}/hr</td>
-                        <td class="metric">${monthly_cost:,.0f}/mo</td>
-                        <td>{status}</td>
+        for purchase in purchase_forecast:
+            html += f"""
+                    <tr style="background-color: #fff3cd;">
+                        <td><strong>{purchase["sp_type"]}</strong></td>
+                        <td>{purchase["current_coverage"]:.1f}%</td>
+                        <td><strong>{purchase["target_coverage"]:.1f}%</strong></td>
+                        <td class="metric"><strong>${purchase["commitment"]:.2f}/hr</strong></td>
+                        <td class="metric"><strong>${purchase["monthly_cost"]:,.0f}/mo</strong></td>
+                        <td style="color: #28a745; font-weight: bold;">{purchase["new_coverage"]:.1f}%</td>
+                        <td style="font-size: 0.85em;">{purchase["reason"]}</td>
                     </tr>
 """
-            html += """
+        html += """
                 </tbody>
             </table>
+
+            <div class="info-box" style="margin-top: 15px;">
+                <strong>🎯 What This Means:</strong><br>
+                • These purchases will be <strong>queued on the next Scheduler run</strong><br>
+                • The Purchaser Lambda will then execute these purchases automatically<br>
+                • Coverage will increase from current levels to the "New Coverage" shown<br>
+                • If you see unexpected purchases, adjust the <strong>coverage_target_percent</strong> or <strong>purchase_strategy_type</strong> configuration
+            </div>
 """
+    else:
+        html += """
+            <div style="background: #d4edda; padding: 20px; border-left: 4px solid #28a745; border-radius: 4px;">
+                <h3 style="margin: 0 0 10px 0; color: #155724;">✓ No Purchases Needed</h3>
+                <p style="margin: 0;">
+                    All enabled Savings Plans types have reached or exceeded the target coverage of
+                    <strong>{:.0f}%</strong>. The Scheduler will not purchase anything on its next run.
+                </p>
+            </div>
+""".format(config.get("coverage_target_percent", 80))
 
     html += """
-            <div class="info-box" style="margin-top: 15px;">
-                <strong>💡 How to Use This Forecast:</strong><br>
-                • These estimates show the <strong>additional commitment</strong> needed to reach each target<br>
-                • The Scheduler will evaluate these gaps and purchase Savings Plans based on its configured strategy<br>
-                • Actual purchases may differ based on Scheduler settings (strategy, max purchase %, renewal windows)<br>
-                • <strong>Tip:</strong> Start with 70-80% targets for stable workloads, 90-95% for highly predictable workloads
-            </div>
         </div>
 
         <div class="section">
@@ -1194,6 +1190,7 @@ def generate_json_report(
     coverage_data: dict[str, Any],
     savings_data: dict[str, Any],
     config: dict[str, Any] | None = None,
+    purchase_forecast: list[dict[str, Any]] | None = None,
 ) -> str:
     """
     Generate JSON report with coverage trends and savings metrics.
@@ -1202,6 +1199,7 @@ def generate_json_report(
         coverage_data: Coverage data from SpendingAnalyzer
         savings_data: Savings Plans summary from savings_plans_metrics
         config: Configuration parameters used for the report
+        purchase_forecast: Forecasted purchases from Scheduler simulation
 
     Returns:
         str: JSON report content
@@ -1287,6 +1285,7 @@ def generate_csv_report(
     coverage_data: dict[str, Any],
     savings_data: dict[str, Any],
     config: dict[str, Any] | None = None,
+    purchase_forecast: list[dict[str, Any]] | None = None,
 ) -> str:
     """
     Generate CSV report with coverage trends and savings metrics.
@@ -1294,6 +1293,8 @@ def generate_csv_report(
     Args:
         coverage_data: Coverage data from SpendingAnalyzer
         savings_data: Savings Plans summary from savings_plans_metrics
+        config: Configuration parameters used for the report
+        purchase_forecast: Forecasted purchases from Scheduler simulation
 
     Returns:
         str: CSV report content

@@ -79,6 +79,37 @@ CONFIG_SCHEMA = {
         "default": "70",
         "env_var": "LOW_UTILIZATION_THRESHOLD",
     },
+    # Scheduler config for purchase forecast
+    "coverage_target_percent": {
+        "required": False,
+        "type": "float",
+        "default": "80",
+        "env_var": "COVERAGE_TARGET_PERCENT",
+    },
+    "purchase_strategy_type": {
+        "required": False,
+        "type": "str",
+        "default": "fixed",
+        "env_var": "PURCHASE_STRATEGY_TYPE",
+    },
+    "max_purchase_percent": {
+        "required": False,
+        "type": "float",
+        "default": "20",
+        "env_var": "MAX_PURCHASE_PERCENT",
+    },
+    "min_commitment_per_plan": {
+        "required": False,
+        "type": "float",
+        "default": "0.01",
+        "env_var": "MIN_COMMITMENT_PER_PLAN",
+    },
+    "renewal_window_days": {
+        "required": False,
+        "type": "int",
+        "default": "7",
+        "env_var": "RENEWAL_WINDOW_DAYS",
+    },
 }
 
 

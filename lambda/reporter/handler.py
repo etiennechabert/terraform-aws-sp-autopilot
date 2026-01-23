@@ -87,9 +87,16 @@ def handler(event: dict[str, Any], context: Any) -> dict[str, Any]:
     # Check for low utilization and alert if needed
     notifications_module.check_and_alert_low_utilization(clients["sns"], config, savings_data)
 
+    # Calculate purchase forecast (what Scheduler would buy on next run)
+    purchase_forecast = _calculate_purchase_forecast(coverage_data, config)
+    logger.info(
+        f"Purchase forecast: {len(purchase_forecast)} potential purchases "
+        f"to reach {config['coverage_target_percent']:.0f}% target"
+    )
+
     # Generate report
     report_content = report_generator.generate_report(
-        coverage_data, savings_data, config["report_format"], config
+        coverage_data, savings_data, config["report_format"], config, purchase_forecast
     )
     logger.info(
         f"Report generated ({len(report_content)} bytes, format: {config['report_format']})"
@@ -130,6 +137,105 @@ def handler(event: dict[str, Any], context: Any) -> dict[str, Any]:
             }
         ),
     }
+
+
+def _calculate_purchase_forecast(
+    coverage_data: dict[str, Any], config: dict[str, Any]
+) -> list[dict[str, Any]]:
+    """
+    Calculate what the Scheduler would purchase on its next run.
+
+    Simulates the Scheduler's purchase logic using the configured strategy
+    and target coverage to forecast upcoming purchases.
+
+    Args:
+        coverage_data: Current coverage data from SpendingAnalyzer
+        config: Configuration including coverage_target_percent, purchase_strategy_type, etc.
+
+    Returns:
+        list: Forecasted purchase plans with sp_type, commitment, monthly_cost, reason
+    """
+    target_coverage = config.get("coverage_target_percent", 80.0)
+    max_purchase_pct = config.get("max_purchase_percent", 20.0)
+    min_commitment = config.get("min_commitment_per_plan", 0.01)
+    strategy = config.get("purchase_strategy_type", "fixed")
+
+    forecast = []
+
+    for sp_type_key, sp_type_name in [
+        ("compute", "Compute"),
+        ("database", "Database"),
+        ("sagemaker", "SageMaker"),
+    ]:
+        # Check if this SP type is enabled
+        enable_key = f"enable_{sp_type_key}_sp"
+        if not config.get(enable_key, sp_type_key == "compute"):
+            continue
+
+        summary = coverage_data.get(sp_type_key, {}).get("summary", {})
+        current_coverage = summary.get("avg_coverage", 0.0)
+        avg_hourly_total = summary.get("avg_hourly_total", 0.0)
+
+        if avg_hourly_total == 0:
+            continue
+
+        # Calculate gap to target
+        if current_coverage >= target_coverage:
+            continue
+
+        gap = target_coverage - current_coverage
+
+        # Calculate commitment needed based on strategy
+        if strategy == "fixed":
+            # Fixed strategy: fill exactly to target
+            avg_hourly_ondemand = avg_hourly_total * (1 - current_coverage / 100)
+            needed_commitment = (
+                avg_hourly_ondemand * (gap / (100 - current_coverage))
+                if current_coverage < 100
+                else 0
+            )
+        elif strategy == "dichotomy":
+            # Dichotomy strategy: fill halfway to target
+            gap_to_fill = gap * 0.5
+            avg_hourly_ondemand = avg_hourly_total * (1 - current_coverage / 100)
+            needed_commitment = (
+                avg_hourly_ondemand * (gap_to_fill / (100 - current_coverage))
+                if current_coverage < 100
+                else 0
+            )
+        else:
+            # follow_aws or unknown: use AWS recommendation (simplified)
+            needed_commitment = avg_hourly_total * (gap / 100) * 0.8  # Conservative estimate
+
+        # Apply purchase limits
+        max_allowed_commitment = avg_hourly_total * (max_purchase_pct / 100)
+        needed_commitment = min(needed_commitment, max_allowed_commitment)
+
+        # Apply minimum commitment threshold
+        if needed_commitment < min_commitment:
+            continue
+
+        monthly_cost = needed_commitment * 730
+        new_coverage = current_coverage + (
+            (needed_commitment / avg_hourly_total * 100) if avg_hourly_total > 0 else 0
+        )
+
+        forecast.append(
+            {
+                "sp_type": sp_type_name,
+                "sp_type_key": sp_type_key,
+                "current_coverage": current_coverage,
+                "target_coverage": target_coverage,
+                "gap": gap,
+                "commitment": needed_commitment,
+                "monthly_cost": monthly_cost,
+                "new_coverage": min(new_coverage, 100.0),
+                "strategy": strategy,
+                "reason": f"Fill gap from {current_coverage:.1f}% to {min(new_coverage, target_coverage):.1f}%",
+            }
+        )
+
+    return forecast
 
 
 def _send_error_notification(

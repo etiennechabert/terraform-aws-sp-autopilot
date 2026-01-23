@@ -253,3 +253,5 @@ reporter.zip
 
 # Local development data
 local_data/.claude/
+.claude/
+lambda/reporter/local_data/
