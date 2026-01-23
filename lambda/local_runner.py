@@ -252,11 +252,11 @@ def main():
 
     # Run the selected Lambda
     if args.lambda_name == "scheduler":
-        result = run_scheduler(args)
+        run_scheduler(args)
     elif args.lambda_name == "purchaser":
-        result = run_purchaser(args)
+        run_purchaser(args)
     elif args.lambda_name == "reporter":
-        result = run_reporter(args)
+        run_reporter(args)
     else:
         print(f"Unknown Lambda: {args.lambda_name}")
         sys.exit(1)

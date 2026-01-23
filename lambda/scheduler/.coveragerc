@@ -1,5 +1,7 @@
 [run]
-source = .
+source =
+    .
+    ../shared
 relative_files = True
 omit =
     tests/*
