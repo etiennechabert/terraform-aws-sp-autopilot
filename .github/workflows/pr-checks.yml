@@ -441,7 +441,7 @@ jobs:
 
     env:
       AWS_DEFAULT_REGION: us-east-1
-      GO_VERSION: '1.21'
+      GO_VERSION: '1.24'
       TERRAFORM_VERSION: '1.11.0'
 
     steps:
@@ -521,7 +521,7 @@ jobs:
 
     env:
       AWS_DEFAULT_REGION: us-east-1
-      GO_VERSION: '1.21'
+      GO_VERSION: '1.24'
 
     steps:
       - name: Checkout code
