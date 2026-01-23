@@ -410,7 +410,7 @@ def test_get_aws_recommendations_lookback_period_mapping(mock_ce_client):
         },
     }
 
-    result = recommendations.get_aws_recommendations(mock_ce_client, config)
+    recommendations.get_aws_recommendations(mock_ce_client, config)
 
     # Verify the API was called with SEVEN_DAYS
     call_args = mock_ce_client.get_savings_plans_purchase_recommendation.call_args
@@ -438,7 +438,7 @@ def test_get_aws_recommendations_sixty_days_lookback(mock_ce_client):
         },
     }
 
-    result = recommendations.get_aws_recommendations(mock_ce_client, config)
+    recommendations.get_aws_recommendations(mock_ce_client, config)
 
     # Verify the API was called with SIXTY_DAYS
     call_args = mock_ce_client.get_savings_plans_purchase_recommendation.call_args

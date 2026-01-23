@@ -757,7 +757,6 @@ def generate_html_report(
         current_coverage = summary.get("avg_coverage", 0.0)
         avg_total_cost = summary.get("avg_hourly_total", 0.0)
         avg_covered_cost = summary.get("avg_hourly_covered", 0.0)
-        avg_ondemand_cost = avg_total_cost - avg_covered_cost
 
         # Get utilization for this type
         # Check if we have SP plans of this type and extract utilization

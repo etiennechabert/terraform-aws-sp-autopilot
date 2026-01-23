@@ -11,7 +11,6 @@ All tests follow TESTING.md guidelines:
 import json
 import os
 import sys
-from datetime import datetime, timedelta, timezone
 from unittest.mock import Mock, patch
 
 import pytest
@@ -249,7 +248,7 @@ def test_handler_multiple_sp_types_enabled(
         sp_type = kwargs.get("SavingsPlansType")
         if sp_type == "COMPUTE_SP":
             return aws_mock_builder.recommendation("compute", hourly_commitment=1.5)
-        elif sp_type == "DATABASE_SP":
+        if sp_type == "DATABASE_SP":
             return aws_mock_builder.recommendation("database", hourly_commitment=2.5)
         return aws_mock_builder.recommendation("compute", empty=True)
 
