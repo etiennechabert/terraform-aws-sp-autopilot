@@ -53,7 +53,9 @@ def handler(event: dict[str, Any], context: Any) -> dict[str, Any]:
     7. Upload report to storage
     8. Send email notification if enabled
     """
-    config = load_config_from_env(CONFIG_SCHEMA)
+    from shared.config_validation import validate_reporter_config
+
+    config = load_config_from_env(CONFIG_SCHEMA, validator=validate_reporter_config)
 
     clients = initialize_clients(
         config,

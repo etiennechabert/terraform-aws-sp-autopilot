@@ -210,6 +210,7 @@ def generate_html_report(
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Savings Plans Coverage & Savings Report</title>
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-annotation@3.0.1/dist/chartjs-plugin-annotation.min.js"></script>
     <style>
         body {{
             font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
@@ -501,10 +502,6 @@ def generate_html_report(
             <div class="summary-card">
                 <h3>Net Savings (30d)</h3>
                 <div class="value">${net_savings:,.0f}</div>
-            </div>
-            <div class="summary-card">
-                <h3>Savings %</h3>
-                <div class="value">{savings_percentage:.1f}%</div>
             </div>
         </div>
 
@@ -842,8 +839,55 @@ def generate_html_report(
         }}
 
         // Function to create chart for a specific type
-        function createChart(canvasId, chartData, title) {{
+        function createChart(canvasId, chartData, title, spType, showCoverageLine) {{
             const ctx = document.getElementById(canvasId);
+
+            // Build annotations array
+            const annotations = {{}};
+
+            // Only add current coverage line if requested and we have coverage
+            if (showCoverageLine && spType) {{
+                // Calculate average total cost for annotation line
+                let totalSum = 0;
+                let count = 0;
+                for (let i = 0; i < chartData.covered.length; i++) {{
+                    const total = chartData.covered[i] + chartData.ondemand[i];
+                    if (total > 0) {{
+                        totalSum += total;
+                        count++;
+                    }}
+                }}
+                const avgTotal = count > 0 ? totalSum / count : 0;
+
+                // Get metrics for this SP type
+                const metrics = metricsData[spType] || {{}};
+                const currentCoverage = metrics.current_coverage || 0;
+
+                // Calculate Y-value for coverage line
+                const currentCoverageLine = avgTotal * (currentCoverage / 100);
+
+                // Only add current coverage line if we have coverage
+                if (currentCoverage > 0) {{
+                    annotations.currentCoverage = {{
+                        type: 'line',
+                        yMin: currentCoverageLine,
+                        yMax: currentCoverageLine,
+                        borderColor: 'rgb(75, 192, 192)',
+                        borderWidth: 2,
+                        borderDash: [5, 5],
+                        label: {{
+                            display: true,
+                            content: 'Current: ' + currentCoverage.toFixed(1) + '%',
+                            position: 'start',
+                            backgroundColor: 'rgba(75, 192, 192, 0.8)',
+                            color: 'white',
+                            font: {{
+                                size: 11
+                            }}
+                        }}
+                    }};
+                }}
+            }}
 
             return new Chart(ctx, {{
                 type: 'bar',
@@ -916,6 +960,9 @@ def generate_html_report(
                                     return 'Total: $' + total.toFixed(2) + '\\nCoverage: ' + coveragePercent + '%';
                                 }}
                             }}
+                        }},
+                        annotation: {{
+                            annotations: annotations
                         }}
                     }},
                     scales: {{
@@ -1041,10 +1088,10 @@ def generate_html_report(
         }}
 
         // Create all charts
-        createChart('globalChart', allChartData.global, 'Hourly Usage: On-Demand vs Covered (All Types)');
-        createChart('computeChart', allChartData.compute, 'Compute Savings Plans - Hourly Usage');
-        createChart('databaseChart', allChartData.database, 'Database Savings Plans - Hourly Usage');
-        createChart('sagemakerChart', allChartData.sagemaker, 'SageMaker Savings Plans - Hourly Usage');
+        createChart('globalChart', allChartData.global, 'Hourly Usage: On-Demand vs Covered (All Types)', null, false);
+        createChart('computeChart', allChartData.compute, 'Compute Savings Plans - Hourly Usage', 'compute', true);
+        createChart('databaseChart', allChartData.database, 'Database Savings Plans - Hourly Usage', 'database', true);
+        createChart('sagemakerChart', allChartData.sagemaker, 'SageMaker Savings Plans - Hourly Usage', 'sagemaker', true);
 
         // Render metrics for each type
         renderMetrics('compute-metrics', metricsData.compute, 'Compute', allChartData.compute.stats);

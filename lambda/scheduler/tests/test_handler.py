@@ -431,21 +431,16 @@ def test_handler_expiring_plans_excluded_from_coverage(
 
 
 def test_handler_all_sp_types_disabled(mock_env_vars, mock_clients, monkeypatch):
-    """Test handler when all SP types are disabled."""
+    """Test handler when all SP types are disabled - should fail validation."""
     monkeypatch.setenv("ENABLE_COMPUTE_SP", "false")
     monkeypatch.setenv("ENABLE_DATABASE_SP", "false")
     monkeypatch.setenv("ENABLE_SAGEMAKER_SP", "false")
 
-    mock_clients["sqs"].purge_queue.return_value = {}
-    mock_clients["sns"].publish.return_value = {"MessageId": "test-msg"}
+    # Should raise ValueError during config validation
+    with pytest.raises(ValueError) as exc_info:
+        handler.handler({}, None)
 
-    response = handler.handler({}, None)
-
-    assert response["statusCode"] == 200
-    body = json.loads(response["body"])
-    assert body["purchases_planned"] == 0
-
-    assert not mock_clients["ce"].get_savings_plans_purchase_recommendation.called
+    assert "At least one Savings Plan type must be enabled" in str(exc_info.value)
 
 
 def test_handler_parallel_recommendation_fetching(
