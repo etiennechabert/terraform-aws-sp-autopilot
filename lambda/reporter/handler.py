@@ -145,8 +145,8 @@ def _calculate_purchase_forecast(
     """
     Calculate what the Scheduler would purchase on its next run.
 
-    Simulates the Scheduler's purchase logic using the configured strategy
-    and target coverage to forecast upcoming purchases.
+    Uses the actual scheduler strategy implementations to ensure forecasts
+    match real behavior.
 
     Args:
         coverage_data: Current coverage data from SpendingAnalyzer
@@ -155,69 +155,64 @@ def _calculate_purchase_forecast(
     Returns:
         list: Forecasted purchase plans with sp_type, commitment, monthly_cost, reason
     """
-    target_coverage = config.get("coverage_target_percent", 80.0)
-    max_purchase_pct = config.get("max_purchase_percent", 20.0)
-    min_commitment = config.get("min_commitment_per_plan", 0.01)
+    import sys
+    from pathlib import Path
+
+    # Import actual scheduler strategies
+    scheduler_path = Path(__file__).parent.parent / "scheduler"
+    if str(scheduler_path) not in sys.path:
+        sys.path.insert(0, str(scheduler_path))
+
+    from dichotomy_strategy import calculate_purchase_need_dichotomy
+    from fixed_strategy import calculate_purchase_need_fixed
+    from follow_aws_strategy import calculate_purchase_need_follow_aws
+
     strategy = config.get("purchase_strategy_type", "fixed")
 
+    # Add scheduler-specific config defaults that reporter doesn't normally have
+    scheduler_config = config.copy()
+    scheduler_config.setdefault("compute_sp_payment_option", "NO_UPFRONT")
+    scheduler_config.setdefault("database_sp_payment_option", "NO_UPFRONT")
+    scheduler_config.setdefault("sagemaker_sp_payment_option", "NO_UPFRONT")
+    scheduler_config.setdefault("compute_sp_term", "THREE_YEAR")
+    scheduler_config.setdefault("sagemaker_sp_term", "THREE_YEAR")
+    scheduler_config.setdefault("min_purchase_percent", 1.0)
+
+    # Call the actual scheduler strategy (pass spending_data directly to avoid refetching)
+    if strategy == "fixed":
+        purchase_plans = calculate_purchase_need_fixed(
+            scheduler_config, None, spending_data=coverage_data
+        )
+    elif strategy == "dichotomy":
+        purchase_plans = calculate_purchase_need_dichotomy(
+            scheduler_config, None, spending_data=coverage_data
+        )
+    elif strategy == "follow_aws":
+        purchase_plans = calculate_purchase_need_follow_aws(
+            scheduler_config, None, spending_data=coverage_data
+        )
+    else:
+        logger.warning(f"Unknown strategy '{strategy}', returning empty forecast")
+        return []
+
+    # Transform scheduler purchase plans to forecast format
     forecast = []
+    sp_type_names = {"compute": "Compute", "database": "Database", "sagemaker": "SageMaker"}
 
-    for sp_type_key, sp_type_name in [
-        ("compute", "Compute"),
-        ("database", "Database"),
-        ("sagemaker", "SageMaker"),
-    ]:
-        # Check if this SP type is enabled
-        enable_key = f"enable_{sp_type_key}_sp"
-        if not config.get(enable_key, sp_type_key == "compute"):
-            continue
+    for plan in purchase_plans:
+        sp_type_key = plan["sp_type"]
+        sp_type_name = sp_type_names.get(sp_type_key, sp_type_key.capitalize())
 
+        current_coverage = plan["details"]["coverage"]["current"]
+        target_coverage = plan["details"]["coverage"]["target"]
+        commitment = plan["hourly_commitment"]
+        monthly_cost = commitment * 730
+
+        # Calculate new coverage after this purchase
         summary = coverage_data.get(sp_type_key, {}).get("summary", {})
-        current_coverage = summary.get("avg_coverage", 0.0)
         avg_hourly_total = summary.get("avg_hourly_total", 0.0)
-
-        if avg_hourly_total == 0:
-            continue
-
-        # Calculate gap to target
-        if current_coverage >= target_coverage:
-            continue
-
-        gap = target_coverage - current_coverage
-
-        # Calculate commitment needed based on strategy
-        if strategy == "fixed":
-            # Fixed strategy: fill exactly to target
-            avg_hourly_ondemand = avg_hourly_total * (1 - current_coverage / 100)
-            needed_commitment = (
-                avg_hourly_ondemand * (gap / (100 - current_coverage))
-                if current_coverage < 100
-                else 0
-            )
-        elif strategy == "dichotomy":
-            # Dichotomy strategy: fill halfway to target
-            gap_to_fill = gap * 0.5
-            avg_hourly_ondemand = avg_hourly_total * (1 - current_coverage / 100)
-            needed_commitment = (
-                avg_hourly_ondemand * (gap_to_fill / (100 - current_coverage))
-                if current_coverage < 100
-                else 0
-            )
-        else:
-            # follow_aws or unknown: use AWS recommendation (simplified)
-            needed_commitment = avg_hourly_total * (gap / 100) * 0.8  # Conservative estimate
-
-        # Apply purchase limits
-        max_allowed_commitment = avg_hourly_total * (max_purchase_pct / 100)
-        needed_commitment = min(needed_commitment, max_allowed_commitment)
-
-        # Apply minimum commitment threshold
-        if needed_commitment < min_commitment:
-            continue
-
-        monthly_cost = needed_commitment * 730
         new_coverage = current_coverage + (
-            (needed_commitment / avg_hourly_total * 100) if avg_hourly_total > 0 else 0
+            (commitment / avg_hourly_total * 100) if avg_hourly_total > 0 else 0
         )
 
         forecast.append(
@@ -226,8 +221,8 @@ def _calculate_purchase_forecast(
                 "sp_type_key": sp_type_key,
                 "current_coverage": current_coverage,
                 "target_coverage": target_coverage,
-                "gap": gap,
-                "commitment": needed_commitment,
+                "gap": plan["details"]["coverage"]["gap"],
+                "commitment": commitment,
                 "monthly_cost": monthly_cost,
                 "new_coverage": min(new_coverage, 100.0),
                 "strategy": strategy,
