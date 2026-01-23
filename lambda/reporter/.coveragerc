@@ -1,4 +1,5 @@
 [run]
+source = .
 omit =
     tests/*
     */tests/*
@@ -16,6 +17,7 @@ omit =
     */tests/*
     test_*.py
     */test_*.py
+    shared/*
 
 exclude_lines =
     pragma: no cover
