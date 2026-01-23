@@ -436,15 +436,11 @@ def test_handler_all_sp_types_disabled(mock_env_vars, mock_clients, monkeypatch)
     monkeypatch.setenv("ENABLE_DATABASE_SP", "false")
     monkeypatch.setenv("ENABLE_SAGEMAKER_SP", "false")
 
-    mock_clients["sns"].publish.return_value = {"MessageId": "test-msg"}
+    # Should raise ValueError during config validation
+    with pytest.raises(ValueError) as exc_info:
+        handler.handler({}, None)
 
-    response = handler.handler({}, None)
-
-    assert response["statusCode"] == 500
-    assert "At least one Savings Plan type must be enabled" in response["body"]
-
-    # Verify error notification was sent
-    assert mock_clients["sns"].publish.called
+    assert "At least one Savings Plan type must be enabled" in str(exc_info.value)
 
 
 def test_handler_parallel_recommendation_fetching(
