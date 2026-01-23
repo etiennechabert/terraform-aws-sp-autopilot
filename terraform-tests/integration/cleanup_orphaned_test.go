@@ -6,6 +6,7 @@ import (
 
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/session"
+	"github.com/aws/aws-sdk-go/service/cloudwatch"
 	"github.com/aws/aws-sdk-go/service/cloudwatchevents"
 	"github.com/aws/aws-sdk-go/service/cloudwatchlogs"
 	"github.com/aws/aws-sdk-go/service/iam"
@@ -21,15 +22,16 @@ import (
 //
 // This test cleans up resources matching the pattern "sp-autopilot-test-*" including:
 //   - CloudWatch Log Groups: /aws/lambda/sp-autopilot-test-*
+//   - CloudWatch Alarms: sp-autopilot-test-*
 //   - Lambda Functions: sp-autopilot-test-*
 //   - EventBridge Rules: sp-autopilot-test-*
 //   - SQS Queues: sp-autopilot-test-*
-//   - SNS Topics: sp-autopilot-test-*
+//   - SNS Topics & Subscriptions: sp-autopilot-test-*
 //   - IAM Roles: sp-autopilot-test-* (with policy detachment)
 //   - S3 Buckets: sp-autopilot-test-* (with object deletion)
 //
 // USAGE:
-//   Automated (CI): Runs automatically before integration tests in GitHub Actions
+//   Automated (CI): Runs automatically after integration tests in GitHub Actions
 //   Manual cleanup: go test -v -run TestCleanupAllOrphanedResources -timeout 10m
 //
 // SAFETY:
@@ -49,6 +51,7 @@ func TestCleanupAllOrphanedResources(t *testing.T) {
 	}
 
 	// Cleanup all resources matching test patterns
+	cleanupAllCloudWatchAlarms(t, sess)
 	cleanupAllLogGroups(t, sess)
 	cleanupAllLambdaFunctions(t, sess)
 	cleanupAllEventBridgeRules(t, sess)
@@ -60,6 +63,49 @@ func TestCleanupAllOrphanedResources(t *testing.T) {
 	t.Log("========================================")
 	t.Log("Cleanup Complete")
 	t.Log("========================================")
+}
+
+func cleanupAllCloudWatchAlarms(t *testing.T, sess *session.Session) {
+	t.Log("\n[CloudWatch Alarms]")
+	cwClient := cloudwatch.New(sess)
+
+	// List all CloudWatch alarms
+	output, err := cwClient.DescribeAlarms(&cloudwatch.DescribeAlarmsInput{
+		AlarmNamePrefix: aws.String("sp-autopilot-test"),
+	})
+	if err != nil {
+		t.Logf("  ⚠ Failed to list CloudWatch alarms: %v", err)
+		return
+	}
+
+	if len(output.MetricAlarms) == 0 && len(output.CompositeAlarms) == 0 {
+		t.Log("  ✓ No orphaned CloudWatch alarms found")
+		return
+	}
+
+	// Delete metric alarms
+	for _, alarm := range output.MetricAlarms {
+		_, err := cwClient.DeleteAlarms(&cloudwatch.DeleteAlarmsInput{
+			AlarmNames: []*string{alarm.AlarmName},
+		})
+		if err != nil {
+			t.Logf("  ⚠ Failed to delete CloudWatch alarm %s: %v", *alarm.AlarmName, err)
+		} else {
+			t.Logf("  ✓ Deleted CloudWatch alarm: %s", *alarm.AlarmName)
+		}
+	}
+
+	// Delete composite alarms
+	for _, alarm := range output.CompositeAlarms {
+		_, err := cwClient.DeleteAlarms(&cloudwatch.DeleteAlarmsInput{
+			AlarmNames: []*string{alarm.AlarmName},
+		})
+		if err != nil {
+			t.Logf("  ⚠ Failed to delete composite alarm %s: %v", *alarm.AlarmName, err)
+		} else {
+			t.Logf("  ✓ Deleted composite alarm: %s", *alarm.AlarmName)
+		}
+	}
 }
 
 func cleanupAllLogGroups(t *testing.T, sess *session.Session) {
@@ -204,7 +250,7 @@ func cleanupAllSQSQueues(t *testing.T, sess *session.Session) {
 }
 
 func cleanupAllSNSTopics(t *testing.T, sess *session.Session) {
-	t.Log("\n[SNS Topics]")
+	t.Log("\n[SNS Topics & Subscriptions]")
 	snsClient := sns.New(sess)
 
 	// List all SNS topics
@@ -218,7 +264,21 @@ func cleanupAllSNSTopics(t *testing.T, sess *session.Session) {
 	for _, topic := range output.Topics {
 		// Only delete topics matching test pattern
 		if strings.Contains(*topic.TopicArn, "sp-autopilot-test-") {
-			_, err := snsClient.DeleteTopic(&sns.DeleteTopicInput{
+			// First, delete all subscriptions for this topic
+			subsOutput, err := snsClient.ListSubscriptionsByTopic(&sns.ListSubscriptionsByTopicInput{
+				TopicArn: topic.TopicArn,
+			})
+			if err == nil {
+				for _, sub := range subsOutput.Subscriptions {
+					_, _ = snsClient.Unsubscribe(&sns.UnsubscribeInput{
+						SubscriptionArn: sub.SubscriptionArn,
+					})
+					t.Logf("  ✓ Deleted subscription: %s", *sub.SubscriptionArn)
+				}
+			}
+
+			// Now delete the topic
+			_, err = snsClient.DeleteTopic(&sns.DeleteTopicInput{
 				TopicArn: topic.TopicArn,
 			})
 			if err != nil {
@@ -231,7 +291,7 @@ func cleanupAllSNSTopics(t *testing.T, sess *session.Session) {
 	}
 
 	if !deleted {
-		t.Log("  ✓ No orphaned SNS topics found")
+		t.Log("  ✓ No orphaned SNS topics/subscriptions found")
 	}
 }
 
