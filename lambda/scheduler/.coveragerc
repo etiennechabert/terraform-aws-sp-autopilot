@@ -2,7 +2,7 @@
 source =
     .
     ../shared
-relative_files = True
+
 omit =
     tests/*
     */tests/*
@@ -20,6 +20,9 @@ omit =
     */tests/*
     test_*.py
     */test_*.py
+
+[xml]
+output = coverage.xml
 
 exclude_lines =
     pragma: no cover
