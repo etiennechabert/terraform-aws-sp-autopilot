@@ -76,18 +76,42 @@ def _validate_positive_number(value: Any, field_name: str) -> None:
         raise ValueError(f"Field '{field_name}' must be greater than 0, got {value}")
 
 
+def _validate_non_negative_number(value: Any, field_name: str) -> None:
+    """
+    Validate that a value is a non-negative number (>= 0).
+
+    Args:
+        value: The value to validate
+        field_name: Name of the field being validated (for error messages)
+
+    Returns:
+        None (validation passes silently)
+
+    Raises:
+        ValueError: If validation fails with descriptive error message
+    """
+    if not isinstance(value, (int, float)):
+        raise ValueError(
+            f"Field '{field_name}' must be a number, got {type(value).__name__}: {value}"
+        )
+
+    if value < 0:
+        raise ValueError(f"Field '{field_name}' must be greater than or equal to 0, got {value}")
+
+
 def validate_scheduler_config(config: dict[str, Any]) -> None:
     """
     Validate scheduler configuration schema and data types.
 
     Validates:
+    - At least one SP type must be enabled
     - Coverage and purchase percentages are within valid ranges (0-100)
     - Time-based fields are positive integers
     - Minimum commitment is non-negative
     - Term values are valid (ONE_YEAR or THREE_YEAR)
     - Payment options are valid
     - Purchase strategy type is valid
-    - Logical constraints (min < max, lookback <= 13 days)
+    - Logical constraints (min < max, lookback <= 13 days based on granularity)
 
     Args:
         config: Dictionary containing scheduler configuration
@@ -100,6 +124,18 @@ def validate_scheduler_config(config: dict[str, Any]) -> None:
     """
     if not isinstance(config, dict):
         raise ValueError(f"Configuration must be a dictionary, got {type(config).__name__}")
+
+    # Validate at least one SP type is enabled
+    sp_types_enabled = [
+        config.get("enable_compute_sp", False),
+        config.get("enable_database_sp", False),
+        config.get("enable_sagemaker_sp", False),
+    ]
+    if not any(sp_types_enabled):
+        raise ValueError(
+            "At least one Savings Plan type must be enabled. "
+            "Set ENABLE_COMPUTE_SP, ENABLE_DATABASE_SP, or ENABLE_SAGEMAKER_SP to true."
+        )
 
     # Validate percentage fields (0-100 range)
     if "coverage_target_percent" in config:
@@ -157,17 +193,7 @@ def validate_scheduler_config(config: dict[str, Any]) -> None:
 
     # Validate min_commitment_per_plan is non-negative
     if "min_commitment_per_plan" in config:
-        if not isinstance(config["min_commitment_per_plan"], (int, float)):
-            raise ValueError(
-                f"Field 'min_commitment_per_plan' must be a number, "
-                f"got {type(config['min_commitment_per_plan']).__name__}: "
-                f"{config['min_commitment_per_plan']}"
-            )
-        if config["min_commitment_per_plan"] < 0:
-            raise ValueError(
-                f"Field 'min_commitment_per_plan' must be greater than or equal to 0, "
-                f"got {config['min_commitment_per_plan']}"
-            )
+        _validate_non_negative_number(config["min_commitment_per_plan"], "min_commitment_per_plan")
 
     # Validate term values
     if "compute_sp_term" in config:
@@ -202,6 +228,14 @@ def validate_scheduler_config(config: dict[str, Any]) -> None:
                 f"Must be one of: {', '.join(VALID_PAYMENT_OPTIONS)}"
             )
 
+    if "database_sp_payment_option" in config:
+        payment_option = config["database_sp_payment_option"]
+        if payment_option not in VALID_PAYMENT_OPTIONS:
+            raise ValueError(
+                f"Invalid database_sp_payment_option: '{payment_option}'. "
+                f"Must be one of: {', '.join(VALID_PAYMENT_OPTIONS)}"
+            )
+
     # Validate purchase strategy type
     if "purchase_strategy_type" in config:
         strategy_type = config["purchase_strategy_type"]
@@ -226,10 +260,13 @@ def validate_reporter_config(config: dict[str, Any]) -> None:
     Validate reporter configuration schema and data types.
 
     Validates:
-    - report_format is a valid format (html or json)
+    - At least one SP type must be enabled
+    - report_format is a valid format (html or json or csv)
     - email_reports is a boolean
     - tags is a dictionary
     - String fields are non-empty strings
+    - lookback_days is within AWS limits based on granularity
+    - low_utilization_threshold is within valid range (0-100)
 
     Args:
         config: Dictionary containing reporter configuration
@@ -242,6 +279,18 @@ def validate_reporter_config(config: dict[str, Any]) -> None:
     """
     if not isinstance(config, dict):
         raise ValueError(f"Configuration must be a dictionary, got {type(config).__name__}")
+
+    # Validate at least one SP type is enabled
+    sp_types_enabled = [
+        config.get("enable_compute_sp", False),
+        config.get("enable_database_sp", False),
+        config.get("enable_sagemaker_sp", False),
+    ]
+    if not any(sp_types_enabled):
+        raise ValueError(
+            "At least one Savings Plan type must be enabled for reporting. "
+            "Set ENABLE_COMPUTE_SP, ENABLE_DATABASE_SP, or ENABLE_SAGEMAKER_SP to true."
+        )
 
     # Validate report_format is valid
     if "report_format" in config:
@@ -269,6 +318,44 @@ def validate_reporter_config(config: dict[str, Any]) -> None:
                 f"Field 'tags' must be a dictionary, got {type(tags).__name__}: {tags}"
             )
 
+    # Validate granularity
+    if "granularity" in config:
+        granularity = config["granularity"]
+        if granularity not in VALID_GRANULARITIES:
+            raise ValueError(
+                f"Invalid granularity: '{granularity}'. "
+                f"Must be one of: {', '.join(VALID_GRANULARITIES)}"
+            )
+
+    # Validate lookback_days
+    if "lookback_days" in config:
+        _validate_positive_number(config["lookback_days"], "lookback_days")
+        if not isinstance(config["lookback_days"], int):
+            raise ValueError(
+                f"Field 'lookback_days' must be an integer, "
+                f"got {type(config['lookback_days']).__name__}: {config['lookback_days']}"
+            )
+
+        granularity = config.get("granularity", "DAILY")
+        if granularity == "HOURLY" and config["lookback_days"] > 13:
+            raise ValueError(
+                f"Field 'lookback_days' must be 13 or less for HOURLY granularity. "
+                f"AWS Cost Explorer retains hourly data for ~14 days. With 1-day processing lag, "
+                f"13 days is the maximum reliable lookback period. "
+                f"Got {config['lookback_days']}"
+            )
+        if granularity == "DAILY" and config["lookback_days"] > 90:
+            raise ValueError(
+                f"Field 'lookback_days' must be 90 or less for DAILY granularity. "
+                f"Got {config['lookback_days']}"
+            )
+
+    # Validate low_utilization_threshold if present
+    if "low_utilization_threshold" in config:
+        _validate_percentage_range(
+            config["low_utilization_threshold"], "low_utilization_threshold", 0.0, 100.0
+        )
+
     # Validate string fields are non-empty strings
     string_fields = [
         "reports_bucket",
@@ -295,6 +382,7 @@ def validate_purchaser_config(config: dict[str, Any]) -> None:
     Validates:
     - max_coverage_cap is within valid percentage range (0-100)
     - renewal_window_days is a positive integer
+    - lookback_days is a positive integer within reasonable bounds
     - tags is a dictionary
     - String fields are non-empty strings
 
@@ -322,6 +410,19 @@ def validate_purchaser_config(config: dict[str, Any]) -> None:
                 f"Field 'renewal_window_days' must be an integer, "
                 f"got {type(config['renewal_window_days']).__name__}: "
                 f"{config['renewal_window_days']}"
+            )
+
+    # Validate lookback_days is a positive integer within reasonable bounds
+    if "lookback_days" in config:
+        _validate_positive_number(config["lookback_days"], "lookback_days")
+        if not isinstance(config["lookback_days"], int):
+            raise ValueError(
+                f"Field 'lookback_days' must be an integer, "
+                f"got {type(config['lookback_days']).__name__}: {config['lookback_days']}"
+            )
+        if config["lookback_days"] > 365:
+            raise ValueError(
+                f"Field 'lookback_days' must be 365 or less. Got {config['lookback_days']}"
             )
 
     # Validate tags is a dictionary
