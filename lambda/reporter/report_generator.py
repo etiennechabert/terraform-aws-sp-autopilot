@@ -574,6 +574,90 @@ def generate_html_report(
         </div>
 
         <div class="section">
+            <h2>Coverage Gap Analysis & Forecast</h2>
+            <p style="color: #6c757d; font-size: 0.9em; margin-bottom: 15px;">
+                Estimated hourly commitment needed to reach target coverage levels.
+                These estimates help predict what the Scheduler might purchase on its next run.
+            </p>
+"""
+
+    # Calculate gap analysis for each SP type
+    target_levels = [70, 80, 90, 95]
+
+    for sp_type_key, sp_type_name in [
+        ("compute", "Compute"),
+        ("database", "Database"),
+        ("sagemaker", "SageMaker"),
+    ]:
+        summary = coverage_data.get(sp_type_key, {}).get("summary", {})
+        current_coverage = summary.get("avg_coverage", 0.0)
+        avg_hourly_total = summary.get("avg_hourly_total", 0.0)
+
+        if avg_hourly_total > 0:
+            html += f"""
+            <h3 style="margin-top: 15px; color: #232f3e;">{sp_type_name} Savings Plans</h3>
+            <p style="font-size: 0.9em;">
+                <strong>Current Coverage:</strong> {current_coverage:.1f}% |
+                <strong>Avg Hourly Spend:</strong> ${avg_hourly_total:.2f}/hr
+            </p>
+            <table style="margin-bottom: 20px;">
+                <thead>
+                    <tr>
+                        <th>Target Coverage</th>
+                        <th>Gap to Fill</th>
+                        <th>Est. Hourly Commitment</th>
+                        <th>Est. Monthly Cost</th>
+                        <th>Status</th>
+                    </tr>
+                </thead>
+                <tbody>
+"""
+            for target in target_levels:
+                if current_coverage >= target:
+                    status = "✓ Already Met"
+                    gap = 0.0
+                    needed_commitment = 0.0
+                    monthly_cost = 0.0
+                    row_style = 'style="background-color: #d4edda;"'
+                else:
+                    gap = target - current_coverage
+                    # Calculate needed commitment: gap percentage of current on-demand spend
+                    avg_hourly_ondemand = avg_hourly_total * (1 - current_coverage / 100)
+                    # Proportionally scale the on-demand spend we need to cover
+                    needed_commitment = (
+                        avg_hourly_ondemand * (gap / (100 - current_coverage))
+                        if current_coverage < 100
+                        else 0
+                    )
+                    monthly_cost = needed_commitment * 730
+                    status = f"📈 Need {gap:.1f}%"
+                    row_style = ""
+
+                html += f"""
+                    <tr {row_style}>
+                        <td><strong>{target}%</strong></td>
+                        <td>{gap:.1f}%</td>
+                        <td class="metric">${needed_commitment:.2f}/hr</td>
+                        <td class="metric">${monthly_cost:,.0f}/mo</td>
+                        <td>{status}</td>
+                    </tr>
+"""
+            html += """
+                </tbody>
+            </table>
+"""
+
+    html += """
+            <div class="info-box" style="margin-top: 15px;">
+                <strong>💡 How to Use This Forecast:</strong><br>
+                • These estimates show the <strong>additional commitment</strong> needed to reach each target<br>
+                • The Scheduler will evaluate these gaps and purchase Savings Plans based on its configured strategy<br>
+                • Actual purchases may differ based on Scheduler settings (strategy, max purchase %, renewal windows)<br>
+                • <strong>Tip:</strong> Start with 70-80% targets for stable workloads, 90-95% for highly predictable workloads
+            </div>
+        </div>
+
+        <div class="section">
             <h2>Actual Savings Summary (Last 30 Days)</h2>
 """
 
