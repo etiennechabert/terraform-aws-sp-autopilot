@@ -142,6 +142,111 @@ def format_slack_message(
     return {"attachments": [{"color": config["color"], "blocks": blocks}]}
 
 
+def format_slack_message_with_actions(
+    subject: str,
+    body_lines: list[str],
+    actions: list[dict[str, Any]],
+    severity: str = "info",
+) -> dict[str, Any]:
+    """
+    Format message for Slack with interactive action buttons.
+
+    Extends format_slack_message() to include interactive buttons for user actions
+    such as approving/rejecting purchases. Uses Slack Block Kit's actions block to
+    add clickable buttons to the message.
+
+    Args:
+        subject: Message subject/title
+        body_lines: List of message body lines to include in the message
+        actions: List of action button configurations. Each action dict should contain:
+            - 'text': Button label text (str)
+            - 'action_id': Unique identifier for the action (str)
+            - 'value': Optional value to pass with the action (str)
+            - 'style': Optional button style - 'primary' (green) or 'danger' (red) (str)
+        severity: Notification severity level ('success', 'warning', 'error', 'info')
+            Default: 'info'
+
+    Returns:
+        dict: Slack Block Kit formatted message with color-coded attachment and action buttons
+
+    Examples:
+        >>> # Purchase approval notification with Approve/Reject buttons
+        >>> actions = [
+        ...     {
+        ...         "text": "Approve",
+        ...         "action_id": "approve_purchase",
+        ...         "value": "purchase_123",
+        ...         "style": "primary"
+        ...     },
+        ...     {
+        ...         "text": "Reject",
+        ...         "action_id": "reject_purchase",
+        ...         "value": "purchase_123",
+        ...         "style": "danger"
+        ...     }
+        ... ]
+        >>> msg = format_slack_message_with_actions(
+        ...     "Pending Savings Plan Purchase",
+        ...     ["Account: 123456789012", "Amount: $5,000", "Term: 1 year"],
+        ...     actions=actions,
+        ...     severity='warning'
+        ... )
+
+    Note:
+        This function requires a Slack app with interactive components enabled.
+        Standard webhook URLs do not support interactive buttons - you must use
+        a Slack app with proper OAuth scopes and a request URL configured for
+        interactivity.
+    """
+    # Map severity to color codes and emoji indicators
+    severity_config = {
+        "success": {"color": "#36a64f", "emoji": "✅"},  # Green
+        "warning": {"color": "#ff9900", "emoji": "⚠️"},  # Orange
+        "error": {"color": "#ff0000", "emoji": "❌"},  # Red
+        "info": {"color": "#0078D4", "emoji": "ℹ️"},  # Blue  # noqa: RUF001
+    }
+
+    # Get config for severity level, default to info if invalid
+    config = severity_config.get(severity, severity_config["info"])
+
+    # Prepend emoji to subject for quick visual scanning
+    enhanced_subject = f"{config['emoji']} {subject}"
+
+    # Build blocks with header and body
+    blocks = [
+        {
+            "type": "header",
+            "text": {"type": "plain_text", "text": enhanced_subject, "emoji": True},
+        },
+        {"type": "section", "text": {"type": "mrkdwn", "text": "\n".join(body_lines)}},
+    ]
+
+    # Add actions block if actions are provided
+    if actions:
+        action_elements = []
+        for action in actions:
+            button = {
+                "type": "button",
+                "text": {"type": "plain_text", "text": action["text"], "emoji": True},
+                "action_id": action["action_id"],
+            }
+
+            # Add optional value field if provided
+            if "value" in action:
+                button["value"] = action["value"]
+
+            # Add optional style field if provided (primary or danger)
+            if "style" in action:
+                button["style"] = action["style"]
+
+            action_elements.append(button)
+
+        # Add actions block to the message
+        blocks.append({"type": "actions", "elements": action_elements})
+
+    return {"attachments": [{"color": config["color"], "blocks": blocks}]}
+
+
 def format_teams_message(subject: str, body_lines: list[str]) -> dict[str, Any]:
     """
     Format message for Microsoft Teams using MessageCard format.
