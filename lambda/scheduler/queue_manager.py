@@ -78,6 +78,9 @@ def queue_purchase_intents(
             commitment = plan.get("hourly_commitment", 0.0)
             client_token = f"scheduler-{sp_type}-{term}-{timestamp}"
 
+            # Add client_token to the plan for use in notifications
+            plan["client_token"] = client_token
+
             # Create purchase intent message
             purchase_intent = {
                 "client_token": client_token,

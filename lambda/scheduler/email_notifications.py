@@ -16,7 +16,7 @@ from botocore.exceptions import ClientError
 if TYPE_CHECKING:
     from mypy_boto3_sns.client import SNSClient
 
-from shared import local_mode
+from shared import local_mode, notifications
 
 
 # Configure logging
@@ -180,6 +180,91 @@ def send_scheduled_email(
     except ClientError as e:
         logger.error(f"Failed to send email: {e!s}")
         raise
+
+    # Send Slack notification with interactive buttons (non-fatal if it fails)
+    try:
+        slack_webhook_url = config.get("slack_webhook_url")
+        if slack_webhook_url:
+            # Format Slack message body
+            slack_body_lines = [
+                f"*Total Plans Queued:* {len(purchase_plans)}",
+                "",
+            ]
+
+            # Add coverage info if available
+            if coverage is not None:
+                slack_body_lines.extend(
+                    [
+                        "*Current Coverage:*",
+                        f"• Compute SP: {coverage.get('compute', 0):.2f}%",
+                        f"• Database SP: {coverage.get('database', 0):.2f}%",
+                        f"• SageMaker SP: {coverage.get('sagemaker', 0):.2f}%",
+                        "",
+                        f"*Target Coverage:* {config.get('coverage_target_percent', 90):.2f}%",
+                        "",
+                    ]
+                )
+
+            # Add purchase plan summary
+            slack_body_lines.append("*Scheduled Purchase Plans:*")
+            for i, plan in enumerate(purchase_plans, 1):
+                sp_type = plan.get("sp_type", "unknown")
+                hourly_commitment = plan.get("hourly_commitment", 0.0)
+                term = plan.get("term", "unknown")
+                payment_option = plan.get("payment_option", "ALL_UPFRONT")
+                annual_cost = hourly_commitment * 8760
+
+                slack_body_lines.extend(
+                    [
+                        f"{i}. *{sp_type.upper()}* Savings Plan",
+                        f"   • Hourly: ${hourly_commitment:.4f}/hour",
+                        f"   • Term: {term}",
+                        f"   • Payment: {payment_option}",
+                        f"   • Annual Cost: ${annual_cost:,.2f}",
+                        "",
+                    ]
+                )
+
+            # Create Approve/Reject buttons for each purchase plan
+            actions = []
+            for i, plan in enumerate(purchase_plans):
+                client_token = plan.get("client_token", f"unknown_{i}")
+                sp_type = plan.get("sp_type", "unknown")
+
+                # Add Approve button
+                actions.append(
+                    {
+                        "text": f"✅ Approve {sp_type.upper()} #{i+1}",
+                        "action_id": "approve_purchase",
+                        "value": client_token,
+                        "style": "primary",
+                    }
+                )
+
+                # Add Reject button
+                actions.append(
+                    {
+                        "text": f"❌ Reject {sp_type.upper()} #{i+1}",
+                        "action_id": "reject_purchase",
+                        "value": client_token,
+                        "style": "danger",
+                    }
+                )
+
+            # Format and send Slack message with interactive buttons
+            slack_message = notifications.format_slack_message_with_actions(
+                subject="Savings Plans Scheduled for Purchase",
+                body_lines=slack_body_lines,
+                actions=actions,
+                severity="warning",
+            )
+
+            if notifications.send_slack_notification(slack_webhook_url, slack_message):
+                logger.info("Slack notification with interactive buttons sent successfully")
+            else:
+                logger.warning("Slack notification failed (non-fatal)")
+    except Exception as e:
+        logger.warning(f"Slack notification error (non-fatal): {e!s}")
 
 
 def send_dry_run_email(

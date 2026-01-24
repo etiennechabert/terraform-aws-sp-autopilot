@@ -123,6 +123,11 @@ CONFIG_SCHEMA = {
         "env_var": "MANAGEMENT_ACCOUNT_ROLE_ARN",
     },
     "tags": {"required": False, "type": "json", "default": "{}", "env_var": "TAGS"},
+    "slack_webhook_url": {
+        "required": False,
+        "type": "str",
+        "env_var": "SLACK_WEBHOOK_URL",
+    },
 }
 
 
