@@ -47,6 +47,9 @@ Automates AWS Savings Plans purchases based on usage analysis, maintaining consi
 - [Testing Guide](TESTING.md)
 - [Local Development](LOCAL_DEVELOPMENT.md)
 
+**Interactive Tools:**
+- 📊 **[AWS Savings Plan Simulator](https://etiennechabert.github.io/terraform-aws-sp-autopilot/)** — Interactive cost visualization tool to explore how Savings Plans optimize costs across different load patterns
+
 ## Overview
 
 ### Key Features
