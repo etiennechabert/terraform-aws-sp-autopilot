@@ -231,6 +231,135 @@ notifications = {
 
 **Security:** Always mark webhook URLs as `sensitive = true` and store in AWS Secrets Manager or HashiCorp Vault.
 
+#### Slack Interactive Approvals
+
+Enable approve/reject buttons directly in Slack notifications, allowing team members to cancel purchases without accessing the AWS Console.
+
+**Prerequisites:**
+- Slack workspace with admin permissions
+- Module deployed with `notifications.slack_webhook` configured
+
+**Step 1: Create Slack App**
+
+1. Navigate to [Slack API Apps](https://api.slack.com/apps)
+2. Click "Create New App" → "From scratch"
+3. App Name: `AWS Savings Plans Autopilot`
+4. Select your workspace
+5. Click "Create App"
+
+**Step 2: Configure Incoming Webhooks**
+
+1. In your app settings, go to "Incoming Webhooks"
+2. Toggle "Activate Incoming Webhooks" to On
+3. Click "Add New Webhook to Workspace"
+4. Select the channel for notifications (e.g., `#finops`)
+5. Copy the webhook URL (starts with `https://hooks.slack.com/services/...`)
+6. Store securely — this is your `slack_webhook` value
+
+**Step 3: Enable Interactive Components**
+
+1. In your app settings, go to "Interactivity & Shortcuts"
+2. Toggle "Interactivity" to On
+3. **Request URL:** Use the Terraform output from your deployment:
+   ```bash
+   terraform output slack_interactive_endpoint
+   ```
+   Example: `https://abc123.execute-api.us-east-1.amazonaws.com/prod/slack/interactive`
+4. Click "Save Changes"
+
+**Step 4: Get Signing Secret**
+
+1. In your app settings, go to "Basic Information"
+2. Scroll to "App Credentials"
+3. Copy the "Signing Secret" (not the Client Secret)
+4. Store securely — this is your `slack_signing_secret` value
+
+**Step 5: Update Terraform Configuration**
+
+```hcl
+module "savings_plans" {
+  source  = "etiennechabert/sp-autopilot/aws"
+  version = "~> 1.0"
+
+  # ... other configuration ...
+
+  notifications = {
+    emails               = ["devops@example.com"]
+    slack_webhook        = var.slack_webhook_url        # From Step 2
+    slack_signing_secret = var.slack_signing_secret     # From Step 4
+  }
+}
+
+# Store secrets securely
+variable "slack_webhook_url" {
+  type      = string
+  sensitive = true
+  # Source from AWS Secrets Manager, Vault, or environment variable
+}
+
+variable "slack_signing_secret" {
+  type      = string
+  sensitive = true
+  # Source from AWS Secrets Manager, Vault, or environment variable
+}
+```
+
+**Step 6: Deploy and Test**
+
+1. Apply Terraform configuration:
+   ```bash
+   terraform apply
+   ```
+
+2. Trigger a test notification (dry-run mode recommended):
+   ```bash
+   # Scheduler Lambda will send notification with interactive buttons
+   aws lambda invoke --function-name sp-autopilot-scheduler output.json
+   ```
+
+3. Verify Slack message includes "Approve" and "Reject" buttons
+
+4. Click "Reject" on a test purchase — verify the SQS message is deleted
+
+**Security Notes:**
+- ⚠️ Never commit `slack_webhook` or `slack_signing_secret` to version control
+- ⚠️ Always use `sensitive = true` for these variables
+- ⚠️ Store in AWS Secrets Manager, HashiCorp Vault, or encrypted environment variables
+- The signing secret validates requests are genuinely from Slack (HMAC SHA256 verification)
+- API Gateway endpoint is public but only accepts signed Slack requests
+
+**Troubleshooting:**
+
+| Issue | Solution |
+|-------|----------|
+| "Invalid signature" errors | Verify `slack_signing_secret` matches app credentials exactly |
+| Buttons don't appear | Check `slack_webhook` is set and scheduler notifications enabled |
+| "Request URL failed" | Ensure API Gateway deployed and URL matches Terraform output |
+| Reject button doesn't work | Check Lambda IAM role has `sqs:DeleteMessage` permission |
+
+**Audit Trail:**
+
+All button clicks are logged to CloudWatch Logs with full user attribution:
+
+```json
+{
+  "event_type": "slack_action",
+  "action": "reject_purchase",
+  "user_id": "U123ABC456",
+  "user_name": "john.doe",
+  "team_id": "T987XYZ654",
+  "purchase_intent_id": "sp-abc123...",
+  "timestamp": "2024-01-15T14:30:00Z"
+}
+```
+
+Query CloudWatch Logs Insights:
+```
+fields @timestamp, user_name, action, purchase_intent_id
+| filter event_type = "slack_action"
+| sort @timestamp desc
+```
+
 ### Data Granularity
 
 #### HOURLY (Recommended)
