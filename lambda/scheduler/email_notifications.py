@@ -149,9 +149,10 @@ def send_scheduled_email(
         [
             "CANCELLATION INSTRUCTIONS:",
             "To cancel these purchases before they execute:",
-            "1. Purge the SQS queue to remove all pending purchase intents",
-            f"2. Queue URL: {config.get('queue_url', 'N/A')}",
-            "3. AWS CLI command:",
+            "1. Use the Slack interactive buttons (if configured) to reject individual purchases",
+            "2. OR purge the SQS queue to remove all pending purchase intents:",
+            f"   Queue URL: {config.get('queue_url', 'N/A')}",
+            "   AWS CLI command:",
             f"   aws sqs purge-queue --queue-url {config.get('queue_url', 'QUEUE_URL')}",
             "",
             "These purchases will be executed by the Purchaser Lambda.",
