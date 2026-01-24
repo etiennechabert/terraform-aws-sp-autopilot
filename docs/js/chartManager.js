@@ -122,15 +122,6 @@ const ChartManager = (function() {
                         },
                         beginAtZero: true
                     }
-                },
-                onHover: function(event, activeElements) {
-                    if (activeElements.length > 0) {
-                        const index = activeElements[0].index;
-                        if (currentHoverIndex !== index) {
-                            currentHoverIndex = index;
-                            syncCostChartHover(index);
-                        }
-                    }
                 }
             }
         });
@@ -322,15 +313,6 @@ const ChartManager = (function() {
                             drawBorder: false
                         },
                         beginAtZero: true
-                    }
-                },
-                onHover: function(event, activeElements) {
-                    if (activeElements.length > 0) {
-                        const index = activeElements[0].index;
-                        if (currentHoverIndex !== index) {
-                            currentHoverIndex = index;
-                            syncLoadChartHover(index);
-                        }
                     }
                 }
             }

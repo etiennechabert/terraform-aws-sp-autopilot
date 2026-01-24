@@ -80,6 +80,8 @@
         if (coverageSlider) {
             // Set slider max to match maxCost
             coverageSlider.max = appState.maxCost;
+            // Set step to 1% of max cost
+            coverageSlider.step = appState.maxCost / 100;
             coverageSlider.value = appState.coverageCost;
             coverageSlider.addEventListener('input', handleCoverageChange);
         }
@@ -149,6 +151,7 @@
         const coverageSlider = document.getElementById('coverage-slider');
         if (coverageSlider) {
             coverageSlider.max = appState.maxCost;
+            coverageSlider.step = appState.maxCost / 100;
             coverageSlider.value = appState.coverageCost;
         }
         updateCoverageDisplay(appState.coverageCost);
@@ -214,10 +217,11 @@
                 if (minCostInput) minCostInput.value = appState.minCost;
             }
 
-            // Update coverage slider max
+            // Update coverage slider max and step
             const coverageSlider = document.getElementById('coverage-slider');
             if (coverageSlider) {
                 coverageSlider.max = appState.maxCost;
+                coverageSlider.step = appState.maxCost / 100; // 1% of max cost
                 // Cap coverage if it exceeds new max
                 if (appState.coverageCost > appState.maxCost) {
                     appState.coverageCost = appState.maxCost;
@@ -430,8 +434,10 @@
 
         const unitsElement = document.getElementById('coverage-units');
         if (unitsElement) {
-            const percentage = appState.maxCost > 0 ? (coverageCost / appState.maxCost) * 100 : 0;
-            unitsElement.textContent = `${percentage.toFixed(1)}% of peak cost`;
+            // Calculate actual commitment cost with discount applied
+            const discountFactor = (1 - appState.savingsPercentage / 100);
+            const actualCost = coverageCost * discountFactor;
+            unitsElement.textContent = `${CostCalculator.formatCurrency(actualCost)}/hour vs ${CostCalculator.formatCurrency(coverageCost)}/hour On-Demand`;
         }
     }
 
@@ -533,8 +539,9 @@
     function updateOptimalSuggestion(results) {
         const suggestionElement = document.getElementById('optimal-suggestion');
         const textElement = document.getElementById('suggestion-text');
+        const titleElement = suggestionElement?.querySelector('.suggestion-title');
 
-        if (!suggestionElement || !textElement) return;
+        if (!suggestionElement || !textElement || !titleElement) return;
 
         // Convert current coverage cost to percentage for comparison
         const currentCoveragePercent = (appState.coverageCost / appState.maxCost) * 100;
@@ -551,6 +558,9 @@
         // Update status class
         suggestionElement.classList.remove('status-optimal', 'status-warning', 'status-danger');
         suggestionElement.classList.add(`status-${suggestion.status}`);
+
+        // Update title with optimal dollar amount
+        titleElement.textContent = `Optimal Coverage Suggestion: ${CostCalculator.formatCurrency(optimalCost)}/hour`;
 
         // Update text with dollar amounts
         let message = suggestion.message;
