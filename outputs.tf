@@ -28,6 +28,12 @@ output "sns_topic_arn" {
 }
 
 
+output "slack_interactive_endpoint" {
+  description = "API Gateway endpoint URL for Slack interactive components (use this in Slack app configuration)"
+  value       = aws_apigatewayv2_stage.slack_interactive.invoke_url
+}
+
+
 output "scheduler_lambda_arn" {
   description = "ARN of the Scheduler Lambda function"
   value       = local.lambda_scheduler_enabled ? aws_lambda_function.scheduler[0].arn : null
