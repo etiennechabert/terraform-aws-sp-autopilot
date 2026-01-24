@@ -1,0 +1,244 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="Interactive AWS Savings Plan cost optimization simulator. Visualize savings across different load patterns.">
+    <title>AWS Savings Plan Simulator | Interactive Cost Optimizer</title>
+    <link rel="stylesheet" href="css/styles.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+</head>
+<body>
+    <div class="container">
+        <!-- Header -->
+        <header class="header">
+            <div class="header-content">
+                <h1 class="title">
+                    <span class="title-icon">📊</span>
+                    AWS Savings Plan Simulator
+                </h1>
+                <p class="subtitle">
+                    Visualize and optimize your AWS compute costs with interactive Savings Plan scenarios
+                </p>
+            </div>
+        </header>
+
+        <!-- Main Content -->
+        <main class="main-content">
+
+            <!-- Section 1: Load Pattern Editor -->
+            <div class="section-header-with-toggle">
+                <div class="section-header-row">
+                    <div>
+                        <h2 class="section-title">Workload Pattern & Cost Range</h2>
+                        <p class="section-description">Define your usage pattern and hourly cost range (min-max $/hour)</p>
+                    </div>
+                    <button id="toggle-load-pattern" class="button-toggle" aria-label="Toggle load pattern section">
+                        <span class="toggle-icon">▼</span>
+                    </button>
+                </div>
+            </div>
+
+            <div id="load-pattern-content" class="collapsible-content">
+                <div class="cost-metrics-grid">
+                    <!-- Load Pattern Chart (3/4 width) -->
+                    <section class="card section-load-chart">
+                        <div class="chart-container">
+                            <canvas id="load-chart" aria-label="Weekly load pattern chart"></canvas>
+                        </div>
+                    </section>
+
+                    <!-- Load Pattern Controls (1/4 width) -->
+                    <section class="card section-load-controls">
+                        <div class="card-header">
+                            <h2 class="section-title">Pattern Settings</h2>
+                        </div>
+
+                        <div class="controls-column">
+                            <div class="control-group">
+                                <label for="pattern-select" class="control-label">Pattern Type</label>
+                                <select id="pattern-select" class="select-input">
+                                    <option value="ecommerce">E-commerce (Weekday peaks)</option>
+                                    <option value="global247">Global 24/7 (Consistent load)</option>
+                                    <option value="batch">Batch Processing (Scheduled spikes)</option>
+                                </select>
+                            </div>
+
+                            <div class="control-group">
+                                <label for="min-cost" class="control-label">
+                                    Min Cost ($/hour)
+                                    <span class="control-hint">Baseline hourly cost</span>
+                                </label>
+                                <input type="number" id="min-cost" class="number-input" value="15" min="0" max="10000" step="1">
+                            </div>
+
+                            <div class="control-group">
+                                <label for="max-cost" class="control-label">
+                                    Max Cost ($/hour)
+                                    <span class="control-hint">Peak hourly cost</span>
+                                </label>
+                                <input type="number" id="max-cost" class="number-input" value="100" min="1" max="10000" step="1">
+                            </div>
+                        </div>
+                    </section>
+                </div>
+            </div>
+
+            <!-- Section 2: Cost Comparison Chart & Metrics Grid -->
+            <div class="cost-metrics-grid">
+                <!-- Cost Comparison Chart (3/4 width) -->
+                <section class="card section-cost-comparison">
+                    <div class="card-header">
+                        <h2 class="section-title">Cost Breakdown: Coverage vs Actual Usage</h2>
+                        <p class="section-description">Move the sliders below to see how coverage and savings affect costs</p>
+                    </div>
+
+                    <div class="chart-container">
+                        <canvas id="cost-chart" aria-label="Cost comparison chart"></canvas>
+                    </div>
+
+                    <!-- Sliders in two columns directly below chart -->
+                    <div class="sliders-row">
+                        <div class="control-group">
+                            <label for="coverage-slider" class="control-label">
+                                Coverage Commitment
+                                <span class="control-value" id="coverage-display">$50/hour</span>
+                            </label>
+                            <input type="range" id="coverage-slider" class="slider" min="0" max="100" value="50" step="0.5" aria-label="Coverage commitment in dollars per hour">
+                            <div class="control-hint" id="coverage-units">50% of peak cost</div>
+                        </div>
+
+                        <div class="control-group">
+                            <label for="savings-percentage" class="control-label">
+                                Savings Percentage
+                                <span class="control-value" id="savings-display">30%</span>
+                            </label>
+                            <input type="range" id="savings-percentage" class="slider" min="0" max="99" value="30" step="1" aria-label="Savings percentage">
+                            <div class="control-hint" id="savings-rate">$0.070/hour vs $0.100/hour On-Demand</div>
+                        </div>
+                    </div>
+
+                    <!-- Color Theme & Optimal Coverage Row (2 columns) -->
+                    <div class="theme-optimal-grid">
+                        <!-- Left Column: Theme Selector -->
+                        <div class="theme-selector-group">
+                            <label for="color-theme" class="theme-label">Color Theme:</label>
+                            <select id="color-theme" class="theme-select">
+                                <option value="default">Default</option>
+                                <option value="high-contrast">High Contrast</option>
+                                <option value="protanopia">Protanopia (Red-blind)</option>
+                                <option value="tritanopia">Tritanopia (Blue-blind)</option>
+                            </select>
+                        </div>
+
+                        <!-- Right Column: Clickable Optimal Coverage Suggestion -->
+                        <div class="optimal-suggestion clickable" id="optimal-suggestion">
+                            <div class="suggestion-icon">💡</div>
+                            <div class="suggestion-content">
+                                <div class="suggestion-title">Optimal Coverage Suggestion</div>
+                                <div class="suggestion-text" id="suggestion-text">Calculating...</div>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- Weekly Cost Summary (1/4 width) -->
+                <section class="card section-metrics">
+                    <div class="card-header">
+                        <h2 class="section-title">Weekly Cost Summary</h2>
+                    </div>
+
+                    <div class="metrics-column">
+                        <div class="metric-item">
+                            <div class="metric-header">
+                                <div class="metric-value" id="metric-ondemand">$0.00</div>
+                                <div class="metric-label">Pure On-Demand Cost</div>
+                            </div>
+                        </div>
+
+                        <div class="metric-item">
+                            <div class="metric-header">
+                                <div class="metric-value" id="metric-commitment">$0.00</div>
+                                <div class="metric-label">SP Commitment Cost</div>
+                            </div>
+                            <div class="metric-subvalue" id="metric-commitment-pct">0.0% of total</div>
+                        </div>
+
+                        <div class="metric-item highlight">
+                            <div class="metric-header">
+                                <div class="metric-value" id="metric-savingsplan">$0.00</div>
+                                <div class="metric-label">Total Cost with SP</div>
+                            </div>
+                            <div class="metric-subvalue" id="metric-breakdown">(Commitment + Spillover)</div>
+                        </div>
+
+                        <div class="metric-item" id="metric-savings-container">
+                            <div class="metric-header">
+                                <div class="metric-value" id="metric-savings">$0.00</div>
+                                <div class="metric-label">Net Savings</div>
+                            </div>
+                            <div class="metric-subvalue" id="metric-savings-pct">0.0%</div>
+                        </div>
+
+                        <div class="metric-item warning">
+                            <div class="metric-header">
+                                <div class="metric-value" id="metric-spillover">$0.00</div>
+                                <div class="metric-label">Spillover Cost</div>
+                            </div>
+                            <div class="metric-subvalue" id="metric-spillover-pct">0.0% of total</div>
+                        </div>
+
+                        <div class="metric-item warning">
+                            <div class="metric-header">
+                                <div class="metric-value" id="metric-waste">$0.00</div>
+                                <div class="metric-label">Wasted Commitment</div>
+                            </div>
+                            <div class="metric-subvalue" id="metric-waste-pct">0.0% of commitment</div>
+                        </div>
+                    </div>
+
+                    <button id="share-button" class="button button-primary">
+                        <span class="button-icon">🔗</span>
+                        Share Configuration
+                    </button>
+                </section>
+            </div>
+
+        </main>
+
+        <!-- Footer -->
+        <footer class="footer">
+            <div class="footer-content">
+                <div class="footer-links">
+                    <a href="https://github.com/etiennechabert/terraform-aws-sp-autopilot" target="_blank" rel="noopener" class="footer-link">
+                        <span class="footer-link-icon">⚙️</span>
+                        Deploy with Terraform
+                    </a>
+                    <a href="https://github.com/etiennechabert/terraform-aws-sp-autopilot#readme" target="_blank" rel="noopener" class="footer-link">
+                        <span class="footer-link-icon">📖</span>
+                        Documentation
+                    </a>
+                    <a href="https://github.com/etiennechabert/terraform-aws-sp-autopilot" target="_blank" rel="noopener" class="footer-link">
+                        <span class="footer-link-icon">⭐</span>
+                        Star on GitHub
+                    </a>
+                </div>
+                <p class="footer-text">
+                    Built for the <strong>terraform-aws-sp-autopilot</strong> project
+                </p>
+            </div>
+        </footer>
+    </div>
+
+    <!-- Toast Notification -->
+    <div id="toast" class="toast" role="alert" aria-live="polite"></div>
+
+    <!-- Scripts -->
+    <script src="js/colorThemes.js"></script>
+    <script src="js/loadPatterns.js"></script>
+    <script src="js/costCalculator.js"></script>
+    <script src="js/urlState.js"></script>
+    <script src="js/chartManager.js"></script>
+    <script src="js/main.js"></script>
+</body>
+</html>
