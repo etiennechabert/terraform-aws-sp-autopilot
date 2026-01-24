@@ -109,6 +109,15 @@ variable "purchase_strategy" {
 
   validation {
     condition = (
+      var.purchase_strategy.fixed != null ?
+      var.purchase_strategy.fixed.max_purchase_percent <= 80 :
+      true
+    )
+    error_message = "Warning: fixed.max_purchase_percent > 80% is aggressive and may lead to over-commitment. Consider using a lower value to maintain flexibility for workload changes."
+  }
+
+  validation {
+    condition = (
       var.purchase_strategy.dichotomy != null ?
       (var.purchase_strategy.dichotomy.min_purchase_percent > 0 &&
         var.purchase_strategy.dichotomy.max_purchase_percent <= 100 &&
@@ -116,6 +125,15 @@ variable "purchase_strategy" {
       true
     )
     error_message = "For dichotomy strategy: 0 < min_purchase_percent < max_purchase_percent <= 100."
+  }
+
+  validation {
+    condition = (
+      var.purchase_strategy.dichotomy != null ?
+      var.purchase_strategy.dichotomy.max_purchase_percent <= 80 :
+      true
+    )
+    error_message = "Warning: dichotomy.max_purchase_percent > 80% is aggressive and may lead to over-commitment. Consider using a lower value to maintain flexibility for workload changes."
   }
 
   validation {
