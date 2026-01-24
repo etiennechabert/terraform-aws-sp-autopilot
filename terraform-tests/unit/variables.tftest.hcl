@@ -959,6 +959,112 @@ run "test_dichotomy_strategy_invalid_min_gte_max" {
   ]
 }
 
+# Test: fixed strategy - valid max_purchase_percent at 80% (limit)
+run "test_fixed_strategy_max_purchase_percent_valid_at_80" {
+  command = plan
+
+  variables {
+    purchase_strategy = {
+      coverage_target_percent = 80
+      max_coverage_cap        = 90
+      fixed = {
+        max_purchase_percent = 80
+      }
+    }
+    sp_plans = {
+      compute = {
+        enabled              = true
+        all_upfront_one_year = 1
+      }
+    }
+    notifications = {
+      emails = ["test@example.com"]
+    }
+  }
+}
+
+# Test: fixed strategy - warning at 81% (exceeds recommended maximum)
+run "test_fixed_strategy_max_purchase_percent_warning_at_81" {
+  command = plan
+
+  variables {
+    purchase_strategy = {
+      coverage_target_percent = 80
+      max_coverage_cap        = 90
+      fixed = {
+        max_purchase_percent = 81
+      }
+    }
+    sp_plans = {
+      compute = {
+        enabled              = true
+        all_upfront_one_year = 1
+      }
+    }
+    notifications = {
+      emails = ["test@example.com"]
+    }
+  }
+
+  expect_failures = [
+    var.purchase_strategy,
+  ]
+}
+
+# Test: dichotomy strategy - valid max_purchase_percent at 80% (limit)
+run "test_dichotomy_strategy_max_purchase_percent_valid_at_80" {
+  command = plan
+
+  variables {
+    purchase_strategy = {
+      coverage_target_percent = 80
+      max_coverage_cap        = 90
+      dichotomy = {
+        max_purchase_percent = 80
+        min_purchase_percent = 30
+      }
+    }
+    sp_plans = {
+      compute = {
+        enabled              = true
+        all_upfront_one_year = 1
+      }
+    }
+    notifications = {
+      emails = ["test@example.com"]
+    }
+  }
+}
+
+# Test: dichotomy strategy - warning at 81% (exceeds recommended maximum)
+run "test_dichotomy_strategy_max_purchase_percent_warning_at_81" {
+  command = plan
+
+  variables {
+    purchase_strategy = {
+      coverage_target_percent = 80
+      max_coverage_cap        = 90
+      dichotomy = {
+        max_purchase_percent = 81
+        min_purchase_percent = 30
+      }
+    }
+    sp_plans = {
+      compute = {
+        enabled              = true
+        all_upfront_one_year = 1
+      }
+    }
+    notifications = {
+      emails = ["test@example.com"]
+    }
+  }
+
+  expect_failures = [
+    var.purchase_strategy,
+  ]
+}
+
 # ============================================================================
 # Notifications - Variable Validations
 # ============================================================================
