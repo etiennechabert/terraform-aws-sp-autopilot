@@ -70,6 +70,11 @@ variable "purchase_strategy" {
   }
 
   validation {
+    condition     = var.purchase_strategy.coverage_target_percent <= 95
+    error_message = "Warning: coverage_target_percent > 95% may lead to over-commitment and reduced flexibility. Consider using a lower target to maintain cost optimization headroom."
+  }
+
+  validation {
     condition     = var.purchase_strategy.max_coverage_cap <= 100
     error_message = "max_coverage_cap must be less than or equal to 100."
   }
