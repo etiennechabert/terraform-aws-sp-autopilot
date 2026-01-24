@@ -140,7 +140,69 @@ const CostCalculator = (function() {
     }
 
     /**
+     * Calculate net savings at different coverage levels for graphing
+     * @param {Array<number>} hourlyCosts - Actual hourly costs ($/hour)
+     * @param {number} savingsPercentage - Savings percentage (0-99)
+     * @returns {Object} Savings curve data with coverage levels and corresponding savings
+     */
+    function calculateSavingsCurve(hourlyCosts, savingsPercentage) {
+        const minCost = Math.min(...hourlyCosts);
+        const maxCost = Math.max(...hourlyCosts);
+        const baselineCost = hourlyCosts.reduce((sum, cost) => sum + cost, 0);
+        const discountFactor = (1 - savingsPercentage / 100);
+
+        // Calculate savings at min-hourly (100% baseline)
+        const minHourlySavings = minCost * hourlyCosts.length * (savingsPercentage / 100);
+
+        const savingsCurve = [];
+        const rangeToTest = maxCost - minCost;
+        if (rangeToTest === 0) {
+            return {
+                curve: [{ coverage: minCost, netSavings: minHourlySavings, extraSavings: 0 }],
+                minHourly: minCost,
+                minHourlySavings: minHourlySavings
+            };
+        }
+
+        const increment = rangeToTest / 100;
+
+        for (let coverageCost = minCost; coverageCost <= maxCost; coverageCost += increment) {
+            let commitmentCost = 0;
+            let spilloverCost = 0;
+
+            for (let hour = 0; hour < hourlyCosts.length; hour++) {
+                const onDemandCost = hourlyCosts[hour];
+                commitmentCost += coverageCost * discountFactor;
+                spilloverCost += Math.max(0, onDemandCost - coverageCost);
+            }
+
+            const totalCost = commitmentCost + spilloverCost;
+            const netSavings = baselineCost - totalCost;
+            const extraSavings = netSavings - minHourlySavings; // Savings beyond min-hourly baseline
+
+            savingsCurve.push({
+                coverage: coverageCost,
+                netSavings: netSavings,
+                extraSavings: extraSavings,
+                percentOfMin: (coverageCost / minCost) * 100
+            });
+        }
+
+        return {
+            curve: savingsCurve,
+            minHourly: minCost,
+            minHourlySavings: minHourlySavings
+        };
+    }
+
+    /**
      * Calculate optimal coverage level to maximize net savings
+     *
+     * IMPORTANT: This JavaScript implementation must stay in sync with
+     * lambda/shared/optimal_coverage.py::calculate_optimal_coverage()
+     * Any changes to the algorithm must be applied to both implementations.
+     * Cross-language unit tests verify consistency.
+     *
      * @param {Array<number>} hourlyCosts - Actual hourly costs ($/hour)
      * @param {number} savingsPercentage - Savings percentage (0-99)
      * @returns {Object} Optimal coverage recommendation
@@ -149,21 +211,39 @@ const CostCalculator = (function() {
         // Sort costs to analyze percentiles
         const sortedCosts = [...hourlyCosts].sort((a, b) => a - b);
         const maxCost = Math.max(...hourlyCosts);
+        const minCost = Math.min(...hourlyCosts);
 
         const discountFactor = (1 - savingsPercentage / 100);
 
         let bestNetSavings = -Infinity;
-        let bestCoverage = 0;
+        let bestCoverage = minCost; // Start at min-hourly as baseline
         let bestCoveragePercentage = 0;
 
-        // Test coverage levels from $0 to max cost in small increments
-        const increment = maxCost / 100; // Test 100 different coverage levels
+        // Calculate savings at min-hourly baseline
+        const minHourlySavings = minCost * hourlyCosts.length * (savingsPercentage / 100);
 
-        for (let coverageCost = 0; coverageCost <= maxCost; coverageCost += increment) {
+        // Test coverage levels from min to max (min is always safe)
+        const rangeToTest = maxCost - minCost;
+        if (rangeToTest === 0) {
+            // All costs are the same, optimal is at min (= max)
+            const totalCost = hourlyCosts.reduce((sum, cost) => sum + cost, 0);
+            return {
+                coverageUnits: minCost,
+                coveragePercentage: 100.0,
+                maxNetSavings: totalCost * (savingsPercentage / 100),
+                minHourlySavings: minHourlySavings,
+                extraSavings: 0,
+                percentiles: { p50: 100.0, p75: 100.0, p90: 100.0 }
+            };
+        }
+
+        const increment = rangeToTest / 100; // Test 100 different coverage levels
+
+        for (let coverageCost = minCost; coverageCost <= maxCost; coverageCost += increment) {
             let commitmentCost = 0;
             let spilloverCost = 0;
 
-            for (let hour = 0; hour < 168; hour++) {
+            for (let hour = 0; hour < hourlyCosts.length; hour++) {
                 const onDemandCost = hourlyCosts[hour];
 
                 // Full commitment cost (at discounted rate)
@@ -187,6 +267,9 @@ const CostCalculator = (function() {
             }
         }
 
+        // Calculate extra savings beyond min-hourly
+        const extraSavings = bestNetSavings - minHourlySavings;
+
         // Calculate percentile-based recommendations
         const p50 = sortedCosts[Math.floor(sortedCosts.length * 0.50)];
         const p75 = sortedCosts[Math.floor(sortedCosts.length * 0.75)];
@@ -196,6 +279,9 @@ const CostCalculator = (function() {
             coverageUnits: bestCoverage,  // Now in $/hour
             coveragePercentage: bestCoveragePercentage,
             maxNetSavings: bestNetSavings,
+            minHourlySavings: minHourlySavings,  // Baseline savings at min-hourly
+            extraSavings: extraSavings,  // Additional savings beyond min-hourly
+            minCost: minCost,  // For reference
             percentiles: {
                 p50: maxCost > 0 ? (p50 / maxCost) * 100 : 0,
                 p75: maxCost > 0 ? (p75 / maxCost) * 100 : 0,
@@ -296,6 +382,7 @@ const CostCalculator = (function() {
     return {
         calculateCosts,
         calculateOptimalCoverage,
+        calculateSavingsCurve,
         getOptimizationSuggestion,
         formatCurrency,
         formatPercentage,

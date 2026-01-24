@@ -8,8 +8,18 @@ from __future__ import annotations
 
 import json
 import logging
+import sys
 from datetime import UTC, datetime, timedelta
+from pathlib import Path
 from typing import Any
+
+
+# Add shared directory to path
+shared_dir = Path(__file__).parent.parent / "shared"
+if str(shared_dir) not in sys.path:
+    sys.path.insert(0, str(shared_dir))
+
+from optimal_coverage import calculate_optimal_coverage  # noqa: E402
 
 
 logger = logging.getLogger(__name__)
@@ -45,16 +55,18 @@ def generate_report(
     raise ValueError(f"Invalid report format: {report_format}")
 
 
-def _prepare_chart_data(coverage_data: dict[str, Any]) -> str:
+def _prepare_chart_data(coverage_data: dict[str, Any], savings_data: dict[str, Any], config: dict[str, Any] | None = None) -> tuple[str, dict[str, Any]]:
     """
     Prepare chart data from coverage timeseries for Chart.js visualization.
 
     Args:
         coverage_data: Coverage data from SpendingAnalyzer with timeseries
+        config: Configuration dict with savings_percentage (default: 30)
 
     Returns:
-        str: JSON string with chart data for all tabs (global, compute, database, sagemaker)
+        tuple: (JSON string with chart data, dict with optimal coverage results)
     """
+    config = config or {}
     # Build timeseries maps for each SP type and global aggregate
     timeseries_maps = {
         "global": {},
@@ -159,7 +171,46 @@ def _prepare_chart_data(coverage_data: dict[str, Any]) -> str:
         "sagemaker": build_chart_data_for_type("sagemaker"),
     }
 
-    return json.dumps(all_chart_data)
+    # Calculate optimal coverage per SP type
+    # IMPORTANT: This Python implementation must stay in sync with
+    # docs/js/costCalculator.js::calculateOptimalCoverage()
+    # Any changes to the algorithm must be applied to both implementations.
+
+    # Get actual savings percentage from real AWS data (from Utilization API)
+    # This is the actual discount the user is getting across all their SPs
+    actual_savings = savings_data.get("actual_savings", {})
+    actual_savings_pct = actual_savings.get("savings_percentage", 0.0)
+
+    # Use actual savings if available, otherwise fall back to configured/default
+    savings_percentage = actual_savings_pct if actual_savings_pct > 0 else config.get("savings_percentage", 30.0)
+
+    logger.info(f"Using savings percentage for optimization: {savings_percentage:.1f}%")
+
+    optimal_results = {
+        "savings_percentage_used": savings_percentage,  # Include this so GH-Page knows what was used
+    }
+
+    for sp_type in ["global", "compute", "database", "sagemaker"]:
+        type_data = all_chart_data[sp_type]
+
+        if type_data["covered"] and type_data["ondemand"]:
+            # Calculate total hourly costs (covered + ondemand)
+            hourly_costs = [
+                covered + ondemand
+                for covered, ondemand in zip(type_data["covered"], type_data["ondemand"], strict=True)
+            ]
+
+            # Only calculate if we have meaningful data
+            if hourly_costs and max(hourly_costs) > 0:
+                try:
+                    optimal_results[sp_type] = calculate_optimal_coverage(
+                        hourly_costs, savings_percentage
+                    )
+                except Exception as e:
+                    logger.warning(f"Failed to calculate optimal coverage for {sp_type}: {e}")
+                    optimal_results[sp_type] = {}
+
+    return json.dumps(all_chart_data), optimal_results
 
 
 def generate_html_report(
@@ -211,6 +262,7 @@ def generate_html_report(
     <title>Savings Plans Coverage & Savings Report</title>
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-annotation@3.0.1/dist/chartjs-plugin-annotation.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/pako@2.1.0/dist/pako.min.js"></script>
     <style>
         body {{
             font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
@@ -451,6 +503,31 @@ def generate_html_report(
         }}
         .info-box strong {{
             color: #003366;
+        }}
+        .simulator-cta {{
+            margin-top: 15px;
+            text-align: center;
+        }}
+        .simulator-button {{
+            display: inline-block;
+            padding: 12px 24px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            text-decoration: none;
+            border-radius: 6px;
+            font-weight: 600;
+            font-size: 1em;
+            transition: transform 0.2s, box-shadow 0.2s;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        }}
+        .simulator-button:hover {{
+            transform: translateY(-2px);
+            box-shadow: 0 6px 12px rgba(0,0,0,0.15);
+        }}
+        .simulator-description {{
+            margin-top: 10px;
+            font-size: 0.85em;
+            color: #856404;
         }}
         .params-grid {{
             display: grid;
@@ -736,8 +813,8 @@ def generate_html_report(
     </div>
 """
 
-    # Prepare chart data from coverage timeseries
-    chart_data = _prepare_chart_data(coverage_data)
+    # Prepare chart data from coverage timeseries and calculate optimal coverage
+    chart_data, optimal_coverage_results = _prepare_chart_data(coverage_data, savings_data, config)
 
     # Extract per-type metrics
     compute_summary = coverage_data.get("compute", {}).get("summary", {})
@@ -814,10 +891,13 @@ def generate_html_report(
         {"compute": compute_metrics, "database": database_metrics, "sagemaker": sagemaker_metrics}
     )
 
+    optimal_coverage_json = json.dumps(optimal_coverage_results) if optimal_coverage_results else "{}"
+
     html += f"""
     <script>
         const allChartData = {chart_data};
         const metricsData = {metrics_json};
+        const optimalCoverageFromPython = {optimal_coverage_json};
 
         // Tab switching function
         function switchTab(tabName) {{
@@ -991,7 +1071,7 @@ def generate_html_report(
         }}
 
         // Function to render metrics for a specific type
-        function renderMetrics(containerId, metrics, typeName, stats) {{
+        function renderMetrics(containerId, metrics, typeName, stats, typeKey) {{
             const container = document.getElementById(containerId);
 
             // Determine utilization color class
@@ -1004,22 +1084,38 @@ def generate_html_report(
 
             let optimizationHtml = '';
             if (stats && Object.keys(stats).length > 0) {{
-                // Calculate optimal coverage recommendation based on percentiles
-                const range = stats.max - stats.min;
-                const variability = (range / stats.max * 100).toFixed(0);
+                // Calculate total hourly costs (covered + ondemand) for THIS TYPE ONLY
+                const typeData = allChartData[typeKey];
+                const hourlyCosts = typeData.covered.map((c, i) =>
+                    (c + typeData.ondemand[i])
+                );
 
-                let recommendation = '';
-                if (variability < 20) {{
-                    recommendation = `Low variability (${{variability}}%). Consider covering close to P95 (${{stats.p95}}/hr) for maximum savings with minimal risk.`;
-                }} else if (variability < 40) {{
-                    recommendation = `Moderate variability (${{variability}}%). Consider covering P75-P90 (${{stats.p75}}-${{stats.p90}}/hr) to balance savings and risk.`;
-                }} else {{
-                    recommendation = `High variability (${{variability}}%). Consider covering P50-P75 (${{stats.p50}}-${{stats.p75}}/hr) to avoid over-commitment during low usage periods.`;
-                }}
+                // Prepare usage data for simulator
+                // Include optimal coverage calculated by Python for validation (type-specific)
+                const typeOptimal = optimalCoverageFromPython[typeKey] || {{}};
+                const savingsPercentage = optimalCoverageFromPython.savings_percentage_used || 30;
+                const usageData = {{
+                    hourly_costs: hourlyCosts,
+                    stats: stats,
+                    current_coverage: metrics.current_coverage,
+                    optimal_from_python: typeOptimal,
+                    sp_type: typeName,  // Indicate which SP type this data is for
+                    savings_percentage: savingsPercentage  // Actual discount from user's SPs
+                }};
+
+                // Compress and encode for URL
+                const compressed = pako.deflate(JSON.stringify(usageData));
+                const base64 = btoa(String.fromCharCode.apply(null, compressed));
+
+                // Use relative path for local development, remote URL for production
+                const baseUrl = window.location.protocol === 'file:'
+                    ? '../../../../docs/index.html'  // Relative: lambda/reporter/local_data/reports → root/docs
+                    : 'https://etiennechabert.github.io/terraform-aws-sp-autopilot/';
+                const simulatorUrl = `${{baseUrl}}?usage=${{encodeURIComponent(base64)}}`;
 
                 optimizationHtml = `
                     <div class="optimization-section">
-                        <h4>📊 Coverage Optimization Guide</h4>
+                        <h4>📊 Hourly Usage Statistics</h4>
                         <div class="percentile-grid">
                             <div class="percentile-item">
                                 <div class="percentile-label">Min Hourly</div>
@@ -1046,18 +1142,14 @@ def generate_html_report(
                                 <div class="percentile-value">${{stats.max}}</div>
                             </div>
                         </div>
-                        <div class="recommendation">
-                            <strong>💡 Recommendation:</strong> ${{recommendation}}
-                        </div>
-                        <div class="info-box">
-                            <strong>📘 How to Choose Your Coverage Level:</strong><br>
-                            Savings Plans commit you to a $/hr rate in exchange for a discount (typically 30-40%).
-                            You save money when actual usage exceeds your commitment, but lose money when usage drops below it.<br><br>
-                            <strong>Decision factors:</strong><br>
-                            • <strong>Higher discount (35-40%):</strong> Can commit more aggressively (P90-P95) - the discount cushions you during low usage<br>
-                            • <strong>Lower discount (20-30%):</strong> Be conservative (P50-P75) - less margin for error if usage drops<br>
-                            • <strong>Break-even example:</strong> With 35% discount, you break even if usage is >65% of commitment.
-                            Covering P75 means 75% of hours exceed this level = profitable most of the time.
+                        <div class="simulator-cta">
+                            <a href="${{simulatorUrl}}" target="_blank" class="simulator-button">
+                                🎯 Optimize Your Coverage with Interactive Simulator
+                            </a>
+                            <p class="simulator-description">
+                                Use our interactive tool to find the optimal coverage level based on your actual usage patterns.
+                                Your hourly data has been pre-loaded for analysis.
+                            </p>
                         </div>
                     </div>
                 `;
@@ -1094,9 +1186,9 @@ def generate_html_report(
         createChart('sagemakerChart', allChartData.sagemaker, 'SageMaker Savings Plans - Hourly Usage', 'sagemaker', true);
 
         // Render metrics for each type
-        renderMetrics('compute-metrics', metricsData.compute, 'Compute', allChartData.compute.stats);
-        renderMetrics('database-metrics', metricsData.database, 'Database', allChartData.database.stats);
-        renderMetrics('sagemaker-metrics', metricsData.sagemaker, 'SageMaker', allChartData.sagemaker.stats);
+        renderMetrics('compute-metrics', metricsData.compute, 'Compute', allChartData.compute.stats, 'compute');
+        renderMetrics('database-metrics', metricsData.database, 'Database', allChartData.database.stats, 'database');
+        renderMetrics('sagemaker-metrics', metricsData.sagemaker, 'SageMaker', allChartData.sagemaker.stats, 'sagemaker');
     </script>
 </body>
 </html>
