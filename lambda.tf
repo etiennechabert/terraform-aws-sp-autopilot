@@ -121,6 +121,36 @@ resource "aws_lambda_function" "reporter" {
   tags = local.common_tags
 }
 
+resource "aws_lambda_function" "interactive_handler" {
+  count = local.lambda_interactive_handler_enabled ? 1 : 0
+
+  function_name = "${local.module_name}-interactive-handler"
+  description   = "Handles Slack interactive button actions for purchase approvals"
+
+  # Deploy actual Lambda code with proper configuration
+  role    = aws_iam_role.interactive_handler[0].arn
+  handler = "handler.handler"
+  runtime = "python3.14"
+
+  # Performance configuration
+  memory_size = local.lambda_interactive_handler_memory_size
+  timeout     = local.lambda_interactive_handler_timeout
+
+  # Deploy actual Lambda code from lambda/interactive_handler directory
+  filename         = data.archive_file.interactive_handler.output_path
+  source_code_hash = data.archive_file.interactive_handler.output_base64sha256
+
+
+  environment {
+    variables = {
+      QUEUE_URL            = aws_sqs_queue.purchase_intents.url
+      SLACK_SIGNING_SECRET = local.slack_signing_secret
+    }
+  }
+
+  tags = local.common_tags
+}
+
 
 data "archive_file" "scheduler" {
   type             = "zip"
@@ -279,6 +309,68 @@ data "archive_file" "reporter" {
   source {
     content  = file("${path.module}/lambda/reporter/config.py")
     filename = "config.py"
+  }
+
+  # Include shared module
+  source {
+    content  = file("${path.module}/lambda/shared/handler_utils.py")
+    filename = "shared/handler_utils.py"
+  }
+  source {
+    content  = file("${path.module}/lambda/shared/aws_utils.py")
+    filename = "shared/aws_utils.py"
+  }
+  source {
+    content  = file("${path.module}/lambda/shared/local_mode.py")
+    filename = "shared/local_mode.py"
+  }
+  source {
+    content  = file("${path.module}/lambda/shared/queue_adapter.py")
+    filename = "shared/queue_adapter.py"
+  }
+  source {
+    content  = file("${path.module}/lambda/shared/storage_adapter.py")
+    filename = "shared/storage_adapter.py"
+  }
+  source {
+    content  = file("${path.module}/lambda/shared/notifications.py")
+    filename = "shared/notifications.py"
+  }
+  source {
+    content  = file("${path.module}/lambda/shared/config_validation.py")
+    filename = "shared/config_validation.py"
+  }
+  source {
+    content  = file("${path.module}/lambda/shared/__init__.py")
+    filename = "shared/__init__.py"
+  }
+}
+
+data "archive_file" "interactive_handler" {
+  type             = "zip"
+  output_path      = "${path.module}/interactive_handler.zip"
+  output_file_mode = "0666"
+
+  # Include function code at root
+  source {
+    content  = file("${path.module}/lambda/interactive_handler/handler.py")
+    filename = "handler.py"
+  }
+  source {
+    content  = file("${path.module}/lambda/interactive_handler/config.py")
+    filename = "config.py"
+  }
+  source {
+    content  = file("${path.module}/lambda/interactive_handler/slack_signature.py")
+    filename = "slack_signature.py"
+  }
+  source {
+    content  = file("${path.module}/lambda/interactive_handler/audit_logger.py")
+    filename = "audit_logger.py"
+  }
+  source {
+    content  = file("${path.module}/lambda/interactive_handler/__init__.py")
+    filename = "__init__.py"
   }
 
   # Include shared module

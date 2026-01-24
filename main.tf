@@ -25,9 +25,10 @@ locals {
 
   # Lambda Enable Flags
 
-  lambda_scheduler_enabled = try(var.lambda_config.scheduler.enabled, true)
-  lambda_purchaser_enabled = try(var.lambda_config.purchaser.enabled, true)
-  lambda_reporter_enabled  = try(var.lambda_config.reporter.enabled, true)
+  lambda_scheduler_enabled          = try(var.lambda_config.scheduler.enabled, true)
+  lambda_purchaser_enabled          = try(var.lambda_config.purchaser.enabled, true)
+  lambda_reporter_enabled           = try(var.lambda_config.reporter.enabled, true)
+  lambda_interactive_handler_enabled = try(var.lambda_config.interactive_handler.enabled, true)
 
   # Per-Lambda error alarm flags
   lambda_scheduler_error_alarm_enabled = try(var.lambda_config.scheduler.error_alarm, true)
@@ -144,6 +145,9 @@ locals {
   lambda_reporter_memory_size     = try(var.lambda_config.reporter.memory_mb, 128)
   lambda_reporter_timeout         = try(var.lambda_config.reporter.timeout, 300)
   lambda_reporter_assume_role_arn = try(var.lambda_config.reporter.assume_role_arn, null)
+
+  lambda_interactive_handler_memory_size = try(var.lambda_config.interactive_handler.memory_mb, 128)
+  lambda_interactive_handler_timeout     = try(var.lambda_config.interactive_handler.timeout, 30)
 
   # Purchase Strategy Settings (extract from nested object)
 
