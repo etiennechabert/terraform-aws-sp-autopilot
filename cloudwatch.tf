@@ -42,6 +42,20 @@ resource "aws_cloudwatch_log_group" "reporter" {
   )
 }
 
+resource "aws_cloudwatch_log_group" "interactive_handler" {
+  count = local.lambda_interactive_handler_enabled ? 1 : 0
+
+  name              = "/aws/lambda/${local.module_name}-interactive-handler"
+  retention_in_days = 30
+
+  tags = merge(
+    local.common_tags,
+    {
+      Name = "${local.module_name}-interactive-handler-logs"
+    }
+  )
+}
+
 resource "aws_cloudwatch_metric_alarm" "scheduler_error_alarm" {
   count = local.lambda_scheduler_enabled && local.lambda_scheduler_error_alarm_enabled ? 1 : 0
 

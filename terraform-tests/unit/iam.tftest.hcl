@@ -1248,3 +1248,253 @@ run "test_reporter_assume_role_policy_created" {
     error_message = "Reporter assume role policy should reference correct management account role ARN"
   }
 }
+
+# ============================================================================
+# Interactive Handler Lambda IAM Role Tests
+# ============================================================================
+
+# Test: Interactive Handler IAM role naming follows expected pattern
+run "test_interactive_handler_role_naming" {
+  command = plan
+
+  variables {
+    purchase_strategy = {
+      coverage_target_percent = 80
+      max_coverage_cap        = 90
+      simple = {
+        max_purchase_percent = 5
+      }
+    }
+    sp_plans = {
+      compute = {
+        enabled              = true
+        all_upfront_one_year = 1
+      }
+    }
+    notifications = {
+      emails = ["test@example.com"]
+    }
+  }
+
+  assert {
+    condition     = aws_iam_role.interactive_handler[0].name == "sp-autopilot-interactive-handler"
+    error_message = "Interactive Handler IAM role name should follow pattern: sp-autopilot-interactive-handler"
+  }
+
+  assert {
+    condition     = aws_iam_role.interactive_handler[0].description == "IAM role for Interactive Handler Lambda function - processes Slack interactive button actions"
+    error_message = "Interactive Handler IAM role should have correct description"
+  }
+}
+
+# Test: Interactive Handler IAM role assume role policy
+run "test_interactive_handler_role_assume_policy" {
+  command = plan
+
+  variables {
+    purchase_strategy = {
+      coverage_target_percent = 80
+      max_coverage_cap        = 90
+      simple = {
+        max_purchase_percent = 5
+      }
+    }
+    sp_plans = {
+      compute = {
+        enabled              = true
+        all_upfront_one_year = 1
+      }
+    }
+    notifications = {
+      emails = ["test@example.com"]
+    }
+  }
+
+  assert {
+    condition     = can(jsondecode(aws_iam_role.interactive_handler[0].assume_role_policy))
+    error_message = "Interactive Handler IAM role assume role policy should be valid JSON"
+  }
+
+  assert {
+    condition     = jsondecode(aws_iam_role.interactive_handler[0].assume_role_policy).Statement[0].Principal.Service == "lambda.amazonaws.com"
+    error_message = "Interactive Handler IAM role should allow Lambda service to assume it"
+  }
+
+  assert {
+    condition     = jsondecode(aws_iam_role.interactive_handler[0].assume_role_policy).Statement[0].Action == "sts:AssumeRole"
+    error_message = "Interactive Handler IAM role should allow sts:AssumeRole action"
+  }
+}
+
+# Test: Interactive Handler IAM role tags include common tags
+run "test_interactive_handler_role_tags" {
+  command = plan
+
+  variables {
+    purchase_strategy = {
+      coverage_target_percent = 80
+      max_coverage_cap        = 90
+      simple = {
+        max_purchase_percent = 5
+      }
+    }
+    sp_plans = {
+      compute = {
+        enabled              = true
+        all_upfront_one_year = 1
+      }
+    }
+    notifications = {
+      emails = ["test@example.com"]
+    }
+    tags = {
+      Environment = "test"
+      Owner       = "platform-team"
+    }
+  }
+
+  assert {
+    condition     = aws_iam_role.interactive_handler[0].tags["ManagedBy"] == "terraform-aws-sp-autopilot"
+    error_message = "Interactive Handler IAM role should have ManagedBy tag"
+  }
+
+  assert {
+    condition     = aws_iam_role.interactive_handler[0].tags["Module"] == "savings-plans-automation"
+    error_message = "Interactive Handler IAM role should have Module tag"
+  }
+
+  assert {
+    condition     = aws_iam_role.interactive_handler[0].tags["Name"] == "sp-autopilot-interactive-handler-role"
+    error_message = "Interactive Handler IAM role should have Name tag"
+  }
+
+  assert {
+    condition     = aws_iam_role.interactive_handler[0].tags["Environment"] == "test"
+    error_message = "Interactive Handler IAM role should include custom tags from variables"
+  }
+}
+
+# Test: Interactive Handler CloudWatch Logs policy
+run "test_interactive_handler_cloudwatch_logs_policy" {
+  command = plan
+
+  variables {
+    purchase_strategy = {
+      coverage_target_percent = 80
+      max_coverage_cap        = 90
+      simple = {
+        max_purchase_percent = 5
+      }
+    }
+    sp_plans = {
+      compute = {
+        enabled              = true
+        all_upfront_one_year = 1
+      }
+    }
+    notifications = {
+      emails = ["test@example.com"]
+    }
+  }
+
+  assert {
+    condition     = aws_iam_role_policy.interactive_handler_cloudwatch_logs[0].name == "cloudwatch-logs"
+    error_message = "Interactive Handler CloudWatch Logs policy should have correct name"
+  }
+
+  # Note: Policy JSON content cannot be introspected during plan phase
+  # Policy contents are validated through integration tests instead
+}
+
+# Test: Interactive Handler SQS policy
+run "test_interactive_handler_sqs_policy" {
+  command = plan
+
+  variables {
+    purchase_strategy = {
+      coverage_target_percent = 80
+      max_coverage_cap        = 90
+      simple = {
+        max_purchase_percent = 5
+      }
+    }
+    sp_plans = {
+      compute = {
+        enabled              = true
+        all_upfront_one_year = 1
+      }
+    }
+    notifications = {
+      emails = ["test@example.com"]
+    }
+  }
+
+  assert {
+    condition     = aws_iam_role_policy.interactive_handler_sqs[0].name == "sqs"
+    error_message = "Interactive Handler SQS policy should have correct name"
+  }
+
+  assert {
+    condition     = can(jsondecode(aws_iam_role_policy.interactive_handler_sqs[0].policy))
+    error_message = "Interactive Handler SQS policy should be valid JSON"
+  }
+
+  assert {
+    condition     = contains(jsondecode(aws_iam_role_policy.interactive_handler_sqs[0].policy).Statement[0].Action, "sqs:DeleteMessage")
+    error_message = "Interactive Handler SQS policy should include sqs:DeleteMessage for rejecting purchases"
+  }
+
+  assert {
+    condition     = contains(jsondecode(aws_iam_role_policy.interactive_handler_sqs[0].policy).Statement[0].Action, "sqs:GetQueueUrl")
+    error_message = "Interactive Handler SQS policy should include sqs:GetQueueUrl"
+  }
+
+  assert {
+    condition     = contains(jsondecode(aws_iam_role_policy.interactive_handler_sqs[0].policy).Statement[0].Action, "sqs:GetQueueAttributes")
+    error_message = "Interactive Handler SQS policy should include sqs:GetQueueAttributes"
+  }
+}
+
+# Test: Interactive Handler can be disabled
+run "test_interactive_handler_disabled" {
+  command = plan
+
+  variables {
+    purchase_strategy = {
+      coverage_target_percent = 80
+      max_coverage_cap        = 90
+      simple = {
+        max_purchase_percent = 5
+      }
+    }
+    sp_plans = {
+      compute = {
+        enabled              = true
+        all_upfront_one_year = 1
+      }
+    }
+    notifications = {
+      emails = ["test@example.com"]
+    }
+    lambda_config = {
+      interactive_handler = {
+        enabled = false
+      }
+    }
+  }
+
+  assert {
+    condition     = length(aws_iam_role.interactive_handler) == 0
+    error_message = "Interactive Handler IAM role should not be created when disabled"
+  }
+
+  assert {
+    condition     = length(aws_iam_role_policy.interactive_handler_cloudwatch_logs) == 0
+    error_message = "Interactive Handler CloudWatch Logs policy should not be created when disabled"
+  }
+
+  assert {
+    condition     = length(aws_iam_role_policy.interactive_handler_sqs) == 0
+    error_message = "Interactive Handler SQS policy should not be created when disabled"
+  }
+}

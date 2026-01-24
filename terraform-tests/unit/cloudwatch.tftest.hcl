@@ -727,3 +727,147 @@ run "test_error_alarms_tags" {
     error_message = "Error alarms should include custom tags from variables"
   }
 }
+
+# ============================================================================
+# Interactive Handler CloudWatch Log Group Tests
+# ============================================================================
+
+# Test: Interactive Handler log group naming follows expected pattern
+run "test_interactive_handler_log_group_naming" {
+  command = plan
+
+  variables {
+    purchase_strategy = {
+      coverage_target_percent = 80
+      max_coverage_cap        = 90
+      simple = {
+        max_purchase_percent = 5
+      }
+    }
+    sp_plans = {
+      compute = {
+        enabled              = true
+        all_upfront_one_year = 1
+      }
+    }
+    notifications = {
+      emails = ["test@example.com"]
+    }
+  }
+
+  assert {
+    condition     = aws_cloudwatch_log_group.interactive_handler[0].name == "/aws/lambda/sp-autopilot-interactive-handler"
+    error_message = "Interactive Handler log group name should follow pattern: /aws/lambda/sp-autopilot-interactive-handler"
+  }
+}
+
+# Test: Interactive Handler log group retention period
+run "test_interactive_handler_log_group_retention" {
+  command = plan
+
+  variables {
+    purchase_strategy = {
+      coverage_target_percent = 80
+      max_coverage_cap        = 90
+      simple = {
+        max_purchase_percent = 5
+      }
+    }
+    sp_plans = {
+      compute = {
+        enabled              = true
+        all_upfront_one_year = 1
+      }
+    }
+    notifications = {
+      emails = ["test@example.com"]
+    }
+  }
+
+  assert {
+    condition     = aws_cloudwatch_log_group.interactive_handler[0].retention_in_days == 30
+    error_message = "Interactive Handler log group should have 30 day retention period"
+  }
+}
+
+# Test: Interactive Handler log group tags
+run "test_interactive_handler_log_group_tags" {
+  command = plan
+
+  variables {
+    purchase_strategy = {
+      coverage_target_percent = 80
+      max_coverage_cap        = 90
+      simple = {
+        max_purchase_percent = 5
+      }
+    }
+    sp_plans = {
+      compute = {
+        enabled              = true
+        all_upfront_one_year = 1
+      }
+    }
+    notifications = {
+      emails = ["test@example.com"]
+    }
+    tags = {
+      Environment = "production"
+      Team        = "platform"
+    }
+  }
+
+  assert {
+    condition     = aws_cloudwatch_log_group.interactive_handler[0].tags["ManagedBy"] == "terraform-aws-sp-autopilot"
+    error_message = "Interactive Handler log group should have ManagedBy tag"
+  }
+
+  assert {
+    condition     = aws_cloudwatch_log_group.interactive_handler[0].tags["Module"] == "savings-plans-automation"
+    error_message = "Interactive Handler log group should have Module tag"
+  }
+
+  assert {
+    condition     = aws_cloudwatch_log_group.interactive_handler[0].tags["Name"] == "sp-autopilot-interactive-handler-logs"
+    error_message = "Interactive Handler log group should have correct Name tag"
+  }
+
+  assert {
+    condition     = aws_cloudwatch_log_group.interactive_handler[0].tags["Environment"] == "production"
+    error_message = "Interactive Handler log group should include custom tags from variables"
+  }
+}
+
+# Test: Interactive Handler log group not created when disabled
+run "test_interactive_handler_log_group_disabled" {
+  command = plan
+
+  variables {
+    purchase_strategy = {
+      coverage_target_percent = 80
+      max_coverage_cap        = 90
+      simple = {
+        max_purchase_percent = 5
+      }
+    }
+    sp_plans = {
+      compute = {
+        enabled              = true
+        all_upfront_one_year = 1
+      }
+    }
+    notifications = {
+      emails = ["test@example.com"]
+    }
+    lambda_config = {
+      interactive_handler = {
+        enabled = false
+      }
+    }
+  }
+
+  assert {
+    condition     = length(aws_cloudwatch_log_group.interactive_handler) == 0
+    error_message = "Interactive Handler log group should not be created when Lambda is disabled"
+  }
+}
