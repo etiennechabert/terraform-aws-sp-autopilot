@@ -282,6 +282,71 @@ resource "aws_iam_role_policy" "purchaser_assume_role" {
 }
 
 
+resource "aws_iam_role" "interactive_handler" {
+  count = local.lambda_interactive_handler_enabled ? 1 : 0
+
+  name        = "${local.module_name}-interactive-handler"
+  description = "IAM role for Interactive Handler Lambda function - processes Slack interactive button actions"
+
+  assume_role_policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [{
+      Action = "sts:AssumeRole"
+      Effect = "Allow"
+      Principal = {
+        Service = "lambda.amazonaws.com"
+      }
+    }]
+  })
+
+  tags = merge(
+    local.common_tags,
+    {
+      Name = "${local.module_name}-interactive-handler-role"
+    }
+  )
+}
+
+resource "aws_iam_role_policy" "interactive_handler_cloudwatch_logs" {
+  count = local.lambda_interactive_handler_enabled ? 1 : 0
+
+  name = "cloudwatch-logs"
+  role = aws_iam_role.interactive_handler[0].id
+
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [{
+      Effect = "Allow"
+      Action = [
+        "logs:CreateLogStream",
+        "logs:PutLogEvents"
+      ]
+      Resource = "${aws_cloudwatch_log_group.interactive_handler[0].arn}:*"
+    }]
+  })
+}
+
+resource "aws_iam_role_policy" "interactive_handler_sqs" {
+  count = local.lambda_interactive_handler_enabled ? 1 : 0
+
+  name = "sqs"
+  role = aws_iam_role.interactive_handler[0].id
+
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [{
+      Effect = "Allow"
+      Action = [
+        "sqs:DeleteMessage",
+        "sqs:GetQueueUrl",
+        "sqs:GetQueueAttributes"
+      ]
+      Resource = aws_sqs_queue.purchase_intents.arn
+    }]
+  })
+}
+
+
 resource "aws_iam_role" "reporter" {
   count = local.lambda_reporter_enabled ? 1 : 0
 
