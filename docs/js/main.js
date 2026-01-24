@@ -1,0 +1,624 @@
+/**
+ * Main Application
+ * Orchestrates the AWS Savings Plan Simulator
+ */
+
+(function() {
+    'use strict';
+
+    // Application state
+    let appState = {
+        pattern: 'ecommerce',
+        minCost: 15,          // Min $/hour
+        maxCost: 100,         // Max $/hour (peak)
+        coverageCost: 50,     // Coverage commitment in $/hour
+        savingsPercentage: 30,
+        onDemandRate: 0.10,
+        currentLoadPattern: [],
+        customCurve: null
+    };
+
+    let currentCostResults = null;
+
+    /**
+     * Initialize the application
+     */
+    function init() {
+        console.log('Initializing AWS Savings Plan Simulator...');
+
+        // Check for URL state
+        const urlState = URLState.decodeState();
+        if (urlState) {
+            console.log('Restoring state from URL:', urlState);
+            appState = { ...appState, ...urlState };
+        }
+
+        // Initialize charts
+        ChartManager.initLoadChart('load-chart');
+        ChartManager.initCostChart('cost-chart');
+
+        // Setup event listeners
+        setupEventListeners();
+
+        // Initialize UI from state
+        updateUIFromState();
+
+        // Generate initial pattern and calculate costs
+        updateLoadPattern();
+        calculateAndUpdateCosts();
+
+        console.log('Initialization complete');
+    }
+
+    /**
+     * Setup all event listeners
+     */
+    function setupEventListeners() {
+        // Pattern selector
+        const patternSelect = document.getElementById('pattern-select');
+        if (patternSelect) {
+            patternSelect.value = appState.pattern;
+            patternSelect.addEventListener('change', handlePatternChange);
+        }
+
+        // Min cost input
+        const minCostInput = document.getElementById('min-cost');
+        if (minCostInput) {
+            minCostInput.value = appState.minCost;
+            minCostInput.addEventListener('input', handleMinCostChange);
+        }
+
+        // Max cost input
+        const maxCostInput = document.getElementById('max-cost');
+        if (maxCostInput) {
+            maxCostInput.value = appState.maxCost;
+            maxCostInput.addEventListener('input', handleMaxCostChange);
+        }
+
+        // Coverage slider
+        const coverageSlider = document.getElementById('coverage-slider');
+        if (coverageSlider) {
+            // Set slider max to match maxCost
+            coverageSlider.max = appState.maxCost;
+            // Set step to 1% of max cost
+            coverageSlider.step = appState.maxCost / 100;
+            coverageSlider.value = appState.coverageCost;
+            coverageSlider.addEventListener('input', handleCoverageChange);
+        }
+
+        // Savings percentage slider
+        const savingsSlider = document.getElementById('savings-percentage');
+        if (savingsSlider) {
+            savingsSlider.value = appState.savingsPercentage;
+            savingsSlider.addEventListener('input', handleSavingsChange);
+        }
+
+        // On-demand rate input (advanced)
+        const onDemandRateInput = document.getElementById('on-demand-rate');
+        if (onDemandRateInput) {
+            onDemandRateInput.value = appState.onDemandRate;
+            onDemandRateInput.addEventListener('input', handleOnDemandRateChange);
+        }
+
+        // Share button
+        const shareButton = document.getElementById('share-button');
+        if (shareButton) {
+            shareButton.addEventListener('click', handleShare);
+        }
+
+        // Toggle load pattern section
+        const toggleLoadPatternButton = document.getElementById('toggle-load-pattern');
+        if (toggleLoadPatternButton) {
+            toggleLoadPatternButton.addEventListener('click', handleToggleLoadPattern);
+        }
+
+        // Color theme selector
+        const colorThemeSelect = document.getElementById('color-theme');
+        if (colorThemeSelect) {
+            colorThemeSelect.addEventListener('change', handleColorThemeChange);
+        }
+
+        // Clickable optimal suggestion (applies optimal coverage when clicked)
+        const optimalSuggestion = document.getElementById('optimal-suggestion');
+        if (optimalSuggestion) {
+            optimalSuggestion.addEventListener('click', handleApplyOptimal);
+        }
+    }
+
+    /**
+     * Update UI elements from current state
+     */
+    function updateUIFromState() {
+        // Pattern selector
+        const patternSelect = document.getElementById('pattern-select');
+        if (patternSelect) {
+            patternSelect.value = appState.pattern;
+        }
+
+        // Min cost
+        const minCostInput = document.getElementById('min-cost');
+        if (minCostInput) {
+            minCostInput.value = appState.minCost;
+        }
+
+        // Max cost
+        const maxCostInput = document.getElementById('max-cost');
+        if (maxCostInput) {
+            maxCostInput.value = appState.maxCost;
+        }
+
+        // Coverage slider
+        const coverageSlider = document.getElementById('coverage-slider');
+        if (coverageSlider) {
+            coverageSlider.max = appState.maxCost;
+            coverageSlider.step = appState.maxCost / 100;
+            coverageSlider.value = appState.coverageCost;
+        }
+        updateCoverageDisplay(appState.coverageCost);
+
+        // Savings percentage slider
+        const savingsSlider = document.getElementById('savings-percentage');
+        if (savingsSlider) {
+            savingsSlider.value = appState.savingsPercentage;
+        }
+        updateSavingsDisplay(appState.savingsPercentage);
+
+        // On-demand rate
+        const onDemandRateInput = document.getElementById('on-demand-rate');
+        if (onDemandRateInput) {
+            onDemandRateInput.value = appState.onDemandRate;
+        }
+    }
+
+    /**
+     * Handle pattern type change
+     */
+    function handlePatternChange(event) {
+        appState.pattern = event.target.value;
+
+        // If switching to custom and we don't have a custom curve, copy current pattern
+        if (appState.pattern === 'custom' && !appState.customCurve) {
+            appState.customCurve = [...appState.currentLoadPattern];
+        }
+
+        updateLoadPattern();
+        calculateAndUpdateCosts();
+        URLState.debouncedUpdateURL(appState);
+    }
+
+    /**
+     * Handle min cost change
+     */
+    function handleMinCostChange(event) {
+        const value = parseFloat(event.target.value);
+        if (!isNaN(value) && value >= 0 && value <= 10000) {
+            appState.minCost = value;
+            if (appState.minCost > appState.maxCost) {
+                appState.maxCost = appState.minCost;
+                const maxCostInput = document.getElementById('max-cost');
+                if (maxCostInput) maxCostInput.value = appState.maxCost;
+            }
+            updateLoadPattern();
+            calculateAndUpdateCosts();
+            URLState.debouncedUpdateURL(appState);
+        }
+    }
+
+    /**
+     * Handle max cost change
+     */
+    function handleMaxCostChange(event) {
+        const value = parseFloat(event.target.value);
+        if (!isNaN(value) && value > 0 && value <= 10000) {
+            appState.maxCost = value;
+            if (appState.maxCost < appState.minCost) {
+                appState.minCost = appState.maxCost;
+                const minCostInput = document.getElementById('min-cost');
+                if (minCostInput) minCostInput.value = appState.minCost;
+            }
+
+            // Update coverage slider max and step
+            const coverageSlider = document.getElementById('coverage-slider');
+            if (coverageSlider) {
+                coverageSlider.max = appState.maxCost;
+                coverageSlider.step = appState.maxCost / 100; // 1% of max cost
+                // Cap coverage if it exceeds new max
+                if (appState.coverageCost > appState.maxCost) {
+                    appState.coverageCost = appState.maxCost;
+                    coverageSlider.value = appState.coverageCost;
+                    updateCoverageDisplay(appState.coverageCost);
+                }
+            }
+
+            updateLoadPattern();
+            calculateAndUpdateCosts();
+            URLState.debouncedUpdateURL(appState);
+        }
+    }
+
+    /**
+     * Handle coverage level change
+     */
+    function handleCoverageChange(event) {
+        const value = parseFloat(event.target.value);
+        if (!isNaN(value) && value >= 0 && value <= appState.maxCost) {
+            appState.coverageCost = value;
+            updateCoverageDisplay(value);
+            calculateAndUpdateCosts();
+            URLState.debouncedUpdateURL(appState);
+        }
+    }
+
+    /**
+     * Handle savings percentage change
+     */
+    function handleSavingsChange(event) {
+        const value = parseInt(event.target.value, 10);
+        if (!isNaN(value) && value >= 0 && value <= 99) {
+            appState.savingsPercentage = value;
+            updateSavingsDisplay(value);
+            calculateAndUpdateCosts();
+            URLState.debouncedUpdateURL(appState);
+        }
+    }
+
+    /**
+     * Handle on-demand rate change
+     */
+    function handleOnDemandRateChange(event) {
+        const value = parseFloat(event.target.value);
+        if (!isNaN(value) && value > 0 && value <= 10) {
+            appState.onDemandRate = value;
+            updateSavingsDisplay(appState.savingsPercentage);
+            calculateAndUpdateCosts();
+            URLState.debouncedUpdateURL(appState);
+        }
+    }
+
+    /**
+     * Handle share button click
+     */
+    async function handleShare() {
+        const success = await URLState.copyURLToClipboard();
+
+        if (success) {
+            showToast('Configuration URL copied to clipboard!');
+        } else {
+            showToast('Failed to copy URL. Please copy manually from address bar.', 'error');
+        }
+    }
+
+    /**
+     * Handle apply optimal coverage button click
+     */
+    function handleApplyOptimal() {
+        if (!currentCostResults || !currentCostResults.optimalCoverage) {
+            showToast('Unable to apply optimal coverage. Please try again.', 'error');
+            return;
+        }
+
+        // Get optimal coverage in $/hour
+        const optimalCoverageCost = currentCostResults.optimalCoverage.coverageUnits;
+
+        // Update state
+        appState.coverageCost = optimalCoverageCost;
+
+        // Update slider
+        const coverageSlider = document.getElementById('coverage-slider');
+        if (coverageSlider) {
+            coverageSlider.value = optimalCoverageCost;
+        }
+
+        // Update display
+        updateCoverageDisplay(optimalCoverageCost);
+
+        // Recalculate
+        calculateAndUpdateCosts();
+
+        // Update URL
+        URLState.debouncedUpdateURL(appState);
+
+        // Show success message
+        showToast(`Optimal coverage applied: ${CostCalculator.formatCurrency(optimalCoverageCost)}/hour`);
+    }
+
+    /**
+     * Handle toggle load pattern section
+     */
+    function handleToggleLoadPattern() {
+        const content = document.getElementById('load-pattern-content');
+        const button = document.getElementById('toggle-load-pattern');
+
+        if (!content || !button) return;
+
+        // Toggle collapsed class
+        content.classList.toggle('collapsed');
+        button.classList.toggle('collapsed');
+    }
+
+    /**
+     * Handle color theme change
+     */
+    function handleColorThemeChange(event) {
+        const themeName = event.target.value;
+
+        // Update theme in ColorThemes module
+        ColorThemes.setTheme(themeName);
+
+        // Update all chart colors
+        ChartManager.updateChartColors(themeName);
+
+        // Show toast notification
+        const themeColors = ColorThemes.getThemeColors(themeName);
+        showToast(`Color theme changed to: ${themeColors.name || themeName}`);
+    }
+
+    /**
+     * Update load pattern based on current state
+     */
+    function updateLoadPattern() {
+        // Generate or retrieve pattern
+        let normalizedPattern;
+
+        if (appState.pattern === 'custom' && appState.customCurve) {
+            normalizedPattern = appState.customCurve;
+        } else {
+            normalizedPattern = LoadPatterns.generatePattern(appState.pattern);
+        }
+
+        appState.currentLoadPattern = normalizedPattern;
+
+        // Find the actual min/max in the pattern
+        const patternMin = Math.min(...normalizedPattern);
+        const patternMax = Math.max(...normalizedPattern);
+        const patternRange = patternMax - patternMin;
+
+        // Scale pattern so its min = minCost and its max = maxCost
+        const costRange = appState.maxCost - appState.minCost;
+        const costPattern = normalizedPattern.map(normalized => {
+            if (patternRange === 0) {
+                // If pattern is flat, use average of min and max costs
+                return (appState.minCost + appState.maxCost) / 2;
+            }
+            // Map pattern's [patternMin, patternMax] to [minCost, maxCost]
+            const normalizedInRange = (normalized - patternMin) / patternRange;
+            return appState.minCost + (normalizedInRange * costRange);
+        });
+
+        // Store the actual hourly costs for use in cost calculations
+        appState.hourlyCosts = costPattern;
+
+        // Update load chart with cost data
+        ChartManager.updateLoadChart(costPattern);
+    }
+
+    /**
+     * Calculate costs and update all visualizations
+     */
+    function calculateAndUpdateCosts() {
+        // Use the actual hourly costs we're displaying in the load chart
+        const hourlyCosts = appState.hourlyCosts || [];
+
+        // Prepare configuration with actual costs
+        const config = {
+            hourlyCosts: hourlyCosts,  // Actual $/hour for each hour
+            coverageCost: appState.coverageCost,  // Coverage commitment in $/hour
+            savingsPercentage: appState.savingsPercentage,
+            onDemandRate: appState.onDemandRate
+        };
+
+        // Calculate costs
+        currentCostResults = CostCalculator.calculateCosts(config);
+
+        // Store results for chart tooltips
+        ChartManager.setCurrentCostResults(currentCostResults);
+
+        // Update cost chart
+        ChartManager.updateCostChart(currentCostResults);
+
+        // Update metrics display
+        updateMetricsDisplay(currentCostResults);
+
+        // Update optimal suggestion
+        updateOptimalSuggestion(currentCostResults);
+    }
+
+    /**
+     * Update coverage display
+     */
+    function updateCoverageDisplay(coverageCost) {
+        const displayElement = document.getElementById('coverage-display');
+        if (displayElement) {
+            displayElement.textContent = `$${coverageCost.toFixed(2)}/hour`;
+        }
+
+        const unitsElement = document.getElementById('coverage-units');
+        if (unitsElement) {
+            // Calculate actual commitment cost with discount applied
+            const discountFactor = (1 - appState.savingsPercentage / 100);
+            const actualCost = coverageCost * discountFactor;
+            unitsElement.textContent = `${CostCalculator.formatCurrency(actualCost)}/hour vs ${CostCalculator.formatCurrency(coverageCost)}/hour On-Demand`;
+        }
+    }
+
+    /**
+     * Update savings percentage display
+     */
+    function updateSavingsDisplay(value) {
+        const displayElement = document.getElementById('savings-display');
+        if (displayElement) {
+            displayElement.textContent = `${value}%`;
+        }
+
+        const rateElement = document.getElementById('savings-rate');
+        if (rateElement) {
+            const savingsPlanRate = appState.onDemandRate * (1 - value / 100);
+            rateElement.textContent = `$${savingsPlanRate.toFixed(3)}/hour vs $${appState.onDemandRate.toFixed(3)}/hour On-Demand`;
+        }
+    }
+
+    /**
+     * Update metrics display
+     */
+    function updateMetricsDisplay(results) {
+        // Pure On-Demand cost (baseline)
+        const onDemandElement = document.getElementById('metric-ondemand');
+        if (onDemandElement) {
+            onDemandElement.textContent = CostCalculator.formatCurrency(results.onDemandCost);
+        }
+
+        // Total Cost with SP (commitment + spillover)
+        const savingsPlanElement = document.getElementById('metric-savingsplan');
+        if (savingsPlanElement) {
+            savingsPlanElement.textContent = CostCalculator.formatCurrency(results.savingsPlanCost);
+        }
+
+        // Net Savings
+        const savingsElement = document.getElementById('metric-savings');
+        if (savingsElement) {
+            savingsElement.textContent = CostCalculator.formatCurrency(results.savings);
+
+            // Change color based on positive/negative savings
+            const savingsContainer = savingsElement.closest('.metric-item');
+            if (savingsContainer) {
+                if (results.savings < 0) {
+                    savingsContainer.classList.remove('success');
+                    savingsContainer.classList.add('danger');
+                } else {
+                    savingsContainer.classList.remove('danger');
+                    savingsContainer.classList.add('success');
+                }
+            }
+        }
+
+        const savingsPctElement = document.getElementById('metric-savings-pct');
+        if (savingsPctElement) {
+            savingsPctElement.textContent = CostCalculator.formatPercentage(results.savingsPercentageActual);
+        }
+
+        // SP Commitment Cost
+        const commitmentElement = document.getElementById('metric-commitment');
+        if (commitmentElement) {
+            commitmentElement.textContent = CostCalculator.formatCurrency(results.commitmentCost);
+        }
+
+        const commitmentPctElement = document.getElementById('metric-commitment-pct');
+        if (commitmentPctElement) {
+            const commitmentPct = results.savingsPlanCost > 0
+                ? (results.commitmentCost / results.savingsPlanCost) * 100
+                : 0;
+            commitmentPctElement.textContent = `${commitmentPct.toFixed(1)}% of total`;
+        }
+
+        // Spillover Cost
+        const spilloverElement = document.getElementById('metric-spillover');
+        if (spilloverElement) {
+            spilloverElement.textContent = CostCalculator.formatCurrency(results.spilloverCost);
+        }
+
+        const spilloverPctElement = document.getElementById('metric-spillover-pct');
+        if (spilloverPctElement) {
+            spilloverPctElement.textContent = `${CostCalculator.formatPercentage(results.spilloverPercentage)} of total`;
+        }
+
+        // Wasted commitment
+        const wasteElement = document.getElementById('metric-waste');
+        if (wasteElement) {
+            wasteElement.textContent = CostCalculator.formatCurrency(results.wastedCommitment);
+        }
+
+        const wastePctElement = document.getElementById('metric-waste-pct');
+        if (wastePctElement) {
+            wastePctElement.textContent = `${CostCalculator.formatPercentage(results.wastePercentage)} of commitment`;
+        }
+    }
+
+    /**
+     * Update optimal suggestion display
+     */
+    function updateOptimalSuggestion(results) {
+        const suggestionElement = document.getElementById('optimal-suggestion');
+        const textElement = document.getElementById('suggestion-text');
+        const titleElement = suggestionElement?.querySelector('.suggestion-title');
+
+        if (!suggestionElement || !textElement || !titleElement) return;
+
+        // Convert current coverage cost to percentage for comparison
+        const currentCoveragePercent = (appState.coverageCost / appState.maxCost) * 100;
+
+        const suggestion = CostCalculator.getOptimizationSuggestion(
+            currentCoveragePercent,
+            results.optimalCoveragePercentage
+        );
+
+        // Convert optimal percentage to dollars for display
+        const optimalCost = (results.optimalCoveragePercentage / 100) * appState.maxCost;
+        const currentCost = appState.coverageCost;
+
+        // Update status class
+        suggestionElement.classList.remove('status-optimal', 'status-warning', 'status-danger');
+        suggestionElement.classList.add(`status-${suggestion.status}`);
+
+        // Update title with optimal dollar amount
+        titleElement.textContent = `Optimal Coverage Suggestion: ${CostCalculator.formatCurrency(optimalCost)}/hour`;
+
+        // Update text with dollar amounts
+        let message = suggestion.message;
+        // Replace percentage values with dollar values
+        message = message.replace(/\d+\.\d+%/g, (match) => {
+            const percent = parseFloat(match);
+            const dollarValue = (percent / 100) * appState.maxCost;
+            return `$${dollarValue.toFixed(2)}/hour`;
+        });
+
+        textElement.textContent = `${suggestion.icon} ${message}`;
+    }
+
+    /**
+     * Show toast notification
+     */
+    function showToast(message, type = 'success') {
+        const toast = document.getElementById('toast');
+        if (!toast) return;
+
+        toast.textContent = message;
+        toast.classList.add('show');
+
+        setTimeout(() => {
+            toast.classList.remove('show');
+        }, 3000);
+    }
+
+    /**
+     * Get current application state
+     */
+    function getState() {
+        return { ...appState };
+    }
+
+    /**
+     * Set application state (useful for testing)
+     */
+    function setState(newState) {
+        appState = { ...appState, ...newState };
+        updateUIFromState();
+        updateLoadPattern();
+        calculateAndUpdateCosts();
+    }
+
+    // Initialize when DOM is ready
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', init);
+    } else {
+        init();
+    }
+
+    // Expose for debugging and testing
+    window.SavingsPlanSimulator = {
+        getState,
+        setState,
+        calculateAndUpdateCosts,
+        updateLoadPattern
+    };
+
+})();
