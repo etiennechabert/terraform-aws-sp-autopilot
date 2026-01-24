@@ -243,10 +243,11 @@ variable "scheduler" {
 variable "notifications" {
   description = "Notification configuration for email, Slack, and Teams"
   type = object({
-    emails         = list(string)
-    slack_webhook  = optional(string)
-    teams_webhook  = optional(string)
-    send_no_action = optional(bool, true)
+    emails               = list(string)
+    slack_webhook        = optional(string)
+    slack_signing_secret = optional(string)
+    teams_webhook        = optional(string)
+    send_no_action       = optional(bool, true)
   })
 
   validation {

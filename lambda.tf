@@ -75,6 +75,7 @@ resource "aws_lambda_function" "purchaser" {
       SNS_TOPIC_ARN               = aws_sns_topic.notifications.arn
       MAX_COVERAGE_CAP            = tostring(local.max_coverage_cap)
       RENEWAL_WINDOW_DAYS         = tostring(local.renewal_window_days)
+      SLACK_SIGNING_SECRET        = local.slack_signing_secret
       MANAGEMENT_ACCOUNT_ROLE_ARN = local.lambda_purchaser_assume_role_arn
       TAGS                        = jsonencode(local.common_tags)
     }

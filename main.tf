@@ -101,10 +101,11 @@ locals {
 
   # Notification Settings
 
-  notification_emails  = var.notifications.emails
-  slack_webhook_url    = try(var.notifications.slack_webhook, null)
-  teams_webhook_url    = try(var.notifications.teams_webhook, null)
-  send_no_action_email = try(var.notifications.send_no_action, true)
+  notification_emails     = var.notifications.emails
+  slack_webhook_url       = try(var.notifications.slack_webhook, null)
+  slack_signing_secret    = try(var.notifications.slack_signing_secret, null)
+  teams_webhook_url       = try(var.notifications.teams_webhook, null)
+  send_no_action_email    = try(var.notifications.send_no_action, true)
 
   # Reporting Settings
 
