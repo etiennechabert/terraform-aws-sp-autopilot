@@ -337,6 +337,7 @@ resource "aws_iam_role_policy" "interactive_handler_sqs" {
     Statement = [{
       Effect = "Allow"
       Action = [
+        "sqs:ReceiveMessage",
         "sqs:DeleteMessage",
         "sqs:GetQueueUrl",
         "sqs:GetQueueAttributes"
