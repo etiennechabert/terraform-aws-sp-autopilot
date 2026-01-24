@@ -450,3 +450,36 @@ def validate_purchaser_config(config: dict[str, Any]) -> None:
                     f"Field '{field_name}' must be a non-empty string, "
                     f"got {type(field_value).__name__}"
                 )
+
+
+def validate_interactive_handler_config(config: dict[str, Any]) -> None:
+    """
+    Validate interactive handler configuration schema and data types.
+
+    Validates:
+    - slack_signing_secret is a non-empty string
+    - queue_url is a non-empty string
+
+    Args:
+        config: Dictionary containing interactive handler configuration
+
+    Returns:
+        None (validation passes silently)
+
+    Raises:
+        ValueError: If validation fails with descriptive error message
+    """
+    if not isinstance(config, dict):
+        raise ValueError(f"Configuration must be a dictionary, got {type(config).__name__}")
+
+    # Validate required string fields are non-empty strings
+    required_string_fields = ["slack_signing_secret", "queue_url"]
+
+    for field_name in required_string_fields:
+        if field_name in config:
+            field_value = config[field_name]
+            if not isinstance(field_value, str) or not field_value.strip():
+                raise ValueError(
+                    f"Field '{field_name}' must be a non-empty string, "
+                    f"got {type(field_value).__name__}"
+                )
