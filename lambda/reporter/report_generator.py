@@ -1094,10 +1094,16 @@ def generate_html_report(
                 // Include optimal coverage calculated by Python for validation (type-specific)
                 const typeOptimal = optimalCoverageFromPython[typeKey] || {{}};
                 const savingsPercentage = optimalCoverageFromPython.savings_percentage_used || 30;
+
+                // Convert current coverage from percentage to $/hour
+                // current_coverage is a % of average total cost
+                const avgHourlyCost = hourlyCosts.reduce((sum, c) => sum + c, 0) / hourlyCosts.length;
+                const currentCoverageDollars = avgHourlyCost * (metrics.current_coverage / 100);
+
                 const usageData = {{
                     hourly_costs: hourlyCosts,
                     stats: stats,
-                    current_coverage: metrics.current_coverage,
+                    current_coverage: currentCoverageDollars,  // Now in $/hour instead of %
                     optimal_from_python: typeOptimal,
                     sp_type: typeName,  // Indicate which SP type this data is for
                     savings_percentage: savingsPercentage  // Actual discount from user's SPs

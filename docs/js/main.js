@@ -80,10 +80,14 @@
         });
 
         // Validate optimal coverage calculation (Python vs JavaScript)
-        const savingsPercentage = usageData.savings_percentage || 30;
+        // Round to 2 decimals to avoid excessive precision in UI
+        const savingsPercentage = Math.round((usageData.savings_percentage || 30) * 100) / 100;
         if (usageData.optimal_from_python && Object.keys(usageData.optimal_from_python).length > 0) {
             validateOptimalCoverage(hourlyCosts, usageData.optimal_from_python, savingsPercentage);
         }
+
+        // Use current coverage from user's actual commitment, or default to min-hourly
+        const currentCoverage = usageData.current_coverage || minCost;
 
         // Update app state with real data
         appState = {
@@ -91,12 +95,13 @@
             pattern: 'custom',
             minCost: minCost,
             maxCost: maxCost,
+            coverageCost: currentCoverage,  // Set to user's actual current coverage
             customCurve: customCurve,
             savingsPercentage: savingsPercentage,  // Use actual discount from user's SPs
             usageDataLoaded: true,
             usageData: usageData,  // Store full usage data for banner
             usageStats: stats,
-            currentCoverage: usageData.current_coverage,
+            currentCoverage: currentCoverage,
             optimalFromPython: usageData.optimal_from_python
         };
 
@@ -641,6 +646,9 @@
         // Get optimal coverage for annotation
         const optimalResult = CostCalculator.calculateOptimalCoverage(hourlyCosts, savingsPercentage);
 
+        // Always use the current slider position for the vertical line
+        const currentCoverageFromData = appState.coverageCost;
+
         // Update chart
         ChartManager.updateSavingsCurveChart(
             curveData,
@@ -648,7 +656,8 @@
             optimalResult.coverageUnits,
             minCost,
             chartMaxCost,
-            baselineCost
+            baselineCost,
+            currentCoverageFromData
         );
     }
 
@@ -656,9 +665,13 @@
      * Update coverage display
      */
     function updateCoverageDisplay(coverageCost) {
+        // Calculate percentage of min-hourly
+        const minCost = appState.minCost || 1;
+        const percentOfMin = (coverageCost / minCost) * 100;
+
         const displayElement = document.getElementById('coverage-display');
         if (displayElement) {
-            displayElement.textContent = `$${coverageCost.toFixed(2)}/hour`;
+            displayElement.textContent = `$${coverageCost.toFixed(2)}/hour (${percentOfMin.toFixed(0)}%)`;
         }
 
         const unitsElement = document.getElementById('coverage-units');
@@ -666,7 +679,8 @@
             // Calculate actual commitment cost with discount applied
             const discountFactor = (1 - appState.savingsPercentage / 100);
             const actualCost = coverageCost * discountFactor;
-            unitsElement.textContent = `${CostCalculator.formatCurrency(actualCost)}/hour vs ${CostCalculator.formatCurrency(coverageCost)}/hour On-Demand`;
+
+            unitsElement.textContent = `Cost ${CostCalculator.formatCurrency(actualCost)}/hour vs ${CostCalculator.formatCurrency(coverageCost)}/hour On-Demand`;
         }
     }
 

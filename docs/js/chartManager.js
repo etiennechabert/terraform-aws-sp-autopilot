@@ -716,8 +716,9 @@ const ChartManager = (function() {
      * @param {number} minCost - Min-hourly cost
      * @param {number} maxCost - Max-hourly cost
      * @param {number} baselineCost - Total baseline on-demand cost
+     * @param {number} currentCoverage - Current actual coverage in $/hour (optional)
      */
-    function updateSavingsCurveChart(curveData, minHourlySavings, optimalCoverage, minCost, maxCost, baselineCost) {
+    function updateSavingsCurveChart(curveData, minHourlySavings, optimalCoverage, minCost, maxCost, baselineCost, currentCoverage) {
         if (!savingsCurveChart) return;
 
         // Store values for tooltip access
@@ -834,73 +835,28 @@ const ChartManager = (function() {
             }
         }
 
-        // Build annotations
-        const annotations = {
-            minHourlyLine: {
+        // Build annotations - only show current coverage line
+        const annotations = {};
+
+        // Add current coverage line if provided and within range
+        if (currentCoverage && currentCoverage > 0 && currentCoverage <= maxCost) {
+            // Calculate percentage of min-hourly
+            const percentOfMin = minCost > 0 ? (currentCoverage / minCost * 100).toFixed(0) : 0;
+
+            annotations.currentLine = {
                 type: 'line',
-                xMin: minCost,
-                xMax: minCost,
-                borderColor: 'rgba(77, 159, 255, 0.8)',
-                borderWidth: 2,
-                borderDash: [5, 5],
-                label: {
-                    display: true,
-                    content: `Min-Hourly (${CostCalculator.formatCurrency(minCost)}/hr)`,
-                    position: 'start',
-                    backgroundColor: 'rgba(77, 159, 255, 0.8)',
-                    color: 'white',
-                    font: { size: 11 }
-                }
-            },
-            optimalLine: {
-                type: 'line',
-                xMin: optimalCoverage,
-                xMax: optimalCoverage,
-                borderColor: 'rgba(0, 255, 136, 0.9)',
+                xMin: currentCoverage,
+                xMax: currentCoverage,
+                borderColor: 'rgba(0, 212, 255, 0.9)',
                 borderWidth: 3,
-                label: {
-                    display: true,
-                    content: `Optimal (${CostCalculator.formatCurrency(optimalCoverage)}/hr)`,
-                    position: 'end',
-                    backgroundColor: 'rgba(0, 255, 136, 0.9)',
-                    color: 'white',
-                    font: { size: 12, weight: 'bold' }
-                }
-            },
-            zeroLineHorizontal: {
-                type: 'line',
-                yMin: 0,
-                yMax: 0,
-                borderColor: 'rgba(255, 255, 255, 0.5)',
-                borderWidth: 2,
                 borderDash: [10, 5],
                 label: {
                     display: true,
-                    content: 'Breakeven (0% savings)',
+                    content: `📍 ${CostCalculator.formatCurrency(currentCoverage)}/hr (${percentOfMin}% of min)`,
                     position: 'start',
-                    backgroundColor: 'rgba(255, 100, 100, 0.8)',
-                    color: 'white',
-                    font: { size: 10 }
-                }
-            }
-        };
-
-        // Add vertical line at breakeven coverage if it exists and is within range
-        if (breakevenCoverage && breakevenCoverage < maxCost) {
-            annotations.breakevenLine = {
-                type: 'line',
-                xMin: breakevenCoverage,
-                xMax: breakevenCoverage,
-                borderColor: 'rgba(255, 100, 100, 0.9)',
-                borderWidth: 3,
-                borderDash: [5, 5],
-                label: {
-                    display: true,
-                    content: `⚠️ Max Viable (${CostCalculator.formatCurrency(breakevenCoverage)}/hr)`,
-                    position: 'end',
-                    backgroundColor: 'rgba(255, 100, 100, 0.9)',
-                    color: 'white',
-                    font: { size: 11, weight: 'bold' }
+                    backgroundColor: 'rgba(0, 212, 255, 0.9)',
+                    color: '#1a1f3a',
+                    font: { size: 13, weight: 'bold' }
                 }
             };
         }
