@@ -432,6 +432,9 @@ def generate_html_report(
             border-radius: 6px;
             border-left: 4px solid #667eea;
         }}
+        .metric-card.blue {{
+            border-left-color: #4d9fff;
+        }}
         .metric-card.green {{
             border-left-color: #56ab2f;
         }}
@@ -826,6 +829,9 @@ def generate_html_report(
     # Extract savings breakdown by type
     breakdown_by_type = savings_data.get("actual_savings", {}).get("breakdown_by_type", {})
 
+    # Get actual savings percentage used for optimization
+    savings_percentage = optimal_coverage_results.get("savings_percentage_used", 30.0)
+
     def get_type_metrics(sp_type_key, summary, sp_type_name):
         """Calculate metrics for a specific SP type"""
         current_coverage = summary.get("avg_coverage", 0.0)
@@ -850,13 +856,12 @@ def generate_html_report(
                 type_utilization = average_utilization
                 break
 
-        # Actual savings achieved
+        # Actual savings achieved using real discount rate from user's SPs
         # Savings = what we would pay on-demand minus what we actually pay with SP
-        # SP typically offers 30-40% discount, so if covered_cost is what we pay:
+        # discount_rate is the actual savings % from the SPs (e.g., 0.40 for 40%)
         # On-demand equivalent = covered_cost / (1 - discount_rate)
-        # Assuming 35% average discount: on_demand_equiv = covered_cost / 0.65
         # Savings = on_demand_equiv - covered_cost
-        discount_rate = 0.35
+        discount_rate = savings_percentage / 100
         ondemand_equivalent_for_covered = (
             avg_covered_cost / (1 - discount_rate) if avg_covered_cost > 0 else 0
         )
@@ -869,7 +874,7 @@ def generate_html_report(
             additional_coverage_points = target_coverage - current_coverage
             # Additional hourly cost that would be covered
             additional_covered_hourly = avg_total_cost * (additional_coverage_points / 100)
-            # Savings on that additional coverage (35% discount)
+            # Savings on that additional coverage using actual discount rate
             potential_additional_hourly = additional_covered_hourly * discount_rate
             potential_additional_monthly = potential_additional_hourly * 730
         else:
@@ -881,6 +886,7 @@ def generate_html_report(
             "actual_savings_monthly": actual_savings_monthly,
             "potential_additional_savings": potential_additional_monthly,
             "target_coverage": target_coverage,
+            "savings_percentage": savings_percentage,  # Include actual discount %
         }
 
     compute_metrics = get_type_metrics("compute", compute_summary, "Compute")
@@ -1170,6 +1176,10 @@ def generate_html_report(
                     <div class="metric-card ${{utilizationClass}}">
                         <h4>Utilization</h4>
                         <div class="metric-value">${{metrics.utilization > 0 ? metrics.utilization.toFixed(1) + '%' : 'N/A'}}</div>
+                    </div>
+                    <div class="metric-card blue">
+                        <h4>Average Discount</h4>
+                        <div class="metric-value">${{metrics.savings_percentage ? metrics.savings_percentage.toFixed(1) + '%' : 'N/A'}}</div>
                     </div>
                     <div class="metric-card green">
                         <h4>Actual Savings (30 days)</h4>
