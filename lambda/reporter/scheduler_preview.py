@@ -37,19 +37,19 @@ def _get_strategy_config(
     if is_configured:
         return config
 
-    # For non-configured strategies, apply strategy-specific defaults
+    # For non-configured strategies, override with strategy-specific defaults
     if strategy_type == "fixed":
         # Fixed strategy defaults: conservative 10% purchases
-        config.setdefault("max_purchase_percent", 10.0)
-        config.setdefault("min_purchase_percent", 1.0)
-        config.setdefault("coverage_target_percent", 90.0)
+        config["max_purchase_percent"] = 10.0
+        config["min_purchase_percent"] = 1.0
+        config["coverage_target_percent"] = 90.0
 
     elif strategy_type == "dichotomy":
         # Dichotomy strategy defaults: more aggressive with halving from 50%
-        config.setdefault("max_purchase_percent", 50.0)
-        config.setdefault("min_purchase_percent", 1.0)
-        config.setdefault("coverage_target_percent", 90.0)
-        config.setdefault("dichotomy_initial_percent", 50.0)
+        config["max_purchase_percent"] = 50.0
+        config["min_purchase_percent"] = 1.0
+        config["coverage_target_percent"] = 90.0
+        config["dichotomy_initial_percent"] = 50.0
 
     # follow_aws doesn't need these parameters (uses AWS recommendations)
 

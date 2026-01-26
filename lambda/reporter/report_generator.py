@@ -272,7 +272,7 @@ def _render_sp_type_scheduler_preview(
     strategy_descriptions = {
         "fixed": "Purchases a fixed percentage of uncovered spend at a time.",
         "dichotomy": "Uses exponentially decreasing purchase sizes based on coverage gap.",
-        "follow_aws": "Follows AWS Cost Explorer recommendations.",
+        "follow_aws": "Follows AWS Cost Explorer recommendations. Tends to aim for 100% coverage to min-hourly in a single purchase (no ramp-up, high risk of waste if workload decreases).",
     }
 
     if not preview_data:
@@ -303,10 +303,10 @@ def _render_sp_type_scheduler_preview(
     # Build comparison table
     html = f"""
         <div style="margin-top: 30px; padding-top: 20px; border-top: 2px solid #e0e0e0;">
-            <h3 style="color: #232f3e; margin-bottom: 15px;">📊 Scheduler Preview - Strategy Comparison</h3>
+            <h3 style="color: #232f3e; margin-bottom: 15px;">🔮 Scheduler Preview - Strategy Comparison 🧞‍♂️</h3>
             <div class="info-box" style="background: #fff9e6; border-left: 4px solid #ffc107; margin-bottom: 15px;">
                 <strong>What is this?</strong> Compares what each scheduler strategy would purchase if it ran right now.
-                The currently configured strategy ({configured_strategy.upper()}) is highlighted.
+                The currently configured strategy ({configured_strategy.upper()}) is highlighted. Other strategies are running with default parameters.
             </div>
 
                 <table style="width: 100%;">
@@ -329,11 +329,32 @@ def _render_sp_type_scheduler_preview(
     for strategy_type in ["fixed", "dichotomy", "follow_aws"]:
         purchase = strategy_purchases.get(strategy_type)
         strategy_display = strategy_names.get(strategy_type, strategy_type)
+        is_configured = strategy_type == configured_strategy
+
+        # Build tooltip description with parameters
+        strategy_desc = strategy_descriptions[strategy_type]
+        if strategy_type == "fixed":
+            if is_configured:
+                tooltip = f"{strategy_desc} (max purchase: {config.get('max_purchase_percent', 10.0):.0f}%)"
+            else:
+                tooltip = f"{strategy_desc} (default: max purchase 10%)"
+        elif strategy_type == "dichotomy":
+            if is_configured:
+                max_p = config.get("max_purchase_percent", 50.0)
+                min_p = config.get("min_purchase_percent", 1.0)
+                tooltip = f"{strategy_desc} (max: {max_p:.0f}%, min: {min_p:.0f}%)"
+            else:
+                tooltip = f"{strategy_desc} (default: max 50%, min 1%)"
+        else:  # follow_aws
+            tooltip = strategy_desc
 
         if not purchase:
-            # Show "No recommendation" row
-            is_configured = strategy_type == configured_strategy
-            row_class = 'style="background: #fff9e6; font-weight: 600;"' if is_configured else ""
+            # Show "No purchase needed" row
+            row_style = (
+                'style="background: #fff9e6; font-weight: 600; cursor: help;"'
+                if is_configured
+                else 'style="cursor: help;"'
+            )
             configured_badge = (
                 ' <span style="background: #ff9900; color: white; padding: 2px 8px; border-radius: 3px; font-size: 0.75em; font-weight: 600;">CONFIGURED</span>'
                 if is_configured
@@ -341,9 +362,9 @@ def _render_sp_type_scheduler_preview(
             )
 
             html += f"""
-                    <tr {row_class}>
+                    <tr {row_style} title="{tooltip}">
                         <td><strong>{strategy_display}</strong>{configured_badge}</td>
-                        <td colspan="7" style="color: #6c757d; font-style: italic;">No recommendation</td>
+                        <td colspan="7" style="color: #6c757d; font-style: italic;">No purchase needed</td>
                     </tr>
                 """
         else:
@@ -356,8 +377,11 @@ def _render_sp_type_scheduler_preview(
             term = purchase.get("term", "N/A")
             payment_option = purchase.get("payment_option", "N/A")
 
-            is_configured = strategy_type == configured_strategy
-            row_class = 'style="background: #fff9e6; font-weight: 600;"' if is_configured else ""
+            row_style = (
+                'style="background: #fff9e6; font-weight: 600; cursor: help;"'
+                if is_configured
+                else 'style="cursor: help;"'
+            )
             configured_badge = (
                 ' <span style="background: #ff9900; color: white; padding: 2px 8px; border-radius: 3px; font-size: 0.75em; font-weight: 600;">CONFIGURED</span>'
                 if is_configured
@@ -367,7 +391,7 @@ def _render_sp_type_scheduler_preview(
             coverage_class = "green" if projected_cov >= target_coverage else "orange"
 
             html += f"""
-                    <tr {row_class}>
+                    <tr {row_style} title="{tooltip}">
                         <td><strong>{strategy_display}</strong>{configured_badge}</td>
                         <td class="metric" style="color: #2196f3; font-weight: bold;">${hourly_commit:.4f}/hr</td>
                         <td class="metric">{purchase_percent:.1f}%</td>
