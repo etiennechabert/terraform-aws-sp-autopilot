@@ -521,7 +521,7 @@ def process_purchase_messages(
 def would_exceed_cap(
     config: dict[str, Any],
     purchase_intent: dict[str, Any],
-    current_coverage: dict[str, float],
+    _current_coverage: dict[str, float],
 ) -> bool:
     """
     Check if purchase would exceed max_coverage_cap.
@@ -529,7 +529,7 @@ def would_exceed_cap(
     Args:
         config: Configuration dictionary
         purchase_intent: Purchase intent details
-        current_coverage: Current coverage levels
+        _current_coverage: Current coverage levels (unused, kept for API compatibility)
 
     Returns:
         bool: True if purchase would exceed cap

@@ -1075,7 +1075,7 @@ def generate_html_report(
                     </button>
                     <canvas id="computeChart"></canvas>
                 </div>
-                {_render_sp_type_scheduler_preview("compute", preview_data, config or {{}})}
+                {_render_sp_type_scheduler_preview("compute", preview_data, config or {})}
             </div>
 
             <div id="database-tab" class="tab-content">
@@ -1086,7 +1086,7 @@ def generate_html_report(
                     </button>
                     <canvas id="databaseChart"></canvas>
                 </div>
-                {_render_sp_type_scheduler_preview("database", preview_data, config or {{}})}
+                {_render_sp_type_scheduler_preview("database", preview_data, config or {})}
             </div>
 
             <div id="sagemaker-tab" class="tab-content">
@@ -1097,7 +1097,7 @@ def generate_html_report(
                     </button>
                     <canvas id="sagemakerChart"></canvas>
                 </div>
-                {_render_sp_type_scheduler_preview("sagemaker", preview_data, config or {{}})}
+                {_render_sp_type_scheduler_preview("sagemaker", preview_data, config or {})}
             </div>
         </div>
 
