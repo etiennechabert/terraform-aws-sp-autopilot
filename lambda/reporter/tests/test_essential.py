@@ -322,13 +322,11 @@ def test_handler_low_utilization_alert_triggered(
     mock_clients["s3"].put_object.return_value = {}
     mock_clients["sns"].publish.return_value = {"MessageId": "test-message-id"}
 
-    # Mock urllib.request.urlopen to test Slack/Teams webhook code paths
+    # Mock urllib3 PoolManager request to test Slack/Teams webhook code paths
     mock_response = Mock()
     mock_response.status = 200
-    mock_response.__enter__ = Mock(return_value=mock_response)
-    mock_response.__exit__ = Mock(return_value=False)
 
-    with patch("shared.notifications.request.urlopen", return_value=mock_response):
+    with patch("shared.notifications.http.request", return_value=mock_response):
         # Execute handler
         response = handler.handler({}, {})
 
@@ -367,13 +365,11 @@ def test_handler_low_utilization_alert_not_triggered(
     mock_clients["s3"].put_object.return_value = {}
     mock_clients["sns"].publish.return_value = {"MessageId": "test-message-id"}
 
-    # Mock urllib.request.urlopen for webhook notifications (though alert won't trigger)
+    # Mock urllib3 PoolManager for webhook notifications (though alert won't trigger)
     mock_response = Mock()
     mock_response.status = 200
-    mock_response.__enter__ = Mock(return_value=mock_response)
-    mock_response.__exit__ = Mock(return_value=False)
 
-    with patch("shared.notifications.request.urlopen", return_value=mock_response):
+    with patch("shared.notifications.http.request", return_value=mock_response):
         # Execute handler
         response = handler.handler({}, {})
 
