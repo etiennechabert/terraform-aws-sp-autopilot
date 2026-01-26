@@ -301,14 +301,9 @@ def _render_sp_type_scheduler_preview(
         return ""  # Return empty if no recommendations
 
     # Build comparison table
-    html = f"""
+    html = """
         <div style="margin-top: 30px; padding-top: 20px; border-top: 2px solid #e0e0e0;">
             <h3 style="color: #232f3e; margin-bottom: 15px;">🔮 Scheduler Preview - Strategy Comparison 🧞‍♂️</h3>
-            <div class="info-box" style="background: #fff9e6; border-left: 4px solid #ffc107; margin-bottom: 15px;">
-                <strong>What is this?</strong> Compares what each scheduler strategy would purchase if it ran right now.
-                The currently configured strategy ({configured_strategy.upper()}) is highlighted. Other strategies are running with default parameters.
-            </div>
-
                 <table style="width: 100%;">
                     <thead>
                         <tr>
