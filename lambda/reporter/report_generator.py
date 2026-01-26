@@ -1180,18 +1180,20 @@ def generate_html_report(
                         type: 'line',
                         yMin: spCoveredHourly,
                         yMax: spCoveredHourly,
-                        borderColor: 'rgb(75, 192, 192)',
-                        borderWidth: 2,
-                        borderDash: [5, 5],
+                        borderColor: 'rgba(255, 255, 255, 0.9)',
+                        borderWidth: 3,
+                        borderDash: [8, 4],
                         label: {{
                             display: true,
-                            content: 'Current: ' + coverageMinHourlyPct.toFixed(1) + '% of min-hourly',
-                            position: 'start',
-                            backgroundColor: 'rgba(75, 192, 192, 0.8)',
+                            content: 'Current: $' + spCoveredHourly.toFixed(2) + '/hr (' + coverageMinHourlyPct.toFixed(1) + '% of min-hourly)',
+                            position: 'center',
+                            backgroundColor: 'rgba(0, 0, 0, 0.85)',
                             color: 'white',
                             font: {{
-                                size: 11
-                            }}
+                                size: 12,
+                                weight: 'bold'
+                            }},
+                            padding: 6
                         }}
                     }};
                 }}
@@ -1202,18 +1204,20 @@ def generate_html_report(
                         type: 'line',
                         yMin: minHourly,
                         yMax: minHourly,
-                        borderColor: 'rgba(255, 165, 0, 0.8)',
-                        borderWidth: 2,
-                        borderDash: [3, 3],
+                        borderColor: 'rgba(255, 215, 0, 0.9)',
+                        borderWidth: 3,
+                        borderDash: [8, 4],
                         label: {{
                             display: true,
                             content: 'Min-hourly: $' + minHourly.toFixed(2) + '/hr',
                             position: 'end',
-                            backgroundColor: 'rgba(255, 165, 0, 0.8)',
+                            backgroundColor: 'rgba(0, 0, 0, 0.85)',
                             color: 'white',
                             font: {{
-                                size: 11
-                            }}
+                                size: 12,
+                                weight: 'bold'
+                            }},
+                            padding: 6
                         }}
                     }};
                 }}
