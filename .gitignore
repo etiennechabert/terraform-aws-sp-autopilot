@@ -254,5 +254,9 @@ scheduler.zip
 purchaser.zip
 reporter.zip
 
+# SonarCloud
+.scannerwork/
+.sonar/
+
 # Local development data
 local_data/
