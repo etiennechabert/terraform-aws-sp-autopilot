@@ -8,18 +8,10 @@ from __future__ import annotations
 
 import json
 import logging
-import sys
 from datetime import UTC, datetime, timedelta
-from pathlib import Path
 from typing import Any
 
-
-# Add shared directory to path
-shared_dir = Path(__file__).parent.parent / "shared"
-if str(shared_dir) not in sys.path:
-    sys.path.insert(0, str(shared_dir))
-
-from optimal_coverage import calculate_optimal_coverage  # noqa: E402
+from shared.optimal_coverage import calculate_optimal_coverage
 
 
 logger = logging.getLogger(__name__)
