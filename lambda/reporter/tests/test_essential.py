@@ -24,7 +24,7 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspa
 import handler
 
 
-@pytest.fixture
+@pytest.fixture(autouse=True)
 def mock_env_vars(monkeypatch):
     """Set up required environment variables."""
     monkeypatch.setenv("AWS_DEFAULT_REGION", "us-east-1")
