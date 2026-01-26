@@ -337,6 +337,52 @@ const CostCalculator = (function() {
     }
 
     /**
+     * Get optimization suggestion with dollar values (no percentage conversion needed)
+     * @param {number} currentCost - Current coverage in $/hour
+     * @param {number} optimalCost - Optimal coverage in $/hour
+     * @param {number} minCost - Minimum cost for percentage calculation
+     * @returns {Object} Suggestion with status and message
+     */
+    function getOptimizationSuggestionDollars(currentCost, optimalCost, minCost) {
+        const difference = Math.abs(currentCost - optimalCost);
+        const percentDiff = minCost > 0 ? (difference / minCost) * 100 : 0;
+
+        let status = 'optimal';
+        let message = '';
+        let icon = '✅';
+
+        if (percentDiff <= 5) {
+            status = 'optimal';
+            icon = '✅';
+            message = `Coverage is optimal (within 5%). Current: ${formatCurrency(currentCost)}/hr`;
+        } else if (percentDiff <= 10) {
+            status = 'warning';
+            icon = '⚠️';
+            if (currentCost < optimalCost) {
+                message = `Increase to ${formatCurrency(optimalCost)}/hr (current: ${formatCurrency(currentCost)}/hr) to unlock ${formatCurrency(difference)}/hr more savings.`;
+            } else {
+                message = `Decrease to ${formatCurrency(optimalCost)}/hr (current: ${formatCurrency(currentCost)}/hr) to reduce waste.`;
+            }
+        } else {
+            status = 'danger';
+            icon = '🔴';
+            if (currentCost < optimalCost) {
+                message = `Coverage significantly below optimal. Increase to ${formatCurrency(optimalCost)}/hr (current: ${formatCurrency(currentCost)}/hr) to unlock ${formatCurrency(difference)}/hr more savings potential.`;
+            } else {
+                message = `Coverage significantly above optimal. Decrease to ${formatCurrency(optimalCost)}/hr (current: ${formatCurrency(currentCost)}/hr) to reduce waste.`;
+            }
+        }
+
+        return {
+            status,
+            icon,
+            message,
+            difference,
+            recommendation: optimalCost
+        };
+    }
+
+    /**
      * Format currency value
      * @param {number} value - Dollar amount
      * @returns {string} Formatted currency
@@ -386,6 +432,7 @@ const CostCalculator = (function() {
         calculateOptimalCoverage,
         calculateSavingsCurve,
         getOptimizationSuggestion,
+        getOptimizationSuggestionDollars,
         formatCurrency,
         formatPercentage,
         calculateCoverageImpact

@@ -825,21 +825,17 @@
 
         if (!suggestionElement || !textElement || !titleElement) return;
 
-        // Convert current coverage cost to percentage for comparison
-        const currentCoveragePercent = (appState.coverageCost / appState.maxCost) * 100;
-
-        const suggestion = CostCalculator.getOptimizationSuggestion(
-            currentCoveragePercent,
-            results.optimalCoveragePercentage
-        );
-
-        // Use optimal coverage directly (in $/hour), not recalculated from percentage
+        // Use dollar values directly (no percentage conversion needed)
         const optimalCost = results.optimalCoverageUnits;
         const currentCost = appState.coverageCost;
-
-        // Calculate min-hourly percentage
         const minCost = appState.minCost;
-        const optimalPercentOfMin = (optimalCost / minCost) * 100;
+
+        // Get suggestion with dollar values (avoids rounding issues)
+        const suggestion = CostCalculator.getOptimizationSuggestionDollars(
+            currentCost,
+            optimalCost,
+            minCost
+        );
 
         // Update status class
         suggestionElement.classList.remove('status-optimal', 'status-warning', 'status-danger');
@@ -854,16 +850,8 @@
                 Potential savings: ${CostCalculator.formatCurrency(monthlySavings)}/month
             </small>`;
 
-        // Update text with dollar amounts
-        let message = suggestion.message;
-        // Replace percentage values with dollar values
-        message = message.replace(/\d+\.\d+%/g, (match) => {
-            const percent = parseFloat(match);
-            const dollarValue = (percent / 100) * appState.maxCost;
-            return `$${dollarValue.toFixed(2)}/hour`;
-        });
-
-        textElement.textContent = `${suggestion.icon} ${message}`;
+        // Message already has dollar values formatted correctly
+        textElement.textContent = `${suggestion.icon} ${suggestion.message}`;
     }
 
     /**

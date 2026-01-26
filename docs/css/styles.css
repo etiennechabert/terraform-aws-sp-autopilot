@@ -726,6 +726,7 @@ h1, h2, h3, h4, h5, h6 {
 
 .suggestion-content {
     flex: 1;
+    min-width: 0; /* Allow flex item to shrink below content size */
 }
 
 .suggestion-title {
@@ -733,12 +734,17 @@ h1, h2, h3, h4, h5, h6 {
     color: var(--text-primary);
     margin-bottom: 2px;
     font-size: 0.8rem;
+    word-wrap: break-word;
+    overflow-wrap: break-word;
 }
 
 .suggestion-text {
     color: var(--text-secondary);
     font-size: 0.7rem;
-    line-height: 1.3;
+    line-height: 1.4;
+    word-wrap: break-word;
+    overflow-wrap: break-word;
+    hyphens: auto;
 }
 
 /* ===== Footer ===== */
