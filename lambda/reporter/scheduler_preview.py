@@ -1,9 +1,8 @@
 """
 Scheduler Preview - Simulates scheduler purchase decisions for reporting.
 
-This module calculates what the scheduler would purchase if it ran right now,
-using the currently configured strategy (fixed, dichotomy, or follow_aws), and
-compares it with the optimal commitment level using the knee-point algorithm.
+This module calculates what all three scheduler strategies (fixed, dichotomy,
+follow_aws) would purchase if they ran right now, allowing comparison between strategies.
 """
 
 import logging
@@ -15,6 +14,48 @@ from typing import Any
 logger = logging.getLogger(__name__)
 
 
+def _get_strategy_config(
+    base_config: dict[str, Any], strategy_type: str, is_configured: bool
+) -> dict[str, Any]:
+    """
+    Get configuration for a strategy with appropriate defaults.
+
+    For the configured strategy, uses actual user config.
+    For non-configured strategies, uses sensible strategy-specific defaults.
+
+    Args:
+        base_config: Base configuration from user
+        strategy_type: Strategy type (fixed, dichotomy, follow_aws)
+        is_configured: Whether this is the user's configured strategy
+
+    Returns:
+        dict: Configuration with strategy-appropriate defaults
+    """
+    config = base_config.copy()
+
+    # If this is the configured strategy, use actual config as-is
+    if is_configured:
+        return config
+
+    # For non-configured strategies, apply strategy-specific defaults
+    if strategy_type == "fixed":
+        # Fixed strategy defaults: conservative 10% purchases
+        config.setdefault("max_purchase_percent", 10.0)
+        config.setdefault("min_purchase_percent", 1.0)
+        config.setdefault("coverage_target_percent", 90.0)
+
+    elif strategy_type == "dichotomy":
+        # Dichotomy strategy defaults: more aggressive with halving from 50%
+        config.setdefault("max_purchase_percent", 50.0)
+        config.setdefault("min_purchase_percent", 1.0)
+        config.setdefault("coverage_target_percent", 90.0)
+        config.setdefault("dichotomy_initial_percent", 50.0)
+
+    # follow_aws doesn't need these parameters (uses AWS recommendations)
+
+    return config
+
+
 def calculate_scheduler_preview(
     config: dict[str, Any],
     clients: dict[str, Any],
@@ -22,7 +63,12 @@ def calculate_scheduler_preview(
     savings_data: dict[str, Any],
 ) -> dict[str, Any]:
     """
-    Calculate what the scheduler would purchase right now.
+    Calculate what each scheduler strategy would purchase right now.
+
+    Each non-configured strategy uses sensible defaults:
+    - Fixed: 10% max purchase, 90% target (conservative)
+    - Dichotomy: 50% max purchase, 1% min, 90% target (aggressive)
+    - Follow AWS: Uses AWS recommendations (no parameters)
 
     Args:
         config: Reporter config (includes scheduler strategy params)
@@ -31,29 +77,48 @@ def calculate_scheduler_preview(
         savings_data: Already-fetched savings data from get_savings_plans_summary
 
     Returns:
-        dict: Preview data structure with scheduled purchase recommendations
+        dict: Preview data with all three strategies' recommendations
     """
-    strategy_type = config.get("purchase_strategy_type", "fixed")
+    configured_strategy = config.get("purchase_strategy_type", "fixed")
 
     try:
-        # Calculate scheduled purchases using scheduler strategy
-        scheduled_purchases = _calculate_scheduled_purchases(
-            config, clients, coverage_data, strategy_type
-        )
+        # Calculate purchases for all three strategies
+        all_strategies = {}
+
+        for strategy_type in ["fixed", "dichotomy", "follow_aws"]:
+            try:
+                # Get strategy-specific config (with defaults for non-configured strategies)
+                strategy_config = _get_strategy_config(
+                    config, strategy_type, is_configured=(strategy_type == configured_strategy)
+                )
+
+                purchases = _calculate_scheduled_purchases(
+                    strategy_config, clients, coverage_data, strategy_type
+                )
+                all_strategies[strategy_type] = {
+                    "purchases": purchases,
+                    "has_recommendations": len(purchases) > 0,
+                    "error": None,
+                }
+            except Exception as e:
+                logger.error(f"Failed to calculate {strategy_type} strategy: {e}", exc_info=True)
+                all_strategies[strategy_type] = {
+                    "purchases": [],
+                    "has_recommendations": False,
+                    "error": str(e),
+                }
 
         return {
-            "strategy": strategy_type,
-            "purchases": scheduled_purchases,
-            "has_recommendations": len(scheduled_purchases) > 0,
+            "configured_strategy": configured_strategy,
+            "strategies": all_strategies,
             "error": None,
         }
 
     except Exception as e:
         logger.error(f"Failed to calculate scheduler preview: {e}", exc_info=True)
         return {
-            "strategy": strategy_type,
-            "purchases": [],
-            "has_recommendations": False,
+            "configured_strategy": configured_strategy,
+            "strategies": {},
             "error": str(e),
         }
 
@@ -101,15 +166,31 @@ def _calculate_scheduled_purchases(
             summary = sp_data.get("summary", {})
 
             current_coverage = summary.get("avg_coverage_total", 0.0)
+            avg_hourly_total = summary.get("avg_hourly_total", 0.0)
+            avg_hourly_uncovered = summary.get("avg_hourly_uncovered", 0.0)
+            hourly_commitment = plan["hourly_commitment"]
+
+            # Calculate purchase_percent if not provided (Follow AWS case)
+            if "purchase_percent" in plan:
+                # Fixed/Dichotomy provide this
+                purchase_percent = plan["purchase_percent"]
+            # Follow AWS: calculate from hourly commitment and uncovered spend
+            elif avg_hourly_uncovered > 0:
+                purchase_percent = (hourly_commitment / avg_hourly_uncovered) * 100.0
+            elif avg_hourly_total > 0:
+                # If uncovered is 0, calculate as % of total spend
+                purchase_percent = (hourly_commitment / avg_hourly_total) * 100.0
+            else:
+                # No spend data available
+                purchase_percent = 0.0
 
             # Calculate projected coverage
-            purchase_percent = plan.get("purchase_percent", 0.0)
             projected_coverage = min(current_coverage + purchase_percent, 100.0)
 
             enriched.append(
                 {
                     "sp_type": sp_type,
-                    "hourly_commitment": plan["hourly_commitment"],
+                    "hourly_commitment": hourly_commitment,
                     "purchase_percent": purchase_percent,
                     "current_coverage": current_coverage,
                     "projected_coverage": projected_coverage,

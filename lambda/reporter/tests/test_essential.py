@@ -513,6 +513,13 @@ def test_handler_with_scheduler_preview_fixed_strategy(monkeypatch, mock_clients
         utilization_percentage=85.0
     )
 
+    # Mock AWS recommendations (needed for follow_aws strategy in preview)
+    mock_clients[
+        "ce"
+    ].get_savings_plans_purchase_recommendation.return_value = aws_mock_builder.recommendation(
+        sp_type="compute", hourly_commitment=50.0
+    )
+
     # Mock S3 upload
     report_content_captured = {}
 
@@ -540,7 +547,14 @@ def test_handler_with_scheduler_preview_fixed_strategy(monkeypatch, mock_clients
     assert "preview-compute" in report_html, "Preview should have compute tab"
     assert "preview-database" in report_html, "Preview should have database tab"
     assert "preview-sagemaker" in report_html, "Preview should have sagemaker tab"
-    assert "fixed" in report_html.lower(), "Strategy type should be mentioned"
+
+    # Verify all three strategies are shown in the comparison
+    assert "Fixed" in report_html, "Preview should show Fixed strategy"
+    assert "Dichotomy" in report_html, "Preview should show Dichotomy strategy"
+    assert "Follow AWS" in report_html, "Preview should show Follow AWS strategy"
+
+    # Verify configured strategy is highlighted
+    assert "CONFIGURED" in report_html, "Preview should mark configured strategy"
 
     # Verify S3 upload was called
     assert mock_clients["s3"].put_object.called
@@ -573,6 +587,13 @@ def test_handler_with_scheduler_preview_dichotomy_strategy(
         utilization_percentage=85.0
     )
 
+    # Mock AWS recommendations (needed for follow_aws strategy in preview)
+    mock_clients[
+        "ce"
+    ].get_savings_plans_purchase_recommendation.return_value = aws_mock_builder.recommendation(
+        sp_type="compute", hourly_commitment=50.0
+    )
+
     # Mock S3 upload
     report_content_captured = {}
 
@@ -598,7 +619,14 @@ def test_handler_with_scheduler_preview_dichotomy_strategy(
     # Verify scheduler preview section is present
     assert "Scheduler Preview" in report_html
     assert "preview-compute" in report_html
-    assert "dichotomy" in report_html.lower(), "Dichotomy strategy should be mentioned"
+
+    # Verify all three strategies are shown in the comparison
+    assert "Fixed" in report_html
+    assert "Dichotomy" in report_html
+    assert "Follow AWS" in report_html
+
+    # Verify configured strategy (dichotomy) is highlighted
+    assert "CONFIGURED" in report_html
 
 
 def test_handler_with_scheduler_preview_follow_aws_strategy(
@@ -659,4 +687,11 @@ def test_handler_with_scheduler_preview_follow_aws_strategy(
     # Verify scheduler preview section is present
     assert "Scheduler Preview" in report_html
     assert "preview-compute" in report_html
-    assert "follow_aws" in report_html.lower(), "Follow AWS strategy should be mentioned"
+
+    # Verify all three strategies are shown in the comparison
+    assert "Fixed" in report_html
+    assert "Dichotomy" in report_html
+    assert "Follow AWS" in report_html
+
+    # Verify configured strategy (follow_aws) is highlighted
+    assert "CONFIGURED" in report_html

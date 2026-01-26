@@ -92,43 +92,67 @@ def mock_clients():
     }
 
 
-def test_calculate_scheduler_preview_fixed_strategy(
-    sample_config, mock_clients, sample_coverage_data, sample_savings_data
+def test_calculate_scheduler_preview_all_strategies(
+    sample_config, mock_clients, sample_coverage_data, sample_savings_data, aws_mock_builder
 ):
-    """Test scheduler preview calculation with fixed strategy."""
+    """Test scheduler preview calculates all three strategies."""
+    # Setup AWS recommendation mock for follow_aws strategy
+    mock_clients[
+        "ce"
+    ].get_savings_plans_purchase_recommendation.return_value = aws_mock_builder.recommendation(
+        sp_type="compute", hourly_commitment=50.0
+    )
+
     result = scheduler_preview.calculate_scheduler_preview(
         sample_config, mock_clients, sample_coverage_data, sample_savings_data
     )
 
     # Verify structure
-    assert "strategy" in result
-    assert "purchases" in result
-    assert "has_recommendations" in result
+    assert "configured_strategy" in result
+    assert "strategies" in result
     assert "error" in result
 
-    # Verify strategy
-    assert result["strategy"] == "fixed"
+    # Verify configured strategy
+    assert result["configured_strategy"] == "fixed"
     assert result["error"] is None
 
-    # Verify purchases
-    if result["has_recommendations"]:
-        assert len(result["purchases"]) > 0
-        purchase = result["purchases"][0]
+    # Verify all three strategies are present
+    assert "fixed" in result["strategies"]
+    assert "dichotomy" in result["strategies"]
+    assert "follow_aws" in result["strategies"]
 
-        # Verify purchase structure (simplified - no optimal/efficiency)
-        assert "sp_type" in purchase
-        assert "hourly_commitment" in purchase
-        assert "purchase_percent" in purchase
-        assert "current_coverage" in purchase
-        assert "projected_coverage" in purchase
-        assert "payment_option" in purchase
-        assert "term" in purchase
+    # Verify each strategy has the correct structure
+    for strategy_name, strategy_data in result["strategies"].items():
+        assert "purchases" in strategy_data
+        assert "has_recommendations" in strategy_data
+        assert "error" in strategy_data
+
+        # Verify purchase structure if there are recommendations
+        if strategy_data["has_recommendations"]:
+            assert len(strategy_data["purchases"]) > 0
+            purchase = strategy_data["purchases"][0]
+
+            assert "sp_type" in purchase
+            assert "hourly_commitment" in purchase
+            assert "purchase_percent" in purchase
+            assert "current_coverage" in purchase
+            assert "projected_coverage" in purchase
+            assert "payment_option" in purchase
+            assert "term" in purchase
 
 
-def test_calculate_scheduler_preview_dichotomy_strategy(
-    sample_config, mock_clients, sample_coverage_data, sample_savings_data
+def test_calculate_scheduler_preview_configured_strategy_marked(
+    sample_config, mock_clients, sample_coverage_data, sample_savings_data, aws_mock_builder
 ):
-    """Test scheduler preview calculation with dichotomy strategy."""
+    """Test that the configured strategy is properly marked."""
+    # Setup AWS recommendation mock
+    mock_clients[
+        "ce"
+    ].get_savings_plans_purchase_recommendation.return_value = aws_mock_builder.recommendation(
+        sp_type="compute", hourly_commitment=50.0
+    )
+
+    # Test with dichotomy as configured
     config = sample_config.copy()
     config["purchase_strategy_type"] = "dichotomy"
     config["dichotomy_initial_percent"] = 50.0
@@ -137,36 +161,24 @@ def test_calculate_scheduler_preview_dichotomy_strategy(
         config, mock_clients, sample_coverage_data, sample_savings_data
     )
 
-    assert result["strategy"] == "dichotomy"
+    assert result["configured_strategy"] == "dichotomy"
     assert result["error"] is None
 
-
-def test_calculate_scheduler_preview_follow_aws_strategy(
-    sample_config, mock_clients, sample_coverage_data, sample_savings_data, aws_mock_builder
-):
-    """Test scheduler preview calculation with follow_aws strategy."""
-    config = sample_config.copy()
-    config["purchase_strategy_type"] = "follow_aws"
-
-    # Use proper AWS recommendation fixture
-    mock_clients[
-        "ce"
-    ].get_savings_plans_purchase_recommendation.return_value = aws_mock_builder.recommendation(
-        sp_type="compute", hourly_commitment=50.0
-    )
-
-    result = scheduler_preview.calculate_scheduler_preview(
-        config, mock_clients, sample_coverage_data, sample_savings_data
-    )
-
-    assert result["strategy"] == "follow_aws"
-    assert result["error"] is None
+    # All strategies should still be calculated
+    assert len(result["strategies"]) == 3
 
 
 def test_calculate_scheduler_preview_no_recommendations(
-    sample_config, mock_clients, sample_savings_data
+    sample_config, mock_clients, sample_savings_data, aws_mock_builder
 ):
     """Test scheduler preview when already at target coverage."""
+    # Setup AWS recommendation mock (empty - no recommendation)
+    mock_clients[
+        "ce"
+    ].get_savings_plans_purchase_recommendation.return_value = aws_mock_builder.recommendation(
+        sp_type="compute", empty=True
+    )
+
     # Coverage already at 95% (above 90% target)
     coverage_data = {
         "compute": {
@@ -184,26 +196,32 @@ def test_calculate_scheduler_preview_no_recommendations(
         sample_config, mock_clients, coverage_data, sample_savings_data
     )
 
-    assert result["strategy"] == "fixed"
-    assert result["has_recommendations"] is False
+    assert result["configured_strategy"] == "fixed"
     assert result["error"] is None
 
+    # Fixed and dichotomy should report no recommendations (coverage already met)
+    assert result["strategies"]["fixed"]["has_recommendations"] is False
+    assert result["strategies"]["dichotomy"]["has_recommendations"] is False
 
-def test_calculate_scheduler_preview_error_handling(
+    # follow_aws also has no recommendations (AWS returned empty recommendation)
+    assert result["strategies"]["follow_aws"]["has_recommendations"] is False
+
+
+def test_calculate_scheduler_preview_strategy_error_handling(
     sample_config, mock_clients, sample_coverage_data, sample_savings_data
 ):
-    """Test scheduler preview error handling with graceful fallback."""
-    # Provide unknown strategy type (should fallback to fixed)
-    invalid_config = sample_config.copy()
-    invalid_config["purchase_strategy_type"] = "unknown_strategy"
-
-    # This should handle the error gracefully by falling back to fixed strategy
+    """Test that individual strategy errors are handled gracefully."""
+    # Don't setup AWS mock - follow_aws will fail but others should succeed
     result = scheduler_preview.calculate_scheduler_preview(
-        invalid_config, mock_clients, sample_coverage_data, sample_savings_data
+        sample_config, mock_clients, sample_coverage_data, sample_savings_data
     )
 
-    # Should fallback to fixed strategy and still work
-    assert result["strategy"] == "unknown_strategy"
     assert result["error"] is None
-    # May have recommendations depending on coverage gap
-    assert "has_recommendations" in result
+    assert len(result["strategies"]) == 3
+
+    # Fixed and dichotomy should work
+    assert result["strategies"]["fixed"]["error"] is None
+    assert result["strategies"]["dichotomy"]["error"] is None
+
+    # follow_aws might have an error (no AWS mock), but should still be in result
+    assert "follow_aws" in result["strategies"]

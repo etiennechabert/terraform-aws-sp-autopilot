@@ -261,10 +261,22 @@ def _prepare_chart_data(
 def _render_scheduler_preview_section(
     preview_data: dict[str, Any] | None, config: dict[str, Any]
 ) -> str:
-    """Render the scheduler preview section with tabs for each SP type."""
+    """Render the scheduler preview section comparing all three strategies."""
 
-    # Helper to render content for a specific SP type tab
-    def render_sp_type_preview(sp_type: str) -> str:
+    strategy_names = {
+        "fixed": "Fixed",
+        "dichotomy": "Dichotomy",
+        "follow_aws": "Follow AWS",
+    }
+
+    strategy_descriptions = {
+        "fixed": "Purchases a fixed percentage of uncovered spend at a time.",
+        "dichotomy": "Uses exponentially decreasing purchase sizes based on coverage gap.",
+        "follow_aws": "Follows AWS Cost Explorer recommendations.",
+    }
+
+    # Helper to render comparison for a specific SP type
+    def render_sp_type_comparison(sp_type: str) -> str:
         if not preview_data:
             return '<div class="no-data">Preview data not available</div>'
 
@@ -275,97 +287,164 @@ def _render_scheduler_preview_section(
                 </div>
             """
 
-        # Find purchase for this SP type
-        purchase = None
-        for p in preview_data.get("purchases", []):
-            if p.get("sp_type") == sp_type:
-                purchase = p
-                break
+        strategies = preview_data.get("strategies", {})
+        configured_strategy = preview_data.get("configured_strategy", "fixed")
+        target_coverage = config.get("coverage_target_percent", 90.0)
 
-        if not purchase:
+        # Collect purchases from all strategies for this SP type
+        strategy_purchases = {}
+        for strategy_name, strategy_data in strategies.items():
+            for purchase in strategy_data.get("purchases", []):
+                if purchase.get("sp_type") == sp_type:
+                    strategy_purchases[strategy_name] = purchase
+                    break
+
+        if not strategy_purchases:
             return f"""
                 <div class="no-data">
-                    No purchase recommended for {sp_type.capitalize()} Savings Plans.
+                    No purchases recommended for {sp_type.capitalize()} Savings Plans by any strategy.
                     You may already be at or above your target coverage.
                 </div>
             """
 
-        # Render simple purchase recommendation
-        hourly_commit = purchase["hourly_commitment"]
-        purchase_percent = purchase.get("purchase_percent", 0.0)
-        current_cov = purchase["current_coverage"]
-        projected_cov = purchase["projected_coverage"]
-        payment_option = purchase.get("payment_option", "N/A")
-        term = purchase.get("term", "N/A")
-        cov_increase = projected_cov - current_cov
-
-        target_coverage = config.get("coverage_target_percent", 90.0)
-        coverage_class = "green" if projected_cov >= target_coverage else "orange"
-
-        return f"""
+        # Build comparison table
+        html = f"""
             <div style="margin: 20px 0;">
-                <h3 style="color: #232f3e; margin-bottom: 15px;">{sp_type.capitalize()} Savings Plan Recommendation</h3>
+                <h3 style="color: #232f3e; margin-bottom: 15px;">{sp_type.capitalize()} Savings Plans - Strategy Comparison</h3>
 
-                <div class="info-box" style="background: #e3f2fd; border-left: 4px solid #2196f3; margin-bottom: 20px;">
-                    <div style="font-size: 1.1em; margin-bottom: 10px;">
-                        <strong>Recommended Purchase:</strong>
-                    </div>
-                    <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 15px; font-size: 0.95em;">
-                        <div>
-                            <strong>Hourly Commitment:</strong> <span style="color: #2196f3; font-size: 1.2em; font-weight: bold;">${hourly_commit:.4f}/hr</span>
-                        </div>
-                        <div>
-                            <strong>Purchase %:</strong> {purchase_percent:.1f}% of uncovered spend
-                        </div>
-                        <div>
-                            <strong>Term:</strong> {term}
-                        </div>
-                        <div>
-                            <strong>Payment Option:</strong> {payment_option}
-                        </div>
-                    </div>
-                </div>
+                <table style="width: 100%;">
+                    <thead>
+                        <tr>
+                            <th>Strategy</th>
+                            <th>Hourly Commitment</th>
+                            <th>Purchase %</th>
+                            <th>Current Coverage</th>
+                            <th>Projected Coverage</th>
+                            <th>Coverage Increase</th>
+                            <th>Term</th>
+                            <th>Payment</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+        """
 
-                <div style="margin: 20px 0;">
-                    <h4 style="color: #232f3e; margin-bottom: 10px;">Coverage Impact</h4>
-                    <table style="width: 100%;">
-                        <thead>
-                            <tr>
-                                <th>Current Coverage</th>
-                                <th>→</th>
-                                <th>Projected Coverage</th>
-                                <th>Increase</th>
-                                <th>Target</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            <tr>
-                                <td class="metric">{current_cov:.1f}%</td>
-                                <td style="text-align: center; font-size: 1.2em;">→</td>
-                                <td class="metric {coverage_class}" style="font-weight: bold;">{projected_cov:.1f}%</td>
-                                <td class="metric" style="color: #28a745;">+{cov_increase:.1f}%</td>
-                                <td class="metric">{target_coverage:.1f}%</td>
-                            </tr>
-                        </tbody>
-                    </table>
-                </div>
+        # Render row for each strategy
+        for strategy_type in ["fixed", "dichotomy", "follow_aws"]:
+            purchase = strategy_purchases.get(strategy_type)
+            strategy_display = strategy_names.get(strategy_type, strategy_type)
+
+            if not purchase:
+                # Show "No recommendation" row
+                is_configured = strategy_type == configured_strategy
+                row_class = (
+                    'style="background: #fff9e6; font-weight: 600;"' if is_configured else ""
+                )
+                configured_badge = (
+                    ' <span style="background: #ff9900; color: white; padding: 2px 8px; border-radius: 3px; font-size: 0.75em; font-weight: 600;">CONFIGURED</span>'
+                    if is_configured
+                    else ""
+                )
+
+                html += f"""
+                    <tr {row_class}>
+                        <td><strong>{strategy_display}</strong>{configured_badge}</td>
+                        <td colspan="7" style="color: #6c757d; font-style: italic;">No recommendation</td>
+                    </tr>
+                """
+            else:
+                # Show purchase recommendation
+                hourly_commit = purchase["hourly_commitment"]
+                purchase_percent = purchase.get("purchase_percent", 0.0)
+                current_cov = purchase["current_coverage"]
+                projected_cov = purchase["projected_coverage"]
+                cov_increase = projected_cov - current_cov
+                term = purchase.get("term", "N/A")
+                payment_option = purchase.get("payment_option", "N/A")
+
+                is_configured = strategy_type == configured_strategy
+                row_class = (
+                    'style="background: #fff9e6; font-weight: 600;"' if is_configured else ""
+                )
+                configured_badge = (
+                    ' <span style="background: #ff9900; color: white; padding: 2px 8px; border-radius: 3px; font-size: 0.75em; font-weight: 600;">CONFIGURED</span>'
+                    if is_configured
+                    else ""
+                )
+
+                coverage_class = "green" if projected_cov >= target_coverage else "orange"
+
+                html += f"""
+                    <tr {row_class}>
+                        <td><strong>{strategy_display}</strong>{configured_badge}</td>
+                        <td class="metric" style="color: #2196f3; font-weight: bold;">${hourly_commit:.4f}/hr</td>
+                        <td class="metric">{purchase_percent:.1f}%</td>
+                        <td class="metric">{current_cov:.1f}%</td>
+                        <td class="metric {coverage_class}" style="font-weight: bold;">{projected_cov:.1f}%</td>
+                        <td class="metric" style="color: #28a745;">+{cov_increase:.1f}%</td>
+                        <td>{term}</td>
+                        <td>{payment_option}</td>
+                    </tr>
+                """
+
+        html += """
+                    </tbody>
+                </table>
             </div>
         """
 
-    strategy = preview_data.get("strategy", "unknown") if preview_data else "unknown"
-    strategy_descriptions = {
-        "fixed": "Purchases a fixed percentage of uncovered spend at a time.",
-        "dichotomy": "Uses exponentially decreasing purchase sizes based on coverage gap.",
-        "follow_aws": "Follows AWS Cost Explorer recommendations.",
-    }
-    strategy_desc = strategy_descriptions.get(strategy, "Unknown strategy")
+        # Add strategy descriptions with parameters
+        html += """
+            <div class="info-box" style="margin-top: 20px; background: #f8f9fa; border-left: 4px solid #6c757d;">
+                <strong>Strategy Descriptions:</strong>
+                <ul style="margin: 10px 0 0 20px; padding: 0;">
+        """
+
+        is_configured_fixed = configured_strategy == "fixed"
+        is_configured_dichotomy = configured_strategy == "dichotomy"
+
+        # Fixed strategy
+        fixed_params = (
+            f"(max purchase: {config.get('max_purchase_percent', 10.0):.0f}%)"
+            if is_configured_fixed
+            else "(default: max purchase 10%)"
+        )
+        html += f"""
+                    <li><strong>Fixed:</strong> {strategy_descriptions["fixed"]} {fixed_params}</li>
+        """
+
+        # Dichotomy strategy
+        if is_configured_dichotomy:
+            max_purchase = config.get("max_purchase_percent", 50.0)
+            min_purchase = config.get("min_purchase_percent", 1.0)
+            dichotomy_params = f"(max: {max_purchase:.0f}%, min: {min_purchase:.0f}%)"
+        else:
+            dichotomy_params = "(default: max 50%, min 1%)"
+        html += f"""
+                    <li><strong>Dichotomy:</strong> {strategy_descriptions["dichotomy"]} {dichotomy_params}</li>
+        """
+
+        # Follow AWS strategy
+        html += f"""
+                    <li><strong>Follow AWS:</strong> {strategy_descriptions["follow_aws"]}</li>
+        """
+
+        html += """
+                </ul>
+            </div>
+        """
+
+        return html
+
+    configured_strategy = (
+        preview_data.get("configured_strategy", "unknown") if preview_data else "unknown"
+    )
 
     return f"""
         <div class="section">
             <h2>Scheduler Preview</h2>
             <div class="info-box" style="background: #fff9e6; border-left: 4px solid #ffc107; margin-bottom: 20px;">
-                <strong>What is this?</strong> This section shows what the scheduler would purchase if it ran right now.<br>
-                <strong>Strategy:</strong> {strategy.upper()} - {strategy_desc}
+                <strong>What is this?</strong> This section compares what each scheduler strategy would purchase if it ran right now.
+                The currently configured strategy ({configured_strategy.upper()}) is highlighted.
             </div>
 
             <div class="tabs">
@@ -375,15 +454,15 @@ def _render_scheduler_preview_section(
             </div>
 
             <div id="preview-compute-tab" class="tab-content active">
-                {render_sp_type_preview("compute")}
+                {render_sp_type_comparison("compute")}
             </div>
 
             <div id="preview-database-tab" class="tab-content">
-                {render_sp_type_preview("database")}
+                {render_sp_type_comparison("database")}
             </div>
 
             <div id="preview-sagemaker-tab" class="tab-content">
-                {render_sp_type_preview("sagemaker")}
+                {render_sp_type_comparison("sagemaker")}
             </div>
         </div>
     """

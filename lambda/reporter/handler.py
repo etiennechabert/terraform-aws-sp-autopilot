@@ -103,9 +103,14 @@ def handler(event: dict[str, Any], context: Any) -> dict[str, Any]:
     preview_data = scheduler_preview.calculate_scheduler_preview(
         config, clients, coverage_data, savings_data
     )
+
+    # Count total recommendations across all strategies
+    total_recs = sum(
+        len(s.get("purchases", [])) for s in preview_data.get("strategies", {}).values()
+    )
     logger.info(
-        f"Scheduler preview calculated - Strategy: {preview_data['strategy']}, "
-        f"Recommendations: {len(preview_data['purchases'])}"
+        f"Scheduler preview calculated - Configured: {preview_data.get('configured_strategy', 'unknown')}, "
+        f"Total recommendations: {total_recs}"
     )
 
     # Prepare raw data for HTML report - reorder for better readability
