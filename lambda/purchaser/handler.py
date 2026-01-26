@@ -30,7 +30,7 @@ if TYPE_CHECKING:
     from mypy_boto3_sqs.client import SQSClient
 from validation import validate_purchase_intent
 
-from shared import handler_utils
+from shared import constants, handler_utils
 from shared.queue_adapter import QueueAdapter
 
 
@@ -390,29 +390,20 @@ def adjust_coverage_for_expiring_plans(
     """
     adjusted_coverage = raw_coverage.copy()
 
-    # Check if we have expiring plans by type
-    has_expiring_compute = any(
-        p["savingsPlanType"] == "ComputeSavingsPlans" for p in expiring_plans
-    )
-    has_expiring_database = any(
-        p["savingsPlanType"] == "DatabaseSavingsPlans" for p in expiring_plans
-    )
-    has_expiring_sagemaker = any(
-        p["savingsPlanType"] == "SageMakerSavingsPlans" for p in expiring_plans
-    )
+    # Map plan types to coverage keys
+    plan_type_mapping = {
+        constants.SP_FILTER_COMPUTE: ("compute", "Compute"),
+        constants.SP_FILTER_DATABASE: ("database", "Database"),
+        constants.SP_FILTER_SAGEMAKER: ("sagemaker", "SageMaker"),
+    }
 
-    # If expiring plans exist for a type, set coverage to 0 to force renewal
-    if has_expiring_compute:
-        logger.info("Compute Savings Plans expiring - setting coverage to 0% to force renewal")
-        adjusted_coverage["compute"] = 0.0
-
-    if has_expiring_database:
-        logger.info("Database Savings Plans expiring - setting coverage to 0% to force renewal")
-        adjusted_coverage["database"] = 0.0
-
-    if has_expiring_sagemaker:
-        logger.info("SageMaker Savings Plans expiring - setting coverage to 0% to force renewal")
-        adjusted_coverage["sagemaker"] = 0.0
+    # Check each plan type and adjust coverage if expiring plans exist
+    for plan_type, (coverage_key, display_name) in plan_type_mapping.items():
+        if any(p["savingsPlanType"] == plan_type for p in expiring_plans):
+            logger.info(
+                f"{display_name} Savings Plans expiring - setting coverage to 0% to force renewal"
+            )
+            adjusted_coverage[coverage_key] = 0.0
 
     return adjusted_coverage
 
@@ -539,11 +530,11 @@ def would_exceed_cap(
     projected_coverage = purchase_intent.get("projected_coverage_after", 0.0)
 
     # Determine which coverage type to check
-    if sp_type == "ComputeSavingsPlans":
+    if sp_type == constants.SP_FILTER_COMPUTE:
         coverage_type = "compute"
-    elif sp_type == "DatabaseSavingsPlans":
+    elif sp_type == constants.SP_FILTER_DATABASE:
         coverage_type = "database"
-    elif sp_type == "SageMakerSavingsPlans":
+    elif sp_type == constants.SP_FILTER_SAGEMAKER:
         coverage_type = "sagemaker"
     else:
         logger.warning(f"Unknown SP type: {sp_type}, defaulting to compute")
@@ -652,17 +643,17 @@ def update_coverage_tracking(
     sp_type = purchase_intent.get("sp_type", "")
     projected_coverage = purchase_intent.get("projected_coverage_after", 0.0)
 
-    if sp_type == "ComputeSavingsPlans":
+    if sp_type == constants.SP_FILTER_COMPUTE:
         updated_coverage["compute"] = projected_coverage
         logger.info(
             f"Updated Compute coverage tracking: {current_coverage['compute']:.2f}% -> {projected_coverage:.2f}%"
         )
-    elif sp_type == "DatabaseSavingsPlans":
+    elif sp_type == constants.SP_FILTER_DATABASE:
         updated_coverage["database"] = projected_coverage
         logger.info(
             f"Updated Database coverage tracking: {current_coverage['database']:.2f}% -> {projected_coverage:.2f}%"
         )
-    elif sp_type == "SageMakerSavingsPlans":
+    elif sp_type == constants.SP_FILTER_SAGEMAKER:
         updated_coverage["sagemaker"] = projected_coverage
         logger.info(
             f"Updated SageMaker coverage tracking: {current_coverage['sagemaker']:.2f}% -> {projected_coverage:.2f}%"
