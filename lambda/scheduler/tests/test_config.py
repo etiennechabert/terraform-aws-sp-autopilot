@@ -56,14 +56,14 @@ def test_load_configuration_defaults(mock_env_vars):
     assert cfg["enable_compute_sp"] is True
     assert cfg["enable_database_sp"] is False
     assert cfg["enable_sagemaker_sp"] is False
-    assert cfg["coverage_target_percent"] == 90.0
+    assert cfg["coverage_target_percent"] == pytest.approx(90.0)
     assert cfg["purchase_strategy_type"] == "follow_aws"
-    assert cfg["max_purchase_percent"] == 10.0
-    assert cfg["min_purchase_percent"] == 1.0
+    assert cfg["max_purchase_percent"] == pytest.approx(10.0)
+    assert cfg["min_purchase_percent"] == pytest.approx(1.0)
     assert cfg["renewal_window_days"] == 7
     assert cfg["lookback_days"] == 30
     assert cfg["granularity"] == "DAILY"
-    assert cfg["min_commitment_per_plan"] == 0.001
+    assert cfg["min_commitment_per_plan"] == pytest.approx(0.001)
     assert cfg["compute_sp_term"] == "THREE_YEAR"
     assert cfg["sagemaker_sp_term"] == "THREE_YEAR"
     assert cfg["sagemaker_sp_payment_option"] == "ALL_UPFRONT"
@@ -89,10 +89,10 @@ def test_load_configuration_custom_values(monkeypatch):
     assert cfg["sns_topic_arn"] == "custom-sns-arn"
     assert cfg["dry_run"] is False
     assert cfg["enable_sagemaker_sp"] is True
-    assert cfg["coverage_target_percent"] == 85.5
+    assert cfg["coverage_target_percent"] == pytest.approx(85.5)
     assert cfg["purchase_strategy_type"] == "dichotomy"
-    assert cfg["max_purchase_percent"] == 15.0
-    assert cfg["min_purchase_percent"] == 2.0
+    assert cfg["max_purchase_percent"] == pytest.approx(15.0)
+    assert cfg["min_purchase_percent"] == pytest.approx(2.0)
     assert cfg["compute_sp_term"] == "ONE_YEAR"
     assert cfg["sagemaker_sp_term"] == "ONE_YEAR"
     assert cfg["sagemaker_sp_payment_option"] == "NO_UPFRONT"
