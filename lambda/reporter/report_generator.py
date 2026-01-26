@@ -1373,27 +1373,14 @@ def generate_html_report(
                 const simulatorUrl = `${{baseUrl}}?usage=${{encodeURIComponent(base64)}}`;
 
                 optimizationHtml = `
-                    <div class="optimization-section">
-                        <h4>📊 Hourly Usage Statistics</h4>
-                        <div class="percentile-grid">
-                            <div class="percentile-item">
-                                <div class="percentile-label">Min Hourly</div>
-                                <div class="percentile-value">${{stats.min}}</div>
-                            </div>
-                            <div class="percentile-item">
-                                <div class="percentile-label">Max Hourly</div>
-                                <div class="percentile-value">${{stats.max}}</div>
-                            </div>
-                        </div>
-                        <div class="simulator-cta">
-                            <a href="${{simulatorUrl}}" target="_blank" class="simulator-button">
-                                🎯 Optimize Your Coverage with Interactive Simulator
-                            </a>
-                            <p class="simulator-description">
-                                Use our interactive tool to find the optimal coverage level based on your actual usage patterns.
-                                Your hourly data has been pre-loaded for analysis.
-                            </p>
-                        </div>
+                    <div class="simulator-cta">
+                        <a href="${{simulatorUrl}}" target="_blank" class="simulator-button">
+                            🎯 Optimize Your Coverage with Interactive Simulator
+                        </a>
+                        <p class="simulator-description">
+                            Use our interactive tool to find the optimal coverage level based on your actual usage patterns.
+                            Your hourly data has been pre-loaded for analysis.
+                        </p>
                     </div>
                 `;
             }}
