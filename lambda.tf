@@ -300,6 +300,28 @@ data "archive_file" "reporter" {
     content  = file("${path.module}/lambda/reporter/notifications.py")
     filename = "notifications.py"
   }
+  source {
+    content  = file("${path.module}/lambda/reporter/scheduler_preview.py")
+    filename = "scheduler_preview.py"
+  }
+
+  # Include scheduler strategy modules (needed by scheduler_preview.py)
+  source {
+    content  = file("${path.module}/lambda/scheduler/fixed_strategy.py")
+    filename = "fixed_strategy.py"
+  }
+  source {
+    content  = file("${path.module}/lambda/scheduler/dichotomy_strategy.py")
+    filename = "dichotomy_strategy.py"
+  }
+  source {
+    content  = file("${path.module}/lambda/scheduler/follow_aws_strategy.py")
+    filename = "follow_aws_strategy.py"
+  }
+  source {
+    content  = file("${path.module}/lambda/scheduler/recommendations.py")
+    filename = "recommendations.py"
+  }
 
   # Include shared module
   source {
