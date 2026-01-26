@@ -69,7 +69,7 @@ def test_calculate_purchase_need_compute_gap(mock_config):
 
     assert len(result) == 1
     assert result[0]["sp_type"] == "compute"
-    assert result[0]["hourly_commitment"] == 5.50
+    assert result[0]["hourly_commitment"] == pytest.approx(5.50)
     assert result[0]["payment_option"] == "ALL_UPFRONT"
     assert result[0]["recommendation_id"] == "rec-12345"
 
@@ -101,7 +101,7 @@ def test_calculate_purchase_need_database_gap(mock_config):
 
     assert len(result) == 1
     assert result[0]["sp_type"] == "database"
-    assert result[0]["hourly_commitment"] == 2.75
+    assert result[0]["hourly_commitment"] == pytest.approx(2.75)
     assert result[0]["term"] == "ONE_YEAR"
     assert result[0]["payment_option"] == "NO_UPFRONT"
     assert result[0]["recommendation_id"] == "rec-db-456"
@@ -133,7 +133,7 @@ def test_calculate_purchase_need_sagemaker_gap(mock_config):
 
     assert len(result) == 1
     assert result[0]["sp_type"] == "sagemaker"
-    assert result[0]["hourly_commitment"] == 3.25
+    assert result[0]["hourly_commitment"] == pytest.approx(3.25)
     assert result[0]["payment_option"] == "ALL_UPFRONT"
     assert result[0]["recommendation_id"] == "rec-sm-789"
 
@@ -292,7 +292,7 @@ def test_apply_purchase_limits_with_limit(mock_config):
 
     # 10% of 10.0 = 1.0
     assert len(result) == 1
-    assert result[0]["hourly_commitment"] == 1.0
+    assert result[0]["hourly_commitment"] == pytest.approx(1.0)
 
 
 def test_apply_purchase_limits_multiple_plans(mock_config):
@@ -314,8 +314,8 @@ def test_apply_purchase_limits_multiple_plans(mock_config):
 
     # Both should be scaled to 10%
     assert len(result) == 2
-    assert result[0]["hourly_commitment"] == 1.0
-    assert result[1]["hourly_commitment"] == 0.5
+    assert result[0]["hourly_commitment"] == pytest.approx(1.0)
+    assert result[1]["hourly_commitment"] == pytest.approx(0.5)
 
 
 def test_apply_purchase_limits_below_minimum(mock_config):
@@ -360,7 +360,7 @@ def test_apply_purchase_limits_100_percent(mock_config):
 
     # Should remain unchanged
     assert len(result) == 1
-    assert result[0]["hourly_commitment"] == 5.50
+    assert result[0]["hourly_commitment"] == pytest.approx(5.50)
 
 
 def test_apply_purchase_limits_mixed_filtering(mock_config):
@@ -383,7 +383,7 @@ def test_apply_purchase_limits_mixed_filtering(mock_config):
     # Only first plan should remain
     assert len(result) == 1
     assert result[0]["sp_type"] == "compute"
-    assert result[0]["hourly_commitment"] == 0.1
+    assert result[0]["hourly_commitment"] == pytest.approx(0.1)
 
 
 # ============================================================================
@@ -462,8 +462,8 @@ def test_calculate_purchase_need_dichotomy_strategy():
     assert len(result) == 1
     assert result[0]["sp_type"] == "compute"
     assert result[0]["strategy"] == "dichotomy"
-    assert result[0]["purchase_percent"] == 25.0
-    assert result[0]["hourly_commitment"] == 2.5
+    assert result[0]["purchase_percent"] == pytest.approx(25.0)
+    assert result[0]["hourly_commitment"] == pytest.approx(2.5)
 
 
 def test_calculate_purchase_need_dichotomy_from_zero():
@@ -501,8 +501,8 @@ def test_calculate_purchase_need_dichotomy_from_zero():
     # At 0%, can use max 50%
     # Purchase 50% of $100/h = $50/h
     assert len(result) == 1
-    assert result[0]["purchase_percent"] == 50.0
-    assert result[0]["hourly_commitment"] == 50.0
+    assert result[0]["purchase_percent"] == pytest.approx(50.0)
+    assert result[0]["hourly_commitment"] == pytest.approx(50.0)
 
 
 def test_calculate_purchase_need_dichotomy_near_target():
@@ -540,8 +540,8 @@ def test_calculate_purchase_need_dichotomy_near_target():
     # At 87.5%, target 90%, halve down to 1.5625% → round to 1.6%
     # Purchase 1.6% of $100/h = $1.60/h
     assert len(result) == 1
-    assert result[0]["purchase_percent"] == 1.6
-    assert result[0]["hourly_commitment"] == 1.6
+    assert result[0]["purchase_percent"] == pytest.approx(1.6)
+    assert result[0]["hourly_commitment"] == pytest.approx(1.6)
 
 
 def test_calculate_purchase_need_dichotomy_multiple_sp_types():
@@ -598,19 +598,19 @@ def test_calculate_purchase_need_dichotomy_multiple_sp_types():
 
     # Compute: 50% → 25% purchase
     compute_plan = [p for p in result if p["sp_type"] == "compute"][0]
-    assert compute_plan["purchase_percent"] == 25.0
+    assert compute_plan["purchase_percent"] == pytest.approx(25.0)
     assert compute_plan["hourly_commitment"] == 25.0
 
     # Database: 75% → 12.5% purchase
     database_plan = [p for p in result if p["sp_type"] == "database"][0]
-    assert database_plan["purchase_percent"] == 12.5
-    assert database_plan["hourly_commitment"] == 6.25
+    assert database_plan["purchase_percent"] == pytest.approx(12.5)
+    assert database_plan["hourly_commitment"] == pytest.approx(6.25)
     assert database_plan["term"] == "ONE_YEAR"
 
     # SageMaker: 0% → 50% purchase
     sagemaker_plan = [p for p in result if p["sp_type"] == "sagemaker"][0]
-    assert sagemaker_plan["purchase_percent"] == 50.0
-    assert sagemaker_plan["hourly_commitment"] == 10.0
+    assert sagemaker_plan["purchase_percent"] == pytest.approx(50.0)
+    assert sagemaker_plan["hourly_commitment"] == pytest.approx(10.0)
 
 
 def test_calculate_purchase_need_dichotomy_at_target():
