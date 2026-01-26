@@ -65,14 +65,14 @@ def test_calculate_purchase_need_all_types(mock_config, mock_spending_data):
 
     # Check compute plan (50% -> 80% = 30% gap, 30% of $2.5 = $0.75)
     compute_plan = [p for p in plans if p["sp_type"] == "compute"][0]
-    assert compute_plan["hourly_commitment"] == 0.75
+    assert compute_plan["hourly_commitment"] == pytest.approx(0.75)
     assert compute_plan["payment_option"] == "ALL_UPFRONT"
     assert compute_plan["term"] == "THREE_YEAR"
     assert compute_plan["strategy"] == "fixed"
 
     # Check database plan (60% -> 80% = 20% gap, 20% of $1.25 = $0.25)
     database_plan = [p for p in plans if p["sp_type"] == "database"][0]
-    assert database_plan["hourly_commitment"] == 0.25
+    assert database_plan["hourly_commitment"] == pytest.approx(0.25)
     assert database_plan["payment_option"] == "NO_UPFRONT"
     assert database_plan["term"] == "ONE_YEAR"
     assert database_plan["strategy"] == "fixed"
@@ -208,17 +208,17 @@ def test_calculate_purchase_need_with_max_purchase_percent(mock_config, mock_spe
     # Compute: gap=30%, max=10%, purchase=10% of $2.5 = $0.25
     compute_plan = [p for p in plans if p["sp_type"] == "compute"][0]
     assert compute_plan["hourly_commitment"] == pytest.approx(0.25, rel=0.01)
-    assert compute_plan["purchase_percent"] == 10.0
+    assert compute_plan["purchase_percent"] == pytest.approx(10.0)
 
     # Database: gap=20%, max=10%, purchase=10% of $1.25 = $0.125
     database_plan = [p for p in plans if p["sp_type"] == "database"][0]
     assert database_plan["hourly_commitment"] == pytest.approx(0.125, rel=0.01)
-    assert database_plan["purchase_percent"] == 10.0
+    assert database_plan["purchase_percent"] == pytest.approx(10.0)
 
     # SageMaker: gap=40%, max=10%, purchase=10% of $0.75 = $0.075
     sagemaker_plan = [p for p in plans if p["sp_type"] == "sagemaker"][0]
     assert sagemaker_plan["hourly_commitment"] == pytest.approx(0.075, rel=0.01)
-    assert sagemaker_plan["purchase_percent"] == 10.0
+    assert sagemaker_plan["purchase_percent"] == pytest.approx(10.0)
 
 
 def test_calculate_purchase_need_gap_smaller_than_max(mock_config, mock_spending_data):
@@ -231,7 +231,7 @@ def test_calculate_purchase_need_gap_smaller_than_max(mock_config, mock_spending
 
     compute_plan = [p for p in plans if p["sp_type"] == "compute"][0]
     # Gap is 30%, max is 50%, should purchase 30% of $2.5 = $0.75
-    assert compute_plan["purchase_percent"] == 30.0
+    assert compute_plan["purchase_percent"] == pytest.approx(30.0)
     assert compute_plan["hourly_commitment"] == pytest.approx(0.75, rel=0.01)
 
 
