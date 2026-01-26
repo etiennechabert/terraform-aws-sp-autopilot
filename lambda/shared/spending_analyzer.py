@@ -78,6 +78,63 @@ DATABASE_SERVICE_NAMES_LOWER = {svc.lower() for svc in DATABASE_SP_SERVICES}
 SAGEMAKER_SERVICE_NAMES_LOWER = {svc.lower() for svc in SAGEMAKER_SP_SERVICES}
 
 
+def _build_timeseries_by_timestamp(coverage_data: list[dict[str, Any]]) -> dict[str, dict]:
+    """Build timeseries data grouped by timestamp and SP type."""
+    timeseries_by_timestamp = {}
+
+    for item in coverage_data:
+        service_name = item.get("Attributes", {}).get("SERVICE", "").lower()
+        coverage_info = item.get("Coverage", {})
+        time_period = item.get("TimePeriod", {})
+
+        covered_spend = float(coverage_info.get("SpendCoveredBySavingsPlans", "0"))
+        total_cost = float(coverage_info.get("TotalCost", "0"))
+        timestamp = time_period.get("End", "")
+
+        if not timestamp:
+            continue
+
+        if timestamp not in timeseries_by_timestamp:
+            timeseries_by_timestamp[timestamp] = {
+                "compute": {"covered": 0.0, "total": 0.0},
+                "database": {"covered": 0.0, "total": 0.0},
+                "sagemaker": {"covered": 0.0, "total": 0.0},
+            }
+
+        if service_name in ("compute", "database", "sagemaker"):
+            timeseries_by_timestamp[timestamp][service_name]["covered"] += covered_spend
+            timeseries_by_timestamp[timestamp][service_name]["total"] += total_cost
+        else:
+            logger.warning(f"Unexpected service name without SP type tag: {service_name}")
+
+    return timeseries_by_timestamp
+
+
+def _calculate_sp_type_summary(
+    timeseries: list[dict],
+    total_covered: float,
+    total_spend: float,
+    total_points: list[float],
+    coverage_points: list[float],
+) -> dict[str, float]:
+    """Calculate summary statistics for a single SP type."""
+    num_hours = len(timeseries)
+    avg_coverage_total = (total_covered / total_spend * 100) if total_spend > 0 else 0.0
+    avg_hourly_covered = total_covered / num_hours if num_hours > 0 else 0.0
+    avg_hourly_total = total_spend / num_hours if num_hours > 0 else 0.0
+
+    return {
+        "avg_coverage_total": avg_coverage_total,
+        "min_coverage_hourly": min(coverage_points) if coverage_points else 0.0,
+        "avg_hourly_covered": avg_hourly_covered,
+        "avg_hourly_total": avg_hourly_total,
+        "min_hourly_total": min(total_points) if total_points else 0.0,
+        "max_hourly_total": max(total_points) if total_points else 0.0,
+        "est_monthly_covered": avg_hourly_covered * 720,
+        "est_monthly_total": avg_hourly_total * 720,
+    }
+
+
 def group_coverage_by_sp_type(coverage_data: list[dict[str, Any]]) -> dict[str, dict[str, Any]]:
     """
     Group Cost Explorer coverage data by Savings Plan type with time series.
@@ -111,106 +168,39 @@ def group_coverage_by_sp_type(coverage_data: list[dict[str, Any]]) -> dict[str, 
                   "sagemaker": {...}
               }
     """
-    # Group by timestamp and SP type
-    # Structure: {timestamp: {sp_type: {covered, total}}}
-    timeseries_by_timestamp = {}
+    timeseries_by_timestamp = _build_timeseries_by_timestamp(coverage_data)
 
-    for item in coverage_data:
-        service_name = item.get("Attributes", {}).get("SERVICE", "").lower()
-        coverage_info = item.get("Coverage", {})
-        time_period = item.get("TimePeriod", {})
-
-        # Parse spend amounts
-        covered_spend = float(coverage_info.get("SpendCoveredBySavingsPlans", "0"))
-        total_cost = float(coverage_info.get("TotalCost", "0"))
-
-        # Get timestamp (use End as the timestamp)
-        timestamp = time_period.get("End", "")
-        if not timestamp:
-            continue
-
-        # Initialize timestamp entry if needed
-        if timestamp not in timeseries_by_timestamp:
-            timeseries_by_timestamp[timestamp] = {
-                "compute": {"covered": 0.0, "total": 0.0},
-                "database": {"covered": 0.0, "total": 0.0},
-                "sagemaker": {"covered": 0.0, "total": 0.0},
-            }
-
-        # Map to SP type from tagged service names
-        # Items are tagged with "compute", "database", or "sagemaker" in _fetch_coverage_data
-        if service_name in ("compute", "database", "sagemaker"):
-            sp_type = service_name
-        else:
-            # Should never happen - all items are tagged in _fetch_coverage_data
-            logger.warning(f"Unexpected service name without SP type tag: {service_name}")
-            continue
-
-        # Accumulate spend for this timestamp and SP type
-        timeseries_by_timestamp[timestamp][sp_type]["covered"] += covered_spend
-        timeseries_by_timestamp[timestamp][sp_type]["total"] += total_cost
-
-    # Build result with timeseries and summary for each SP type
     result = {
         "compute": {"timeseries": [], "summary": {}},
         "database": {"timeseries": [], "summary": {}},
         "sagemaker": {"timeseries": [], "summary": {}},
     }
 
-    # Convert to timeseries format and calculate summaries
     for sp_type in ["compute", "database", "sagemaker"]:
         total_covered = 0.0
         total_spend = 0.0
         total_points = []
         coverage_points = []
 
-        # Sort timestamps for consistent ordering
         for timestamp in sorted(timeseries_by_timestamp.keys()):
             data = timeseries_by_timestamp[timestamp][sp_type]
             covered = data["covered"]
             total = data["total"]
-
-            # Calculate coverage percentage for this point
             coverage = (covered / total * 100) if total > 0 else 0.0
 
-            # Add to timeseries
             result[sp_type]["timeseries"].append(
-                {
-                    "timestamp": timestamp,
-                    "covered": covered,
-                    "total": total,
-                    "coverage": coverage,
-                }
+                {"timestamp": timestamp, "covered": covered, "total": total, "coverage": coverage}
             )
 
-            # Track for summary
             total_covered += covered
             total_spend += total
-            if total > 0:  # Only count non-zero points for min/max
+            if total > 0:
                 total_points.append(total)
                 coverage_points.append(coverage)
 
-        # Calculate summary statistics
-        num_hours = len(result[sp_type]["timeseries"])
-        avg_coverage_total = (total_covered / total_spend * 100) if total_spend > 0 else 0.0
-
-        # Calculate hourly rates (Savings Plans are $/hour)
-        avg_hourly_covered = total_covered / num_hours if num_hours > 0 else 0.0
-        avg_hourly_total = total_spend / num_hours if num_hours > 0 else 0.0
-
-        result[sp_type]["summary"] = {
-            # Coverage metrics
-            "avg_coverage_total": avg_coverage_total,
-            "min_coverage_hourly": min(coverage_points) if coverage_points else 0.0,
-            # Hourly rates (for purchase calculations)
-            "avg_hourly_covered": avg_hourly_covered,
-            "avg_hourly_total": avg_hourly_total,
-            "min_hourly_total": min(total_points) if total_points else 0.0,
-            "max_hourly_total": max(total_points) if total_points else 0.0,
-            # Monthly estimation
-            "est_monthly_covered": avg_hourly_covered * 720,
-            "est_monthly_total": avg_hourly_total * 720,
-        }
+        result[sp_type]["summary"] = _calculate_sp_type_summary(
+            result[sp_type]["timeseries"], total_covered, total_spend, total_points, coverage_points
+        )
 
     return result
 
@@ -306,6 +296,38 @@ class SpendingAnalyzer:
 
         return sp_type_data
 
+    def _normalize_start_time(self, start_time: datetime, granularity: str) -> datetime:
+        """Round start_time to midnight for HOURLY granularity."""
+        if granularity != "HOURLY":
+            return start_time
+
+        if (
+            start_time.hour != 0
+            or start_time.minute != 0
+            or start_time.second != 0
+            or start_time.microsecond != 0
+        ):
+            return start_time.replace(hour=0, minute=0, second=0, microsecond=0) + timedelta(days=1)
+        return start_time.replace(hour=0, minute=0, second=0, microsecond=0)
+
+    def _build_service_filters(self, config: dict[str, Any]) -> list[tuple[str, list[str]]]:
+        """Build list of (SP type name, service list) tuples based on enabled SP types."""
+        service_filters = []
+        if config.get("enable_compute_sp", True):
+            service_filters.append(("Compute", COMPUTE_SP_SERVICES))
+        if config.get("enable_database_sp", False):
+            service_filters.append(("Database", DATABASE_SP_SERVICES))
+        if config.get("enable_sagemaker_sp", False):
+            service_filters.append(("SageMaker", SAGEMAKER_SP_SERVICES))
+        return service_filters
+
+    def _tag_coverage_items(self, items: list[dict[str, Any]], sp_type: str) -> None:
+        """Tag coverage items with SP type for downstream grouping."""
+        for item in items:
+            if "Attributes" not in item:
+                item["Attributes"] = {}
+            item["Attributes"]["SERVICE"] = sp_type.lower()
+
     def _fetch_coverage_data(
         self, now: datetime, lookback_days: int, config: dict[str, Any]
     ) -> list[dict[str, Any]]:
@@ -331,33 +353,11 @@ class SpendingAnalyzer:
             ClientError: If AWS API calls fail
         """
         granularity = config.get("granularity", "HOURLY")
-        end_time = now - timedelta(days=1)  # 1 day lag
+        end_time = now - timedelta(days=1)
         start_time = end_time - timedelta(days=lookback_days)
+        start_time = self._normalize_start_time(start_time, granularity)
 
-        # Round start_time UP to next midnight for HOURLY to stay within AWS retention window
-        # AWS expects start dates at 00:00:00
-        if granularity == "HOURLY":
-            if (
-                start_time.hour != 0
-                or start_time.minute != 0
-                or start_time.second != 0
-                or start_time.microsecond != 0
-            ):
-                start_time = start_time.replace(
-                    hour=0, minute=0, second=0, microsecond=0
-                ) + timedelta(days=1)
-            else:
-                start_time = start_time.replace(hour=0, minute=0, second=0, microsecond=0)
-
-        # Build service filters only for enabled SP types
-        service_filters = []
-        if config.get("enable_compute_sp", True):
-            service_filters.append(("Compute", COMPUTE_SP_SERVICES))
-        if config.get("enable_database_sp", False):
-            service_filters.append(("Database", DATABASE_SP_SERVICES))
-        if config.get("enable_sagemaker_sp", False):
-            service_filters.append(("SageMaker", SAGEMAKER_SP_SERVICES))
-
+        service_filters = self._build_service_filters(config)
         if not service_filters:
             logger.warning("No SP types enabled - returning empty coverage data")
             return []
@@ -367,12 +367,8 @@ class SpendingAnalyzer:
             f"using {len(service_filters)} service-filtered calls"
         )
 
-        all_coverages = []
-
-        # Format dates based on granularity
-        # HOURLY requires ISO 8601 (yyyy-MM-ddTHH:mm:ssZ)
-        # DAILY requires date only (yyyy-MM-dd)
         date_format = "%Y-%m-%d" if granularity == "DAILY" else "%Y-%m-%dT%H:%M:%SZ"
+        all_coverages = []
 
         try:
             for sp_type, service_list in service_filters:
@@ -383,12 +379,9 @@ class SpendingAnalyzer:
                     },
                     "Granularity": granularity,
                     "Filter": {"Dimensions": {"Key": "SERVICE", "Values": service_list}},
-                    # No GroupBy - AWS aggregates across filtered services per time period
                 }
 
                 response = self.ce_client.get_savings_plans_coverage(**params)
-
-                # Capture raw AWS response for debugging
                 add_response(
                     api="get_savings_plans_coverage",
                     params=params,
@@ -398,14 +391,7 @@ class SpendingAnalyzer:
                 )
 
                 coverages = response.get("SavingsPlansCoverages", [])
-
-                # Tag each item with SP type for downstream grouping
-                for item in coverages:
-                    if "Attributes" not in item:
-                        item["Attributes"] = {}
-                    # Tag with lowercase SP type directly
-                    item["Attributes"]["SERVICE"] = sp_type.lower()
-
+                self._tag_coverage_items(coverages, sp_type)
                 all_coverages.extend(coverages)
 
                 logger.debug(
