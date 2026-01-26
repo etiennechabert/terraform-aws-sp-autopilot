@@ -161,7 +161,9 @@
                 "GRANULARITY": "HOURLY",
                 // Alert settings
                 "LOW_UTILIZATION_THRESHOLD": "70",
-                "LOW_UTILIZATION_ALERT_ENABLED": "false"
+                "LOW_UTILIZATION_ALERT_ENABLED": "false",
+                // Debug data
+                "INCLUDE_DEBUG_DATA": "true"
             },
             "console": "integratedTerminal",
             "cwd": "${workspaceFolder}/lambda/reporter"
@@ -197,7 +199,9 @@
                 "GRANULARITY": "HOURLY",
                 // Alert settings
                 "LOW_UTILIZATION_THRESHOLD": "70",
-                "LOW_UTILIZATION_ALERT_ENABLED": "false"
+                "LOW_UTILIZATION_ALERT_ENABLED": "false",
+                // Debug data
+                "INCLUDE_DEBUG_DATA": "true"
             },
             "console": "integratedTerminal",
             "cwd": "${workspaceFolder}/lambda/reporter"
@@ -233,7 +237,9 @@
                 "GRANULARITY": "HOURLY",
                 // Alert settings
                 "LOW_UTILIZATION_THRESHOLD": "70",
-                "LOW_UTILIZATION_ALERT_ENABLED": "false"
+                "LOW_UTILIZATION_ALERT_ENABLED": "false",
+                // Debug data
+                "INCLUDE_DEBUG_DATA": "true"
             },
             "console": "integratedTerminal",
             "cwd": "${workspaceFolder}/lambda/reporter"

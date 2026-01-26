@@ -30,7 +30,7 @@ CONFIG_SCHEMA = {
     "include_debug_data": {
         "required": False,
         "type": "bool",
-        "default": "true",
+        "default": "false",
         "env_var": "INCLUDE_DEBUG_DATA",
     },
     "enable_compute_sp": {
