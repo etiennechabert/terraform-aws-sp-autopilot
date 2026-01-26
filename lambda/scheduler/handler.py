@@ -74,7 +74,8 @@ def handler(event: dict[str, Any], context: Any) -> dict[str, Any]:
         # Extract coverage and unknown services for email notifications
         unknown_services = cast(list[str], spending_data.pop("_unknown_services", []))
         coverage = {
-            sp_type: data["summary"]["avg_coverage"] for sp_type, data in spending_data.items()
+            sp_type: data["summary"]["avg_coverage_total"]
+            for sp_type, data in spending_data.items()
         }
     else:
         # follow_aws strategy - no spending analysis needed

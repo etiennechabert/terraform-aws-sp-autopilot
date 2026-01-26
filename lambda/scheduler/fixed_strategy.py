@@ -106,7 +106,7 @@ def calculate_purchase_need_fixed(
             continue
 
         summary = data["summary"]
-        current_coverage = summary["avg_coverage"]
+        current_coverage = summary["avg_coverage_total"]
         avg_hourly_total = summary["avg_hourly_total"]
         avg_hourly_covered = summary["avg_hourly_covered"]
 

@@ -34,6 +34,7 @@ def mock_env_vars(monkeypatch):
     monkeypatch.setenv("EMAIL_REPORTS", "true")
     monkeypatch.setenv("LOOKBACK_DAYS", "7")
     monkeypatch.setenv("GRANULARITY", "HOURLY")
+    monkeypatch.setenv("COVERAGE_TARGET_PERCENT", "90")
     monkeypatch.setenv("ENABLE_COMPUTE_SP", "true")
     monkeypatch.setenv("ENABLE_DATABASE_SP", "false")
     monkeypatch.setenv("ENABLE_SAGEMAKER_SP", "false")
