@@ -178,7 +178,7 @@ def handler(event: dict[str, Any], context: Any) -> dict[str, Any]:
     # Send email notification if enabled
     if config["email_reports"]:
         notifications_module.send_report_email(
-            clients["sns"], config, s3_object_key, coverage_data, savings_data
+            clients["sns"], config, s3_object_key, coverage_data, savings_data, storage_adapter
         )
         logger.info("Report email notification sent")
     else:
