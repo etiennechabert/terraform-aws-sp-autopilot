@@ -485,3 +485,177 @@ def test_handler_local_mode_auto_open(monkeypatch, mock_clients, aws_mock_builde
 
         # Verify successful execution
         assert result["statusCode"] == 200
+
+
+def test_handler_with_scheduler_preview_fixed_strategy(monkeypatch, mock_clients, aws_mock_builder):
+    """Test scheduler preview with fixed strategy integration."""
+    # Set scheduler strategy environment variables
+    monkeypatch.setenv("PURCHASE_STRATEGY_TYPE", "fixed")
+    monkeypatch.setenv("MAX_PURCHASE_PERCENT", "10")
+    monkeypatch.setenv("MIN_PURCHASE_PERCENT", "1")
+    monkeypatch.setenv("COMPUTE_SP_TERM", "THREE_YEAR")
+    monkeypatch.setenv("COMPUTE_SP_PAYMENT_OPTION", "ALL_UPFRONT")
+    monkeypatch.setenv("REPORT_FORMAT", "html")
+    monkeypatch.setenv("EMAIL_REPORTS", "false")
+
+    # Mock SpendingAnalyzer - coverage at 70% (room for improvement)
+    mock_clients["ce"].get_savings_plans_coverage.return_value = aws_mock_builder.coverage(
+        coverage_percentage=70.0
+    )
+
+    # Mock Savings Plans data - 2 active plans
+    mock_clients[
+        "savingsplans"
+    ].describe_savings_plans.return_value = aws_mock_builder.describe_savings_plans(plans_count=2)
+
+    # Mock utilization
+    mock_clients["ce"].get_savings_plans_utilization.return_value = aws_mock_builder.utilization(
+        utilization_percentage=85.0
+    )
+
+    # Mock S3 upload
+    report_content_captured = {}
+
+    def capture_report_content(*args, **kwargs):
+        report_content_captured["content"] = kwargs.get("Body", "")
+
+    mock_clients["s3"].put_object.side_effect = capture_report_content
+
+    # Execute handler
+    result = handler.handler({}, None)
+
+    # Verify success
+    assert result["statusCode"] == 200
+
+    # Verify report was generated
+    assert "content" in report_content_captured
+    report_html = report_content_captured["content"]
+
+    # Decode bytes to string if needed
+    if isinstance(report_html, bytes):
+        report_html = report_html.decode("utf-8")
+
+    # Verify scheduler preview tab is present in HTML
+    assert "scheduler-preview" in report_html, "Scheduler preview tab should be in HTML"
+    assert "📊 Scheduler Preview" in report_html, "Scheduler preview tab button should be present"
+    assert "Scheduled vs Optimal" in report_html, "Preview content should show comparison"
+    assert "fixed" in report_html.lower(), "Strategy type should be mentioned"
+
+    # Verify S3 upload was called
+    assert mock_clients["s3"].put_object.called
+
+
+def test_handler_with_scheduler_preview_dichotomy_strategy(
+    monkeypatch, mock_clients, aws_mock_builder
+):
+    """Test scheduler preview with dichotomy strategy integration."""
+    # Set scheduler strategy environment variables for dichotomy
+    monkeypatch.setenv("PURCHASE_STRATEGY_TYPE", "dichotomy")
+    monkeypatch.setenv("DICHOTOMY_INITIAL_PERCENT", "50")
+    monkeypatch.setenv("COMPUTE_SP_TERM", "THREE_YEAR")
+    monkeypatch.setenv("COMPUTE_SP_PAYMENT_OPTION", "NO_UPFRONT")
+    monkeypatch.setenv("REPORT_FORMAT", "html")
+    monkeypatch.setenv("EMAIL_REPORTS", "false")
+
+    # Mock SpendingAnalyzer - coverage at 60% (larger gap for dichotomy)
+    mock_clients["ce"].get_savings_plans_coverage.return_value = aws_mock_builder.coverage(
+        coverage_percentage=60.0
+    )
+
+    # Mock Savings Plans data
+    mock_clients[
+        "savingsplans"
+    ].describe_savings_plans.return_value = aws_mock_builder.describe_savings_plans(plans_count=1)
+
+    # Mock utilization
+    mock_clients["ce"].get_savings_plans_utilization.return_value = aws_mock_builder.utilization(
+        utilization_percentage=85.0
+    )
+
+    # Mock S3 upload
+    report_content_captured = {}
+
+    def capture_report_content(*args, **kwargs):
+        report_content_captured["content"] = kwargs.get("Body", "")
+
+    mock_clients["s3"].put_object.side_effect = capture_report_content
+
+    # Execute handler
+    result = handler.handler({}, None)
+
+    # Verify success
+    assert result["statusCode"] == 200
+
+    # Verify report was generated
+    assert "content" in report_content_captured
+    report_html = report_content_captured["content"]
+
+    # Decode bytes to string if needed
+    if isinstance(report_html, bytes):
+        report_html = report_html.decode("utf-8")
+
+    # Verify scheduler preview tab is present
+    assert "scheduler-preview" in report_html
+    assert "📊 Scheduler Preview" in report_html
+    assert "dichotomy" in report_html.lower(), "Dichotomy strategy should be mentioned"
+
+
+def test_handler_with_scheduler_preview_follow_aws_strategy(
+    monkeypatch, mock_clients, aws_mock_builder
+):
+    """Test scheduler preview with follow_aws strategy integration."""
+    # Set scheduler strategy environment variables for follow_aws
+    monkeypatch.setenv("PURCHASE_STRATEGY_TYPE", "follow_aws")
+    monkeypatch.setenv("COMPUTE_SP_TERM", "THREE_YEAR")
+    monkeypatch.setenv("COMPUTE_SP_PAYMENT_OPTION", "ALL_UPFRONT")
+    monkeypatch.setenv("REPORT_FORMAT", "html")
+    monkeypatch.setenv("EMAIL_REPORTS", "false")
+
+    # Mock SpendingAnalyzer
+    mock_clients["ce"].get_savings_plans_coverage.return_value = aws_mock_builder.coverage(
+        coverage_percentage=65.0
+    )
+
+    # Mock Savings Plans data
+    mock_clients[
+        "savingsplans"
+    ].describe_savings_plans.return_value = aws_mock_builder.describe_savings_plans(plans_count=1)
+
+    # Mock utilization
+    mock_clients["ce"].get_savings_plans_utilization.return_value = aws_mock_builder.utilization(
+        utilization_percentage=85.0
+    )
+
+    # Mock AWS recommendations (required for follow_aws strategy)
+    mock_clients[
+        "ce"
+    ].get_savings_plans_purchase_recommendation.return_value = aws_mock_builder.recommendation(
+        sp_type="compute"
+    )
+
+    # Mock S3 upload
+    report_content_captured = {}
+
+    def capture_report_content(*args, **kwargs):
+        report_content_captured["content"] = kwargs.get("Body", "")
+
+    mock_clients["s3"].put_object.side_effect = capture_report_content
+
+    # Execute handler
+    result = handler.handler({}, None)
+
+    # Verify success
+    assert result["statusCode"] == 200
+
+    # Verify report was generated
+    assert "content" in report_content_captured
+    report_html = report_content_captured["content"]
+
+    # Decode bytes to string if needed
+    if isinstance(report_html, bytes):
+        report_html = report_html.decode("utf-8")
+
+    # Verify scheduler preview tab is present
+    assert "scheduler-preview" in report_html
+    assert "📊 Scheduler Preview" in report_html
+    assert "follow_aws" in report_html.lower(), "Follow AWS strategy should be mentioned"
