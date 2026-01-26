@@ -306,6 +306,8 @@ def test_handler_low_utilization_alert_triggered(
     """Test low utilization alert is sent when utilization below threshold."""
     monkeypatch.setenv("LOW_UTILIZATION_ALERT_ENABLED", "true")
     monkeypatch.setenv("LOW_UTILIZATION_THRESHOLD", "75")
+    monkeypatch.setenv("SLACK_WEBHOOK_URL", "https://hooks.slack.com/test")
+    monkeypatch.setenv("TEAMS_WEBHOOK_URL", "https://hooks.teams.com/test")
 
     # Mock AWS responses with low utilization (65%)
     mock_clients["ce"].get_savings_plans_coverage.return_value = aws_mock_builder.coverage(
@@ -320,8 +322,13 @@ def test_handler_low_utilization_alert_triggered(
     mock_clients["s3"].put_object.return_value = {}
     mock_clients["sns"].publish.return_value = {"MessageId": "test-message-id"}
 
-    # Execute handler
-    response = handler.handler({}, {})
+    # Mock notification functions to test Slack/Teams alert paths
+    with (
+        patch("shared.notifications.send_slack_notification", return_value=True),
+        patch("shared.notifications.send_teams_notification", return_value=True),
+    ):
+        # Execute handler
+        response = handler.handler({}, {})
 
     # Verify success
     assert response["statusCode"] == 200
@@ -342,6 +349,8 @@ def test_handler_low_utilization_alert_not_triggered(
     """Test no low utilization alert when utilization above threshold."""
     monkeypatch.setenv("LOW_UTILIZATION_ALERT_ENABLED", "true")
     monkeypatch.setenv("LOW_UTILIZATION_THRESHOLD", "75")
+    monkeypatch.setenv("SLACK_WEBHOOK_URL", "https://hooks.slack.com/test")
+    monkeypatch.setenv("TEAMS_WEBHOOK_URL", "https://hooks.teams.com/test")
 
     # Mock AWS responses with high utilization (85%)
     mock_clients["ce"].get_savings_plans_coverage.return_value = aws_mock_builder.coverage(
@@ -356,8 +365,13 @@ def test_handler_low_utilization_alert_not_triggered(
     mock_clients["s3"].put_object.return_value = {}
     mock_clients["sns"].publish.return_value = {"MessageId": "test-message-id"}
 
-    # Execute handler
-    response = handler.handler({}, {})
+    # Mock notification functions
+    with (
+        patch("shared.notifications.send_slack_notification", return_value=True),
+        patch("shared.notifications.send_teams_notification", return_value=True),
+    ):
+        # Execute handler
+        response = handler.handler({}, {})
 
     # Verify success
     assert response["statusCode"] == 200
