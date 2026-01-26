@@ -213,6 +213,9 @@ __marimo__/
 # Auto Claude data directory
 .auto-claude/
 
+# Claude Code CLI directory
+.claude/
+
 # Auto Claude generated files
 .auto-claude-security.json
 .auto-claude-status
