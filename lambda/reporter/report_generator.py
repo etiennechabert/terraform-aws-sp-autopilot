@@ -1381,22 +1381,6 @@ def generate_html_report(
                                 <div class="percentile-value">${{stats.min}}</div>
                             </div>
                             <div class="percentile-item">
-                                <div class="percentile-label">P50 (Median)</div>
-                                <div class="percentile-value">${{stats.p50}}</div>
-                            </div>
-                            <div class="percentile-item">
-                                <div class="percentile-label">P75</div>
-                                <div class="percentile-value">${{stats.p75}}</div>
-                            </div>
-                            <div class="percentile-item">
-                                <div class="percentile-label">P90</div>
-                                <div class="percentile-value">${{stats.p90}}</div>
-                            </div>
-                            <div class="percentile-item">
-                                <div class="percentile-label">P95</div>
-                                <div class="percentile-value">${{stats.p95}}</div>
-                            </div>
-                            <div class="percentile-item">
                                 <div class="percentile-label">Max Hourly</div>
                                 <div class="percentile-value">${{stats.max}}</div>
                             </div>
