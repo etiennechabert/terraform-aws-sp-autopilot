@@ -587,14 +587,22 @@ def generate_html_report(
             margin: 0;
         }}
         .section {{
-            margin-bottom: 25px;
+            margin-bottom: 40px;
+            padding-top: 30px;
+            border-top: 3px solid #e8e8e8;
+        }}
+        .section:first-of-type {{
+            border-top: none;
+            padding-top: 0;
         }}
         h2 {{
             color: #232f3e;
-            border-bottom: 2px solid #e0e0e0;
-            padding-bottom: 6px;
-            margin-bottom: 12px;
-            font-size: 1.3em;
+            border-bottom: 3px solid #ff9900;
+            padding-bottom: 10px;
+            margin-top: 0;
+            margin-bottom: 20px;
+            font-size: 1.5em;
+            font-weight: 600;
         }}
         table {{
             width: 100%;
@@ -1038,7 +1046,9 @@ def generate_html_report(
         {_render_scheduler_preview_section(preview_data, config or {})}
 
         <div class="section">
-            <h2>Savings Plans Breakdown by Type</h2>
+            <h2>Existing Savings Plans</h2>
+
+            <h3 style="color: #232f3e; margin-top: 25px; margin-bottom: 15px; font-size: 1.2em;">Breakdown by Type</h3>
 """
 
     if breakdown_by_type:
@@ -1106,10 +1116,7 @@ def generate_html_report(
 """
 
     html += """
-        </div>
-
-        <div class="section">
-            <h2>Active Savings Plans</h2>
+            <h3 style="color: #232f3e; margin-top: 35px; margin-bottom: 15px; font-size: 1.2em;">Active Plans Details</h3>
 """
 
     plans = savings_data.get("plans", [])
