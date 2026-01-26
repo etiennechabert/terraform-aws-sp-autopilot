@@ -70,7 +70,6 @@ def generate_json_report(
                 "type": plan_type,
                 "plans_count": type_data.get("plans_count", 0),
                 "total_hourly_commitment": round(type_data.get("total_commitment", 0.0), 4),
-                "total_monthly_commitment": round(type_data.get("total_commitment", 0.0) * 730, 2),
             }
         )
 
@@ -93,10 +92,6 @@ def generate_json_report(
         "savings_summary": {
             "active_plans_count": savings_data.get("plans_count", 0),
             "total_hourly_commitment": round(savings_data.get("total_commitment", 0.0), 4),
-            "total_monthly_commitment": round(savings_data.get("total_commitment", 0.0) * 730, 2),
-            "estimated_monthly_savings": round(
-                savings_data.get("estimated_monthly_savings", 0.0), 2
-            ),
             "average_utilization_percentage": round(
                 savings_data.get("average_utilization", 0.0), 2
             ),

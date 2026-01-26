@@ -91,12 +91,9 @@ const ChartManager = (function() {
                         ticks: {
                             color: '#8b95a8',
                             maxTicksLimit: 14,
+                            autoSkip: false,
                             callback: function(value, index) {
-                                // Show tick every 12 hours
-                                if (index % 12 === 0) {
-                                    return LoadPatterns.formatTimeLabel(index);
-                                }
-                                return '';
+                                return LoadPatterns.formatXAxisLabel(index);
                             }
                         },
                         grid: {
@@ -283,11 +280,9 @@ const ChartManager = (function() {
                         ticks: {
                             color: '#8b95a8',
                             maxTicksLimit: 14,
+                            autoSkip: false,
                             callback: function(value, index) {
-                                if (index % 12 === 0) {
-                                    return LoadPatterns.formatTimeLabel(index);
-                                }
-                                return '';
+                                return LoadPatterns.formatXAxisLabel(index);
                             }
                         },
                         grid: {
@@ -492,6 +487,26 @@ const ChartManager = (function() {
             loadChart.data.datasets[0].backgroundColor = themeColors.loadPattern.background;
             loadChart.update('none');
         }
+
+        // Update savings curve chart colors
+        if (savingsCurveChart) {
+            savingsCurveChart.data.datasets[0].borderColor = themeColors.savingsCurve.building.border;
+            savingsCurveChart.data.datasets[0].backgroundColor = themeColors.savingsCurve.building.background;
+
+            savingsCurveChart.data.datasets[1].borderColor = themeColors.savingsCurve.gaining.border;
+            savingsCurveChart.data.datasets[1].backgroundColor = themeColors.savingsCurve.gaining.background;
+
+            savingsCurveChart.data.datasets[2].borderColor = themeColors.savingsCurve.wasting.border;
+            savingsCurveChart.data.datasets[2].backgroundColor = themeColors.savingsCurve.wasting.background;
+
+            savingsCurveChart.data.datasets[3].borderColor = themeColors.savingsCurve.veryBad.border;
+            savingsCurveChart.data.datasets[3].backgroundColor = themeColors.savingsCurve.veryBad.background;
+
+            savingsCurveChart.data.datasets[4].borderColor = themeColors.savingsCurve.losingMoney.border;
+            savingsCurveChart.data.datasets[4].backgroundColor = themeColors.savingsCurve.losingMoney.background;
+
+            savingsCurveChart.update('none');
+        }
     }
 
     /**
@@ -511,6 +526,9 @@ const ChartManager = (function() {
             savingsCurveChart.destroy();
         }
 
+        // Get current theme colors
+        const themeColors = ColorThemes.getThemeColors();
+
         savingsCurveChart = new Chart(ctx, {
             type: 'line',
             data: {
@@ -519,8 +537,8 @@ const ChartManager = (function() {
                     {
                         label: '0-Min: Building to baseline',
                         data: [],
-                        borderColor: 'rgba(77, 159, 255, 1)',
-                        backgroundColor: 'rgba(77, 159, 255, 0.4)',
+                        borderColor: themeColors.savingsCurve.building.border,
+                        backgroundColor: themeColors.savingsCurve.building.background,
                         borderWidth: 2,
                         fill: 'origin',
                         tension: 0.4,
@@ -528,10 +546,10 @@ const ChartManager = (function() {
                         pointHoverRadius: 8
                     },
                     {
-                        label: 'Min-Optimal: Extra savings',
+                        label: 'Min → Optimal: Gaining',
                         data: [],
-                        borderColor: 'rgba(0, 255, 136, 1)',
-                        backgroundColor: 'rgba(0, 255, 136, 0.4)',
+                        borderColor: themeColors.savingsCurve.gaining.border,
+                        backgroundColor: themeColors.savingsCurve.gaining.background,
                         borderWidth: 2,
                         fill: 'origin',
                         tension: 0.4,
@@ -539,10 +557,10 @@ const ChartManager = (function() {
                         pointHoverRadius: 8
                     },
                     {
-                        label: 'Optimal-Breakeven: Declining returns',
+                        label: 'Optimal → Min-hourly: Wasting',
                         data: [],
-                        borderColor: 'rgba(255, 170, 0, 1)',
-                        backgroundColor: 'rgba(255, 170, 0, 0.4)',
+                        borderColor: themeColors.savingsCurve.wasting.border,
+                        backgroundColor: themeColors.savingsCurve.wasting.background,
                         borderWidth: 2,
                         fill: 'origin',
                         tension: 0.4,
@@ -550,10 +568,10 @@ const ChartManager = (function() {
                         pointHoverRadius: 8
                     },
                     {
-                        label: 'Worse than min-hourly: Not worth it',
+                        label: 'Below min-hourly: Very bad',
                         data: [],
-                        borderColor: 'rgba(138, 43, 226, 1)',
-                        backgroundColor: 'rgba(138, 43, 226, 0.4)',
+                        borderColor: themeColors.savingsCurve.veryBad.border,
+                        backgroundColor: themeColors.savingsCurve.veryBad.background,
                         borderWidth: 2,
                         fill: 'origin',
                         tension: 0.4,
@@ -563,8 +581,8 @@ const ChartManager = (function() {
                     {
                         label: 'Worse than on-demand: Losing money',
                         data: [],
-                        borderColor: 'rgba(255, 68, 68, 1)',
-                        backgroundColor: 'rgba(255, 68, 68, 0.4)',
+                        borderColor: themeColors.savingsCurve.losingMoney.border,
+                        backgroundColor: themeColors.savingsCurve.losingMoney.background,
                         borderWidth: 2,
                         fill: 'origin',
                         tension: 0.4,
@@ -616,7 +634,8 @@ const ChartManager = (function() {
                                 });
 
                                 const netSavingsDollars = point?.netSavings || 0;
-                                return `Savings: ${savingsPercent.toFixed(1)}% (${CostCalculator.formatCurrency(netSavingsDollars)}/wk)`;
+                                const netSavingsMonthly = netSavingsDollars * 4.33; // Convert weekly to monthly
+                                return `Savings: ${savingsPercent.toFixed(1)}% (${CostCalculator.formatCurrency(netSavingsMonthly)}/month)`;
                             },
                             afterLabel: function(context) {
                                 const coverage = context.parsed.x;
@@ -630,13 +649,14 @@ const ChartManager = (function() {
                                 if (!point) return null;
 
                                 const extraSavings = point.extraSavings || 0;
+                                const extraSavingsMonthly = extraSavings * 4.33; // Convert weekly to monthly
 
                                 if (extraSavings > 0.01) {
-                                    return `Extra: +${CostCalculator.formatCurrency(extraSavings)}/week`;
+                                    return `vs Optimal: +${CostCalculator.formatCurrency(extraSavingsMonthly)}/month`;
                                 } else if (extraSavings < -0.01) {
-                                    return `Lost: ${CostCalculator.formatCurrency(Math.abs(extraSavings))}/week`;
+                                    return `vs Optimal: ${CostCalculator.formatCurrency(extraSavingsMonthly)}/month`;
                                 }
-                                return 'At baseline (min-hourly)';
+                                return 'At optimal';
                             },
                             footer: function(context) {
                                 const savingsPercent = context[0].parsed.y;

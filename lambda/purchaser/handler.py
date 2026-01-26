@@ -16,7 +16,7 @@ from __future__ import annotations
 
 import json
 import logging
-from datetime import UTC, date, datetime, timedelta
+from datetime import UTC, datetime, timedelta
 from typing import TYPE_CHECKING, Any
 
 import boto3
@@ -184,11 +184,11 @@ def get_current_coverage(clients: dict[str, Any], config: dict[str, Any]) -> dic
     try:
         # Get date range for coverage query using configured lookback period
         # Cost Explorer has 24-48 hour data lag, so we query multiple days for stability
-        end_date = datetime.now(UTC).date()
-        start_date = (datetime.now(UTC) - timedelta(days=config["lookback_days"])).date()
+        end_time = datetime.now(UTC)
+        start_time = end_time - timedelta(days=config["lookback_days"])
 
         # Get raw coverage from Cost Explorer
-        raw_coverage = get_ce_coverage(clients["ce"], start_date, end_date, config)
+        raw_coverage = get_ce_coverage(clients["ce"], start_time, end_time, config)
 
         # Get existing Savings Plans
         expiring_plans = get_expiring_plans(clients["savingsplans"], config)
@@ -210,8 +210,8 @@ def get_current_coverage(clients: dict[str, Any], config: dict[str, Any]) -> dic
 
 def get_ce_coverage(
     ce_client: CostExplorerClient,
-    start_date: date,
-    end_date: date,
+    start_time: datetime,
+    end_time: datetime,
     config: dict[str, Any],
 ) -> dict[str, Any]:
     """
@@ -219,20 +219,30 @@ def get_ce_coverage(
 
     Args:
         ce_client: Boto3 Cost Explorer client
-        start_date: Start date for coverage period
-        end_date: End date for coverage period
+        start_time: Start datetime for coverage period
+        end_time: End datetime for coverage period
         config: Configuration dictionary
 
     Returns:
         dict: Raw coverage data by SP type
     """
-    logger.info(f"Getting coverage from Cost Explorer for {start_date} to {end_date}")
+    logger.info(f"Getting coverage from Cost Explorer for {start_time.date()} to {end_time.date()}")
 
     try:
         # Get coverage grouped by SERVICE (EC2, Lambda, Fargate, SageMaker, etc.)
+        granularity = config.get("granularity", "HOURLY")
+
+        # Format dates based on granularity
+        # HOURLY requires ISO 8601 (yyyy-MM-ddTHH:mm:ssZ)
+        # DAILY requires date only (yyyy-MM-dd)
+        date_format = "%Y-%m-%d" if granularity == "DAILY" else "%Y-%m-%dT%H:%M:%SZ"
+
         response = ce_client.get_savings_plans_coverage(
-            TimePeriod={"Start": start_date.isoformat(), "End": end_date.isoformat()},
-            Granularity="DAILY",
+            TimePeriod={
+                "Start": start_time.strftime(date_format),
+                "End": end_time.strftime(date_format),
+            },
+            Granularity=granularity,
             GroupBy=[{"Type": "DIMENSION", "Key": "SERVICE"}],
         )
 

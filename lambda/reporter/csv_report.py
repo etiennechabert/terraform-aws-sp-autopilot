@@ -78,12 +78,6 @@ def generate_csv_report(
     csv_parts.append(f"active_plans_count,{savings_data.get('plans_count', 0)}")
     csv_parts.append(f"total_hourly_commitment,{savings_data.get('total_commitment', 0.0):.4f}")
     csv_parts.append(
-        f"total_monthly_commitment,{savings_data.get('total_commitment', 0.0) * 730:.2f}"
-    )
-    csv_parts.append(
-        f"estimated_monthly_savings,{savings_data.get('estimated_monthly_savings', 0.0):.2f}"
-    )
-    csv_parts.append(
         f"average_utilization_percentage,{savings_data.get('average_utilization', 0.0):.2f}"
     )
     csv_parts.append(f"actual_sp_cost,{actual_sp_cost:.2f}")

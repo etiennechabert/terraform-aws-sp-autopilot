@@ -260,10 +260,10 @@ variable "notifications" {
 variable "reporting" {
   description = "Report generation and storage configuration"
   type = object({
-    enabled           = optional(bool, true)
-    format            = optional(string, "html")
-    email_reports     = optional(bool, false)
-    retention_days    = optional(number, 365)
+    enabled            = optional(bool, true)
+    format             = optional(string, "html")
+    email_reports      = optional(bool, false)
+    retention_days     = optional(number, 365)
     include_debug_data = optional(bool, false)
 
     s3_lifecycle = optional(object({

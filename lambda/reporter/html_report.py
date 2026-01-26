@@ -262,8 +262,7 @@ def generate_html_report(
 
         html_parts.append(f"""
             <p>
-                <strong>Total Hourly Commitment:</strong> ${total_commitment:.4f}/hour
-                (${total_commitment * 730:,.2f}/month)
+                <strong>Total Hourly Commitment:</strong> ${total_commitment:.4f}/hr
                 <br>
                 <strong>Average Utilization (7 days):</strong> {avg_utilization:.2f}%
             </p>
@@ -354,8 +353,7 @@ def generate_html_report(
                     <tr>
                         <th>Plan Type</th>
                         <th>Active Plans</th>
-                        <th>Total Hourly Commitment</th>
-                        <th>Monthly Commitment</th>
+                        <th>Hourly Commitment</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -364,7 +362,6 @@ def generate_html_report(
         for plan_type, type_data in breakdown_by_type.items():
             plans_count = type_data.get("plans_count", 0)
             total_commitment = type_data.get("total_commitment", 0.0)
-            monthly_commitment = total_commitment * 730
 
             # Map plan types to readable names
             plan_type_display = plan_type
@@ -380,7 +377,6 @@ def generate_html_report(
                         <td><strong>{plan_type_display}</strong></td>
                         <td>{plans_count}</td>
                         <td class="metric">${total_commitment:.4f}/hr</td>
-                        <td class="metric">${monthly_commitment:,.2f}/mo</td>
                     </tr>
 """)
 
