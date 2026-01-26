@@ -51,6 +51,9 @@
         // Initialize UI from state
         updateUIFromState();
 
+        // Initialize legend colors
+        updateLegendColors();
+
         // Generate initial pattern and calculate costs
         updateLoadPattern();
         calculateAndUpdateCosts();
@@ -492,9 +495,46 @@
         // Update all chart colors
         ChartManager.updateChartColors(themeName);
 
+        // Update legend colors
+        updateLegendColors(themeName);
+
         // Show toast notification
         const themeColors = ColorThemes.getThemeColors(themeName);
         showToast(`Color theme changed to: ${themeColors.name || themeName}`);
+    }
+
+    /**
+     * Update savings curve legend colors based on theme
+     */
+    function updateLegendColors(themeName = null) {
+        const themeColors = ColorThemes.getThemeColors(themeName);
+        const curves = themeColors.savingsCurve;
+
+        // Helper to extract RGB from rgba string
+        function rgbaToGradient(borderColor, bgColor) {
+            // Extract RGB values from background color (rgba format)
+            const match = bgColor.match(/rgba?\((\d+),\s*(\d+),\s*(\d+)(?:,\s*([\d.]+))?\)/);
+            if (match) {
+                const r = match[1];
+                const g = match[2];
+                const b = match[3];
+                return `linear-gradient(90deg, rgba(${r},${g},${b},0.3), rgba(${r},${g},${b},0.6))`;
+            }
+            return bgColor;
+        }
+
+        // Update each legend color
+        const legendBuilding = document.getElementById('legend-building');
+        const legendGaining = document.getElementById('legend-gaining');
+        const legendWasting = document.getElementById('legend-wasting');
+        const legendVeryBad = document.getElementById('legend-veryBad');
+        const legendLosingMoney = document.getElementById('legend-losingMoney');
+
+        if (legendBuilding) legendBuilding.style.background = rgbaToGradient(curves.building.border, curves.building.background);
+        if (legendGaining) legendGaining.style.background = rgbaToGradient(curves.gaining.border, curves.gaining.background);
+        if (legendWasting) legendWasting.style.background = rgbaToGradient(curves.wasting.border, curves.wasting.background);
+        if (legendVeryBad) legendVeryBad.style.background = rgbaToGradient(curves.veryBad.border, curves.veryBad.background);
+        if (legendLosingMoney) legendLosingMoney.style.background = rgbaToGradient(curves.losingMoney.border, curves.losingMoney.background);
     }
 
     /**

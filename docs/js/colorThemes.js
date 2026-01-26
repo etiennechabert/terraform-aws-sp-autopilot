@@ -77,12 +77,12 @@ const ColorThemes = (function() {
             },
             savingsCurve: {
                 building: {
-                    border: 'rgba(51, 153, 255, 1)',  // Light blue
-                    background: 'rgba(51, 153, 255, 0.4)'
+                    border: 'rgba(153, 204, 255, 1)',  // Very light blue
+                    background: 'rgba(153, 204, 255, 0.4)'
                 },
                 gaining: {
-                    border: 'rgba(0, 153, 255, 1)',  // Deep blue
-                    background: 'rgba(0, 153, 255, 0.4)'
+                    border: 'rgba(0, 102, 204, 1)',  // Dark blue (high contrast with light blue)
+                    background: 'rgba(0, 102, 204, 0.4)'
                 },
                 wasting: {
                     border: 'rgba(255, 204, 0, 1)',  // Yellow
@@ -123,24 +123,24 @@ const ColorThemes = (function() {
             },
             savingsCurve: {
                 building: {
-                    border: 'rgba(102, 255, 153, 1)',  // Light green
-                    background: 'rgba(102, 255, 153, 0.4)'
+                    border: 'rgba(204, 255, 102, 1)',  // Yellow-green (very distinct from bright green)
+                    background: 'rgba(204, 255, 102, 0.4)'
                 },
                 gaining: {
-                    border: 'rgba(0, 255, 102, 1)',  // Bright green
-                    background: 'rgba(0, 255, 102, 0.4)'
+                    border: 'rgba(0, 204, 68, 1)',  // Deep/dark green (high contrast)
+                    background: 'rgba(0, 204, 68, 0.4)'
                 },
                 wasting: {
-                    border: 'rgba(255, 204, 51, 1)',  // Yellow
-                    background: 'rgba(255, 204, 51, 0.4)'
+                    border: 'rgba(255, 204, 0, 1)',  // Pure yellow
+                    background: 'rgba(255, 204, 0, 0.4)'
                 },
                 veryBad: {
-                    border: 'rgba(255, 102, 51, 1)',  // Orange
-                    background: 'rgba(255, 102, 51, 0.4)'
+                    border: 'rgba(255, 128, 0, 1)',  // Orange
+                    background: 'rgba(255, 128, 0, 0.4)'
                 },
                 losingMoney: {
-                    border: 'rgba(255, 0, 102, 1)',  // Pink/red
-                    background: 'rgba(255, 0, 102, 0.4)'
+                    border: 'rgba(204, 0, 68, 1)',  // Deep red/magenta
+                    background: 'rgba(204, 0, 68, 0.4)'
                 }
             }
         },
