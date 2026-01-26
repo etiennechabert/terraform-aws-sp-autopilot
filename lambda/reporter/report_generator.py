@@ -51,6 +51,95 @@ def generate_report(
     raise ValueError(f"Invalid report format: {report_format}")
 
 
+def _build_timeseries_maps(coverage_data: dict[str, Any]) -> tuple[dict, set]:
+    """Build timeseries maps for each SP type and collect all timestamps."""
+    timeseries_maps = {
+        "global": {},
+        "compute": {},
+        "database": {},
+        "sagemaker": {},
+    }
+    all_timestamps = set()
+
+    for sp_type in ["compute", "database", "sagemaker"]:
+        timeseries = coverage_data.get(sp_type, {}).get("timeseries", [])
+        for item in timeseries:
+            timestamp = item.get("timestamp", "")
+            covered = item.get("covered", 0.0)
+            total = item.get("total", 0.0)
+            ondemand = total - covered
+
+            all_timestamps.add(timestamp)
+
+            for target_type in [sp_type, "global"]:
+                if timestamp not in timeseries_maps[target_type]:
+                    timeseries_maps[target_type][timestamp] = {
+                        "covered": 0.0,
+                        "ondemand": 0.0,
+                        "total": 0.0,
+                    }
+                timeseries_maps[target_type][timestamp]["covered"] += covered
+                timeseries_maps[target_type][timestamp]["ondemand"] += ondemand
+                timeseries_maps[target_type][timestamp]["total"] += total
+
+    return timeseries_maps, all_timestamps
+
+
+def _format_timestamp_label(ts: str, num_timestamps: int) -> str:
+    """Format timestamp for chart display."""
+    if "T" in ts:
+        date_part, time_part = ts.split("T")
+        time_part = time_part[:5]
+        return f"{date_part[5:]} {time_part}" if num_timestamps > 24 else time_part
+    return ts[:10]
+
+
+def _calculate_cost_statistics(total_costs: list[float]) -> dict[str, float]:
+    """Calculate percentile statistics for cost data."""
+    total_costs_nonzero = [c for c in total_costs if c > 0]
+    if not total_costs_nonzero:
+        return {}
+
+    sorted_costs = sorted(total_costs_nonzero)
+    n = len(sorted_costs)
+    return {
+        "min": round(sorted_costs[0], 2),
+        "max": round(sorted_costs[-1], 2),
+        "p50": round(sorted_costs[int(n * 0.50)], 2),
+        "p75": round(sorted_costs[int(n * 0.75)], 2),
+        "p90": round(sorted_costs[int(n * 0.90)], 2),
+        "p95": round(sorted_costs[int(n * 0.95)], 2),
+    }
+
+
+def _build_chart_data_for_type(
+    type_name: str, type_map: dict, sorted_timestamps: list[str]
+) -> dict[str, Any]:
+    """Build chart data for a specific SP type."""
+    labels = []
+    timestamps = []
+    covered_values = []
+    ondemand_values = []
+    total_costs = []
+
+    for ts in sorted_timestamps:
+        labels.append(_format_timestamp_label(ts, len(sorted_timestamps)))
+        timestamps.append(ts)
+
+        data = type_map.get(ts, {"covered": 0.0, "ondemand": 0.0, "total": 0.0})
+        covered_values.append(round(data["covered"], 2))
+        ondemand_values.append(round(data["ondemand"], 2))
+        total_costs.append(round(data["total"], 2))
+
+    return {
+        "labels": labels,
+        "timestamps": timestamps,
+        "covered": covered_values,
+        "ondemand": ondemand_values,
+        "stats": _calculate_cost_statistics(total_costs),
+    }
+
+
 def _prepare_chart_data(
     coverage_data: dict[str, Any],
     savings_data: dict[str, Any],
@@ -67,158 +156,63 @@ def _prepare_chart_data(
         tuple: (JSON string with chart data, dict with optimal coverage results)
     """
     config = config or {}
-    # Build timeseries maps for each SP type and global aggregate
-    timeseries_maps = {
-        "global": {},
-        "compute": {},
-        "database": {},
-        "sagemaker": {},
-    }
-
-    # Collect all unique timestamps and build per-type data
-    all_timestamps = set()
-
-    for sp_type in ["compute", "database", "sagemaker"]:
-        timeseries = coverage_data.get(sp_type, {}).get("timeseries", [])
-        for item in timeseries:
-            timestamp = item.get("timestamp", "")
-            covered = item.get("covered", 0.0)
-            total = item.get("total", 0.0)
-            ondemand = total - covered
-
-            all_timestamps.add(timestamp)
-
-            # Store in per-type map
-            if timestamp not in timeseries_maps[sp_type]:
-                timeseries_maps[sp_type][timestamp] = {
-                    "covered": 0.0,
-                    "ondemand": 0.0,
-                    "total": 0.0,
-                }
-            timeseries_maps[sp_type][timestamp]["covered"] += covered
-            timeseries_maps[sp_type][timestamp]["ondemand"] += ondemand
-            timeseries_maps[sp_type][timestamp]["total"] += total
-
-            # Aggregate into global
-            if timestamp not in timeseries_maps["global"]:
-                timeseries_maps["global"][timestamp] = {
-                    "covered": 0.0,
-                    "ondemand": 0.0,
-                    "total": 0.0,
-                }
-            timeseries_maps["global"][timestamp]["covered"] += covered
-            timeseries_maps["global"][timestamp]["ondemand"] += ondemand
-            timeseries_maps["global"][timestamp]["total"] += total
-
-    # Sort timestamps
+    timeseries_maps, all_timestamps = _build_timeseries_maps(coverage_data)
     sorted_timestamps = sorted(all_timestamps)
 
-    # Build chart data for each type
-    def build_chart_data_for_type(type_name):
-        labels = []
-        timestamps = []
-        covered_values = []
-        ondemand_values = []
-        total_costs = []
-
-        type_map = timeseries_maps[type_name]
-
-        for ts in sorted_timestamps:
-            # Format timestamp for display
-            if "T" in ts:
-                date_part, time_part = ts.split("T")
-                time_part = time_part[:5]  # HH:MM
-                label = f"{date_part[5:]} {time_part}" if len(sorted_timestamps) > 24 else time_part
-            else:
-                label = ts[:10]  # Just date for daily granularity
-
-            labels.append(label)
-            timestamps.append(ts)
-
-            # Get values for this type (may be 0 if no data)
-            data = type_map.get(ts, {"covered": 0.0, "ondemand": 0.0, "total": 0.0})
-            covered_values.append(round(data["covered"], 2))
-            ondemand_values.append(round(data["ondemand"], 2))
-            total_costs.append(round(data["total"], 2))
-
-        # Calculate statistics for optimal coverage recommendation
-        total_costs_nonzero = [c for c in total_costs if c > 0]
-        stats = {}
-        if total_costs_nonzero:
-            sorted_costs = sorted(total_costs_nonzero)
-            n = len(sorted_costs)
-            stats = {
-                "min": round(sorted_costs[0], 2),
-                "max": round(sorted_costs[-1], 2),
-                "p50": round(sorted_costs[int(n * 0.50)], 2),
-                "p75": round(sorted_costs[int(n * 0.75)], 2),
-                "p90": round(sorted_costs[int(n * 0.90)], 2),
-                "p95": round(sorted_costs[int(n * 0.95)], 2),
-            }
-
-        return {
-            "labels": labels,
-            "timestamps": timestamps,
-            "covered": covered_values,
-            "ondemand": ondemand_values,
-            "stats": stats,
-        }
-
     all_chart_data = {
-        "global": build_chart_data_for_type("global"),
-        "compute": build_chart_data_for_type("compute"),
-        "database": build_chart_data_for_type("database"),
-        "sagemaker": build_chart_data_for_type("sagemaker"),
+        type_name: _build_chart_data_for_type(
+            type_name, timeseries_maps[type_name], sorted_timestamps
+        )
+        for type_name in ["global", "compute", "database", "sagemaker"]
     }
 
-    # Calculate optimal coverage per SP type
-    # IMPORTANT: This Python implementation must stay in sync with
-    # docs/js/costCalculator.js::calculateOptimalCoverage()
-    # Any changes to the algorithm must be applied to both implementations.
+    optimal_results = _calculate_optimal_coverage(all_chart_data, savings_data)
+    return json.dumps(all_chart_data), optimal_results
 
-    # Get type-specific savings data from breakdown
+
+def _calculate_optimal_coverage(
+    all_chart_data: dict[str, Any], savings_data: dict[str, Any]
+) -> dict[str, Any]:
+    """
+    Calculate optimal coverage per SP type.
+
+    IMPORTANT: This Python implementation must stay in sync with
+    docs/js/costCalculator.js::calculateOptimalCoverage()
+    Any changes to the algorithm must be applied to both implementations.
+    """
     actual_savings = savings_data.get("actual_savings", {})
     breakdown_by_type = actual_savings.get("breakdown_by_type", {})
-
-    optimal_results = {}
-
-    # Map SP type keys to breakdown keys
     type_mapping = {"compute": "Compute", "database": "Database", "sagemaker": "SageMaker"}
+    optimal_results = {}
 
     for sp_type in ["compute", "database", "sagemaker"]:
         type_data = all_chart_data[sp_type]
+        if not (type_data["covered"] and type_data["ondemand"]):
+            continue
 
-        if type_data["covered"] and type_data["ondemand"]:
-            # Calculate total hourly costs (covered + ondemand)
-            hourly_costs = [
-                covered + ondemand
-                for covered, ondemand in zip(
-                    type_data["covered"], type_data["ondemand"], strict=True
-                )
-            ]
+        hourly_costs = [
+            covered + ondemand
+            for covered, ondemand in zip(type_data["covered"], type_data["ondemand"], strict=True)
+        ]
 
-            # Only calculate if we have meaningful data
-            if hourly_costs and max(hourly_costs) > 0:
-                # Get type-specific savings percentage, or use 20% conservative default
-                type_breakdown = breakdown_by_type.get(type_mapping.get(sp_type, ""), {})
-                type_savings_pct = type_breakdown.get("savings_percentage", 0.0)
+        if not hourly_costs or max(hourly_costs) <= 0:
+            continue
 
-                # Use type-specific discount if available, otherwise 20% default
-                savings_percentage = type_savings_pct if type_savings_pct > 0 else 20.0
+        type_breakdown = breakdown_by_type.get(type_mapping.get(sp_type, ""), {})
+        type_savings_pct = type_breakdown.get("savings_percentage", 0.0)
+        savings_percentage = type_savings_pct if type_savings_pct > 0 else 20.0
 
-                logger.info(
-                    f"Calculating optimal coverage for {sp_type}: using {savings_percentage:.1f}% discount"
-                )
+        logger.info(
+            f"Calculating optimal coverage for {sp_type}: using {savings_percentage:.1f}% discount"
+        )
 
-                try:
-                    optimal_results[sp_type] = calculate_optimal_coverage(
-                        hourly_costs, savings_percentage
-                    )
-                except Exception as e:
-                    logger.warning(f"Failed to calculate optimal coverage for {sp_type}: {e}")
-                    optimal_results[sp_type] = {}
+        try:
+            optimal_results[sp_type] = calculate_optimal_coverage(hourly_costs, savings_percentage)
+        except Exception as e:
+            logger.warning(f"Failed to calculate optimal coverage for {sp_type}: {e}")
+            optimal_results[sp_type] = {}
 
-    # For global, use overall account savings or 20% default
+    # Calculate global optimal coverage
     if all_chart_data["global"]["covered"] and all_chart_data["global"]["ondemand"]:
         hourly_costs = [
             covered + ondemand
@@ -230,7 +224,6 @@ def _prepare_chart_data(
         ]
 
         if hourly_costs and max(hourly_costs) > 0:
-            # Use overall account savings if available, otherwise 20% default
             overall_savings_pct = actual_savings.get("savings_percentage", 0.0)
             savings_percentage = overall_savings_pct if overall_savings_pct > 0 else 20.0
 
@@ -247,14 +240,99 @@ def _prepare_chart_data(
                 logger.warning(f"Failed to calculate optimal coverage for global: {e}")
                 optimal_results["global"] = {}
 
-    return json.dumps(all_chart_data), optimal_results
+    return optimal_results
+
+
+def _build_strategy_tooltip(
+    strategy_type: str,
+    strategy_desc: str,
+    config: dict[str, Any],
+    is_configured: bool,
+) -> str:
+    """Build tooltip text for a strategy."""
+    if strategy_type == "fixed":
+        if is_configured:
+            params = f"max purchase: {config.get('max_purchase_percent', 10.0):.0f}%"
+        else:
+            params = "default: max purchase 10%"
+        return f"{strategy_desc} ({params}) | Configure: PURCHASE_STRATEGY_TYPE=fixed, MAX_PURCHASE_PERCENT"
+    if strategy_type == "dichotomy":
+        if is_configured:
+            max_p = config.get("max_purchase_percent", 50.0)
+            min_p = config.get("min_purchase_percent", 1.0)
+            params = f"max: {max_p:.0f}%, min: {min_p:.0f}%"
+        else:
+            params = "default: max 50%, min 1%"
+        return f"{strategy_desc} ({params}) | Configure: PURCHASE_STRATEGY_TYPE=dichotomy, MAX_PURCHASE_PERCENT, MIN_PURCHASE_PERCENT"
+    return f"{strategy_desc} | Configure: PURCHASE_STRATEGY_TYPE=follow_aws"
+
+
+def _render_no_purchase_row(strategy_display: str, is_configured: bool, tooltip: str) -> str:
+    """Render a table row for when no purchase is needed."""
+    row_style = (
+        'style="background: #fff9e6; font-weight: 600; cursor: help;"'
+        if is_configured
+        else 'style="cursor: help;"'
+    )
+    configured_badge = (
+        ' <span style="background: #ff9900; color: white; padding: 2px 8px; border-radius: 3px; font-size: 0.75em; font-weight: 600;">CONFIGURED</span>'
+        if is_configured
+        else ""
+    )
+    return f"""
+                    <tr {row_style} data-tooltip="{tooltip}">
+                        <td><strong><span class="strategy-name">{strategy_display}</span></strong>{configured_badge}</td>
+                        <td colspan="7" style="color: #6c757d; font-style: italic;">No purchase needed</td>
+                    </tr>
+                """
+
+
+def _render_purchase_row(
+    strategy_display: str,
+    is_configured: bool,
+    tooltip: str,
+    purchase: dict[str, Any],
+    target_coverage: float,
+) -> str:
+    """Render a table row for a purchase recommendation."""
+    row_style = (
+        'style="background: #fff9e6; font-weight: 600; cursor: help;"'
+        if is_configured
+        else 'style="cursor: help;"'
+    )
+    configured_badge = (
+        ' <span style="background: #ff9900; color: white; padding: 2px 8px; border-radius: 3px; font-size: 0.75em; font-weight: 600;">CONFIGURED</span>'
+        if is_configured
+        else ""
+    )
+
+    hourly_commit = purchase["hourly_commitment"]
+    purchase_percent = purchase.get("purchase_percent", 0.0)
+    current_cov = purchase["current_coverage"]
+    projected_cov = purchase["projected_coverage"]
+    cov_increase = projected_cov - current_cov
+    term = purchase.get("term", "N/A")
+    payment_option = purchase.get("payment_option", "N/A")
+    coverage_class = "green" if projected_cov >= target_coverage else "orange"
+
+    return f"""
+                    <tr {row_style} data-tooltip="{tooltip}">
+                        <td><strong><span class="strategy-name">{strategy_display}</span></strong>{configured_badge}</td>
+                        <td class="metric" style="color: #2196f3; font-weight: bold;">${hourly_commit:.4f}/hr</td>
+                        <td class="metric">{purchase_percent:.1f}%</td>
+                        <td class="metric">{current_cov:.1f}%</td>
+                        <td class="metric {coverage_class}" style="font-weight: bold;">{projected_cov:.1f}%</td>
+                        <td class="metric" style="color: #28a745;">+{cov_increase:.1f}%</td>
+                        <td>{term}</td>
+                        <td>{payment_option}</td>
+                    </tr>
+                """
 
 
 def _render_sp_type_scheduler_preview(
     sp_type: str, preview_data: dict[str, Any] | None, config: dict[str, Any]
 ) -> str:
     """Render scheduler preview comparison for a specific SP type."""
-
     strategy_names = {
         "fixed": "Fixed",
         "dichotomy": "Dichotomy",
@@ -268,7 +346,7 @@ def _render_sp_type_scheduler_preview(
     }
 
     if not preview_data:
-        return ""  # Return empty string if no preview data
+        return ""
 
     if preview_data.get("error"):
         return f"""
@@ -281,7 +359,6 @@ def _render_sp_type_scheduler_preview(
     configured_strategy = preview_data.get("configured_strategy", "fixed")
     target_coverage = config.get("coverage_target_percent", 90.0)
 
-    # Collect purchases from all strategies for this SP type
     strategy_purchases = {}
     for strategy_name, strategy_data in strategies.items():
         for purchase in strategy_data.get("purchases", []):
@@ -290,9 +367,8 @@ def _render_sp_type_scheduler_preview(
                 break
 
     if not strategy_purchases:
-        return ""  # Return empty if no recommendations
+        return ""
 
-    # Build comparison table
     html = """
         <div style="margin-top: 30px; padding-top: 20px; border-top: 2px solid #e0e0e0;">
             <h3 style="color: #232f3e; margin-bottom: 15px;">🔮 Scheduler Preview - Strategy Comparison 🧞‍♂️</h3>
@@ -312,85 +388,20 @@ def _render_sp_type_scheduler_preview(
                     <tbody>
     """
 
-    # Render row for each strategy
     for strategy_type in ["fixed", "dichotomy", "follow_aws"]:
         purchase = strategy_purchases.get(strategy_type)
         strategy_display = strategy_names.get(strategy_type, strategy_type)
         is_configured = strategy_type == configured_strategy
-
-        # Build tooltip description with parameters and configuration info
         strategy_desc = strategy_descriptions[strategy_type]
-        if strategy_type == "fixed":
-            if is_configured:
-                params = f"max purchase: {config.get('max_purchase_percent', 10.0):.0f}%"
-            else:
-                params = "default: max purchase 10%"
-            tooltip = f"{strategy_desc} ({params}) | Configure: PURCHASE_STRATEGY_TYPE=fixed, MAX_PURCHASE_PERCENT"
-        elif strategy_type == "dichotomy":
-            if is_configured:
-                max_p = config.get("max_purchase_percent", 50.0)
-                min_p = config.get("min_purchase_percent", 1.0)
-                params = f"max: {max_p:.0f}%, min: {min_p:.0f}%"
-            else:
-                params = "default: max 50%, min 1%"
-            tooltip = f"{strategy_desc} ({params}) | Configure: PURCHASE_STRATEGY_TYPE=dichotomy, MAX_PURCHASE_PERCENT, MIN_PURCHASE_PERCENT"
-        else:  # follow_aws
-            tooltip = f"{strategy_desc} | Configure: PURCHASE_STRATEGY_TYPE=follow_aws"
+
+        tooltip = _build_strategy_tooltip(strategy_type, strategy_desc, config, is_configured)
 
         if not purchase:
-            # Show "No purchase needed" row
-            row_style = (
-                'style="background: #fff9e6; font-weight: 600; cursor: help;"'
-                if is_configured
-                else 'style="cursor: help;"'
-            )
-            configured_badge = (
-                ' <span style="background: #ff9900; color: white; padding: 2px 8px; border-radius: 3px; font-size: 0.75em; font-weight: 600;">CONFIGURED</span>'
-                if is_configured
-                else ""
-            )
-
-            html += f"""
-                    <tr {row_style} data-tooltip="{tooltip}">
-                        <td><strong><span class="strategy-name">{strategy_display}</span></strong>{configured_badge}</td>
-                        <td colspan="7" style="color: #6c757d; font-style: italic;">No purchase needed</td>
-                    </tr>
-                """
+            html += _render_no_purchase_row(strategy_display, is_configured, tooltip)
         else:
-            # Show purchase recommendation
-            hourly_commit = purchase["hourly_commitment"]
-            purchase_percent = purchase.get("purchase_percent", 0.0)
-            current_cov = purchase["current_coverage"]
-            projected_cov = purchase["projected_coverage"]
-            cov_increase = projected_cov - current_cov
-            term = purchase.get("term", "N/A")
-            payment_option = purchase.get("payment_option", "N/A")
-
-            row_style = (
-                'style="background: #fff9e6; font-weight: 600; cursor: help;"'
-                if is_configured
-                else 'style="cursor: help;"'
+            html += _render_purchase_row(
+                strategy_display, is_configured, tooltip, purchase, target_coverage
             )
-            configured_badge = (
-                ' <span style="background: #ff9900; color: white; padding: 2px 8px; border-radius: 3px; font-size: 0.75em; font-weight: 600;">CONFIGURED</span>'
-                if is_configured
-                else ""
-            )
-
-            coverage_class = "green" if projected_cov >= target_coverage else "orange"
-
-            html += f"""
-                    <tr {row_style} data-tooltip="{tooltip}">
-                        <td><strong><span class="strategy-name">{strategy_display}</span></strong>{configured_badge}</td>
-                        <td class="metric" style="color: #2196f3; font-weight: bold;">${hourly_commit:.4f}/hr</td>
-                        <td class="metric">{purchase_percent:.1f}%</td>
-                        <td class="metric">{current_cov:.1f}%</td>
-                        <td class="metric {coverage_class}" style="font-weight: bold;">{projected_cov:.1f}%</td>
-                        <td class="metric" style="color: #28a745;">+{cov_increase:.1f}%</td>
-                        <td>{term}</td>
-                        <td>{payment_option}</td>
-                    </tr>
-                """
 
     html += """
                 </tbody>
