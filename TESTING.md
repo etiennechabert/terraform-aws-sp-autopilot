@@ -99,6 +99,40 @@ def get_savings_data():  # This function exists but nothing calls it
 # Result: You must either use it or delete it
 ```
 
+### How to Detect Dead Code Files
+
+**Rule:** If a Python module file in the Lambda directory is never imported (directly or transitively), it's dead code and MUST be deleted.
+
+**Run this command in each Lambda directory to find dead code files:**
+
+```bash
+# Find all .py files and check if they're imported anywhere
+find . -name "*.py" -not -path "./tests/*" -not -name "__init__.py" | while read file; do
+    module=$(basename "$file" .py)
+    if [ "$module" != "handler" ]; then
+        # Check if module is imported anywhere in the Lambda
+        if ! grep -r "import $module\|from $module" . --include="*.py" | grep -v "$file:" > /dev/null; then
+            echo "⚠️  DEAD CODE: $file is never imported"
+        fi
+    fi
+done
+```
+
+**Real examples from PR #108:**
+
+| File | Size | Why Dead | Impact |
+|------|------|----------|--------|
+| `lambda/reporter/alerts.py` | 121 lines | Handler imported from `notifications.py` instead | SonarCloud flagged as 0% coverage "new code" |
+| `lambda/reporter/html_report.py` | 406 lines | Handler used `report_generator.py` for HTML | SonarCloud flagged as 0% coverage "new code" |
+| `lambda/reporter/tests/test_alerts.py` | 142 lines | Tested dead code via unit tests | Violated TESTING.md principles |
+
+**Total wasted effort:** 669 lines of refactored dead code that broke SonarCloud.
+
+**How to prevent:**
+1. Before refactoring a module, verify it's actually imported: `grep -r "import module_name" lambda/<name>/`
+2. After creating a new module, ensure it's imported: `grep -r "import new_module" lambda/<name>/`
+3. Run the dead code detection command above in CI (optional)
+
 ---
 
 ## Required Test Structure
@@ -183,6 +217,52 @@ test_<feature>_<scenario>()
 ## Required Test Scenarios
 
 Every Lambda MUST test these scenarios:
+
+### 0. Import Validation (MANDATORY - Test First)
+
+**Rule:** Every Lambda MUST have an import smoke test that runs BEFORE all other tests.
+
+**Why this is critical:**
+- Tests run with sys.path manipulation that can mask import errors
+- Lambda runtime has different import behavior than test environment
+- Catches `ModuleNotFoundError`, circular imports, and invalid import paths
+- **Real Example:** In PR #108, `from optimal_coverage import ...` worked in tests but failed in Lambda with "No module named 'optimal_coverage'"
+
+**File location:** `lambda/<lambda_name>/tests/test_handler_import.py`
+
+```python
+"""Import validation test for <Lambda Name> handler."""
+
+import sys
+from pathlib import Path
+
+
+def test_handler_module_can_be_imported():
+    """
+    Test that handler module imports successfully without errors.
+
+    This test catches:
+    - Missing dependencies
+    - Circular imports
+    - Invalid import statements (wrong module paths)
+    - ModuleNotFoundError errors
+
+    Run this test FIRST - if handler can't import, nothing else matters.
+    """
+    # Ensure lambda directory is in path
+    lambda_dir = Path(__file__).parent.parent
+    if str(lambda_dir) not in sys.path:
+        sys.path.insert(0, str(lambda_dir))
+
+    # This should work without errors
+    import handler
+
+    # Verify handler function exists and is callable
+    assert hasattr(handler, "handler"), "Handler module missing 'handler' function"
+    assert callable(handler.handler), "handler.handler is not callable"
+```
+
+**Test naming:** Name the file `test_handler_import.py` so it runs alphabetically first (before `test_integration.py`, `test_essential.py`, etc.).
 
 ### 1. Success Path
 ```python
@@ -476,6 +556,7 @@ These guidelines are enforced through:
 
 Before submitting tests, verify:
 
+✅ Does the Lambda have a `test_handler_import.py` file?
 ✅ Does this test call `handler.handler()`?
 ✅ Am I mocking ONLY AWS clients?
 ✅ Am I using `aws_mock_builder` for AWS responses?
@@ -510,8 +591,13 @@ If you answer NO to any question, the test is wrong.
 | Lambda | Status | Notes |
 |--------|--------|-------|
 | `purchaser/tests/test_integration.py` | ✅ **GOLD STANDARD** | Use as template |
+| `purchaser/tests/test_handler_import.py` | ✅ **Import validation** | Required for all Lambdas |
 | `scheduler/tests/test_handler.py` | ⚠️ Mostly good | Some improvements needed |
-| `reporter/tests/test_essential.py` | ❌ Needs rewrite | Violates all rules |
+| `scheduler/tests/test_handler_import.py` | ✅ **Import validation** | Required for all Lambdas |
+| `reporter/tests/test_essential.py` | ⚠️ Mostly good | Fixed in PR #107 |
+| `reporter/tests/test_handler_import.py` | ✅ **Import validation** | Required for all Lambdas |
+
+**New in this PR:** All Lambdas now have import validation tests to catch deployment errors early.
 
 ---
 
