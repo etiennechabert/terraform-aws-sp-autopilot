@@ -480,6 +480,7 @@ h1, h2, h3, h4, h5, h6 {
 /* Full width items in sliders-row (like optimal suggestion) */
 .sliders-row .optimal-suggestion {
     grid-column: 1 / -1; /* Span all columns */
+    width: 100%; /* Use full available width */
 }
 
 @media (max-width: 768px) {
@@ -729,28 +730,32 @@ h1, h2, h3, h4, h5, h6 {
 }
 
 .suggestion-icon {
-    font-size: 1.2rem;
+    font-size: 1.5rem;
     line-height: 1;
+    flex-shrink: 0;
 }
 
 .suggestion-content {
     flex: 1;
     min-width: 0; /* Allow flex item to shrink below content size */
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
 }
 
 .suggestion-title {
     font-weight: 600;
     color: var(--text-primary);
-    margin-bottom: 2px;
-    font-size: 0.8rem;
+    margin-bottom: 4px;
+    font-size: 0.9rem;
     word-wrap: break-word;
     overflow-wrap: break-word;
 }
 
 .suggestion-text {
     color: var(--text-secondary);
-    font-size: 0.7rem;
-    line-height: 1.4;
+    font-size: 0.85rem;
+    line-height: 1.5;
     word-wrap: break-word;
     overflow-wrap: break-word;
     hyphens: auto;
