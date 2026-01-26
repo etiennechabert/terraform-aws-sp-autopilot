@@ -445,7 +445,7 @@ def test_calculate_purchase_need_dichotomy_strategy():
     spending_data = {
         "compute": {
             "summary": {
-                "avg_coverage": 50.0,
+                "avg_coverage_total": 50.0,
                 "avg_hourly_total": 10.0,
                 "avg_hourly_covered": 5.0,
             }
@@ -487,7 +487,7 @@ def test_calculate_purchase_need_dichotomy_from_zero():
     spending_data = {
         "compute": {
             "summary": {
-                "avg_coverage": 0.0,
+                "avg_coverage_total": 0.0,
                 "avg_hourly_total": 100.0,
                 "avg_hourly_covered": 0.0,
             }
@@ -526,7 +526,7 @@ def test_calculate_purchase_need_dichotomy_near_target():
     spending_data = {
         "compute": {
             "summary": {
-                "avg_coverage": 87.5,
+                "avg_coverage_total": 87.5,
                 "avg_hourly_total": 100.0,
                 "avg_hourly_covered": 87.5,
             }
@@ -568,21 +568,21 @@ def test_calculate_purchase_need_dichotomy_multiple_sp_types():
     spending_data = {
         "compute": {
             "summary": {
-                "avg_coverage": 50.0,
+                "avg_coverage_total": 50.0,
                 "avg_hourly_total": 100.0,
                 "avg_hourly_covered": 50.0,
             }
         },
         "database": {
             "summary": {
-                "avg_coverage": 75.0,
+                "avg_coverage_total": 75.0,
                 "avg_hourly_total": 50.0,
                 "avg_hourly_covered": 37.5,
             }
         },
         "sagemaker": {
             "summary": {
-                "avg_coverage": 0.0,
+                "avg_coverage_total": 0.0,
                 "avg_hourly_total": 20.0,
                 "avg_hourly_covered": 0.0,
             }
@@ -634,7 +634,7 @@ def test_calculate_purchase_need_dichotomy_at_target():
     spending_data = {
         "compute": {
             "summary": {
-                "avg_coverage": 90.0,
+                "avg_coverage_total": 90.0,
                 "avg_hourly_total": 100.0,
                 "avg_hourly_covered": 90.0,
             }

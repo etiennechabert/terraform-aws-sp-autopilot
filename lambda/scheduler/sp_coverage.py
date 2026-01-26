@@ -42,4 +42,6 @@ def calculate_current_coverage(
     analyzer = SpendingAnalyzer(savingsplans_client, ce_client)
     spending_data = analyzer.analyze_current_spending(config)
     spending_data.pop("_unknown_services", None)  # Remove metadata
-    return {sp_type: data["summary"]["avg_coverage"] for sp_type, data in spending_data.items()}
+    return {
+        sp_type: data["summary"]["avg_coverage_total"] for sp_type, data in spending_data.items()
+    }

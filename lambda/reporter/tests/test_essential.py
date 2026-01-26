@@ -2,7 +2,7 @@
 Essential integration tests for Reporter Lambda.
 
 Tests the full handler execution path with various scenarios.
-All tests follow TESTING.md guidelines:
+All tests follow TESTING.MD guidelines:
 - Test through handler.handler() entry point only
 - Mock only AWS client responses
 - Use aws_mock_builder for consistent responses
@@ -17,6 +17,22 @@ import pytest
 from botocore.exceptions import ClientError
 
 
+# Set default environment variables before any imports
+# This ensures config can be loaded when modules are imported
+os.environ.setdefault("AWS_DEFAULT_REGION", "us-east-1")
+os.environ.setdefault("REPORTS_BUCKET", "test-bucket")
+os.environ.setdefault("SNS_TOPIC_ARN", "arn:aws:sns:us-east-1:123456789012:test-topic")
+os.environ.setdefault("REPORT_FORMAT", "html")
+os.environ.setdefault("EMAIL_REPORTS", "true")
+os.environ.setdefault("LOOKBACK_DAYS", "7")
+os.environ.setdefault("GRANULARITY", "HOURLY")
+os.environ.setdefault("COVERAGE_TARGET_PERCENT", "90")
+os.environ.setdefault("ENABLE_COMPUTE_SP", "true")
+os.environ.setdefault("ENABLE_DATABASE_SP", "false")
+os.environ.setdefault("ENABLE_SAGEMAKER_SP", "false")
+os.environ.setdefault("LOW_UTILIZATION_THRESHOLD", "70")
+os.environ.setdefault("LOW_UTILIZATION_ALERT_ENABLED", "false")
+
 # Add lambda directory to path
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
@@ -26,19 +42,13 @@ import handler
 
 @pytest.fixture
 def mock_env_vars(monkeypatch):
-    """Set up required environment variables."""
-    monkeypatch.setenv("AWS_DEFAULT_REGION", "us-east-1")
-    monkeypatch.setenv("REPORTS_BUCKET", "test-bucket")
-    monkeypatch.setenv("SNS_TOPIC_ARN", "arn:aws:sns:us-east-1:123456789012:test-topic")
-    monkeypatch.setenv("REPORT_FORMAT", "html")
-    monkeypatch.setenv("EMAIL_REPORTS", "true")
-    monkeypatch.setenv("LOOKBACK_DAYS", "7")
-    monkeypatch.setenv("GRANULARITY", "HOURLY")
-    monkeypatch.setenv("ENABLE_COMPUTE_SP", "true")
-    monkeypatch.setenv("ENABLE_DATABASE_SP", "false")
-    monkeypatch.setenv("ENABLE_SAGEMAKER_SP", "false")
-    monkeypatch.setenv("LOW_UTILIZATION_THRESHOLD", "70")
-    monkeypatch.setenv("LOW_UTILIZATION_ALERT_ENABLED", "false")
+    """Override environment variables for specific tests if needed.
+
+    Note: Default env vars are set at module level before imports.
+    This fixture is only needed when tests require different values.
+    """
+    # No-op by default since env vars are set at module level
+    # Tests can use monkeypatch directly if they need to override
 
 
 @pytest.fixture
