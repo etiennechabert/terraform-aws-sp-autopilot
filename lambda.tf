@@ -39,6 +39,7 @@ resource "aws_lambda_function" "scheduler" {
       MIN_COMMITMENT_PER_PLAN     = tostring(local.min_commitment_per_plan)
       COMPUTE_SP_TERM             = local.compute_term
       COMPUTE_SP_PAYMENT_OPTION   = local.compute_payment_option
+      DATABASE_SP_PAYMENT_OPTION  = local.database_sp_payment_option
       SAGEMAKER_SP_TERM           = local.sagemaker_term
       SAGEMAKER_SP_PAYMENT_OPTION = local.sagemaker_payment_option
       MANAGEMENT_ACCOUNT_ROLE_ARN = local.lambda_scheduler_assume_role_arn
@@ -75,6 +76,10 @@ resource "aws_lambda_function" "purchaser" {
       SNS_TOPIC_ARN               = aws_sns_topic.notifications.arn
       MAX_COVERAGE_CAP            = tostring(local.max_coverage_cap)
       RENEWAL_WINDOW_DAYS         = tostring(local.renewal_window_days)
+      LOOKBACK_DAYS               = tostring(local.lookback_days)
+      GRANULARITY                 = local.granularity
+      SLACK_WEBHOOK_URL           = local.slack_webhook_url
+      TEAMS_WEBHOOK_URL           = local.teams_webhook_url
       MANAGEMENT_ACCOUNT_ROLE_ARN = local.lambda_purchaser_assume_role_arn
       TAGS                        = jsonencode(local.common_tags)
     }
@@ -113,6 +118,20 @@ resource "aws_lambda_function" "reporter" {
       SLACK_WEBHOOK_URL           = local.slack_webhook_url
       TEAMS_WEBHOOK_URL           = local.teams_webhook_url
       LOW_UTILIZATION_THRESHOLD   = tostring(local.low_utilization_threshold)
+      LOOKBACK_DAYS               = tostring(local.lookback_days)
+      GRANULARITY                 = local.granularity
+      ENABLE_COMPUTE_SP           = tostring(local.compute_enabled)
+      ENABLE_DATABASE_SP          = tostring(local.database_enabled)
+      ENABLE_SAGEMAKER_SP         = tostring(local.sagemaker_enabled)
+      COVERAGE_TARGET_PERCENT     = tostring(local.coverage_target_percent)
+      PURCHASE_STRATEGY_TYPE      = local.purchase_strategy_type
+      MAX_PURCHASE_PERCENT        = tostring(local.max_purchase_percent)
+      MIN_PURCHASE_PERCENT        = tostring(local.min_purchase_percent)
+      COMPUTE_SP_TERM             = local.compute_term
+      COMPUTE_SP_PAYMENT_OPTION   = local.compute_payment_option
+      DATABASE_SP_PAYMENT_OPTION  = local.database_sp_payment_option
+      SAGEMAKER_SP_TERM           = local.sagemaker_term
+      SAGEMAKER_SP_PAYMENT_OPTION = local.sagemaker_payment_option
       MANAGEMENT_ACCOUNT_ROLE_ARN = local.lambda_reporter_assume_role_arn
       TAGS                        = jsonencode(local.common_tags)
     }
