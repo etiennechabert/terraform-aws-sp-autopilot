@@ -13,6 +13,8 @@ from typing import TYPE_CHECKING, Any
 
 from botocore.exceptions import ClientError
 
+from shared.aws_debug import add_response
+
 
 if TYPE_CHECKING:
     from mypy_boto3_ce.client import CostExplorerClient
@@ -28,8 +30,7 @@ logger = logging.getLogger(__name__)
 # IMPORTANT: AWS Savings Plans Coverage
 # - Compute SP: EC2, Lambda, Fargate (applied automatically across regions/families/OS)
 # - SageMaker SP: All SageMaker usage (training, inference, notebooks, processing, etc.)
-# - Database: NO Savings Plan product exists - databases use Reserved Instances
-#   (We track database spend separately for coverage analysis and reporting)
+# - Database SP: RDS, Aurora, DynamoDB, ElastiCache, etc. (launched December 2025)
 #
 # These lists include all possible AWS services that may appear in Cost Explorer.
 # If a service isn't used in your account, it simply won't match any data.
@@ -49,10 +50,8 @@ COMPUTE_SP_SERVICES = [
     # Note: Fargate usage appears under ECS/EKS services, not as separate SERVICE
 ]
 
-# Database services tracking
-# IMPORTANT: AWS does NOT offer "Database Savings Plans"
-# Databases use Reserved Instances or On-Demand pricing
-# We track database spend separately for coverage analysis and reporting
+# Database Savings Plan services
+# Database SP launched December 2025 (covers RDS, Aurora, DynamoDB, ElastiCache, etc.)
 # These are the EXACT valid SERVICE dimension values per AWS Cost Explorer API
 DATABASE_SP_SERVICES = [
     "Amazon Relational Database Service",
@@ -163,6 +162,7 @@ def group_coverage_by_sp_type(coverage_data: list[dict[str, Any]]) -> dict[str, 
         total_covered = 0.0
         total_spend = 0.0
         total_points = []
+        coverage_points = []
 
         # Sort timestamps for consistent ordering
         for timestamp in sorted(timeseries_by_timestamp.keys()):
@@ -188,25 +188,28 @@ def group_coverage_by_sp_type(coverage_data: list[dict[str, Any]]) -> dict[str, 
             total_spend += total
             if total > 0:  # Only count non-zero points for min/max
                 total_points.append(total)
+                coverage_points.append(coverage)
 
         # Calculate summary statistics
         num_hours = len(result[sp_type]["timeseries"])
-        avg_coverage = (total_covered / total_spend * 100) if total_spend > 0 else 0.0
+        avg_coverage_total = (total_covered / total_spend * 100) if total_spend > 0 else 0.0
 
         # Calculate hourly rates (Savings Plans are $/hour)
         avg_hourly_covered = total_covered / num_hours if num_hours > 0 else 0.0
         avg_hourly_total = total_spend / num_hours if num_hours > 0 else 0.0
 
         result[sp_type]["summary"] = {
-            # Totals over the period
-            "total_covered": total_covered,
-            "total_spend": total_spend,
-            "avg_coverage": avg_coverage,
+            # Coverage metrics
+            "avg_coverage_total": avg_coverage_total,
+            "min_coverage_hourly": min(coverage_points) if coverage_points else 0.0,
             # Hourly rates (for purchase calculations)
             "avg_hourly_covered": avg_hourly_covered,
             "avg_hourly_total": avg_hourly_total,
             "min_hourly_total": min(total_points) if total_points else 0.0,
             "max_hourly_total": max(total_points) if total_points else 0.0,
+            # Monthly estimation
+            "est_monthly_covered": avg_hourly_covered * 720,
+            "est_monthly_total": avg_hourly_total * 720,
         }
 
     return result
@@ -289,12 +292,12 @@ class SpendingAnalyzer:
         sp_type_data = group_coverage_by_sp_type(coverage_data)
 
         logger.info(
-            f"Coverage by type - Compute: {sp_type_data['compute']['summary']['avg_coverage']:.2f}% "
+            f"Coverage by type - Compute: {sp_type_data['compute']['summary']['avg_coverage_total']:.2f}% "
             f"(${sp_type_data['compute']['summary']['avg_hourly_total']:.2f}/h avg, "
             f"${sp_type_data['compute']['summary']['min_hourly_total']:.2f}-${sp_type_data['compute']['summary']['max_hourly_total']:.2f}/h range), "
-            f"Database: {sp_type_data['database']['summary']['avg_coverage']:.2f}% "
+            f"Database: {sp_type_data['database']['summary']['avg_coverage_total']:.2f}% "
             f"(${sp_type_data['database']['summary']['avg_hourly_total']:.2f}/h avg), "
-            f"SageMaker: {sp_type_data['sagemaker']['summary']['avg_coverage']:.2f}% "
+            f"SageMaker: {sp_type_data['sagemaker']['summary']['avg_coverage_total']:.2f}% "
             f"(${sp_type_data['sagemaker']['summary']['avg_hourly_total']:.2f}/h avg)"
         )
 
@@ -313,13 +316,12 @@ class SpendingAnalyzer:
         purchase calculations since Savings Plans are priced as $/hour commitments, but
         DAILY can be used for accounts without hourly granularity enabled.
 
-        AWS retains hourly data for ~14 days. With 1-day processing lag, we can reliably
-        get 13 days of hourly data. Daily data is retained for 90+ days. Service filtering
-        keeps each call under the 500-item limit.
+        AWS retains hourly data for 14 days. Daily data is retained for 90+ days.
+        Service filtering keeps each call under the 500-item limit.
 
         Args:
             now: Current timestamp
-            lookback_days: Number of days to look back (max 13 for HOURLY, 90 for DAILY)
+            lookback_days: Number of days to look back (max 14 for HOURLY, 90 for DAILY)
             config: Configuration dictionary with granularity and enable flags
 
         Returns:
@@ -331,6 +333,21 @@ class SpendingAnalyzer:
         granularity = config.get("granularity", "HOURLY")
         end_time = now - timedelta(days=1)  # 1 day lag
         start_time = end_time - timedelta(days=lookback_days)
+
+        # Round start_time UP to next midnight for HOURLY to stay within AWS retention window
+        # AWS expects start dates at 00:00:00
+        if granularity == "HOURLY":
+            if (
+                start_time.hour != 0
+                or start_time.minute != 0
+                or start_time.second != 0
+                or start_time.microsecond != 0
+            ):
+                start_time = start_time.replace(
+                    hour=0, minute=0, second=0, microsecond=0
+                ) + timedelta(days=1)
+            else:
+                start_time = start_time.replace(hour=0, minute=0, second=0, microsecond=0)
 
         # Build service filters only for enabled SP types
         service_filters = []
@@ -370,6 +387,16 @@ class SpendingAnalyzer:
                 }
 
                 response = self.ce_client.get_savings_plans_coverage(**params)
+
+                # Capture raw AWS response for debugging
+                add_response(
+                    api="get_savings_plans_coverage",
+                    params=params,
+                    response=response,
+                    sp_type=sp_type,
+                    context="_fetch_coverage_data",
+                )
+
                 coverages = response.get("SavingsPlansCoverages", [])
 
                 # Tag each item with SP type for downstream grouping

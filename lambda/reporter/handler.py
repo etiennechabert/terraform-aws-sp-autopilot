@@ -23,6 +23,7 @@ import report_generator
 from config import CONFIG_SCHEMA
 
 from shared.handler_utils import (
+    get_enabled_plan_types,
     initialize_clients,
     lambda_handler_wrapper,
     load_config_from_env,
@@ -68,18 +69,27 @@ def handler(event: dict[str, Any], context: Any) -> dict[str, Any]:
         ),
     )
 
+    # Clear any previous AWS API responses and start fresh
+    from shared.aws_debug import clear_responses, get_responses
+
+    clear_responses()
+
     # Collect coverage data using SpendingAnalyzer
     analyzer = SpendingAnalyzer(clients["savingsplans"], clients["ce"])
     coverage_data = analyzer.analyze_current_spending(config)
     coverage_data.pop("_unknown_services", None)
 
-    # Collect savings plans metrics
+    # Collect savings plans metrics (per enabled plan type)
     savings_data = get_savings_plans_summary(
-        clients["savingsplans"], clients["ce"], lookback_days=config["lookback_days"]
+        clients["savingsplans"],
+        clients["ce"],
+        get_enabled_plan_types(config),
+        config["lookback_days"],
+        config["granularity"],
     )
 
     logger.info(
-        f"Data collected - Coverage: {coverage_data.get('compute', {}).get('summary', {}).get('avg_coverage', 0):.1f}%, "
+        f"Data collected - Coverage: {coverage_data.get('compute', {}).get('summary', {}).get('avg_coverage_total', 0):.1f}%, "
         f"Active plans: {savings_data.get('plans_count', 0)}, "
         f"Net savings: ${savings_data.get('actual_savings', {}).get('net_savings', 0):,.0f}"
     )
@@ -87,9 +97,51 @@ def handler(event: dict[str, Any], context: Any) -> dict[str, Any]:
     # Check for low utilization and alert if needed
     notifications_module.check_and_alert_low_utilization(clients["sns"], config, savings_data)
 
+    # Prepare raw data for HTML report - reorder for better readability
+    def reorder_coverage_data(data):
+        """Reorder coverage data to show summary before timeseries for better readability."""
+        reordered = {}
+        for key, value in data.items():
+            if isinstance(value, dict) and "summary" in value and "timeseries" in value:
+                # Put summary first, then timeseries, then any other keys
+                reordered[key] = {
+                    "summary": value["summary"],
+                    "timeseries": value["timeseries"],
+                    **{k: v for k, v in value.items() if k not in ["summary", "timeseries"]},
+                }
+            else:
+                reordered[key] = value
+        return reordered
+
+    def reorder_savings_data(data):
+        """Reorder savings data to show plans last for better readability."""
+        if not isinstance(data, dict) or "plans" not in data:
+            return data
+        # Put all keys except "plans" first, then "plans" last
+        reordered = {k: v for k, v in data.items() if k != "plans"}
+        reordered["plans"] = data["plans"]
+        return reordered
+
+    raw_data = {
+        "coverage_data": reorder_coverage_data(coverage_data),
+        "savings_data": reorder_savings_data(savings_data),
+        "config": {
+            "lookback_days": config["lookback_days"],
+            "granularity": config["granularity"],
+            "coverage_target_percent": config["coverage_target_percent"],
+            "enable_compute_sp": config["enable_compute_sp"],
+            "enable_database_sp": config["enable_database_sp"],
+            "enable_sagemaker_sp": config["enable_sagemaker_sp"],
+            "low_utilization_threshold": config["low_utilization_threshold"],
+            "report_format": config["report_format"],
+            "email_reports": config["email_reports"],
+        },
+        "aws_api_responses": get_responses(),
+    }
+
     # Generate report
     report_content = report_generator.generate_report(
-        coverage_data, savings_data, config["report_format"], config
+        coverage_data, savings_data, config["report_format"], config, raw_data
     )
     logger.info(
         f"Report generated ({len(report_content)} bytes, format: {config['report_format']})"
