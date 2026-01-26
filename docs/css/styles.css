@@ -541,6 +541,10 @@ h1, h2, h3, h4, h5, h6 {
     margin-bottom: var(--spacing-md);
 }
 
+.cost-metrics-grid > * {
+    min-width: 0; /* Allow grid children to shrink below content size */
+}
+
 @media (max-width: 1024px) {
     .cost-metrics-grid {
         grid-template-columns: 1fr;
@@ -687,6 +691,9 @@ h1, h2, h3, h4, h5, h6 {
     border-radius: var(--radius-sm);
     transition: all 0.2s ease;
     height: 100%;
+    min-width: 0; /* Allow shrinking within grid column */
+    max-width: 100%; /* Prevent overflow */
+    overflow: hidden; /* Contain content */
 }
 
 .optimal-suggestion.clickable {
