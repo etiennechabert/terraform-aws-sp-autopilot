@@ -1436,15 +1436,20 @@ def generate_html_report(
             chart.update();
         }}
 
-        // Tab switching function
+        // Tab switching function (scoped to parent section)
         function switchTab(tabName) {{
-            // Hide all tab contents
-            document.querySelectorAll('.tab-content').forEach(function(content) {{
+            // Find the clicked button's parent section
+            const clickedButton = event.target;
+            const tabsContainer = clickedButton.closest('.tabs');
+            const section = tabsContainer.closest('.section');
+
+            // Hide all tab contents within this section only
+            section.querySelectorAll('.tab-content').forEach(function(content) {{
                 content.classList.remove('active');
             }});
 
-            // Remove active class from all tabs
-            document.querySelectorAll('.tab').forEach(function(tab) {{
+            // Remove active class from all tabs within this section only
+            section.querySelectorAll('.tab').forEach(function(tab) {{
                 tab.classList.remove('active');
             }});
 
@@ -1452,7 +1457,7 @@ def generate_html_report(
             document.getElementById(tabName + '-tab').classList.add('active');
 
             // Add active class to clicked tab
-            event.target.classList.add('active');
+            clickedButton.classList.add('active');
         }}
 
         // Function to create chart for a specific type
