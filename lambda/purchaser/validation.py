@@ -7,12 +7,14 @@ messages to ensure data integrity before attempting to purchase Savings Plans.
 
 from typing import Any
 
+from shared import constants
+
 
 # Valid values for sp_type field
 VALID_SP_TYPES = [
-    "ComputeSavingsPlans",
-    "DatabaseSavingsPlans",
-    "SageMakerSavingsPlans",
+    constants.SP_FILTER_COMPUTE,
+    constants.SP_FILTER_DATABASE,
+    constants.SP_FILTER_SAGEMAKER,
 ]
 
 # Valid values for payment_option field
