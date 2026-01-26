@@ -113,6 +113,11 @@ module "savings_plans" {
     emails = ["devops@example.com"]
   }
 
+  # Reporting is optional - reports are stored in S3 and emailed by default
+  # reporting = {
+  #   email_reports = false # Set to false to only store in S3 without email
+  # }
+
   lambda_config = {
     scheduler = { dry_run = true } # Start in dry-run mode (recommended)
   }
@@ -237,6 +242,22 @@ notifications = {
 ```
 
 **Security:** Always mark webhook URLs as `sensitive = true` and store in AWS Secrets Manager or HashiCorp Vault.
+
+#### Reporting
+
+Periodic reports are separate from operational notifications. Configure via the `reporting` block:
+
+```hcl
+reporting = {
+  email_reports      = true   # Send periodic coverage/savings reports via email
+  format             = "html" # html, json, or csv
+  include_debug_data = false  # Include raw API responses (for troubleshooting)
+}
+```
+
+**Note:** The `notifications.emails` list is used for both operational alerts (scheduler/purchaser) and periodic reports (if `reporting.email_reports = true`). To receive reports, you must:
+1. Configure `notifications.emails` with recipient addresses
+2. Set `reporting.email_reports = true`
 
 ### Data Granularity
 

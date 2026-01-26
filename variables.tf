@@ -262,7 +262,7 @@ variable "reporting" {
   type = object({
     enabled            = optional(bool, true)
     format             = optional(string, "html")
-    email_reports      = optional(bool, false)
+    email_reports      = optional(bool, true)
     retention_days     = optional(number, 365)
     include_debug_data = optional(bool, false)
 
