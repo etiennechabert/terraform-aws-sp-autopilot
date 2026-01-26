@@ -1419,7 +1419,14 @@ def generate_html_report(
                     <div class="info-box">
                         <strong>💡 Opportunity:</strong> You have no Savings Plans coverage for this service type.
                         You're currently spending <strong>$${{metrics.total_spend_hourly.toFixed(2)}}/hour</strong> on-demand.
-                        Consider purchasing Savings Plans to reduce costs - typical discounts range from 20-40% depending on commitment term and payment option.
+                        Consider purchasing Savings Plans to reduce costs - typical savings are around 30%.
+                        <br><br>
+                        <strong>Key insights:</strong>
+                        <ul style="margin: 0.5em 0 0 1.5em; padding: 0;">
+                            <li>Once you have your first Savings Plan in place, we'll know your precise discount rate for accurate optimization.</li>
+                            <li>Any coverage up to your min-hourly usage (${{metrics.min_hourly.toFixed(2)}}/hour) will be beneficial regardless of the exact discount.</li>
+                            <li>To optimize coverage above min-hourly, we need your precise discount rate to calculate the optimal commitment level.</li>
+                        </ul>
                     </div>
                 `;
             }}
