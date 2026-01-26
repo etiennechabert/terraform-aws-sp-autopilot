@@ -661,6 +661,29 @@ def generate_html_report(
             font-size: 0.85em;
             color: #856404;
         }}
+        .color-toggle {{
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            background: rgba(255, 255, 255, 0.9);
+            border: 2px solid #ddd;
+            border-radius: 6px;
+            padding: 6px 12px;
+            cursor: pointer;
+            font-size: 0.85em;
+            font-weight: 600;
+            color: #333;
+            transition: all 0.2s;
+            z-index: 10;
+        }}
+        .color-toggle:hover {{
+            background: white;
+            border-color: #007bff;
+            color: #007bff;
+        }}
+        .chart-container {{
+            position: relative;
+        }}
         .params-grid {{
             padding: 12px 15px;
             background-color: #f8f9fa;
@@ -838,6 +861,9 @@ def generate_html_report(
 
             <div id="global-tab" class="tab-content active">
                 <div class="chart-container">
+                    <button class="color-toggle" onclick="toggleChartColors('globalChart')" title="Toggle color-blind friendly mode">
+                        🎨 Toggle Colors
+                    </button>
                     <canvas id="globalChart"></canvas>
                 </div>
             </div>
@@ -845,6 +871,9 @@ def generate_html_report(
             <div id="compute-tab" class="tab-content">
                 <div id="compute-metrics"></div>
                 <div class="chart-container">
+                    <button class="color-toggle" onclick="toggleChartColors('computeChart')" title="Toggle color-blind friendly mode">
+                        🎨 Toggle Colors
+                    </button>
                     <canvas id="computeChart"></canvas>
                 </div>
             </div>
@@ -852,6 +881,9 @@ def generate_html_report(
             <div id="database-tab" class="tab-content">
                 <div id="database-metrics"></div>
                 <div class="chart-container">
+                    <button class="color-toggle" onclick="toggleChartColors('databaseChart')" title="Toggle color-blind friendly mode">
+                        🎨 Toggle Colors
+                    </button>
                     <canvas id="databaseChart"></canvas>
                 </div>
             </div>
@@ -859,6 +891,9 @@ def generate_html_report(
             <div id="sagemaker-tab" class="tab-content">
                 <div id="sagemaker-metrics"></div>
                 <div class="chart-container">
+                    <button class="color-toggle" onclick="toggleChartColors('sagemakerChart')" title="Toggle color-blind friendly mode">
+                        🎨 Toggle Colors
+                    </button>
                     <canvas id="sagemakerChart"></canvas>
                 </div>
             </div>
@@ -1137,6 +1172,46 @@ def generate_html_report(
         const optimalCoverageFromPython = {optimal_coverage_json};
         const lookbackDays = {lookback_days};
 
+        // Color palettes - Two combinations for different types of color vision deficiency
+        const colorPalettes = {{
+            palette1: {{
+                // Blue & Orange - Best for red-green colorblind (Protanopia/Deuteranopia)
+                covered: 'rgba(0, 114, 178, 0.7)',      // Deep Blue
+                ondemand: 'rgba(230, 159, 0, 0.7)',     // Bright Orange
+                coveredBorder: 'rgb(0, 114, 178)',
+                ondemandBorder: 'rgb(230, 159, 0)'
+            }},
+            palette2: {{
+                // Pink & Teal - Best for blue-yellow colorblind (Tritanopia)
+                covered: 'rgba(204, 121, 167, 0.7)',    // Pink/Magenta
+                ondemand: 'rgba(86, 180, 233, 0.7)',    // Teal/Cyan
+                coveredBorder: 'rgb(204, 121, 167)',
+                ondemandBorder: 'rgb(86, 180, 233)'
+            }}
+        }};
+
+        // Track chart instances and current color mode
+        const chartInstances = {{}};
+        const chartColorModes = {{}};
+
+        // Toggle chart colors function
+        function toggleChartColors(chartId) {{
+            const chart = chartInstances[chartId];
+            if (!chart) return;
+
+            // Toggle between palette1 and palette2
+            chartColorModes[chartId] = chartColorModes[chartId] === 'palette2' ? 'palette1' : 'palette2';
+            const palette = colorPalettes[chartColorModes[chartId]];
+
+            // Update chart colors
+            chart.data.datasets[0].backgroundColor = palette.covered;
+            chart.data.datasets[0].borderColor = palette.coveredBorder;
+            chart.data.datasets[1].backgroundColor = palette.ondemand;
+            chart.data.datasets[1].borderColor = palette.ondemandBorder;
+
+            chart.update();
+        }}
+
         // Tab switching function
         function switchTab(tabName) {{
             // Hide all tab contents
@@ -1159,6 +1234,10 @@ def generate_html_report(
         // Function to create chart for a specific type
         function createChart(canvasId, chartData, title, spType, showCoverageLine) {{
             const ctx = document.getElementById(canvasId);
+
+            // Initialize color mode for this chart
+            chartColorModes[canvasId] = 'palette1';
+            const palette = colorPalettes['palette1'];
 
             // Build annotations array
             const annotations = {{}};
@@ -1223,7 +1302,7 @@ def generate_html_report(
                 }}
             }}
 
-            return new Chart(ctx, {{
+            chartInstances[canvasId] = new Chart(ctx, {{
                 type: 'bar',
                 data: {{
                     labels: chartData.labels,
@@ -1231,16 +1310,16 @@ def generate_html_report(
                         {{
                             label: 'Covered by Savings Plans',
                             data: chartData.covered,
-                            backgroundColor: 'rgba(86, 171, 47, 0.7)',
-                            borderColor: 'rgba(86, 171, 47, 1)',
+                            backgroundColor: palette.covered,
+                            borderColor: palette.coveredBorder,
                             borderWidth: 1,
                             stack: 'stack0'
                         }},
                         {{
                             label: 'On-Demand Cost',
                             data: chartData.ondemand,
-                            backgroundColor: 'rgba(244, 107, 69, 0.7)',
-                            borderColor: 'rgba(244, 107, 69, 1)',
+                            backgroundColor: palette.ondemand,
+                            borderColor: palette.ondemandBorder,
                             borderWidth: 1,
                             stack: 'stack0'
                         }}
@@ -1322,6 +1401,8 @@ def generate_html_report(
                     }}
                 }}
             }});
+
+            return chartInstances[canvasId];
         }}
 
         // Function to render metrics for a specific type
@@ -1382,7 +1463,7 @@ def generate_html_report(
                             🎯 Optimize Your Coverage with Interactive Simulator
                         </a>
                         <p class="simulator-description">
-                            Use our interactive tool to find the optimal coverage level based on your actual usage patterns.
+                            Use our interactive tool to find the optimal coverage level and safely push beyond the min-hourly level based on your actual usage patterns.
                             Your hourly data has been pre-loaded for analysis.
                         </p>
                     </div>
@@ -1439,9 +1520,9 @@ def generate_html_report(
                         <br><br>
                         <strong>Key insights:</strong>
                         <ul style="margin: 0.5em 0 0 1.5em; padding: 0;">
-                            <li>Once you have your first Savings Plan in place, we'll know your precise discount rate for accurate optimization.</li>
-                            <li>Any coverage up to your min-hourly usage (${{stats?.min ? stats.min.toFixed(2) : 'N/A'}}/hour) will be beneficial regardless of the exact discount.</li>
-                            <li>To optimize coverage above min-hourly, we need your precise discount rate to calculate the optimal commitment level.</li>
+                            <li>Once you have your first Savings Plan in place, we'll know your precise discount rate for your usage for accurate optimization.</li>
+                            <li>Any coverage up to your min-hourly usage (${{stats?.min ? stats.min.toFixed(2) : 'N/A'}}/hour) will be beneficial regardless of the exact discount - though you shouldn't aim for 100% coverage in a single purchase.</li>
+                            <li>To optimize coverage above min-hourly, you first need to purchase a plan to reveal your precise discount rate and calculate the optimal commitment level.</li>
                         </ul>
                     </div>
                 `;
