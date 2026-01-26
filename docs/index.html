@@ -25,6 +25,17 @@
             </div>
         </header>
 
+        <!-- Global Color Theme Selector -->
+        <div class="global-theme-selector">
+            <label for="color-theme" class="theme-label">Color Theme:</label>
+            <select id="color-theme" class="theme-select">
+                <option value="default">Default</option>
+                <option value="high-contrast">High Contrast</option>
+                <option value="protanopia">Protanopia (Red-blind)</option>
+                <option value="tritanopia">Tritanopia (Blue-blind)</option>
+            </select>
+        </div>
+
         <!-- Main Content -->
         <main class="main-content">
 
@@ -121,26 +132,12 @@
                         </div>
                     </div>
 
-                    <!-- Color Theme & Optimal Coverage Row (2 columns) -->
-                    <div class="theme-optimal-grid">
-                        <!-- Left Column: Theme Selector -->
-                        <div class="theme-selector-group">
-                            <label for="color-theme" class="theme-label">Color Theme:</label>
-                            <select id="color-theme" class="theme-select">
-                                <option value="default">Default</option>
-                                <option value="high-contrast">High Contrast</option>
-                                <option value="protanopia">Protanopia (Red-blind)</option>
-                                <option value="tritanopia">Tritanopia (Blue-blind)</option>
-                            </select>
-                        </div>
-
-                        <!-- Right Column: Clickable Optimal Coverage Suggestion -->
-                        <div class="optimal-suggestion clickable" id="optimal-suggestion">
-                            <div class="suggestion-icon">💡</div>
-                            <div class="suggestion-content">
-                                <div class="suggestion-title">Optimal Coverage Suggestion</div>
-                                <div class="suggestion-text" id="suggestion-text">Calculating...</div>
-                            </div>
+                    <!-- Optimal Coverage Suggestion -->
+                    <div class="optimal-suggestion clickable" id="optimal-suggestion">
+                        <div class="suggestion-icon">💡</div>
+                        <div class="suggestion-content">
+                            <div class="suggestion-title">Optimal Coverage Suggestion</div>
+                            <div class="suggestion-text" id="suggestion-text">Calculating...</div>
                         </div>
                     </div>
                 </section>

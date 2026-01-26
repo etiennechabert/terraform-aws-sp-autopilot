@@ -91,12 +91,9 @@ const ChartManager = (function() {
                         ticks: {
                             color: '#8b95a8',
                             maxTicksLimit: 14,
+                            autoSkip: false,
                             callback: function(value, index) {
-                                // Show tick every 12 hours
-                                if (index % 12 === 0) {
-                                    return LoadPatterns.formatTimeLabel(index);
-                                }
-                                return '';
+                                return LoadPatterns.formatXAxisLabel(index);
                             }
                         },
                         grid: {
@@ -283,11 +280,9 @@ const ChartManager = (function() {
                         ticks: {
                             color: '#8b95a8',
                             maxTicksLimit: 14,
+                            autoSkip: false,
                             callback: function(value, index) {
-                                if (index % 12 === 0) {
-                                    return LoadPatterns.formatTimeLabel(index);
-                                }
-                                return '';
+                                return LoadPatterns.formatXAxisLabel(index);
                             }
                         },
                         grid: {

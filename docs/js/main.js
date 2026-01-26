@@ -420,6 +420,9 @@
      * Handle share button click
      */
     async function handleShare() {
+        // Ensure URL is updated with current state (bypass debounce)
+        URLState.updateURL(appState);
+
         const success = await URLState.copyURLToClipboard();
 
         if (success) {
