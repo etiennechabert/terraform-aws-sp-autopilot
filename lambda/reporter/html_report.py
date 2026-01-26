@@ -32,8 +32,16 @@ def _calculate_coverage_summary(
         first_coverage = coverage_history[0].get("coverage_percentage", 0.0)
         last_coverage = coverage_history[-1].get("coverage_percentage", 0.0)
         trend = last_coverage - first_coverage
-        trend_symbol = "↑" if trend > 0 else "↓" if trend < 0 else "→"
-        trend_color = "#28a745" if trend > 0 else "#dc3545" if trend < 0 else "#6c757d"
+
+        if trend > 0:
+            trend_symbol = "↑"
+            trend_color = "#28a745"
+        elif trend < 0:
+            trend_symbol = "↓"
+            trend_color = "#dc3545"
+        else:
+            trend_symbol = "→"
+            trend_color = "#6c757d"
     else:
         trend_symbol = "→"
         trend_color = "#6c757d"
