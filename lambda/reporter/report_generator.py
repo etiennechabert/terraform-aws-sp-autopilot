@@ -307,6 +307,11 @@ def _render_sp_type_scheduler_preview(
             <div class="info-box" style="background: #fff9e6; border-left: 4px solid #ffc107; margin-bottom: 15px;">
                 <strong>What is this?</strong> Compares what each scheduler strategy would purchase if it ran right now.
                 The currently configured strategy ({configured_strategy.upper()}) is highlighted. Other strategies are running with default parameters.
+                <br><br>
+                <small style="opacity: 0.85;">
+                    💡 <strong>Tip:</strong> Configure via <code>PURCHASE_STRATEGY_TYPE</code> (fixed/dichotomy/follow_aws),
+                    <code>MAX_PURCHASE_PERCENT</code>, <code>MIN_PURCHASE_PERCENT</code> environment variables.
+                </small>
             </div>
 
                 <table style="width: 100%;">
