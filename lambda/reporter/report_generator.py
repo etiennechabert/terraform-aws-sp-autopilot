@@ -1165,39 +1165,51 @@ def generate_html_report(
 
             // Only add current coverage line if requested and we have coverage
             if (showCoverageLine && spType) {{
-                // Calculate average total cost for annotation line
-                let totalSum = 0;
-                let count = 0;
-                for (let i = 0; i < chartData.covered.length; i++) {{
-                    const total = chartData.covered[i] + chartData.ondemand[i];
-                    if (total > 0) {{
-                        totalSum += total;
-                        count++;
-                    }}
-                }}
-                const avgTotal = count > 0 ? totalSum / count : 0;
-
-                // Get metrics for this SP type
+                // Get metrics and stats for this SP type
                 const metrics = metricsData[spType] || {{}};
-                const currentCoverage = metrics.current_coverage || 0;
+                const stats = chartData.stats || {{}};
+                const minHourly = stats.min || 0;
+                const spCoveredHourly = metrics.sp_covered_hourly || 0;
 
-                // Calculate Y-value for coverage line
-                const currentCoverageLine = avgTotal * (currentCoverage / 100);
+                // Calculate coverage as % of min-hourly
+                const coverageMinHourlyPct = minHourly > 0 ? (spCoveredHourly / minHourly) * 100 : 0;
 
                 // Only add current coverage line if we have coverage
-                if (currentCoverage > 0) {{
+                if (spCoveredHourly > 0) {{
                     annotations.currentCoverage = {{
                         type: 'line',
-                        yMin: currentCoverageLine,
-                        yMax: currentCoverageLine,
+                        yMin: spCoveredHourly,
+                        yMax: spCoveredHourly,
                         borderColor: 'rgb(75, 192, 192)',
                         borderWidth: 2,
                         borderDash: [5, 5],
                         label: {{
                             display: true,
-                            content: 'Current: ' + currentCoverage.toFixed(1) + '%',
+                            content: 'Current: ' + coverageMinHourlyPct.toFixed(1) + '% of min-hourly',
                             position: 'start',
                             backgroundColor: 'rgba(75, 192, 192, 0.8)',
+                            color: 'white',
+                            font: {{
+                                size: 11
+                            }}
+                        }}
+                    }};
+                }}
+
+                // Add min-hourly line
+                if (minHourly > 0) {{
+                    annotations.minHourly = {{
+                        type: 'line',
+                        yMin: minHourly,
+                        yMax: minHourly,
+                        borderColor: 'rgba(255, 165, 0, 0.8)',
+                        borderWidth: 2,
+                        borderDash: [3, 3],
+                        label: {{
+                            display: true,
+                            content: 'Min-hourly: $' + minHourly.toFixed(2) + '/hr',
+                            position: 'end',
+                            backgroundColor: 'rgba(255, 165, 0, 0.8)',
                             color: 'white',
                             font: {{
                                 size: 11
