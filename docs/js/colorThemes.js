@@ -98,52 +98,6 @@ const ColorThemes = (function() {
                 }
             }
         },
-        deuteranopia: {
-            name: 'Deuteranopia (Green-blind)',
-            // Use blue and orange/yellow
-            covered: {
-                border: '#0088ff',  // Deep blue
-                background: 'rgba(0, 136, 255, 0.3)'
-            },
-            spillover: {
-                border: '#ff9900',  // Orange
-                background: 'rgba(255, 153, 0, 0.5)'
-            },
-            baseline: {
-                border: '#8b95a8',
-                background: 'transparent'
-            },
-            commitment: {
-                border: '#0088ff',
-                background: 'transparent'
-            },
-            loadPattern: {
-                border: '#0088ff',
-                background: 'rgba(0, 136, 255, 0.2)'
-            },
-            savingsCurve: {
-                building: {
-                    border: 'rgba(102, 178, 255, 1)',  // Light blue
-                    background: 'rgba(102, 178, 255, 0.4)'
-                },
-                gaining: {
-                    border: 'rgba(0, 136, 255, 1)',  // Deep blue
-                    background: 'rgba(0, 136, 255, 0.4)'
-                },
-                wasting: {
-                    border: 'rgba(255, 204, 51, 1)',  // Yellow
-                    background: 'rgba(255, 204, 51, 0.4)'
-                },
-                veryBad: {
-                    border: 'rgba(255, 153, 0, 1)',  // Orange
-                    background: 'rgba(255, 153, 0, 0.4)'
-                },
-                losingMoney: {
-                    border: 'rgba(204, 102, 0, 1)',  // Dark orange
-                    background: 'rgba(204, 102, 0, 0.4)'
-                }
-            }
-        },
         tritanopia: {
             name: 'Tritanopia (Blue-blind)',
             // Use red and green (avoid blue)
