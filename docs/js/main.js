@@ -644,15 +644,15 @@
         });
         const minHourlySavings = minHourlyPoint.netSavings;
 
-        // Get optimal coverage for annotation
-        const optimalResult = CostCalculator.calculateOptimalCoverage(hourlyCosts, savingsPercentage);
-        const optimalCoverage = optimalResult.coverageUnits;
-
-        // Find optimal point's net savings
+        // Find optimal point directly from curve data (point with maximum savings)
         const optimalPoint = curveData.reduce((prev, curr) => {
-            return Math.abs(curr.coverage - optimalCoverage) < Math.abs(prev.coverage - optimalCoverage) ? curr : prev;
+            return curr.netSavings > prev.netSavings ? curr : prev;
         });
+        const optimalCoverage = optimalPoint.coverage;
         const optimalNetSavings = optimalPoint.netSavings;
+
+        // Also get the optimal from calculator for validation
+        const optimalResult = CostCalculator.calculateOptimalCoverage(hourlyCosts, savingsPercentage);
 
         // Calculate extra savings for each point
         // - Below optimal: extra savings vs min-hourly (positive gain)
@@ -668,11 +668,11 @@
         // Always use the current slider position for the vertical line
         const currentCoverageFromData = appState.coverageCost;
 
-        // Update chart
+        // Update chart (use optimal from curve data for consistency)
         ChartManager.updateSavingsCurveChart(
             curveData,
             minHourlySavings,
-            optimalResult.coverageUnits,
+            optimalCoverage,
             minCost,
             chartMaxCost,
             baselineCost,
