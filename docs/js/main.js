@@ -531,6 +531,9 @@
 
         // Update load chart with cost data
         ChartManager.updateLoadChart(costPattern);
+
+        // Update savings rate hint to reflect new average usage
+        updateSavingsRateHint();
     }
 
     /**
@@ -695,6 +698,26 @@
 
             unitsElement.textContent = `Cost ${CostCalculator.formatCurrency(actualCost)}/hour vs ${CostCalculator.formatCurrency(coverageCost)}/hour On-Demand`;
         }
+
+        // Update savings rate hint to reflect coverage commitment
+        updateSavingsRateHint();
+    }
+
+    /**
+     * Update savings rate hint to show coverage commitment vs average usage
+     */
+    function updateSavingsRateHint() {
+        const rateElement = document.getElementById('savings-rate');
+        if (rateElement) {
+            // Calculate average usage from hourly costs
+            const hourlyCosts = appState.hourlyCosts || [];
+            const avgUsage = hourlyCosts.length > 0
+                ? hourlyCosts.reduce((sum, cost) => sum + cost, 0) / hourlyCosts.length
+                : 0;
+
+            const coverageCommitment = appState.coverageCost || 0;
+            rateElement.textContent = `Coverage $${coverageCommitment.toFixed(3)}/hr vs $${avgUsage.toFixed(3)}/hr Avg Usage`;
+        }
     }
 
     /**
@@ -706,11 +729,8 @@
             displayElement.textContent = `${value}%`;
         }
 
-        const rateElement = document.getElementById('savings-rate');
-        if (rateElement) {
-            const savingsPlanRate = appState.onDemandRate * (1 - value / 100);
-            rateElement.textContent = `$${savingsPlanRate.toFixed(3)}/hour vs $${appState.onDemandRate.toFixed(3)}/hour On-Demand`;
-        }
+        // Update the hint text
+        updateSavingsRateHint();
     }
 
     /**
