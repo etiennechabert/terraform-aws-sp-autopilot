@@ -307,11 +307,8 @@ def _render_sp_type_scheduler_preview(
             <div class="info-box" style="background: #fff9e6; border-left: 4px solid #ffc107; margin-bottom: 15px;">
                 <strong>What is this?</strong> Compares what each scheduler strategy would purchase if it ran right now.
                 The currently configured strategy ({configured_strategy.upper()}) is highlighted. Other strategies are running with default parameters.
-                <br><br>
-                <small style="opacity: 0.85;">
-                    💡 <strong>Hover over strategy names</strong> to see details about how each strategy works.<br>
-                    🔧 <strong>Configure via:</strong> <code>PURCHASE_STRATEGY_TYPE</code> (fixed/dichotomy/follow_aws),
-                    <code>MAX_PURCHASE_PERCENT</code>, <code>MIN_PURCHASE_PERCENT</code> environment variables.
+                <small style="opacity: 0.85; margin-left: 10px;">
+                    💡 Hover over strategy names to see details and configuration.
                 </small>
             </div>
 
@@ -337,22 +334,24 @@ def _render_sp_type_scheduler_preview(
         strategy_display = strategy_names.get(strategy_type, strategy_type)
         is_configured = strategy_type == configured_strategy
 
-        # Build tooltip description with parameters
+        # Build tooltip description with parameters and configuration info
         strategy_desc = strategy_descriptions[strategy_type]
         if strategy_type == "fixed":
             if is_configured:
-                tooltip = f"{strategy_desc} (max purchase: {config.get('max_purchase_percent', 10.0):.0f}%)"
+                params = f"max purchase: {config.get('max_purchase_percent', 10.0):.0f}%"
             else:
-                tooltip = f"{strategy_desc} (default: max purchase 10%)"
+                params = "default: max purchase 10%"
+            tooltip = f"{strategy_desc} ({params}) | Configure: PURCHASE_STRATEGY_TYPE=fixed, MAX_PURCHASE_PERCENT"
         elif strategy_type == "dichotomy":
             if is_configured:
                 max_p = config.get("max_purchase_percent", 50.0)
                 min_p = config.get("min_purchase_percent", 1.0)
-                tooltip = f"{strategy_desc} (max: {max_p:.0f}%, min: {min_p:.0f}%)"
+                params = f"max: {max_p:.0f}%, min: {min_p:.0f}%"
             else:
-                tooltip = f"{strategy_desc} (default: max 50%, min 1%)"
+                params = "default: max 50%, min 1%"
+            tooltip = f"{strategy_desc} ({params}) | Configure: PURCHASE_STRATEGY_TYPE=dichotomy, MAX_PURCHASE_PERCENT, MIN_PURCHASE_PERCENT"
         else:  # follow_aws
-            tooltip = strategy_desc
+            tooltip = f"{strategy_desc} | Configure: PURCHASE_STRATEGY_TYPE=follow_aws"
 
         if not purchase:
             # Show "No purchase needed" row
