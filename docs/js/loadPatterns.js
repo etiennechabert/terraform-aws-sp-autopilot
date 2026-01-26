@@ -226,6 +226,28 @@ const LoadPatterns = (function() {
     }
 
     /**
+     * Format hour index for X-axis display (cleaner format)
+     * @param {number} hour - Hour index (0-167)
+     * @returns {string} Formatted label for chart axis
+     */
+    function formatXAxisLabel(hour) {
+        const hourOfDay = hour % 24;
+
+        // Show day name at midnight (start of each day)
+        if (hourOfDay === 0) {
+            return getDayName(hour);
+        }
+
+        // Show noon marker
+        if (hourOfDay === 12) {
+            return '12pm';
+        }
+
+        // Don't show other hours on X-axis
+        return '';
+    }
+
+    /**
      * Create control points for interactive curve editing
      * Reduces 168 points to editable control points (every 4 hours = 42 points)
      * @param {Array<number>} pattern - Full 168-hour pattern
@@ -312,6 +334,7 @@ const LoadPatterns = (function() {
         smoothCurve,
         getDayName,
         formatTimeLabel,
+        formatXAxisLabel,
         createControlPoints,
         interpolateFromControlPoints,
         calculatePatternStats

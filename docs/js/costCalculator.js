@@ -215,10 +215,6 @@ const CostCalculator = (function() {
 
         const discountFactor = (1 - savingsPercentage / 100);
 
-        let bestNetSavings = -Infinity;
-        let bestCoverage = minCost; // Start at min-hourly as baseline
-        let bestCoveragePercentage = 0;
-
         // Calculate savings at min-hourly baseline
         const minHourlySavings = minCost * hourlyCosts.length * (savingsPercentage / 100);
 
@@ -229,6 +225,7 @@ const CostCalculator = (function() {
             const totalCost = hourlyCosts.reduce((sum, cost) => sum + cost, 0);
             return {
                 coverageUnits: minCost,
+                lastOptimalCoverage: minCost,
                 coveragePercentage: 100.0,
                 maxNetSavings: totalCost * (savingsPercentage / 100),
                 minHourlySavings: minHourlySavings,
@@ -238,6 +235,12 @@ const CostCalculator = (function() {
         }
 
         const increment = rangeToTest / 100; // Test 100 different coverage levels
+        const baselineCost = hourlyCosts.reduce((sum, cost) => sum + cost, 0);
+
+        // Start tracking from 0
+        let bestNetSavings = -Infinity;
+        let bestCoverage = minCost;
+        let bestCoveragePercentage = 0;
 
         for (let coverageCost = minCost; coverageCost <= maxCost; coverageCost += increment) {
             let commitmentCost = 0;
@@ -245,26 +248,25 @@ const CostCalculator = (function() {
 
             for (let hour = 0; hour < hourlyCosts.length; hour++) {
                 const onDemandCost = hourlyCosts[hour];
-
-                // Full commitment cost (at discounted rate)
                 commitmentCost += coverageCost * discountFactor;
-
-                // Spillover (usage above coverage, at on-demand rate)
                 spilloverCost += Math.max(0, onDemandCost - coverageCost);
             }
 
             const totalCost = commitmentCost + spilloverCost;
-
-            // Calculate baseline on-demand cost
-            const baselineCost = hourlyCosts.reduce((sum, cost) => sum + cost, 0);
-
             const netSavings = baselineCost - totalCost;
 
+            // If we found a new maximum, remember it and continue
             if (netSavings > bestNetSavings) {
                 bestNetSavings = netSavings;
                 bestCoverage = coverageCost;
                 bestCoveragePercentage = maxCost > 0 ? (coverageCost / maxCost) * 100 : 0;
             }
+            // If savings dropped below the best we've seen, we've passed optimal
+            // Return the best point we found (first point at maximum)
+            else if (netSavings < bestNetSavings) {
+                break;
+            }
+            // If savings are equal, continue (we're at a plateau)
         }
 
         // Calculate extra savings beyond min-hourly
@@ -276,7 +278,7 @@ const CostCalculator = (function() {
         const p90 = sortedCosts[Math.floor(sortedCosts.length * 0.90)];
 
         return {
-            coverageUnits: bestCoverage,  // Now in $/hour
+            coverageUnits: bestCoverage,  // First point at maximum savings
             coveragePercentage: bestCoveragePercentage,
             maxNetSavings: bestNetSavings,
             minHourlySavings: minHourlySavings,  // Baseline savings at min-hourly
@@ -335,6 +337,52 @@ const CostCalculator = (function() {
     }
 
     /**
+     * Get optimization suggestion with dollar values (no percentage conversion needed)
+     * @param {number} currentCost - Current coverage in $/hour
+     * @param {number} optimalCost - Optimal coverage in $/hour
+     * @param {number} minCost - Minimum cost for percentage calculation
+     * @returns {Object} Suggestion with status and message
+     */
+    function getOptimizationSuggestionDollars(currentCost, optimalCost, minCost) {
+        const difference = Math.abs(currentCost - optimalCost);
+        const percentDiff = minCost > 0 ? (difference / minCost) * 100 : 0;
+
+        let status = 'optimal';
+        let message = '';
+        let icon = '✅';
+
+        if (percentDiff <= 5) {
+            status = 'optimal';
+            icon = '✅';
+            message = `Coverage is optimal (within 5%). Current: ${formatCurrency(currentCost)}/hr`;
+        } else if (percentDiff <= 10) {
+            status = 'warning';
+            icon = '⚠️';
+            if (currentCost < optimalCost) {
+                message = `Increase to ${formatCurrency(optimalCost)}/hr (current: ${formatCurrency(currentCost)}/hr) to unlock ${formatCurrency(difference)}/hr more savings.`;
+            } else {
+                message = `Decrease to ${formatCurrency(optimalCost)}/hr (current: ${formatCurrency(currentCost)}/hr) to reduce waste.`;
+            }
+        } else {
+            status = 'danger';
+            icon = '🔴';
+            if (currentCost < optimalCost) {
+                message = `Coverage significantly below optimal. Increase to ${formatCurrency(optimalCost)}/hr (current: ${formatCurrency(currentCost)}/hr) to unlock ${formatCurrency(difference)}/hr more savings potential.`;
+            } else {
+                message = `Coverage significantly above optimal. Decrease to ${formatCurrency(optimalCost)}/hr (current: ${formatCurrency(currentCost)}/hr) to reduce waste.`;
+            }
+        }
+
+        return {
+            status,
+            icon,
+            message,
+            difference,
+            recommendation: optimalCost
+        };
+    }
+
+    /**
      * Format currency value
      * @param {number} value - Dollar amount
      * @returns {string} Formatted currency
@@ -384,6 +432,7 @@ const CostCalculator = (function() {
         calculateOptimalCoverage,
         calculateSavingsCurve,
         getOptimizationSuggestion,
+        getOptimizationSuggestionDollars,
         formatCurrency,
         formatPercentage,
         calculateCoverageImpact

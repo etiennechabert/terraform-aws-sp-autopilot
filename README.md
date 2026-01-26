@@ -85,7 +85,7 @@ module "savings_plans" {
   purchase_strategy = {
     coverage_target_percent = 90
     max_coverage_cap        = 95
-    lookback_days           = 13      # Recommended for HOURLY granularity
+    lookback_days           = 14      # Max for HOURLY granularity
     granularity             = "HOURLY" # Recommended (requires Cost Explorer hourly data)
 
     fixed = {
@@ -242,7 +242,7 @@ notifications = {
 
 ```hcl
 purchase_strategy = {
-  lookback_days = 13      # Max for HOURLY
+  lookback_days = 14      # Max for HOURLY
   granularity   = "HOURLY" # Recommended
   # ...
 }

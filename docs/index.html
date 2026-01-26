@@ -25,6 +25,17 @@
             </div>
         </header>
 
+        <!-- Global Color Theme Selector -->
+        <div class="global-theme-selector">
+            <label for="color-theme" class="theme-label">Color Theme:</label>
+            <select id="color-theme" class="theme-select">
+                <option value="default">Default</option>
+                <option value="high-contrast">High Contrast</option>
+                <option value="protanopia">Protanopia (Red-blind)</option>
+                <option value="tritanopia">Tritanopia (Blue-blind)</option>
+            </select>
+        </div>
+
         <!-- Main Content -->
         <main class="main-content">
 
@@ -121,20 +132,8 @@
                         </div>
                     </div>
 
-                    <!-- Color Theme & Optimal Coverage Row (2 columns) -->
-                    <div class="theme-optimal-grid">
-                        <!-- Left Column: Theme Selector -->
-                        <div class="theme-selector-group">
-                            <label for="color-theme" class="theme-label">Color Theme:</label>
-                            <select id="color-theme" class="theme-select">
-                                <option value="default">Default</option>
-                                <option value="high-contrast">High Contrast</option>
-                                <option value="protanopia">Protanopia (Red-blind)</option>
-                                <option value="tritanopia">Tritanopia (Blue-blind)</option>
-                            </select>
-                        </div>
-
-                        <!-- Right Column: Clickable Optimal Coverage Suggestion -->
+                    <!-- Optimal Coverage Suggestion Row -->
+                    <div class="sliders-row">
                         <div class="optimal-suggestion clickable" id="optimal-suggestion">
                             <div class="suggestion-icon">💡</div>
                             <div class="suggestion-content">
@@ -145,10 +144,10 @@
                     </div>
                 </section>
 
-                <!-- Weekly Cost Summary (1/4 width) -->
+                <!-- Hourly Cost Summary (1/4 width) -->
                 <section class="card section-metrics">
                     <div class="card-header">
-                        <h2 class="section-title">Weekly Cost Summary</h2>
+                        <h2 class="section-title">Hourly Cost Summary</h2>
                     </div>
 
                     <div class="metrics-column">
@@ -220,23 +219,23 @@
 
                 <div class="curve-legend">
                     <div class="legend-item">
-                        <span class="legend-color" style="background: linear-gradient(90deg, rgba(77,159,255,0.3), rgba(77,159,255,0.6));"></span>
+                        <span class="legend-color" id="legend-building"></span>
                         <span class="legend-text">0-Min: Building to min-hourly baseline</span>
                     </div>
                     <div class="legend-item">
-                        <span class="legend-color" style="background: linear-gradient(90deg, rgba(0,255,136,0.3), rgba(0,255,136,0.6));"></span>
+                        <span class="legend-color" id="legend-gaining"></span>
                         <span class="legend-text">Min-Optimal: Extra savings beyond baseline</span>
                     </div>
                     <div class="legend-item">
-                        <span class="legend-color" style="background: linear-gradient(90deg, rgba(255,170,0,0.3), rgba(255,170,0,0.6));"></span>
+                        <span class="legend-color" id="legend-wasting"></span>
                         <span class="legend-text">Optimal-MinReturn: Declining back to baseline</span>
                     </div>
                     <div class="legend-item">
-                        <span class="legend-color" style="background: linear-gradient(90deg, rgba(138,43,226,0.3), rgba(138,43,226,0.6));"></span>
+                        <span class="legend-color" id="legend-veryBad"></span>
                         <span class="legend-text">Worse than min-hourly: Not worth the commitment</span>
                     </div>
                     <div class="legend-item">
-                        <span class="legend-color" style="background: linear-gradient(90deg, rgba(255,68,68,0.3), rgba(255,68,68,0.6));"></span>
+                        <span class="legend-color" id="legend-losingMoney"></span>
                         <span class="legend-text">Worse than on-demand: Losing money</span>
                     </div>
                 </div>
