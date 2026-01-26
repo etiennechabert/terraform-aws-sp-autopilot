@@ -477,6 +477,11 @@ h1, h2, h3, h4, h5, h6 {
     border-top: 1px solid var(--card-border);
 }
 
+/* Full width items in sliders-row (like optimal suggestion) */
+.sliders-row .optimal-suggestion {
+    grid-column: 1 / -1; /* Span all columns */
+}
+
 @media (max-width: 768px) {
     .sliders-row {
         grid-template-columns: 1fr;
@@ -684,16 +689,13 @@ h1, h2, h3, h4, h5, h6 {
 /* ===== Optimal Suggestion ===== */
 .optimal-suggestion {
     display: flex;
-    gap: var(--spacing-xs);
-    padding: var(--spacing-xs) var(--spacing-sm);
+    gap: var(--spacing-sm);
+    padding: var(--spacing-sm);
     background: rgba(184, 77, 255, 0.1);
     border: 1px solid var(--accent-purple);
     border-radius: var(--radius-sm);
     transition: all 0.2s ease;
-    height: 100%;
-    min-width: 0; /* Allow shrinking within grid column */
-    max-width: 100%; /* Prevent overflow */
-    overflow: hidden; /* Contain content */
+    min-width: 0;
 }
 
 .optimal-suggestion.clickable {
