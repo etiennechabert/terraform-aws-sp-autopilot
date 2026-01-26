@@ -535,10 +535,11 @@ def test_handler_with_scheduler_preview_fixed_strategy(monkeypatch, mock_clients
     if isinstance(report_html, bytes):
         report_html = report_html.decode("utf-8")
 
-    # Verify scheduler preview tab is present in HTML
-    assert "scheduler-preview" in report_html, "Scheduler preview tab should be in HTML"
-    assert "📊 Scheduler Preview" in report_html, "Scheduler preview tab button should be present"
-    assert "Scheduled vs Optimal" in report_html, "Preview content should show comparison"
+    # Verify scheduler preview section is present in HTML
+    assert "Scheduler Preview" in report_html, "Scheduler preview section should be in HTML"
+    assert "preview-compute" in report_html, "Preview should have compute tab"
+    assert "preview-database" in report_html, "Preview should have database tab"
+    assert "preview-sagemaker" in report_html, "Preview should have sagemaker tab"
     assert "fixed" in report_html.lower(), "Strategy type should be mentioned"
 
     # Verify S3 upload was called
@@ -594,9 +595,9 @@ def test_handler_with_scheduler_preview_dichotomy_strategy(
     if isinstance(report_html, bytes):
         report_html = report_html.decode("utf-8")
 
-    # Verify scheduler preview tab is present
-    assert "scheduler-preview" in report_html
-    assert "📊 Scheduler Preview" in report_html
+    # Verify scheduler preview section is present
+    assert "Scheduler Preview" in report_html
+    assert "preview-compute" in report_html
     assert "dichotomy" in report_html.lower(), "Dichotomy strategy should be mentioned"
 
 
@@ -655,7 +656,7 @@ def test_handler_with_scheduler_preview_follow_aws_strategy(
     if isinstance(report_html, bytes):
         report_html = report_html.decode("utf-8")
 
-    # Verify scheduler preview tab is present
-    assert "scheduler-preview" in report_html
-    assert "📊 Scheduler Preview" in report_html
+    # Verify scheduler preview section is present
+    assert "Scheduler Preview" in report_html
+    assert "preview-compute" in report_html
     assert "follow_aws" in report_html.lower(), "Follow AWS strategy should be mentioned"

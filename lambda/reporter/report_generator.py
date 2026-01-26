@@ -258,174 +258,135 @@ def _prepare_chart_data(
     return json.dumps(all_chart_data), optimal_results
 
 
-def _render_scheduler_preview_content(
+def _render_scheduler_preview_section(
     preview_data: dict[str, Any] | None, config: dict[str, Any]
 ) -> str:
-    """Render the scheduler preview tab content with optimization analysis."""
-    if not preview_data:
-        return '<div class="no-data">Preview data not available</div>'
+    """Render the scheduler preview section with tabs for each SP type."""
 
-    if preview_data.get("error"):
+    # Helper to render content for a specific SP type tab
+    def render_sp_type_preview(sp_type: str) -> str:
+        if not preview_data:
+            return '<div class="no-data">Preview data not available</div>'
+
+        if preview_data.get("error"):
+            return f"""
+                <div class="no-data" style="color: #dc3545;">
+                    Failed to calculate preview: {preview_data["error"]}
+                </div>
+            """
+
+        # Find purchase for this SP type
+        purchase = None
+        for p in preview_data.get("purchases", []):
+            if p.get("sp_type") == sp_type:
+                purchase = p
+                break
+
+        if not purchase:
+            return f"""
+                <div class="no-data">
+                    No purchase recommended for {sp_type.capitalize()} Savings Plans.
+                    You may already be at or above your target coverage.
+                </div>
+            """
+
+        # Render simple purchase recommendation
+        hourly_commit = purchase["hourly_commitment"]
+        purchase_percent = purchase.get("purchase_percent", 0.0)
+        current_cov = purchase["current_coverage"]
+        projected_cov = purchase["projected_coverage"]
+        payment_option = purchase.get("payment_option", "N/A")
+        term = purchase.get("term", "N/A")
+        cov_increase = projected_cov - current_cov
+
+        target_coverage = config.get("coverage_target_percent", 90.0)
+        coverage_class = "green" if projected_cov >= target_coverage else "orange"
+
         return f"""
-            <div class="no-data" style="color: #dc3545;">
-                Failed to calculate preview: {preview_data["error"]}
+            <div style="margin: 20px 0;">
+                <h3 style="color: #232f3e; margin-bottom: 15px;">{sp_type.capitalize()} Savings Plan Recommendation</h3>
+
+                <div class="info-box" style="background: #e3f2fd; border-left: 4px solid #2196f3; margin-bottom: 20px;">
+                    <div style="font-size: 1.1em; margin-bottom: 10px;">
+                        <strong>Recommended Purchase:</strong>
+                    </div>
+                    <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 15px; font-size: 0.95em;">
+                        <div>
+                            <strong>Hourly Commitment:</strong> <span style="color: #2196f3; font-size: 1.2em; font-weight: bold;">${hourly_commit:.4f}/hr</span>
+                        </div>
+                        <div>
+                            <strong>Purchase %:</strong> {purchase_percent:.1f}% of uncovered spend
+                        </div>
+                        <div>
+                            <strong>Term:</strong> {term}
+                        </div>
+                        <div>
+                            <strong>Payment Option:</strong> {payment_option}
+                        </div>
+                    </div>
+                </div>
+
+                <div style="margin: 20px 0;">
+                    <h4 style="color: #232f3e; margin-bottom: 10px;">Coverage Impact</h4>
+                    <table style="width: 100%;">
+                        <thead>
+                            <tr>
+                                <th>Current Coverage</th>
+                                <th>→</th>
+                                <th>Projected Coverage</th>
+                                <th>Increase</th>
+                                <th>Target</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td class="metric">{current_cov:.1f}%</td>
+                                <td style="text-align: center; font-size: 1.2em;">→</td>
+                                <td class="metric {coverage_class}" style="font-weight: bold;">{projected_cov:.1f}%</td>
+                                <td class="metric" style="color: #28a745;">+{cov_increase:.1f}%</td>
+                                <td class="metric">{target_coverage:.1f}%</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
             </div>
         """
 
-    if not preview_data.get("has_recommendations"):
-        return """
-            <div class="no-data">
-                No purchases recommended. You may already be at or above your target coverage.
-            </div>
-        """
-
-    # Render comparison table: Scheduled vs Optimal
-    strategy = preview_data.get("strategy", "unknown")
-    target_coverage = config.get("coverage_target_percent", 90.0)
-
-    html = f"""
-        <div class="section">
-            <h3>Purchase Recommendations: Scheduled vs Optimal</h3>
-            <p style="color: #6c757d; margin-bottom: 15px;">
-                Strategy: <strong>{strategy}</strong> |
-                Target Coverage: <strong>{target_coverage:.1f}%</strong>
-            </p>
-
-            <table>
-                <thead>
-                    <tr>
-                        <th rowspan="2">SP Type</th>
-                        <th colspan="2" style="background: #e3f2fd; border-bottom: 2px solid #2196f3;">
-                            Scheduled Purchase
-                        </th>
-                        <th colspan="3" style="background: #e8f5e9; border-bottom: 2px solid #4caf50;">
-                            Optimal (Knee-Point)
-                        </th>
-                        <th rowspan="2">Efficiency</th>
-                        <th rowspan="2">Coverage Impact</th>
-                    </tr>
-                    <tr>
-                        <th style="background: #e3f2fd;">Commitment</th>
-                        <th style="background: #e3f2fd;">Coverage</th>
-                        <th style="background: #e8f5e9;">Commitment</th>
-                        <th style="background: #e8f5e9;">Target</th>
-                        <th style="background: #e8f5e9;">Discount</th>
-                    </tr>
-                </thead>
-                <tbody>
-    """
-
-    for purchase in preview_data.get("purchases", []):
-        sp_type = purchase["sp_type"].capitalize()
-        scheduled = purchase["scheduled"]
-        optimal = purchase.get("optimal", {})
-        efficiency = purchase.get("efficiency", {})
-
-        # Scheduled purchase
-        sched_commit = scheduled["hourly_commitment"]
-        current_cov = scheduled["current_coverage"]
-        proj_cov = scheduled["projected_coverage"]
-        cov_increase = proj_cov - current_cov
-
-        # Optimal purchase
-        opt_commit = optimal.get("hourly_commitment", 0.0)
-        target_p = optimal.get("target_percentile", 0)
-        discount = optimal.get("discount_rate", 0.0)
-
-        # Efficiency
-        ratio = efficiency.get("ratio", 0.0)
-        status = efficiency.get("status", "unknown")
-        message = efficiency.get("message", "")
-
-        # Color coding
-        if status == "optimal":
-            eff_color = "#4caf50"  # Green
-            eff_icon = "✓"
-        elif status == "near_optimal":
-            eff_color = "#ff9800"  # Orange
-            eff_icon = "~"
-        else:  # over_committed
-            eff_color = "#dc3545"  # Red
-            eff_icon = "!"
-
-        coverage_class = "green" if proj_cov >= target_coverage else "orange"
-
-        html += f'''
-                    <tr>
-                        <td><strong>{sp_type}</strong></td>
-                        <!-- Scheduled -->
-                        <td class="metric" style="background: #f5f5f5; color: #2196f3; font-weight: bold;">
-                            ${sched_commit:.4f}/hr
-                        </td>
-                        <td class="metric" style="background: #f5f5f5;">
-                            {current_cov:.1f}% → {proj_cov:.1f}%
-                        </td>
-                        <!-- Optimal -->
-                        <td class="metric" style="background: #f5f5f5; color: #4caf50; font-weight: bold;">
-                            ${opt_commit:.4f}/hr
-                        </td>
-                        <td class="metric" style="background: #f5f5f5;">
-                            P{target_p}
-                        </td>
-                        <td class="metric" style="background: #f5f5f5;">
-                            {discount * 100:.0f}%
-                        </td>
-                        <!-- Efficiency -->
-                        <td style="color: {eff_color}; font-weight: bold;" title="{message}">
-                            {eff_icon} {ratio:.2f}x
-                        </td>
-                        <td class="metric {coverage_class}">
-                            +{cov_increase:.1f}%
-                        </td>
-                    </tr>
-        '''
-
-    html += """
-                </tbody>
-            </table>
-        </div>
-    """
-
-    # Add explanation boxes
-    html += """
-        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-top: 20px;">
-            <div class="info-box">
-                <strong>📘 Scheduled Purchase</strong><br>
-                What the scheduler will purchase based on your configured strategy (fixed, dichotomy, or follow_aws).
-            </div>
-            <div class="info-box">
-                <strong>📗 Optimal (Knee-Point)</strong><br>
-                The optimal commitment level where marginal savings start to diminish, based on your actual discount rate.
-            </div>
-        </div>
-
-        <div class="info-box" style="margin-top: 15px;">
-            <strong>Efficiency Rating:</strong>
-            <ul style="margin: 0.5em 0 0 1.5em; padding: 0;">
-                <li><span style="color: #4caf50;">✓ Optimal</span>: Scheduled = Optimal (within 10%)</li>
-                <li><span style="color: #ff9800;">~ Near Optimal</span>: Scheduled is 10-20% above optimal</li>
-                <li><span style="color: #dc3545;">! Over-Committed</span>: Scheduled is >20% above optimal (diminishing returns)</li>
-            </ul>
-        </div>
-    """
-
-    # Strategy description
+    strategy = preview_data.get("strategy", "unknown") if preview_data else "unknown"
     strategy_descriptions = {
-        "fixed": "Purchases a fixed percentage of uncovered spend at a time (controlled by max_purchase_percent).",
-        "dichotomy": "Uses exponentially decreasing purchase sizes based on coverage gap (power-of-2 halving algorithm).",
-        "follow_aws": "Follows AWS Cost Explorer recommendations exactly as provided by AWS.",
+        "fixed": "Purchases a fixed percentage of uncovered spend at a time.",
+        "dichotomy": "Uses exponentially decreasing purchase sizes based on coverage gap.",
+        "follow_aws": "Follows AWS Cost Explorer recommendations.",
     }
-
     strategy_desc = strategy_descriptions.get(strategy, "Unknown strategy")
 
-    html += f"""
-        <div class="info-box" style="margin-top: 15px; background: #fff9e6; border-left: 4px solid #ffc107;">
-            <strong>Current Strategy: {strategy.upper()}</strong><br>
-            {strategy_desc}
+    return f"""
+        <div class="section">
+            <h2>Scheduler Preview</h2>
+            <div class="info-box" style="background: #fff9e6; border-left: 4px solid #ffc107; margin-bottom: 20px;">
+                <strong>What is this?</strong> This section shows what the scheduler would purchase if it ran right now.<br>
+                <strong>Strategy:</strong> {strategy.upper()} - {strategy_desc}
+            </div>
+
+            <div class="tabs">
+                <button class="tab active" onclick="switchTab('preview-compute')">Compute</button>
+                <button class="tab" onclick="switchTab('preview-database')">Database</button>
+                <button class="tab" onclick="switchTab('preview-sagemaker')">SageMaker</button>
+            </div>
+
+            <div id="preview-compute-tab" class="tab-content active">
+                {render_sp_type_preview("compute")}
+            </div>
+
+            <div id="preview-database-tab" class="tab-content">
+                {render_sp_type_preview("database")}
+            </div>
+
+            <div id="preview-sagemaker-tab" class="tab-content">
+                {render_sp_type_preview("sagemaker")}
+            </div>
         </div>
     """
-
-    return html
 
 
 def generate_html_report(
@@ -1032,7 +993,6 @@ def generate_html_report(
                 <button class="tab" onclick="switchTab('compute')">Compute</button>
                 <button class="tab" onclick="switchTab('database')">Database</button>
                 <button class="tab" onclick="switchTab('sagemaker')">SageMaker</button>
-                <button class="tab" onclick="switchTab('scheduler-preview')">📊 Scheduler Preview</button>
             </div>
 
             <div id="global-tab" class="tab-content active">
@@ -1073,18 +1033,9 @@ def generate_html_report(
                     <canvas id="sagemakerChart"></canvas>
                 </div>
             </div>
-
-            <div id="scheduler-preview-tab" class="tab-content">
-                <div class="info-box" style="margin-bottom: 20px;">
-                    <strong>What is this?</strong> This tab shows what the scheduler would purchase if it ran right now
-                    based on your current configuration (strategy: <strong>{preview_data.get("strategy", "unknown") if preview_data else "unknown"}</strong>).
-                    It also shows the OPTIMAL commitment level using the knee-point algorithm, which finds where
-                    additional coverage provides diminishing returns.
-                </div>
-
-                {_render_scheduler_preview_content(preview_data, config or {})}
-            </div>
         </div>
+
+        {_render_scheduler_preview_section(preview_data, config or {})}
 
         <div class="section">
             <h2>Savings Plans Breakdown by Type</h2>
