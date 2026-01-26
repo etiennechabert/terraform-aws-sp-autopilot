@@ -22,6 +22,7 @@ if TYPE_CHECKING:
 
 from shared import notifications
 from shared.aws_utils import get_clients
+from shared.constants import PLAN_TYPE_COMPUTE, PLAN_TYPE_DATABASE, PLAN_TYPE_SAGEMAKER
 
 
 # Configure logging
@@ -173,6 +174,26 @@ def load_config_from_env(
         validator(config)
 
     return config
+
+
+def get_enabled_plan_types(config: dict[str, Any]) -> list[str]:
+    """
+    Extract enabled Savings Plan types from configuration.
+
+    Args:
+        config: Configuration dictionary with enable_*_sp flags
+
+    Returns:
+        list: Enabled plan types using AWS naming (e.g., ["Compute", "SageMaker", "Database"])
+    """
+    enabled_types = []
+    if config.get("enable_compute_sp", False):
+        enabled_types.append(PLAN_TYPE_COMPUTE)
+    if config.get("enable_sagemaker_sp", False):
+        enabled_types.append(PLAN_TYPE_SAGEMAKER)
+    if config.get("enable_database_sp", False):
+        enabled_types.append(PLAN_TYPE_DATABASE)
+    return enabled_types
 
 
 def initialize_clients(
