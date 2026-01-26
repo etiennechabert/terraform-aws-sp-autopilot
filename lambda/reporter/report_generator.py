@@ -409,47 +409,6 @@ def _render_sp_type_scheduler_preview(
         </div>
     """
 
-    # Add strategy descriptions with parameters
-    html += """
-        <div class="info-box" style="margin-top: 20px; background: #f8f9fa; border-left: 4px solid #6c757d;">
-            <strong>Strategy Descriptions:</strong>
-            <ul style="margin: 10px 0 0 20px; padding: 0;">
-    """
-
-    is_configured_fixed = configured_strategy == "fixed"
-    is_configured_dichotomy = configured_strategy == "dichotomy"
-
-    # Fixed strategy
-    fixed_params = (
-        f"(max purchase: {config.get('max_purchase_percent', 10.0):.0f}%)"
-        if is_configured_fixed
-        else "(default: max purchase 10%)"
-    )
-    html += f"""
-                <li><strong>Fixed:</strong> {strategy_descriptions["fixed"]} {fixed_params}</li>
-    """
-
-    # Dichotomy strategy
-    if is_configured_dichotomy:
-        max_purchase = config.get("max_purchase_percent", 50.0)
-        min_purchase = config.get("min_purchase_percent", 1.0)
-        dichotomy_params = f"(max: {max_purchase:.0f}%, min: {min_purchase:.0f}%)"
-    else:
-        dichotomy_params = "(default: max 50%, min 1%)"
-    html += f"""
-                <li><strong>Dichotomy:</strong> {strategy_descriptions["dichotomy"]} {dichotomy_params}</li>
-    """
-
-    # Follow AWS strategy
-    html += f"""
-                <li><strong>Follow AWS:</strong> {strategy_descriptions["follow_aws"]}</li>
-    """
-
-    html += """
-            </ul>
-        </div>
-    """
-
     return html
 
 
