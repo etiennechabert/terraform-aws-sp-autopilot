@@ -340,10 +340,11 @@ def generate_html_report(
     # Extract min-hourly from timeseries data for each SP type
     def get_min_hourly_from_timeseries(sp_type_data):
         """Extract minimum hourly cost from timeseries data."""
-        timeseries = sp_type_data.get("timeseries", {})
+        timeseries = sp_type_data.get("timeseries", [])
         total_costs = []
-        for ts_data in timeseries.values():
-            total = ts_data.get("covered_cost", 0.0) + ts_data.get("ondemand_cost", 0.0)
+        for item in timeseries:
+            # timeseries is a list of dicts with keys: timestamp, covered, total
+            total = item.get("total", 0.0)
             if total > 0:  # Only consider non-zero costs
                 total_costs.append(total)
         return min(total_costs) if total_costs else 0.0
