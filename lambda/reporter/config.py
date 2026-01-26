@@ -46,15 +46,13 @@ CONFIG_SCHEMA = {
         "env_var": "ENABLE_SAGEMAKER_SP",
     },
     "lookback_days": {
-        "required": False,
+        "required": True,
         "type": "int",
-        "default": "13",
         "env_var": "LOOKBACK_DAYS",
     },
     "granularity": {
-        "required": False,
+        "required": True,
         "type": "str",
-        "default": "DAILY",
         "env_var": "GRANULARITY",
     },
     "management_account_role_arn": {
@@ -74,10 +72,15 @@ CONFIG_SCHEMA = {
         "env_var": "TEAMS_WEBHOOK_URL",
     },
     "low_utilization_threshold": {
+        "required": True,
+        "type": "float",
+        "env_var": "LOW_UTILIZATION_THRESHOLD",
+    },
+    "coverage_target_percent": {
         "required": False,
         "type": "float",
-        "default": "70",
-        "env_var": "LOW_UTILIZATION_THRESHOLD",
+        "default": "90.0",
+        "env_var": "COVERAGE_TARGET_PERCENT",
     },
 }
 
