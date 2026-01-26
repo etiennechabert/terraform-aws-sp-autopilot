@@ -65,8 +65,8 @@ def test_calculate_current_coverage_success(
     # Fixture has compute and database services (RDS has 70.72% coverage)
     assert result["compute"] == pytest.approx(76.14, rel=0.01)
     # Database is not enabled by default in config, so it's 0
-    assert result["database"] == 0.0
-    assert result["sagemaker"] == 0.0
+    assert result["database"] == pytest.approx(0.0)
+    assert result["sagemaker"] == pytest.approx(0.0)
 
 
 def test_calculate_current_coverage_filters_expiring_plans(
@@ -98,8 +98,8 @@ def test_calculate_current_coverage_filters_expiring_plans(
     # Actual coverage calculated from fixture data aggregated spend
     # Note: AWS API returns all coverage data regardless of plan expiration
     assert result["compute"] == pytest.approx(76.14, rel=0.01)
-    assert result["database"] == 0.0
-    assert result["sagemaker"] == 0.0
+    assert result["database"] == pytest.approx(0.0)
+    assert result["sagemaker"] == pytest.approx(0.0)
 
 
 def test_calculate_current_coverage_no_coverage_data(
@@ -118,9 +118,9 @@ def test_calculate_current_coverage_no_coverage_data(
     )
 
     # Should return zeros when no data available
-    assert result["compute"] == 0.0
-    assert result["database"] == 0.0
-    assert result["sagemaker"] == 0.0
+    assert result["compute"] == pytest.approx(0.0)
+    assert result["database"] == pytest.approx(0.0)
+    assert result["sagemaker"] == pytest.approx(0.0)
 
 
 def test_calculate_current_coverage_no_active_plans(
@@ -146,7 +146,7 @@ def test_calculate_current_coverage_no_active_plans(
         mock_savingsplans_client, mock_ce_client, mock_config
     )
 
-    assert result["compute"] == 0.0
+    assert result["compute"] == pytest.approx(0.0)
 
 
 def test_calculate_current_coverage_all_plans_expiring_soon(
@@ -190,7 +190,7 @@ def test_calculate_current_coverage_all_plans_expiring_soon(
     )
 
     # Should still return coverage data even if all plans are expiring
-    assert result["compute"] == 50.0
+    assert result["compute"] == pytest.approx(50.0)
 
 
 def test_calculate_current_coverage_boundary_renewal_window(
@@ -235,7 +235,7 @@ def test_calculate_current_coverage_boundary_renewal_window(
         mock_savingsplans_client, mock_ce_client, mock_config
     )
 
-    assert result["compute"] == 60.0
+    assert result["compute"] == pytest.approx(60.0)
 
 
 def test_calculate_current_coverage_multiple_coverage_data_points(
@@ -318,7 +318,7 @@ def test_calculate_current_coverage_missing_coverage_percentage(
     )
 
     # Should default to 0.0
-    assert result["compute"] == 0.0
+    assert result["compute"] == pytest.approx(0.0)
 
 
 def test_calculate_current_coverage_plan_without_end_date(
@@ -455,7 +455,7 @@ def test_calculate_current_coverage_high_coverage_percentage(
         mock_savingsplans_client, mock_ce_client, mock_config
     )
 
-    assert result["compute"] == 99.9
+    assert result["compute"] == pytest.approx(99.9)
 
 
 def test_calculate_current_coverage_zero_coverage(
@@ -492,7 +492,7 @@ def test_calculate_current_coverage_zero_coverage(
         mock_savingsplans_client, mock_ce_client, mock_config
     )
 
-    assert result["compute"] == 0.0
+    assert result["compute"] == pytest.approx(0.0)
 
 
 def test_calculate_current_coverage_with_groupby_multiple_types(
@@ -524,8 +524,8 @@ def test_calculate_current_coverage_with_groupby_multiple_types(
 
     # Fixture has compute data
     assert result["compute"] == pytest.approx(76.14, rel=0.01)
-    assert result["sagemaker"] == 0.0
-    assert result["database"] == 0.0
+    assert result["sagemaker"] == pytest.approx(0.0)
+    assert result["database"] == pytest.approx(0.0)
 
 
 def test_calculate_current_coverage_with_groupby_ec2_instance_sp(
@@ -563,9 +563,9 @@ def test_calculate_current_coverage_with_groupby_ec2_instance_sp(
         mock_savingsplans_client, mock_ce_client, mock_config
     )
 
-    assert result["compute"] == 85.0
-    assert result["sagemaker"] == 0.0
-    assert result["database"] == 0.0
+    assert result["compute"] == pytest.approx(85.0)
+    assert result["sagemaker"] == pytest.approx(0.0)
+    assert result["database"] == pytest.approx(0.0)
 
 
 def test_calculate_current_coverage_with_groupby_rds_instance(
@@ -606,9 +606,9 @@ def test_calculate_current_coverage_with_groupby_rds_instance(
         mock_savingsplans_client, mock_ce_client, mock_config
     )
 
-    assert result["compute"] == 0.0
-    assert result["sagemaker"] == 0.0
-    assert result["database"] == 90.0
+    assert result["compute"] == pytest.approx(0.0)
+    assert result["sagemaker"] == pytest.approx(0.0)
+    assert result["database"] == pytest.approx(90.0)
 
 
 def test_calculate_current_coverage_with_groupby_all_types(
@@ -640,8 +640,8 @@ def test_calculate_current_coverage_with_groupby_all_types(
 
     # Fixture has compute data
     assert result["compute"] == pytest.approx(76.14, rel=0.01)
-    assert result["sagemaker"] == 0.0
-    assert result["database"] == 0.0
+    assert result["sagemaker"] == pytest.approx(0.0)
+    assert result["database"] == pytest.approx(0.0)
 
 
 def test_calculate_current_coverage_with_groupby_no_groups_fallback(
@@ -680,6 +680,6 @@ def test_calculate_current_coverage_with_groupby_no_groups_fallback(
     )
 
     # Should use aggregate coverage for compute
-    assert result["compute"] == 70.0
-    assert result["sagemaker"] == 0.0
-    assert result["database"] == 0.0
+    assert result["compute"] == pytest.approx(70.0)
+    assert result["sagemaker"] == pytest.approx(0.0)
+    assert result["database"] == pytest.approx(0.0)

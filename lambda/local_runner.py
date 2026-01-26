@@ -124,7 +124,7 @@ def run_scheduler(args):
         raise
 
 
-def run_purchaser(args):
+def run_purchaser(_args):
     """Run the Purchaser Lambda locally."""
     print("\n" + "=" * 60)
     print("Running Purchaser Lambda in LOCAL mode")

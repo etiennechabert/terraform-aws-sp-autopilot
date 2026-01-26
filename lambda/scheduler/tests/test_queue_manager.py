@@ -94,7 +94,7 @@ def test_queue_purchase_intents_sends_messages(mock_local_mode):
     # Verify message body
     message_body = json.loads(call_args["MessageBody"])
     assert message_body["sp_type"] == "compute"
-    assert message_body["hourly_commitment"] == 2.5
+    assert message_body["hourly_commitment"] == pytest.approx(2.5)
 
 
 @patch("shared.local_mode.is_local_mode", return_value=False)
