@@ -1489,7 +1489,7 @@ def generate_html_report(
                         type: 'line',
                         yMin: minHourly,
                         yMax: minHourly,
-                        borderColor: 'rgba(255, 215, 0, 0.9)',
+                        borderColor: 'rgba(70, 70, 70, 0.9)',
                         borderWidth: 3,
                         borderDash: [8, 4],
                         label: {{
