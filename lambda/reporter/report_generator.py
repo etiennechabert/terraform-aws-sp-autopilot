@@ -1303,7 +1303,7 @@ def generate_html_report(
             <p>Generated: {report_timestamp}</p>
             <p style="margin-top: 15px; font-size: 0.9em;">
                 Powered by <a href="https://github.com/etiennechabert/terraform-aws-sp-autopilot" target="_blank" style="color: #2196f3; text-decoration: none;">terraform-aws-sp-autopilot</a>
-                <span style="opacity: 0.6;">| Open source on GitHub</span>
+                <span style="opacity: 0.6;">| Open source on GitHub | Apache License 2.0</span>
             </p>
         </div>
     </div>
