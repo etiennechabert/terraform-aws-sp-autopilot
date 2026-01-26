@@ -309,7 +309,8 @@ def _render_sp_type_scheduler_preview(
                 The currently configured strategy ({configured_strategy.upper()}) is highlighted. Other strategies are running with default parameters.
                 <br><br>
                 <small style="opacity: 0.85;">
-                    💡 <strong>Tip:</strong> Configure via <code>PURCHASE_STRATEGY_TYPE</code> (fixed/dichotomy/follow_aws),
+                    💡 <strong>Hover over strategy names</strong> to see details about how each strategy works.<br>
+                    🔧 <strong>Configure via:</strong> <code>PURCHASE_STRATEGY_TYPE</code> (fixed/dichotomy/follow_aws),
                     <code>MAX_PURCHASE_PERCENT</code>, <code>MIN_PURCHASE_PERCENT</code> environment variables.
                 </small>
             </div>
@@ -367,8 +368,8 @@ def _render_sp_type_scheduler_preview(
             )
 
             html += f"""
-                    <tr {row_style} title="{tooltip}">
-                        <td><strong>{strategy_display}</strong>{configured_badge}</td>
+                    <tr {row_style} data-tooltip="{tooltip}">
+                        <td><strong><span class="strategy-name">{strategy_display}</span></strong>{configured_badge}</td>
                         <td colspan="7" style="color: #6c757d; font-style: italic;">No purchase needed</td>
                     </tr>
                 """
@@ -396,8 +397,8 @@ def _render_sp_type_scheduler_preview(
             coverage_class = "green" if projected_cov >= target_coverage else "orange"
 
             html += f"""
-                    <tr {row_style} title="{tooltip}">
-                        <td><strong>{strategy_display}</strong>{configured_badge}</td>
+                    <tr {row_style} data-tooltip="{tooltip}">
+                        <td><strong><span class="strategy-name">{strategy_display}</span></strong>{configured_badge}</td>
                         <td class="metric" style="color: #2196f3; font-weight: bold;">${hourly_commit:.4f}/hr</td>
                         <td class="metric">{purchase_percent:.1f}%</td>
                         <td class="metric">{current_cov:.1f}%</td>
@@ -966,6 +967,41 @@ def generate_html_report(
         }}
         .json-children.collapsed {{
             display: none;
+        }}
+
+        /* Custom tooltips for strategy rows */
+        .strategy-name {{
+            position: relative;
+            display: inline-block;
+            text-decoration: underline dotted;
+            text-decoration-color: rgba(0, 0, 0, 0.3);
+            text-underline-offset: 3px;
+        }}
+        tr[data-tooltip] {{
+            position: relative;
+        }}
+        tr[data-tooltip]:hover::after {{
+            content: attr(data-tooltip);
+            position: absolute;
+            left: 10%;
+            top: 100%;
+            z-index: 1000;
+            width: 400px;
+            padding: 12px 16px;
+            background: #232f3e;
+            color: white;
+            border-radius: 6px;
+            font-size: 0.85em;
+            line-height: 1.5;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+            margin-top: 8px;
+            white-space: normal;
+            pointer-events: none;
+            animation: tooltipFadeIn 0.2s ease-in;
+        }}
+        @keyframes tooltipFadeIn {{
+            from {{ opacity: 0; transform: translateY(-5px); }}
+            to {{ opacity: 1; transform: translateY(0); }}
         }}
     </style>
 </head>
