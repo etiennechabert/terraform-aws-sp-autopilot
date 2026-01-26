@@ -528,7 +528,7 @@ const ChartManager = (function() {
                         pointHoverRadius: 8
                     },
                     {
-                        label: 'Min-Optimal: Extra savings',
+                        label: 'Min → Optimal: Gaining',
                         data: [],
                         borderColor: 'rgba(0, 255, 136, 1)',
                         backgroundColor: 'rgba(0, 255, 136, 0.4)',
@@ -539,7 +539,7 @@ const ChartManager = (function() {
                         pointHoverRadius: 8
                     },
                     {
-                        label: 'Optimal-Breakeven: Declining returns',
+                        label: 'Optimal → Min-hourly: Wasting',
                         data: [],
                         borderColor: 'rgba(255, 170, 0, 1)',
                         backgroundColor: 'rgba(255, 170, 0, 0.4)',
@@ -550,7 +550,7 @@ const ChartManager = (function() {
                         pointHoverRadius: 8
                     },
                     {
-                        label: 'Worse than min-hourly: Not worth it',
+                        label: 'Below min-hourly: Very bad',
                         data: [],
                         borderColor: 'rgba(138, 43, 226, 1)',
                         backgroundColor: 'rgba(138, 43, 226, 0.4)',
@@ -616,7 +616,8 @@ const ChartManager = (function() {
                                 });
 
                                 const netSavingsDollars = point?.netSavings || 0;
-                                return `Savings: ${savingsPercent.toFixed(1)}% (${CostCalculator.formatCurrency(netSavingsDollars)}/wk)`;
+                                const netSavingsMonthly = netSavingsDollars * 4.33; // Convert weekly to monthly
+                                return `Savings: ${savingsPercent.toFixed(1)}% (${CostCalculator.formatCurrency(netSavingsMonthly)}/month)`;
                             },
                             afterLabel: function(context) {
                                 const coverage = context.parsed.x;
@@ -630,13 +631,14 @@ const ChartManager = (function() {
                                 if (!point) return null;
 
                                 const extraSavings = point.extraSavings || 0;
+                                const extraSavingsMonthly = extraSavings * 4.33; // Convert weekly to monthly
 
                                 if (extraSavings > 0.01) {
-                                    return `Extra: +${CostCalculator.formatCurrency(extraSavings)}/week`;
+                                    return `vs Optimal: +${CostCalculator.formatCurrency(extraSavingsMonthly)}/month`;
                                 } else if (extraSavings < -0.01) {
-                                    return `Lost: ${CostCalculator.formatCurrency(Math.abs(extraSavings))}/week`;
+                                    return `vs Optimal: ${CostCalculator.formatCurrency(extraSavingsMonthly)}/month`;
                                 }
-                                return 'At baseline (min-hourly)';
+                                return 'At optimal';
                             },
                             footer: function(context) {
                                 const savingsPercent = context[0].parsed.y;

@@ -638,13 +638,26 @@
         });
         const minHourlySavings = minHourlyPoint.netSavings;
 
-        // Calculate extra savings for each point
-        curveData.forEach(point => {
-            point.extraSavings = point.netSavings - minHourlySavings;
-        });
-
         // Get optimal coverage for annotation
         const optimalResult = CostCalculator.calculateOptimalCoverage(hourlyCosts, savingsPercentage);
+        const optimalCoverage = optimalResult.coverageUnits;
+
+        // Find optimal point's net savings
+        const optimalPoint = curveData.reduce((prev, curr) => {
+            return Math.abs(curr.coverage - optimalCoverage) < Math.abs(prev.coverage - optimalCoverage) ? curr : prev;
+        });
+        const optimalNetSavings = optimalPoint.netSavings;
+
+        // Calculate extra savings for each point
+        // - Below optimal: extra savings vs min-hourly (positive gain)
+        // - Past optimal: waste vs optimal (negative)
+        curveData.forEach(point => {
+            if (point.coverage <= optimalCoverage) {
+                point.extraSavings = point.netSavings - minHourlySavings;
+            } else {
+                point.extraSavings = point.netSavings - optimalNetSavings;
+            }
+        });
 
         // Always use the current slider position for the vertical line
         const currentCoverageFromData = appState.coverageCost;
@@ -806,25 +819,14 @@
         suggestionElement.classList.remove('status-optimal', 'status-warning', 'status-danger');
         suggestionElement.classList.add(`status-${suggestion.status}`);
 
-        // Update title with optimal dollar amount and extra savings info
-        const minHourlySavings = results.optimalCoverage.minHourlySavings || 0;
-        const extraSavings = results.optimalCoverage.extraSavings || 0;
+        // Update title with optimal dollar amount and potential savings
         const totalSavings = results.optimalCoverage.maxNetSavings || 0;
+        const monthlySavings = totalSavings * 4.33; // Convert weekly to monthly (~30 days / 7 days)
 
-        // Always show percentage of min-hourly
-        if (extraSavings > 0.01) {
-            titleElement.innerHTML = `Optimal: ${CostCalculator.formatCurrency(optimalCost)}/hour (${optimalPercentOfMin.toFixed(0)}% of min-hourly)<br>
-                <small style="font-weight: normal; opacity: 0.9;">
-                    Baseline: ${CostCalculator.formatCurrency(minHourlySavings)}/wk |
-                    Extra: +${CostCalculator.formatCurrency(extraSavings)}/wk =
-                    ${CostCalculator.formatCurrency(totalSavings)}/wk total
-                </small>`;
-        } else {
-            titleElement.innerHTML = `Optimal: ${CostCalculator.formatCurrency(optimalCost)}/hour (${optimalPercentOfMin.toFixed(0)}% of min-hourly)<br>
-                <small style="font-weight: normal; opacity: 0.9;">
-                    Baseline savings: ${CostCalculator.formatCurrency(totalSavings)}/wk
-                </small>`;
-        }
+        titleElement.innerHTML = `Optimal: ${CostCalculator.formatCurrency(optimalCost)}/hour<br>
+            <small style="font-weight: normal; opacity: 0.9;">
+                Potential savings: ${CostCalculator.formatCurrency(monthlySavings)}/month
+            </small>`;
 
         // Update text with dollar amounts
         let message = suggestion.message;

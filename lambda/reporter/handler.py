@@ -72,6 +72,7 @@ def handler(event: dict[str, Any], context: Any) -> dict[str, Any]:
     # Clear any previous AWS API responses and start fresh (if debug data collection is enabled)
     if config.get("include_debug_data", False):
         from shared.aws_debug import clear_responses
+
         clear_responses()
 
     # Collect coverage data using SpendingAnalyzer
@@ -141,6 +142,7 @@ def handler(event: dict[str, Any], context: Any) -> dict[str, Any]:
     # Include debug data only if enabled
     if config.get("include_debug_data", False):
         from shared.aws_debug import get_responses
+
         raw_data["aws_api_responses"] = get_responses()
 
     # Generate report

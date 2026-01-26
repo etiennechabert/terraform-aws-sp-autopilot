@@ -52,25 +52,24 @@ def send_report_email(
 
     # Extract summary metrics
     current_coverage = coverage_summary.get("current_coverage", 0.0)
-    avg_coverage = coverage_summary.get("avg_coverage", 0.0)
+    avg_coverage = coverage_summary.get("avg_coverage_total", 0.0)
     coverage_days = coverage_summary.get("coverage_days", 0)
     trend_direction = coverage_summary.get("trend_direction", "→")
 
     active_plans = savings_summary.get("plans_count", 0)
     total_commitment = savings_summary.get("total_commitment", 0.0)
-    estimated_monthly_savings = savings_summary.get("estimated_monthly_savings", 0.0)
     average_utilization = savings_summary.get("average_utilization", 0.0)
 
-    # Extract actual savings data
+    # Extract actual savings data (pre-calculated hourly values)
     actual_savings = savings_summary.get("actual_savings", {})
-    actual_sp_cost = actual_savings.get("actual_sp_cost", 0.0)
-    on_demand_equivalent_cost = actual_savings.get("on_demand_equivalent_cost", 0.0)
-    net_savings = actual_savings.get("net_savings", 0.0)
+    actual_sp_cost_hourly = actual_savings.get("actual_sp_cost_hourly", 0.0)
+    on_demand_equivalent_hourly = actual_savings.get("on_demand_equivalent_hourly", 0.0)
+    net_savings_hourly = actual_savings.get("net_savings_hourly", 0.0)
     savings_percentage = actual_savings.get("savings_percentage", 0.0)
     breakdown_by_type = actual_savings.get("breakdown_by_type", {})
 
     # Build email subject
-    subject = f"Savings Plans Report - {current_coverage:.1f}% Coverage, ${net_savings:,.0f}/mo Actual Savings"
+    subject = f"Savings Plans Report - {current_coverage:.1f}% Coverage, ${net_savings_hourly:.2f}/hr Savings"
 
     # Build email body
     body_lines = [
@@ -88,15 +87,14 @@ def send_report_email(
         "SAVINGS SUMMARY:",
         "-" * 60,
         f"Active Savings Plans: {active_plans}",
-        f"Total Hourly Commitment: ${total_commitment:.4f}/hour (${total_commitment * 730:,.2f}/month)",
+        f"Total Hourly Commitment: ${total_commitment:.4f}/hr",
         f"Average Utilization (7 days): {average_utilization:.2f}%",
-        f"Estimated Monthly Savings: ${estimated_monthly_savings:,.2f}",
         "",
-        "ACTUAL SAVINGS SUMMARY (30 days):",
+        "ACTUAL SAVINGS SUMMARY:",
         "-" * 60,
-        f"On-Demand Equivalent Cost: ${on_demand_equivalent_cost:,.2f}",
-        f"Actual Savings Plans Cost: ${actual_sp_cost:,.2f}",
-        f"Net Savings: ${net_savings:,.2f}",
+        f"On-Demand Equivalent Cost/hr: ${on_demand_equivalent_hourly:.2f}/hr",
+        f"Actual Savings Plans Cost/hr: ${actual_sp_cost_hourly:.2f}/hr",
+        f"Net Savings/hr: ${net_savings_hourly:.2f}/hr",
         f"Savings Percentage: {savings_percentage:.2f}%",
     ]
 
