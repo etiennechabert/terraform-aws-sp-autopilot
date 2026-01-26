@@ -111,6 +111,7 @@ def send_report_email(
     s3_object_key: str,
     coverage_data: dict[str, Any],
     savings_data: dict[str, Any],
+    storage_adapter: Any = None,
 ) -> None:
     """
     Send email notification with S3 report link and summary.
@@ -121,79 +122,66 @@ def send_report_email(
         s3_object_key: S3 object key of uploaded report
         coverage_data: Coverage data from SpendingAnalyzer
         savings_data: Savings Plans summary data
+        storage_adapter: StorageAdapter instance for generating pre-signed URLs (optional)
     """
     logger.info("Sending report email notification")
 
     execution_time = datetime.now(UTC).isoformat()
     bucket_name = config["reports_bucket"]
-    s3_url = f"https://{bucket_name}.s3.amazonaws.com/{s3_object_key}"
+
+    # Generate pre-signed URL if storage_adapter is provided, otherwise use direct URL
+    if storage_adapter:
+        try:
+            s3_url = storage_adapter.generate_presigned_url(
+                s3_object_key, expiration=604800
+            )  # 7 days
+            logger.info("Using pre-signed URL for report access")
+        except Exception as e:
+            logger.warning(f"Failed to generate pre-signed URL, falling back to direct URL: {e}")
+            s3_url = f"https://{bucket_name}.s3.amazonaws.com/{s3_object_key}"
+    else:
+        s3_url = f"https://{bucket_name}.s3.amazonaws.com/{s3_object_key}"
+
     s3_console_url = (
         f"https://s3.console.aws.amazon.com/s3/object/{bucket_name}?prefix={s3_object_key}"
     )
 
-    # Extract metrics
+    # Extract key metrics for subject line
     compute_coverage = (
         coverage_data.get("compute", {}).get("summary", {}).get("avg_coverage_total", 0.0)
     )
-    plans_count = savings_data.get("plans_count", 0)
-    total_commitment = savings_data.get("total_commitment", 0.0)
-    average_utilization = savings_data.get("average_utilization", 0.0)
-
     actual_savings = savings_data.get("actual_savings", {})
     net_savings = actual_savings.get("net_savings", 0.0)
-    on_demand_equivalent = actual_savings.get("on_demand_equivalent_cost", 0.0)
-    actual_sp_cost = actual_savings.get("actual_sp_cost", 0.0)
-    savings_percentage = actual_savings.get("savings_percentage", 0.0)
-    breakdown_by_type = actual_savings.get("breakdown_by_type", {})
 
-    subject = f"Savings Plans Report - {compute_coverage:.1f}% Coverage, ${net_savings:,.0f} Actual Savings (30d)"
+    subject = f"Savings Plans Report Available - {compute_coverage:.1f}% Coverage"
+
+    # Format the report date in a user-friendly way
+    report_date = datetime.now(UTC).strftime("%B %d, %Y")
 
     body_lines = [
-        "AWS Savings Plans - Coverage & Savings Report",
+        f"AWS Savings Plans Report - {report_date}",
         "=" * 60,
-        f"Report Generated: {execution_time}",
         "",
-        "COVERAGE SUMMARY:",
-        "-" * 60,
-        f"Compute Coverage: {compute_coverage:.2f}%",
+        "Your periodic Savings Plans coverage and savings report is ready.",
         "",
-        "SAVINGS SUMMARY:",
-        "-" * 60,
-        f"Active Savings Plans: {plans_count}",
-        f"Total Hourly Commitment: ${total_commitment:.4f}/hr",
-        f"Average Utilization (30 days): {average_utilization:.2f}%",
+        f"📊 View Full Report: {s3_url}",
         "",
-        "ACTUAL SAVINGS SUMMARY (30 days):",
+        "⏰ This link expires in 7 days",
+        "",
         "-" * 60,
-        f"On-Demand Equivalent Cost: ${on_demand_equivalent:,.2f}",
-        f"Actual Savings Plans Cost: ${actual_sp_cost:,.2f}",
-        f"Net Savings: ${net_savings:,.2f}",
-        f"Savings Percentage: {savings_percentage:.2f}%",
+        "",
+        "Quick Summary:",
+        f"  • Coverage: {compute_coverage:.1f}%",
+        f"  • Net Savings (30d): ${net_savings:,.0f}",
+        "",
+        "Access the full report for detailed breakdowns, charts, and trends.",
+        "",
+        "-" * 60,
+        f"S3 Location: s3://{bucket_name}/{s3_object_key}",
+        f"AWS Console: {s3_console_url}",
+        "",
+        "This is an automated report from AWS Savings Plans Automation.",
     ]
-
-    if breakdown_by_type:
-        body_lines.append("")
-        body_lines.append("Breakdown by Plan Type:")
-        for plan_type, breakdown in breakdown_by_type.items():
-            plans_count_type = breakdown.get("plans_count", 0)
-            total_commitment_type = breakdown.get("total_commitment", 0.0)
-            body_lines.append(
-                f"  {plan_type}: {plans_count_type} plan(s), ${total_commitment_type:.4f}/hr"
-            )
-
-    body_lines.extend(
-        [
-            "",
-            "REPORT ACCESS:",
-            "-" * 60,
-            f"S3 Location: s3://{bucket_name}/{s3_object_key}",
-            f"Direct Link: {s3_url}",
-            f"Console Link: {s3_console_url}",
-            "",
-            "-" * 60,
-            "This is an automated report from AWS Savings Plans Automation.",
-        ]
-    )
 
     try:
         sns_client.publish(
