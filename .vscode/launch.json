@@ -163,7 +163,16 @@
                 "LOW_UTILIZATION_THRESHOLD": "70",
                 "LOW_UTILIZATION_ALERT_ENABLED": "false",
                 // Debug data
-                "INCLUDE_DEBUG_DATA": "true"
+                "INCLUDE_DEBUG_DATA": "true",
+                // Scheduler strategy (for preview simulation)
+                "PURCHASE_STRATEGY_TYPE": "fixed",
+                "MAX_PURCHASE_PERCENT": "10",
+                "MIN_PURCHASE_PERCENT": "1",
+                "COMPUTE_SP_TERM": "THREE_YEAR",
+                "COMPUTE_SP_PAYMENT_OPTION": "ALL_UPFRONT",
+                "DATABASE_SP_PAYMENT_OPTION": "NO_UPFRONT",
+                "SAGEMAKER_SP_TERM": "THREE_YEAR",
+                "SAGEMAKER_SP_PAYMENT_OPTION": "ALL_UPFRONT"
             },
             "console": "integratedTerminal",
             "cwd": "${workspaceFolder}/lambda/reporter"

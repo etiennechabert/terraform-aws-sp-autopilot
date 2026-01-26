@@ -19,6 +19,7 @@ from botocore.exceptions import ClientError
 if TYPE_CHECKING:
     from mypy_boto3_ce.client import CostExplorerClient
 
+from shared.aws_debug import add_response
 from shared.handler_utils import configure_logging
 
 
@@ -49,11 +50,21 @@ def _fetch_compute_sp_recommendation(
     """
     logger.info("Fetching Compute Savings Plan recommendations")
     try:
-        response = ce_client.get_savings_plans_purchase_recommendation(
-            SavingsPlansType="COMPUTE_SP",
-            LookbackPeriodInDays=lookback_period,
-            TermInYears="ONE_YEAR",
-            PaymentOption="ALL_UPFRONT",
+        params = {
+            "SavingsPlansType": "COMPUTE_SP",
+            "LookbackPeriodInDays": lookback_period,
+            "TermInYears": "ONE_YEAR",
+            "PaymentOption": "ALL_UPFRONT",
+        }
+        response = ce_client.get_savings_plans_purchase_recommendation(**params)
+
+        # Register API call for debug data collection
+        add_response(
+            "get_savings_plans_purchase_recommendation",
+            params,
+            response,
+            sp_type="compute",
+            context="scheduler_preview_follow_aws",
         )
 
         logger.debug(f"Compute SP API response:\n{json.dumps(response, indent=2, default=str)}")
@@ -127,11 +138,21 @@ def _fetch_database_sp_recommendation(
     try:
         # Database Savings Plans were added to AWS in December 2025
         # They use the DATABASE_SP type in the Cost Explorer API
-        response = ce_client.get_savings_plans_purchase_recommendation(
-            SavingsPlansType="DATABASE_SP",
-            LookbackPeriodInDays=lookback_period,
-            TermInYears="ONE_YEAR",
-            PaymentOption="NO_UPFRONT",
+        params = {
+            "SavingsPlansType": "DATABASE_SP",
+            "LookbackPeriodInDays": lookback_period,
+            "TermInYears": "ONE_YEAR",
+            "PaymentOption": "NO_UPFRONT",
+        }
+        response = ce_client.get_savings_plans_purchase_recommendation(**params)
+
+        # Register API call for debug data collection
+        add_response(
+            "get_savings_plans_purchase_recommendation",
+            params,
+            response,
+            sp_type="database",
+            context="scheduler_preview_follow_aws",
         )
 
         # Extract recommendation details first
@@ -202,11 +223,21 @@ def _fetch_sagemaker_sp_recommendation(
     logger.info("Fetching SageMaker Savings Plan recommendations")
     try:
         # SageMaker Savings Plans use the SAGEMAKER_SP type in the Cost Explorer API
-        response = ce_client.get_savings_plans_purchase_recommendation(
-            SavingsPlansType="SAGEMAKER_SP",
-            LookbackPeriodInDays=lookback_period,
-            TermInYears="ONE_YEAR",
-            PaymentOption="NO_UPFRONT",
+        params = {
+            "SavingsPlansType": "SAGEMAKER_SP",
+            "LookbackPeriodInDays": lookback_period,
+            "TermInYears": "ONE_YEAR",
+            "PaymentOption": "NO_UPFRONT",
+        }
+        response = ce_client.get_savings_plans_purchase_recommendation(**params)
+
+        # Register API call for debug data collection
+        add_response(
+            "get_savings_plans_purchase_recommendation",
+            params,
+            response,
+            sp_type="sagemaker",
+            context="scheduler_preview_follow_aws",
         )
 
         # Extract recommendation details first
