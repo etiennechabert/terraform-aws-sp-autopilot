@@ -537,8 +537,10 @@ def generate_html_report(
             background-color: #f8f9fa;
         }}
         .tab.active {{
-            color: #232f3e;
+            color: #ffffff;
+            background-color: #ff9900;
             border-bottom-color: #ff9900;
+            font-weight: 600;
         }}
         .tab-content {{
             display: none;
