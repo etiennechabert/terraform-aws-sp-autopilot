@@ -111,7 +111,7 @@ def validate_scheduler_config(config: dict[str, Any]) -> None:
     - Term values are valid (ONE_YEAR or THREE_YEAR)
     - Payment options are valid
     - Purchase strategy type is valid
-    - Logical constraints (min < max, lookback <= 13 days based on granularity)
+    - Logical constraints (min < max, lookback <= 14 days for HOURLY, <= 90 days for DAILY)
 
     Args:
         config: Dictionary containing scheduler configuration
@@ -178,11 +178,10 @@ def validate_scheduler_config(config: dict[str, Any]) -> None:
 
         # Validate lookback_days based on granularity
         granularity = config.get("granularity", "HOURLY")
-        if granularity == "HOURLY" and config["lookback_days"] > 13:
+        if granularity == "HOURLY" and config["lookback_days"] > 14:
             raise ValueError(
-                f"Field 'lookback_days' must be 13 or less for HOURLY granularity. "
-                f"AWS Cost Explorer retains hourly data for ~14 days. With 1-day processing lag, "
-                f"13 days is the maximum reliable lookback period. "
+                f"Field 'lookback_days' must be 14 or less for HOURLY granularity. "
+                f"AWS Cost Explorer retains hourly data for 14 days. "
                 f"Got {config['lookback_days']}"
             )
         if granularity == "DAILY" and config["lookback_days"] > 90:
@@ -337,11 +336,10 @@ def validate_reporter_config(config: dict[str, Any]) -> None:
             )
 
         granularity = config.get("granularity", "DAILY")
-        if granularity == "HOURLY" and config["lookback_days"] > 13:
+        if granularity == "HOURLY" and config["lookback_days"] > 14:
             raise ValueError(
-                f"Field 'lookback_days' must be 13 or less for HOURLY granularity. "
-                f"AWS Cost Explorer retains hourly data for ~14 days. With 1-day processing lag, "
-                f"13 days is the maximum reliable lookback period. "
+                f"Field 'lookback_days' must be 14 or less for HOURLY granularity. "
+                f"AWS Cost Explorer retains hourly data for 14 days. "
                 f"Got {config['lookback_days']}"
             )
         if granularity == "DAILY" and config["lookback_days"] > 90:

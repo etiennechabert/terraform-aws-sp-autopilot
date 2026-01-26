@@ -109,6 +109,7 @@ resource "aws_lambda_function" "reporter" {
       SNS_TOPIC_ARN               = aws_sns_topic.notifications.arn
       REPORT_FORMAT               = local.report_format
       EMAIL_REPORTS               = tostring(local.email_reports)
+      INCLUDE_DEBUG_DATA          = tostring(local.include_debug_data)
       SLACK_WEBHOOK_URL           = local.slack_webhook_url
       TEAMS_WEBHOOK_URL           = local.teams_webhook_url
       LOW_UTILIZATION_THRESHOLD   = tostring(local.low_utilization_threshold)
@@ -206,6 +207,14 @@ data "archive_file" "scheduler" {
     filename = "shared/purchase_optimizer.py"
   }
   source {
+    content  = file("${path.module}/lambda/shared/aws_debug.py")
+    filename = "shared/aws_debug.py"
+  }
+  source {
+    content  = file("${path.module}/lambda/shared/constants.py")
+    filename = "shared/constants.py"
+  }
+  source {
     content  = file("${path.module}/lambda/shared/__init__.py")
     filename = "shared/__init__.py"
   }
@@ -260,6 +269,10 @@ data "archive_file" "purchaser" {
     filename = "shared/config_validation.py"
   }
   source {
+    content  = file("${path.module}/lambda/shared/constants.py")
+    filename = "shared/constants.py"
+  }
+  source {
     content  = file("${path.module}/lambda/shared/__init__.py")
     filename = "shared/__init__.py"
   }
@@ -278,6 +291,14 @@ data "archive_file" "reporter" {
   source {
     content  = file("${path.module}/lambda/reporter/config.py")
     filename = "config.py"
+  }
+  source {
+    content  = file("${path.module}/lambda/reporter/report_generator.py")
+    filename = "report_generator.py"
+  }
+  source {
+    content  = file("${path.module}/lambda/reporter/notifications.py")
+    filename = "notifications.py"
   }
 
   # Include shared module
@@ -308,6 +329,26 @@ data "archive_file" "reporter" {
   source {
     content  = file("${path.module}/lambda/shared/config_validation.py")
     filename = "shared/config_validation.py"
+  }
+  source {
+    content  = file("${path.module}/lambda/shared/spending_analyzer.py")
+    filename = "shared/spending_analyzer.py"
+  }
+  source {
+    content  = file("${path.module}/lambda/shared/savings_plans_metrics.py")
+    filename = "shared/savings_plans_metrics.py"
+  }
+  source {
+    content  = file("${path.module}/lambda/shared/aws_debug.py")
+    filename = "shared/aws_debug.py"
+  }
+  source {
+    content  = file("${path.module}/lambda/shared/constants.py")
+    filename = "shared/constants.py"
+  }
+  source {
+    content  = file("${path.module}/lambda/shared/optimal_coverage.py")
+    filename = "shared/optimal_coverage.py"
   }
   source {
     content  = file("${path.module}/lambda/shared/__init__.py")

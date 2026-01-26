@@ -111,7 +111,7 @@ class TestCalculatePurchaseNeedDichotomy:
             "compute": {
                 "timeseries": [],
                 "summary": {
-                    "avg_coverage": 0.0,
+                    "avg_coverage_total": 0.0,
                     "avg_hourly_total": 10.0,
                     "avg_hourly_covered": 0.0,
                 },
@@ -142,7 +142,7 @@ class TestCalculatePurchaseNeedDichotomy:
             "compute": {
                 "timeseries": [],
                 "summary": {
-                    "avg_coverage": 50.0,
+                    "avg_coverage_total": 50.0,
                     "avg_hourly_total": 8.0,
                     "avg_hourly_covered": 4.0,
                 },
@@ -171,7 +171,7 @@ class TestCalculatePurchaseNeedDichotomy:
             "compute": {
                 "timeseries": [],
                 "summary": {
-                    "avg_coverage": 87.5,
+                    "avg_coverage_total": 87.5,
                     "avg_hourly_total": 5.0,
                     "avg_hourly_covered": 4.375,
                 },
@@ -200,7 +200,7 @@ class TestCalculatePurchaseNeedDichotomy:
             "database": {
                 "timeseries": [],
                 "summary": {
-                    "avg_coverage": 0.0,
+                    "avg_coverage_total": 0.0,
                     "avg_hourly_total": 15.0,
                     "avg_hourly_covered": 0.0,
                 },
@@ -232,7 +232,7 @@ class TestCalculatePurchaseNeedDichotomy:
             "sagemaker": {
                 "timeseries": [],
                 "summary": {
-                    "avg_coverage": 30.0,
+                    "avg_coverage_total": 30.0,
                     "avg_hourly_total": 20.0,
                     "avg_hourly_covered": 6.0,
                 },
@@ -265,7 +265,7 @@ class TestCalculatePurchaseNeedDichotomy:
             "compute": {
                 "timeseries": [],
                 "summary": {
-                    "avg_coverage": 50.0,
+                    "avg_coverage_total": 50.0,
                     "avg_hourly_total": 10.0,
                     "avg_hourly_covered": 5.0,
                 },
@@ -273,7 +273,7 @@ class TestCalculatePurchaseNeedDichotomy:
             "database": {
                 "timeseries": [],
                 "summary": {
-                    "avg_coverage": 0.0,
+                    "avg_coverage_total": 0.0,
                     "avg_hourly_total": 5.0,
                     "avg_hourly_covered": 0.0,
                 },
@@ -281,7 +281,7 @@ class TestCalculatePurchaseNeedDichotomy:
             "sagemaker": {
                 "timeseries": [],
                 "summary": {
-                    "avg_coverage": 75.0,
+                    "avg_coverage_total": 75.0,
                     "avg_hourly_total": 8.0,
                     "avg_hourly_covered": 6.0,
                 },
@@ -323,7 +323,7 @@ class TestCalculatePurchaseNeedDichotomy:
             "compute": {
                 "timeseries": [],
                 "summary": {
-                    "avg_coverage": 95.0,
+                    "avg_coverage_total": 95.0,
                     "avg_hourly_total": 10.0,
                     "avg_hourly_covered": 9.5,
                 },
@@ -364,7 +364,7 @@ class TestCalculatePurchaseNeedDichotomy:
             "compute": {
                 "timeseries": [],
                 "summary": {
-                    "avg_coverage": 0.0,
+                    "avg_coverage_total": 0.0,
                     "avg_hourly_total": 0.0,
                     "avg_hourly_covered": 0.0,
                 },
@@ -389,7 +389,7 @@ class TestCalculatePurchaseNeedDichotomy:
             "compute": {
                 "timeseries": [],
                 "summary": {
-                    "avg_coverage": 0.0,
+                    "avg_coverage_total": 0.0,
                     "avg_hourly_total": 10.0,
                     "avg_hourly_covered": 0.0,
                 },
@@ -425,7 +425,7 @@ class TestCalculatePurchaseNeedDichotomy:
             "compute": {
                 "timeseries": [],
                 "summary": {
-                    "avg_coverage": 0.0,
+                    "avg_coverage_total": 0.0,
                     "avg_hourly_total": 100.0,
                     "avg_hourly_covered": 0.0,
                 },
@@ -440,7 +440,7 @@ class TestCalculatePurchaseNeedDichotomy:
             "compute": {
                 "timeseries": [],
                 "summary": {
-                    "avg_coverage": 50.0,
+                    "avg_coverage_total": 50.0,
                     "avg_hourly_total": 100.0,
                     "avg_hourly_covered": 50.0,
                 },
@@ -455,7 +455,7 @@ class TestCalculatePurchaseNeedDichotomy:
             "compute": {
                 "timeseries": [],
                 "summary": {
-                    "avg_coverage": 75.0,
+                    "avg_coverage_total": 75.0,
                     "avg_hourly_total": 100.0,
                     "avg_hourly_covered": 75.0,
                 },
@@ -470,7 +470,7 @@ class TestCalculatePurchaseNeedDichotomy:
             "compute": {
                 "timeseries": [],
                 "summary": {
-                    "avg_coverage": 87.5,
+                    "avg_coverage_total": 87.5,
                     "avg_hourly_total": 100.0,
                     "avg_hourly_covered": 87.5,
                 },
@@ -485,7 +485,7 @@ class TestCalculatePurchaseNeedDichotomy:
             "compute": {
                 "timeseries": [],
                 "summary": {
-                    "avg_coverage": 88.5,
+                    "avg_coverage_total": 88.5,
                     "avg_hourly_total": 100.0,
                     "avg_hourly_covered": 88.5,
                 },
@@ -500,7 +500,7 @@ class TestCalculatePurchaseNeedDichotomy:
             "compute": {
                 "timeseries": [],
                 "summary": {
-                    "avg_coverage": 89.5,
+                    "avg_coverage_total": 89.5,
                     "avg_hourly_total": 100.0,
                     "avg_hourly_covered": 89.5,
                 },
@@ -515,7 +515,7 @@ class TestCalculatePurchaseNeedDichotomy:
             "compute": {
                 "timeseries": [],
                 "summary": {
-                    "avg_coverage": 90.5,
+                    "avg_coverage_total": 90.5,
                     "avg_hourly_total": 100.0,
                     "avg_hourly_covered": 90.5,
                 },

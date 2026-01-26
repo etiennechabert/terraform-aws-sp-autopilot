@@ -32,7 +32,7 @@ def mock_spending_data():
         "compute": {
             "timeseries": [],
             "summary": {
-                "avg_coverage": 50.0,
+                "avg_coverage_total": 50.0,
                 "avg_hourly_total": 2.5,
                 "avg_hourly_covered": 1.25,
             },
@@ -40,7 +40,7 @@ def mock_spending_data():
         "database": {
             "timeseries": [],
             "summary": {
-                "avg_coverage": 60.0,
+                "avg_coverage_total": 60.0,
                 "avg_hourly_total": 1.25,
                 "avg_hourly_covered": 0.75,
             },
@@ -48,7 +48,7 @@ def mock_spending_data():
         "sagemaker": {
             "timeseries": [],
             "summary": {
-                "avg_coverage": 40.0,
+                "avg_coverage_total": 40.0,
                 "avg_hourly_total": 0.75,
                 "avg_hourly_covered": 0.30,
             },
@@ -97,7 +97,7 @@ def test_calculate_purchase_need_disabled_sp_type(mock_config, mock_spending_dat
 
 def test_calculate_purchase_need_coverage_at_target(mock_config, mock_spending_data):
     """Test that SP types already at or above target are skipped."""
-    mock_spending_data["compute"]["summary"]["avg_coverage"] = 85.0  # Above 80% target
+    mock_spending_data["compute"]["summary"]["avg_coverage_total"] = 85.0  # Above 80% target
 
     plans = calculate_purchase_need_fixed(mock_config, {}, mock_spending_data)
 
@@ -111,7 +111,11 @@ def test_calculate_purchase_need_no_spending_data(mock_config):
     spending_data = {
         "compute": {
             "timeseries": [],
-            "summary": {"avg_coverage": 50.0, "avg_hourly_total": 2.5, "avg_hourly_covered": 1.25},
+            "summary": {
+                "avg_coverage_total": 50.0,
+                "avg_hourly_total": 2.5,
+                "avg_hourly_covered": 1.25,
+            },
         }
     }
 

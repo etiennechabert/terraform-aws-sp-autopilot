@@ -14,6 +14,9 @@ from typing import TYPE_CHECKING, Any
 
 from botocore.exceptions import ClientError
 
+from shared.aws_debug import add_response
+from shared.constants import DIMENSION_SAVINGS_PLANS_TYPE, PLAN_TYPE_TO_API_FILTER
+
 
 if TYPE_CHECKING:
     from mypy_boto3_ce.client import CostExplorerClient
@@ -53,7 +56,16 @@ def get_active_savings_plans(
     logger.info("Fetching active Savings Plans")
 
     try:
+        params = {"states": ["active"]}
         response = savingsplans_client.describe_savings_plans(states=["active"])
+
+        # Capture raw AWS response for debugging
+        add_response(
+            api="describe_savings_plans",
+            params=params,
+            response=response,
+            context="get_active_savings_plans",
+        )
 
         savings_plans = response.get("savingsPlans", [])
         logger.info(f"Found {len(savings_plans)} active Savings Plans")
@@ -92,58 +104,120 @@ def get_active_savings_plans(
         raise
 
 
-def get_savings_plans_utilization(
-    ce_client: CostExplorerClient, lookback_days: int = 30
+def get_savings_plans_metrics(
+    ce_client: CostExplorerClient,
+    plan_type: str,
+    lookback_days: int,
+    granularity: str = "HOURLY",
 ) -> dict[str, Any]:
     """
-    Get Savings Plans utilization metrics.
+    Get Savings Plans utilization and savings metrics for a specific plan type.
+
+    Single API call to get_savings_plans_utilization returns both utilization AND savings data.
 
     Args:
         ce_client: Boto3 Cost Explorer client
-        lookback_days: Number of days to analyze (default: 30)
+        plan_type: Plan type to filter by ("compute", "sagemaker", "database")
+        lookback_days: Number of days to analyze
+        granularity: API granularity - "HOURLY" or "DAILY" (default: "HOURLY")
 
     Returns:
-        dict: Utilization metrics:
+        dict: Combined metrics:
             {
-                "average_utilization": 85.5,  # percentage
-                "utilization_by_day": [
-                    {"date": "2024-01-01", "utilization": 85.0},
-                    ...
-                ]
+                "average_utilization": 85.5,
+                "utilization_by_day": [...],
+                "actual_sp_cost_hourly": 1.39,
+                "on_demand_equivalent_hourly": 1.67,
+                "net_savings_hourly": 0.28,
+                "savings_percentage": 16.67,
             }
+            Returns zeros if no data available (e.g., no active plans of this type)
 
     Raises:
-        ClientError: If Cost Explorer API call fails
+        ClientError: If Cost Explorer API call fails (except DataUnavailableException)
     """
-    logger.info(f"Fetching Savings Plans utilization for last {lookback_days} days")
+    logger.info(
+        f"Fetching Savings Plans metrics for {plan_type} for last {lookback_days} days (granularity: {granularity})"
+    )
+
+    if plan_type not in PLAN_TYPE_TO_API_FILTER:
+        raise ValueError(
+            f"Invalid plan_type '{plan_type}'. Must be one of: {list(PLAN_TYPE_TO_API_FILTER.keys())}"
+        )
 
     try:
-        end_date = datetime.now(UTC).date()
-        start_date = end_date - timedelta(days=lookback_days)
+        end_time = datetime.now(UTC)
+        start_time = end_time - timedelta(days=lookback_days)
 
-        response = ce_client.get_savings_plans_utilization(
-            TimePeriod={
-                "Start": start_date.isoformat(),
-                "End": end_date.isoformat(),
+        # Round start_time UP to next midnight for HOURLY to stay within AWS retention window
+        if granularity == "HOURLY":
+            if (
+                start_time.hour != 0
+                or start_time.minute != 0
+                or start_time.second != 0
+                or start_time.microsecond != 0
+            ):
+                start_time = start_time.replace(
+                    hour=0, minute=0, second=0, microsecond=0
+                ) + timedelta(days=1)
+            else:
+                start_time = start_time.replace(hour=0, minute=0, second=0, microsecond=0)
+
+        # Format dates based on granularity
+        # HOURLY requires ISO 8601 (yyyy-MM-ddTHH:mm:ssZ)
+        # DAILY requires date only (yyyy-MM-dd)
+        date_format = "%Y-%m-%d" if granularity == "DAILY" else "%Y-%m-%dT%H:%M:%SZ"
+
+        params = {
+            "TimePeriod": {
+                "Start": start_time.strftime(date_format),
+                "End": end_time.strftime(date_format),
             },
-            Granularity="DAILY",
+            "Granularity": granularity,
+            "Filter": {
+                "Dimensions": {
+                    "Key": DIMENSION_SAVINGS_PLANS_TYPE,
+                    "Values": [PLAN_TYPE_TO_API_FILTER[plan_type]],
+                }
+            },
+        }
+
+        response = ce_client.get_savings_plans_utilization(**params)
+
+        # Capture raw AWS response for debugging
+        add_response(
+            api="get_savings_plans_utilization",
+            params=params,
+            response=response,
+            plan_type=plan_type,
+            context="get_savings_plans_metrics",
         )
 
         utilizations = response.get("SavingsPlansUtilizationsByTime", [])
 
         if not utilizations:
-            logger.warning("No utilization data available")
+            logger.warning("No metrics data available")
             return {
                 "average_utilization": 0.0,
                 "utilization_by_day": [],
+                "actual_sp_cost_hourly": 0.0,
+                "on_demand_equivalent_hourly": 0.0,
+                "net_savings_hourly": 0.0,
+                "savings_percentage": 0.0,
             }
 
+        # Extract both utilization and savings from the same response
         total_utilization = 0.0
         count = 0
         utilization_by_day = []
+        total_net_savings = 0.0
+        total_on_demand_equivalent = 0.0
+        total_amortized_commitment = 0.0
 
         for util_item in utilizations:
             time_period = util_item.get("TimePeriod", {})
+
+            # Extract utilization metrics
             utilization = util_item.get("Utilization", {})
             utilization_percentage = utilization.get("UtilizationPercentage")
 
@@ -159,78 +233,7 @@ def get_savings_plans_utilization(
                     }
                 )
 
-        average_utilization = total_utilization / count if count > 0 else 0.0
-        logger.info(f"Average utilization: {average_utilization:.2f}%")
-
-        return {
-            "average_utilization": average_utilization,
-            "utilization_by_day": utilization_by_day,
-        }
-
-    except ClientError as e:
-        error_code = e.response.get("Error", {}).get("Code", "Unknown")
-        error_message = e.response.get("Error", {}).get("Message", str(e))
-        logger.error(
-            f"Failed to get utilization data - Code: {error_code}, Message: {error_message}"
-        )
-        raise
-
-
-def get_actual_savings(ce_client: CostExplorerClient, lookback_days: int = 30) -> dict[str, Any]:
-    """
-    Get actual Savings Plans savings metrics.
-
-    Args:
-        ce_client: Boto3 Cost Explorer client
-        lookback_days: Number of days to analyze (default: 30)
-
-    Returns:
-        dict: Actual savings metrics:
-            {
-                "actual_sp_cost": 1000.00,  # What you actually paid with SPs
-                "on_demand_equivalent_cost": 1200.00,  # What you would have paid
-                "net_savings": 200.00,  # Actual savings
-                "savings_percentage": 16.67,  # Savings as % of on-demand equivalent
-                "breakdown_by_type": {
-                    "Compute": {"plans_count": 2, "total_commitment": 0.5},
-                    ...
-                }
-            }
-
-    Raises:
-        ClientError: If Cost Explorer API call fails
-    """
-    logger.info(f"Fetching actual savings data for last {lookback_days} days")
-
-    try:
-        end_date = datetime.now(UTC).date()
-        start_date = end_date - timedelta(days=lookback_days)
-
-        response = ce_client.get_savings_plans_utilization(
-            TimePeriod={
-                "Start": start_date.isoformat(),
-                "End": end_date.isoformat(),
-            },
-            Granularity="DAILY",
-        )
-
-        utilizations = response.get("SavingsPlansUtilizationsByTime", [])
-
-        if not utilizations:
-            logger.warning("No savings data available")
-            return {
-                "actual_sp_cost": 0.0,
-                "on_demand_equivalent_cost": 0.0,
-                "net_savings": 0.0,
-                "savings_percentage": 0.0,
-                "breakdown_by_type": {},
-            }
-
-        total_net_savings = 0.0
-        total_on_demand_equivalent = 0.0
-        total_amortized_commitment = 0.0
-
-        for util_item in utilizations:
+            # Extract savings metrics
             savings = util_item.get("Savings", {})
             net_savings = savings.get("NetSavings", "0")
             on_demand_equivalent = savings.get("OnDemandCostEquivalent", "0")
@@ -242,28 +245,60 @@ def get_actual_savings(ce_client: CostExplorerClient, lookback_days: int = 30) -
             total_on_demand_equivalent += float(on_demand_equivalent)
             total_amortized_commitment += float(amortized_commitment)
 
-        savings_percentage = 0.0
-        if total_on_demand_equivalent > 0:
-            savings_percentage = (total_net_savings / total_on_demand_equivalent) * 100.0
+        # Calculate averages
+        average_utilization = total_utilization / count if count > 0 else 0.0
+        savings_percentage = (
+            (total_net_savings / total_on_demand_equivalent * 100.0)
+            if total_on_demand_equivalent > 0
+            else 0.0
+        )
+
+        # Convert totals to hourly averages using actual number of periods returned by AWS
+        # (AWS may return fewer hours than requested due to data lag)
+        actual_hours = len(utilizations)
+        actual_sp_cost_hourly = (
+            total_amortized_commitment / actual_hours if actual_hours > 0 else 0.0
+        )
+        on_demand_equivalent_hourly = (
+            total_on_demand_equivalent / actual_hours if actual_hours > 0 else 0.0
+        )
+        net_savings_hourly = total_net_savings / actual_hours if actual_hours > 0 else 0.0
 
         logger.info(
-            f"Actual savings: ${total_net_savings:.2f} ({savings_percentage:.2f}% of "
-            f"${total_on_demand_equivalent:.2f} on-demand equivalent)"
+            f"Metrics for {plan_type}: {actual_hours} hours of data (requested {lookback_days * 24}), "
+            f"utilization={average_utilization:.2f}%, savings=${net_savings_hourly:.2f}/hr ({savings_percentage:.2f}%)"
         )
 
         return {
-            "actual_sp_cost": total_amortized_commitment,
-            "on_demand_equivalent_cost": total_on_demand_equivalent,
-            "net_savings": total_net_savings,
+            "average_utilization": average_utilization,
+            "utilization_by_day": utilization_by_day,
+            "actual_sp_cost_hourly": actual_sp_cost_hourly,
+            "on_demand_equivalent_hourly": on_demand_equivalent_hourly,
+            "net_savings_hourly": net_savings_hourly,
             "savings_percentage": savings_percentage,
-            "breakdown_by_type": {},  # Populated by caller if needed
         }
 
     except ClientError as e:
         error_code = e.response.get("Error", {}).get("Code", "Unknown")
         error_message = e.response.get("Error", {}).get("Message", str(e))
+
+        # Handle expected case: no data available for this plan type yet
+        if error_code == "DataUnavailableException":
+            logger.info(
+                f"No metrics data available for {plan_type} - "
+                f"no active plans of this type or insufficient data"
+            )
+            return {
+                "average_utilization": 0.0,
+                "utilization_by_day": [],
+                "actual_sp_cost_hourly": 0.0,
+                "on_demand_equivalent_hourly": 0.0,
+                "net_savings_hourly": 0.0,
+                "savings_percentage": 0.0,
+            }
+
         logger.error(
-            f"Failed to get actual savings data - Code: {error_code}, Message: {error_message}"
+            f"Failed to get metrics data for {plan_type} - Code: {error_code}, Message: {error_message}"
         )
         raise
 
@@ -271,28 +306,45 @@ def get_actual_savings(ce_client: CostExplorerClient, lookback_days: int = 30) -
 def get_savings_plans_summary(
     savingsplans_client: SavingsPlansClient,
     ce_client: CostExplorerClient,
-    lookback_days: int = 30,
+    enabled_plan_types: list[str],
+    lookback_days: int,
+    granularity: str = "HOURLY",
 ) -> dict[str, Any]:
     """
     Get comprehensive Savings Plans summary combining all metrics.
 
-    This is a convenience function that combines active plans, utilization,
-    and actual savings into a single summary.
+    Calls AWS APIs efficiently:
+    - describe_savings_plans (once for all plans)
+    - get_savings_plans_utilization (once per enabled plan type for metrics)
 
     Args:
         savingsplans_client: Boto3 Savings Plans client
         ce_client: Boto3 Cost Explorer client
-        lookback_days: Number of days to analyze for utilization/savings (default: 30)
+        enabled_plan_types: List of enabled plan types (e.g., ["compute", "sagemaker"])
+        lookback_days: Number of days to analyze for utilization/savings
+        granularity: API granularity - "HOURLY" or "DAILY" (default: "HOURLY")
 
     Returns:
-        dict: Complete summary:
+        dict: Complete summary (all cost values are hourly averages):
             {
                 "plans_count": 5,
-                "total_commitment": 2.5,  # hourly
+                "total_commitment": 2.5,  # hourly commitment
                 "plans": [...],  # from get_active_savings_plans()
                 "average_utilization": 85.5,
-                "estimated_monthly_savings": 200.0,  # net_savings from actual_savings
-                "actual_savings": {...}  # from get_actual_savings()
+                "net_savings_hourly": 0.28,  # avg hourly savings
+                "actual_savings": {...},  # with hourly values
+                "breakdown_by_type": {
+                    "Compute": {
+                        "plans_count": 3,
+                        "total_commitment": 2.0,
+                        "average_utilization": 85.5,
+                        "net_savings_hourly": 0.21,
+                        "actual_sp_cost_hourly": 1.39,
+                        "on_demand_equivalent_hourly": 1.67,
+                        "savings_percentage": 16.67,
+                    },
+                    ...
+                }
             }
 
     Raises:
@@ -304,32 +356,89 @@ def get_savings_plans_summary(
     plans = get_active_savings_plans(savingsplans_client)
     total_commitment = sum(plan["hourly_commitment"] for plan in plans)
 
-    # Get utilization
-    utilization_data = get_savings_plans_utilization(ce_client, lookback_days)
+    # Get per-type metrics for each enabled plan type
+    logger.info(f"Fetching metrics for enabled plan types: {enabled_plan_types}")
 
-    # Get actual savings
-    actual_savings = get_actual_savings(ce_client, lookback_days)
+    # Initialize aggregated metrics
+    total_net_savings = 0.0
+    total_on_demand_equivalent = 0.0
+    total_actual_sp_cost = 0.0
+    overall_utilization = 0.0
 
-    # Calculate breakdown by type
+    # Calculate breakdown by type with per-type metrics
     breakdown_by_type = {}
     for plan in plans:
-        plan_type = plan["plan_type"]
-        if plan_type not in breakdown_by_type:
-            breakdown_by_type[plan_type] = {
+        aws_plan_type = plan["plan_type"]
+
+        if aws_plan_type not in breakdown_by_type:
+            breakdown_by_type[aws_plan_type] = {
                 "plans_count": 0,
                 "total_commitment": 0.0,
             }
-        breakdown_by_type[plan_type]["plans_count"] += 1
-        breakdown_by_type[plan_type]["total_commitment"] += plan["hourly_commitment"]
+        breakdown_by_type[aws_plan_type]["plans_count"] += 1
+        breakdown_by_type[aws_plan_type]["total_commitment"] += plan["hourly_commitment"]
 
-    # Add breakdown to actual_savings
-    actual_savings["breakdown_by_type"] = breakdown_by_type
+    # Fetch per-type metrics (single API call per type)
+    for plan_type in enabled_plan_types:
+        # Get combined metrics (utilization + savings) in single API call
+        type_metrics = get_savings_plans_metrics(ce_client, plan_type, lookback_days, granularity)
+
+        # Add per-type metrics to breakdown if this type has active plans
+        # plan_type is already using AWS naming (e.g., "Compute", "SageMaker")
+        if plan_type in breakdown_by_type:
+            breakdown_by_type[plan_type]["average_utilization"] = type_metrics[
+                "average_utilization"
+            ]
+            breakdown_by_type[plan_type]["net_savings_hourly"] = type_metrics["net_savings_hourly"]
+            breakdown_by_type[plan_type]["on_demand_equivalent_hourly"] = type_metrics[
+                "on_demand_equivalent_hourly"
+            ]
+            breakdown_by_type[plan_type]["actual_sp_cost_hourly"] = type_metrics[
+                "actual_sp_cost_hourly"
+            ]
+            breakdown_by_type[plan_type]["savings_percentage"] = type_metrics["savings_percentage"]
+
+            # Aggregate totals (hourly values)
+            total_net_savings += type_metrics["net_savings_hourly"]
+            total_on_demand_equivalent += type_metrics["on_demand_equivalent_hourly"]
+            total_actual_sp_cost += type_metrics["actual_sp_cost_hourly"]
+
+    # Calculate overall utilization as weighted average (only for types with utilization data)
+    weighted_utilization_sum = sum(
+        breakdown_by_type[t]["average_utilization"] * breakdown_by_type[t]["total_commitment"]
+        for t in breakdown_by_type
+        if "average_utilization" in breakdown_by_type[t]
+    )
+    commitment_with_utilization_data = sum(
+        breakdown_by_type[t]["total_commitment"]
+        for t in breakdown_by_type
+        if "average_utilization" in breakdown_by_type[t]
+    )
+    overall_utilization = (
+        weighted_utilization_sum / commitment_with_utilization_data
+        if commitment_with_utilization_data > 0
+        else 0.0
+    )
+
+    overall_savings_percentage = (
+        (total_net_savings / total_on_demand_equivalent * 100.0)
+        if total_on_demand_equivalent > 0
+        else 0.0
+    )
+
+    actual_savings = {
+        "actual_sp_cost_hourly": total_actual_sp_cost,
+        "on_demand_equivalent_hourly": total_on_demand_equivalent,
+        "net_savings_hourly": total_net_savings,
+        "savings_percentage": overall_savings_percentage,
+        "breakdown_by_type": breakdown_by_type,
+    }
 
     return {
         "plans_count": len(plans),
         "total_commitment": total_commitment,
         "plans": plans,
-        "average_utilization": utilization_data["average_utilization"],
-        "estimated_monthly_savings": actual_savings["net_savings"],
+        "average_utilization": overall_utilization,
+        "net_savings_hourly": total_net_savings,
         "actual_savings": actual_savings,
     }

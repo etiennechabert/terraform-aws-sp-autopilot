@@ -47,6 +47,40 @@ const URLState = (function() {
     }
 
     /**
+     * Decompress usage data from reporter
+     * @param {string} compressed - Base64 encoded, pako-compressed JSON
+     * @returns {Object|null} Usage data or null if invalid
+     */
+    function decompressUsageData(compressed) {
+        try {
+            // Decode base64
+            const decoded = atob(decodeURIComponent(compressed));
+
+            // Convert string to byte array
+            const bytes = new Uint8Array(decoded.length);
+            for (let i = 0; i < decoded.length; i++) {
+                bytes[i] = decoded.charCodeAt(i);
+            }
+
+            // Decompress with pako
+            const inflated = pako.inflate(bytes, { to: 'string' });
+
+            // Parse JSON
+            const data = JSON.parse(inflated);
+
+            // Validate structure
+            if (!data.hourly_costs || !Array.isArray(data.hourly_costs) || !data.stats) {
+                throw new Error('Invalid usage data structure');
+            }
+
+            return data;
+        } catch (error) {
+            console.error('Failed to decompress usage data:', error);
+            return null;
+        }
+    }
+
+    /**
      * Decode state from current URL
      * @returns {Object|null} Decoded state or null if no parameters
      */
@@ -59,6 +93,15 @@ const URLState = (function() {
         }
 
         const state = {};
+
+        // Check for usage data from reporter
+        const usageParam = params.get('usage');
+        if (usageParam) {
+            const usageData = decompressUsageData(usageParam);
+            if (usageData) {
+                state.usageData = usageData;
+            }
+        }
 
         // Pattern type
         const pattern = params.get('pattern');
@@ -320,6 +363,7 @@ const URLState = (function() {
         hasURLState,
         clearURLParams,
         compressCurve,
-        decompressCurve
+        decompressCurve,
+        decompressUsageData
     };
 })();
