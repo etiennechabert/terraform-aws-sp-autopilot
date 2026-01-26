@@ -11,6 +11,7 @@ import logging
 from datetime import UTC, datetime, timedelta
 from typing import Any
 
+from shared.local_mode import is_local_mode
 from shared.optimal_coverage import calculate_optimal_coverage
 
 
@@ -531,6 +532,14 @@ def generate_html_report(
 
     # Get CSS class for overall utilization
     utilization_class = get_utilization_class(average_utilization)
+
+    # Determine simulator base URL based on environment
+    if is_local_mode():
+        # Local development: use relative path from reports directory to docs
+        simulator_base_url = "../../../../docs/index.html"
+    else:
+        # Production (Lambda): use GitHub Pages URL
+        simulator_base_url = "https://etiennechabert.github.io/terraform-aws-sp-autopilot/"
 
     html = f"""<!DOCTYPE html>
 <html lang="en">
@@ -1664,11 +1673,8 @@ def generate_html_report(
                 const compressed = pako.deflate(JSON.stringify(usageData));
                 const base64 = btoa(String.fromCharCode.apply(null, compressed));
 
-                // Use relative path for local development, remote URL for production
-                const baseUrl = window.location.protocol === 'file:'
-                    ? '../../../../docs/index.html'  // Relative: lambda/reporter/local_data/reports → root/docs
-                    : 'https://etiennechabert.github.io/terraform-aws-sp-autopilot/';
-                const simulatorUrl = `${{baseUrl}}?usage=${{encodeURIComponent(base64)}}`;
+                // Base URL is determined server-side when generating the report
+                const simulatorUrl = `{simulator_base_url}?usage=${{encodeURIComponent(base64)}}`;
 
                 optimizationHtml = `
                     <div class="simulator-cta">
