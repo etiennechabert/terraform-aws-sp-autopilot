@@ -8,6 +8,7 @@ const ChartManager = (function() {
 
     let loadChart = null;
     let costChart = null;
+    let savingsCurveChart = null;
     let currentHoverIndex = null;
 
     /**
@@ -493,12 +494,386 @@ const ChartManager = (function() {
         }
     }
 
+    /**
+     * Initialize the savings curve chart
+     * @param {string} canvasId - Canvas element ID
+     * @returns {Chart} Chart.js instance
+     */
+    function initSavingsCurveChart(canvasId) {
+        const ctx = document.getElementById(canvasId);
+        if (!ctx) {
+            console.error(`Canvas element ${canvasId} not found`);
+            return null;
+        }
+
+        // Destroy existing chart if it exists
+        if (savingsCurveChart) {
+            savingsCurveChart.destroy();
+        }
+
+        savingsCurveChart = new Chart(ctx, {
+            type: 'line',
+            data: {
+                labels: [],
+                datasets: [
+                    {
+                        label: '0-Min: Building to baseline',
+                        data: [],
+                        borderColor: 'rgba(77, 159, 255, 1)',
+                        backgroundColor: 'rgba(77, 159, 255, 0.4)',
+                        borderWidth: 2,
+                        fill: 'origin',
+                        tension: 0.4,
+                        pointRadius: 0,
+                        pointHoverRadius: 8
+                    },
+                    {
+                        label: 'Min-Optimal: Extra savings',
+                        data: [],
+                        borderColor: 'rgba(0, 255, 136, 1)',
+                        backgroundColor: 'rgba(0, 255, 136, 0.4)',
+                        borderWidth: 2,
+                        fill: 'origin',
+                        tension: 0.4,
+                        pointRadius: 0,
+                        pointHoverRadius: 8
+                    },
+                    {
+                        label: 'Optimal-Breakeven: Declining returns',
+                        data: [],
+                        borderColor: 'rgba(255, 170, 0, 1)',
+                        backgroundColor: 'rgba(255, 170, 0, 0.4)',
+                        borderWidth: 2,
+                        fill: 'origin',
+                        tension: 0.4,
+                        pointRadius: 0,
+                        pointHoverRadius: 8
+                    },
+                    {
+                        label: 'Worse than min-hourly: Not worth it',
+                        data: [],
+                        borderColor: 'rgba(138, 43, 226, 1)',
+                        backgroundColor: 'rgba(138, 43, 226, 0.4)',
+                        borderWidth: 2,
+                        fill: 'origin',
+                        tension: 0.4,
+                        pointRadius: 0,
+                        pointHoverRadius: 8
+                    },
+                    {
+                        label: 'Worse than on-demand: Losing money',
+                        data: [],
+                        borderColor: 'rgba(255, 68, 68, 1)',
+                        backgroundColor: 'rgba(255, 68, 68, 0.4)',
+                        borderWidth: 2,
+                        fill: 'origin',
+                        tension: 0.4,
+                        pointRadius: 0,
+                        pointHoverRadius: 8
+                    }
+                ]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                interaction: {
+                    mode: 'nearest',
+                    intersect: false,
+                    axis: 'x'
+                },
+                hover: {
+                    mode: 'nearest',
+                    intersect: false
+                },
+                plugins: {
+                    legend: {
+                        display: false
+                    },
+                    tooltip: {
+                        backgroundColor: 'rgba(26, 31, 58, 0.95)',
+                        titleColor: '#00d4ff',
+                        bodyColor: '#e0e6ed',
+                        borderColor: '#4d9fff',
+                        borderWidth: 1,
+                        padding: 12,
+                        mode: 'nearest',
+                        intersect: false,
+                        callbacks: {
+                            title: function(context) {
+                                const coverage = context[0].parsed.x;
+                                const minCost = context[0].chart.$minCost || 0;
+                                const percentOfMin = minCost > 0 ? (coverage / minCost * 100).toFixed(0) : 0;
+                                return `Coverage: ${CostCalculator.formatCurrency(coverage)}/hour (${percentOfMin}% of min)`;
+                            },
+                            label: function(context) {
+                                const savingsPercent = context.parsed.y;
+                                const coverage = context.parsed.x;
+                                const curveData = context.chart.$curveData || [];
+
+                                // Find the data point closest to this coverage
+                                const point = curveData.reduce((prev, curr) => {
+                                    return Math.abs(curr.coverage - coverage) < Math.abs(prev.coverage - coverage) ? curr : prev;
+                                });
+
+                                const netSavingsDollars = point?.netSavings || 0;
+                                return `Savings: ${savingsPercent.toFixed(1)}% (${CostCalculator.formatCurrency(netSavingsDollars)}/wk)`;
+                            },
+                            afterLabel: function(context) {
+                                const coverage = context.parsed.x;
+                                const curveData = context.chart.$curveData || [];
+
+                                // Find the data point closest to this coverage
+                                const point = curveData.reduce((prev, curr) => {
+                                    return Math.abs(curr.coverage - coverage) < Math.abs(prev.coverage - coverage) ? curr : prev;
+                                });
+
+                                if (!point) return null;
+
+                                const extraSavings = point.extraSavings || 0;
+
+                                if (extraSavings > 0.01) {
+                                    return `Extra: +${CostCalculator.formatCurrency(extraSavings)}/week`;
+                                } else if (extraSavings < -0.01) {
+                                    return `Lost: ${CostCalculator.formatCurrency(Math.abs(extraSavings))}/week`;
+                                }
+                                return 'At baseline (min-hourly)';
+                            },
+                            footer: function(context) {
+                                const savingsPercent = context[0].parsed.y;
+                                if (savingsPercent < 0) {
+                                    return '\n⚠️ Over-committed: Losing money vs on-demand';
+                                }
+                                return null;
+                            }
+                        }
+                    },
+                    annotation: {
+                        annotations: {}
+                    }
+                },
+                scales: {
+                    x: {
+                        type: 'linear',
+                        min: 0,
+                        title: {
+                            display: true,
+                            text: 'Coverage Level ($/hour)',
+                            color: '#e0e6ed',
+                            font: { size: 12, weight: 'bold' }
+                        },
+                        ticks: {
+                            color: '#8b95a8',
+                            callback: function(value) {
+                                return '$' + value.toFixed(0);
+                            }
+                        },
+                        grid: {
+                            color: 'rgba(255, 255, 255, 0.05)'
+                        }
+                    },
+                    y: {
+                        type: 'linear',
+                        title: {
+                            display: true,
+                            text: 'Net Savings (% of baseline on-demand cost)',
+                            color: '#e0e6ed',
+                            font: { size: 12, weight: 'bold' }
+                        },
+                        ticks: {
+                            color: '#8b95a8',
+                            callback: function(value) {
+                                return value.toFixed(0) + '%';
+                            }
+                        },
+                        grid: {
+                            color: function(context) {
+                                // Highlight zero line
+                                if (context.tick.value === 0) {
+                                    return 'rgba(255, 255, 255, 0.3)';
+                                }
+                                return 'rgba(255, 255, 255, 0.05)';
+                            },
+                            lineWidth: function(context) {
+                                if (context.tick.value === 0) {
+                                    return 2;
+                                }
+                                return 1;
+                            }
+                        }
+                    }
+                }
+            }
+        });
+
+        return savingsCurveChart;
+    }
+
+    /**
+     * Update savings curve chart with new data
+     * @param {Array} curveData - Savings curve data points
+     * @param {number} minHourlySavings - Baseline savings at min-hourly (dollars)
+     * @param {number} optimalCoverage - Optimal coverage in $/hour
+     * @param {number} minCost - Min-hourly cost
+     * @param {number} maxCost - Max-hourly cost
+     * @param {number} baselineCost - Total baseline on-demand cost
+     * @param {number} currentCoverage - Current actual coverage in $/hour (optional)
+     */
+    function updateSavingsCurveChart(curveData, minHourlySavings, optimalCoverage, minCost, maxCost, baselineCost, currentCoverage) {
+        if (!savingsCurveChart) return;
+
+        // Store values for tooltip access
+        savingsCurveChart.$minHourlySavings = minHourlySavings;
+        savingsCurveChart.$minCost = minCost;
+        savingsCurveChart.$maxCost = maxCost;
+        savingsCurveChart.$curveData = curveData; // Store full curve data for tooltip access
+
+        // Set x-axis max to max-hourly cost
+        savingsCurveChart.options.scales.x.max = maxCost;
+
+        // Find indices for transitions
+        let minCostIndex = -1;
+        let optimalIndex = -1;
+        let breakevenIndex = -1;
+
+        for (let i = 0; i < curveData.length; i++) {
+            // Find min-hourly crossing
+            if (curveData[i].coverage >= minCost && minCostIndex === -1) {
+                minCostIndex = i;
+            }
+            // Find optimal crossing
+            if (curveData[i].coverage >= optimalCoverage && optimalIndex === -1) {
+                optimalIndex = i;
+            }
+        }
+
+        // Ensure indices are valid
+        if (minCostIndex === -1) minCostIndex = 0;
+        if (optimalIndex === -1) optimalIndex = minCostIndex;
+
+        // Calculate min-hourly savings percentage
+        const minHourlySavingsPercent = baselineCost > 0 ? (minHourlySavings / baselineCost) * 100 : 0;
+
+        // Find where savings decline back to min-hourly level (not optimal anymore)
+        let minHourlyReturnIndex = -1;
+        for (let i = optimalIndex + 1; i < curveData.length; i++) {
+            const point = curveData[i];
+            if (point.netSavings <= minHourlySavings) {
+                minHourlyReturnIndex = i;
+                break;
+            }
+        }
+
+        // Find where savings go to 0 or negative (worse than on-demand)
+        for (let i = optimalIndex + 1; i < curveData.length; i++) {
+            if (curveData[i].savingsPercent <= 0) {
+                breakevenIndex = i;
+                break;
+            }
+        }
+
+        // Set defaults if not found
+        if (breakevenIndex === -1) breakevenIndex = curveData.length - 1;
+
+        console.log('Dataset boundaries:', {
+            minCostIndex,
+            optimalIndex,
+            minHourlyReturnIndex,
+            breakevenIndex,
+            totalPoints: curveData.length,
+            minHourlySavingsPercent: minHourlySavingsPercent.toFixed(2) + '%',
+            declineDetected: minHourlyReturnIndex !== -1
+        });
+
+        // Split data into five datasets based on coverage ranges
+        // Blue: 0 to min-hourly (building up)
+        const dataset1 = curveData.slice(0, minCostIndex + 1).map(d => ({ x: d.coverage, y: d.savingsPercent }));
+
+        // Green: min-hourly to optimal (or to end if no decline detected)
+        const greenEndIndex = minHourlyReturnIndex !== -1 ? minHourlyReturnIndex : curveData.length - 1;
+        const dataset2 = curveData.slice(minCostIndex, Math.min(optimalIndex + 1, greenEndIndex + 1)).map(d => ({ x: d.coverage, y: d.savingsPercent }));
+
+        // If green extends beyond optimal (no decline), extend it all the way
+        const dataset2Extended = minHourlyReturnIndex === -1 && optimalIndex < curveData.length - 1
+            ? curveData.slice(minCostIndex, curveData.length).map(d => ({ x: d.coverage, y: d.savingsPercent }))
+            : dataset2;
+
+        // Orange: optimal to min-hourly-return (only if decline detected)
+        const dataset3 = minHourlyReturnIndex !== -1 && optimalIndex < minHourlyReturnIndex
+            ? curveData.slice(optimalIndex, minHourlyReturnIndex + 1).map(d => ({ x: d.coverage, y: d.savingsPercent }))
+            : [];
+
+        // Purple: min-hourly-return to breakeven (only if we found min-hourly return point)
+        const dataset4 = minHourlyReturnIndex !== -1 && minHourlyReturnIndex < breakevenIndex
+            ? curveData.slice(minHourlyReturnIndex, breakevenIndex + 1).map(d => ({ x: d.coverage, y: d.savingsPercent }))
+            : [];
+
+        // Red: beyond breakeven (negative savings, losing money)
+        const dataset5 = breakevenIndex < curveData.length - 1 && curveData[breakevenIndex].savingsPercent <= 0
+            ? curveData.slice(breakevenIndex).map(d => ({ x: d.coverage, y: d.savingsPercent }))
+            : [];
+
+        console.log('Dataset sizes:', {
+            blue: dataset1.length,
+            green: dataset2.length,
+            orange: dataset3.length,
+            purple: dataset4.length,
+            red: dataset5.length
+        });
+
+        savingsCurveChart.data.datasets[0].data = dataset1;
+        savingsCurveChart.data.datasets[1].data = dataset2Extended;
+        savingsCurveChart.data.datasets[2].data = dataset3;
+        savingsCurveChart.data.datasets[3].data = dataset4;
+        savingsCurveChart.data.datasets[4].data = dataset5;
+
+        // Find breakeven point (where savings return to 0%)
+        let breakevenCoverage = null;
+        for (let i = curveData.length - 1; i >= 0; i--) {
+            if (curveData[i].savingsPercent >= 0) {
+                breakevenCoverage = curveData[i].coverage;
+                break;
+            }
+        }
+
+        // Build annotations - only show current coverage line
+        const annotations = {};
+
+        // Add current coverage line if provided and within range
+        if (currentCoverage && currentCoverage > 0 && currentCoverage <= maxCost) {
+            // Calculate percentage of min-hourly
+            const percentOfMin = minCost > 0 ? (currentCoverage / minCost * 100).toFixed(0) : 0;
+
+            annotations.currentLine = {
+                type: 'line',
+                xMin: currentCoverage,
+                xMax: currentCoverage,
+                borderColor: 'rgba(0, 212, 255, 0.9)',
+                borderWidth: 3,
+                borderDash: [10, 5],
+                label: {
+                    display: true,
+                    content: `📍 ${CostCalculator.formatCurrency(currentCoverage)}/hr (${percentOfMin}% of min)`,
+                    position: 'start',
+                    backgroundColor: 'rgba(0, 212, 255, 0.9)',
+                    color: '#1a1f3a',
+                    font: { size: 13, weight: 'bold' }
+                }
+            };
+        }
+
+        savingsCurveChart.options.plugins.annotation.annotations = annotations;
+
+        savingsCurveChart.update();
+    }
+
     // Public API
     return {
         initLoadChart,
         initCostChart,
+        initSavingsCurveChart,
         updateLoadChart,
         updateCostChart,
+        updateSavingsCurveChart,
         setCurrentCostResults,
         updateChartColors,
         resetHover,

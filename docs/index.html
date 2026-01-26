@@ -7,6 +7,8 @@
     <title>AWS Savings Plan Simulator | Interactive Cost Optimizer</title>
     <link rel="stylesheet" href="css/styles.css">
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-annotation@3.0.1/dist/chartjs-plugin-annotation.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/pako@2.1.0/dist/pako.min.js"></script>
 </head>
 <body>
     <div class="container">
@@ -61,6 +63,7 @@
                                     <option value="ecommerce">E-commerce (Weekday peaks)</option>
                                     <option value="global247">Global 24/7 (Consistent load)</option>
                                     <option value="batch">Batch Processing (Scheduled spikes)</option>
+                                    <option value="custom">Custom (Real Usage Data)</option>
                                 </select>
                             </div>
 
@@ -203,6 +206,41 @@
                     </button>
                 </section>
             </div>
+
+            <!-- Section 3: Savings Optimization Chart -->
+            <section class="card section-savings-curve">
+                <div class="card-header">
+                    <h2 class="section-title">Savings vs Coverage Level</h2>
+                    <p class="section-description">Net savings (% of baseline cost) at different coverage levels - zoomed to viable range</p>
+                </div>
+
+                <div class="chart-container">
+                    <canvas id="savings-curve-chart" aria-label="Savings curve optimization chart"></canvas>
+                </div>
+
+                <div class="curve-legend">
+                    <div class="legend-item">
+                        <span class="legend-color" style="background: linear-gradient(90deg, rgba(77,159,255,0.3), rgba(77,159,255,0.6));"></span>
+                        <span class="legend-text">0-Min: Building to min-hourly baseline</span>
+                    </div>
+                    <div class="legend-item">
+                        <span class="legend-color" style="background: linear-gradient(90deg, rgba(0,255,136,0.3), rgba(0,255,136,0.6));"></span>
+                        <span class="legend-text">Min-Optimal: Extra savings beyond baseline</span>
+                    </div>
+                    <div class="legend-item">
+                        <span class="legend-color" style="background: linear-gradient(90deg, rgba(255,170,0,0.3), rgba(255,170,0,0.6));"></span>
+                        <span class="legend-text">Optimal-MinReturn: Declining back to baseline</span>
+                    </div>
+                    <div class="legend-item">
+                        <span class="legend-color" style="background: linear-gradient(90deg, rgba(138,43,226,0.3), rgba(138,43,226,0.6));"></span>
+                        <span class="legend-text">Worse than min-hourly: Not worth the commitment</span>
+                    </div>
+                    <div class="legend-item">
+                        <span class="legend-color" style="background: linear-gradient(90deg, rgba(255,68,68,0.3), rgba(255,68,68,0.6));"></span>
+                        <span class="legend-text">Worse than on-demand: Losing money</span>
+                    </div>
+                </div>
+            </section>
 
         </main>
 

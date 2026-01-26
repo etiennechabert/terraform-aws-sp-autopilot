@@ -856,3 +856,115 @@ h1, h2, h3, h4, h5, h6 {
 .mb-sm { margin-bottom: var(--spacing-sm); }
 .mb-md { margin-bottom: var(--spacing-md); }
 .mb-lg { margin-bottom: var(--spacing-lg); }
+
+/* ===== Savings Curve Chart ===== */
+.section-savings-curve {
+    margin-top: var(--spacing-lg);
+}
+
+.curve-legend {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--spacing-md);
+    margin-top: var(--spacing-md);
+    padding: var(--spacing-sm);
+    background: var(--bg-secondary);
+    border-radius: var(--radius-sm);
+}
+
+.legend-item {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-xs);
+}
+
+.legend-color {
+    width: 30px;
+    height: 16px;
+    border-radius: 3px;
+    border: 1px solid var(--border-color);
+}
+
+.legend-text {
+    font-size: 0.85rem;
+    color: var(--text-secondary);
+}
+
+/* ===== Usage Data Banner ===== */
+.usage-data-banner {
+    margin-top: var(--spacing-md);
+    padding: var(--spacing-md);
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    border-radius: 8px;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+    animation: slideDown 0.3s ease-out;
+}
+
+.banner-content {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-sm);
+    color: white;
+}
+
+.banner-icon {
+    font-size: 1.5rem;
+}
+
+.banner-text {
+    font-size: 0.95rem;
+    line-height: 1.4;
+}
+
+.banner-text strong {
+    font-weight: 600;
+}
+
+@keyframes slideDown {
+    from {
+        opacity: 0;
+        transform: translateY(-10px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+/* ===== Mismatch Warning Banner ===== */
+.mismatch-warning {
+    margin-top: var(--spacing-md);
+    padding: var(--spacing-md);
+    background: linear-gradient(135deg, #ff6b6b 0%, #ee5a24 100%);
+    border-radius: 8px;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.15);
+    animation: slideDown 0.3s ease-out, pulse 2s ease-in-out infinite;
+}
+
+.warning-content {
+    display: flex;
+    align-items: flex-start;
+    gap: var(--spacing-sm);
+    color: white;
+}
+
+.warning-icon {
+    font-size: 1.5rem;
+    flex-shrink: 0;
+}
+
+.warning-text {
+    font-size: 0.95rem;
+    line-height: 1.5;
+}
+
+.warning-text strong {
+    font-weight: 600;
+    display: block;
+    margin-bottom: 0.25rem;
+}
+
+.warning-text small {
+    opacity: 0.9;
+    font-size: 0.85rem;
+}

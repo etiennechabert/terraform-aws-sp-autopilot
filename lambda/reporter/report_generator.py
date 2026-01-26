@@ -8,8 +8,18 @@ from __future__ import annotations
 
 import json
 import logging
+import sys
 from datetime import UTC, datetime, timedelta
+from pathlib import Path
 from typing import Any
+
+
+# Add shared directory to path
+shared_dir = Path(__file__).parent.parent / "shared"
+if str(shared_dir) not in sys.path:
+    sys.path.insert(0, str(shared_dir))
+
+from optimal_coverage import calculate_optimal_coverage  # noqa: E402
 
 
 logger = logging.getLogger(__name__)
@@ -20,6 +30,7 @@ def generate_report(
     savings_data: dict[str, Any],
     report_format: str = "html",
     config: dict[str, Any] | None = None,
+    raw_data: dict[str, Any] | None = None,
 ) -> str:
     """
     Generate report in specified format.
@@ -29,6 +40,7 @@ def generate_report(
         savings_data: Savings Plans summary from savings_plans_metrics
         report_format: Format - "html", "json", or "csv"
         config: Configuration parameters used for the report
+        raw_data: Optional raw AWS API responses to include in the report
 
     Returns:
         str: Generated report content
@@ -41,20 +53,26 @@ def generate_report(
     if report_format == "csv":
         return generate_csv_report(coverage_data, savings_data, config)
     if report_format == "html":
-        return generate_html_report(coverage_data, savings_data, config)
+        return generate_html_report(coverage_data, savings_data, config, raw_data)
     raise ValueError(f"Invalid report format: {report_format}")
 
 
-def _prepare_chart_data(coverage_data: dict[str, Any]) -> str:
+def _prepare_chart_data(
+    coverage_data: dict[str, Any],
+    savings_data: dict[str, Any],
+    config: dict[str, Any] | None = None,
+) -> tuple[str, dict[str, Any]]:
     """
     Prepare chart data from coverage timeseries for Chart.js visualization.
 
     Args:
         coverage_data: Coverage data from SpendingAnalyzer with timeseries
+        config: Configuration dict with savings_percentage (default: 30)
 
     Returns:
-        str: JSON string with chart data for all tabs (global, compute, database, sagemaker)
+        tuple: (JSON string with chart data, dict with optimal coverage results)
     """
+    config = config or {}
     # Build timeseries maps for each SP type and global aggregate
     timeseries_maps = {
         "global": {},
@@ -159,13 +177,90 @@ def _prepare_chart_data(coverage_data: dict[str, Any]) -> str:
         "sagemaker": build_chart_data_for_type("sagemaker"),
     }
 
-    return json.dumps(all_chart_data)
+    # Calculate optimal coverage per SP type
+    # IMPORTANT: This Python implementation must stay in sync with
+    # docs/js/costCalculator.js::calculateOptimalCoverage()
+    # Any changes to the algorithm must be applied to both implementations.
+
+    # Get type-specific savings data from breakdown
+    actual_savings = savings_data.get("actual_savings", {})
+    breakdown_by_type = actual_savings.get("breakdown_by_type", {})
+
+    optimal_results = {}
+
+    # Map SP type keys to breakdown keys
+    type_mapping = {"compute": "Compute", "database": "Database", "sagemaker": "SageMaker"}
+
+    for sp_type in ["compute", "database", "sagemaker"]:
+        type_data = all_chart_data[sp_type]
+
+        if type_data["covered"] and type_data["ondemand"]:
+            # Calculate total hourly costs (covered + ondemand)
+            hourly_costs = [
+                covered + ondemand
+                for covered, ondemand in zip(
+                    type_data["covered"], type_data["ondemand"], strict=True
+                )
+            ]
+
+            # Only calculate if we have meaningful data
+            if hourly_costs and max(hourly_costs) > 0:
+                # Get type-specific savings percentage, or use 20% conservative default
+                type_breakdown = breakdown_by_type.get(type_mapping.get(sp_type, ""), {})
+                type_savings_pct = type_breakdown.get("savings_percentage", 0.0)
+
+                # Use type-specific discount if available, otherwise 20% default
+                savings_percentage = type_savings_pct if type_savings_pct > 0 else 20.0
+
+                logger.info(
+                    f"Calculating optimal coverage for {sp_type}: using {savings_percentage:.1f}% discount"
+                )
+
+                try:
+                    optimal_results[sp_type] = calculate_optimal_coverage(
+                        hourly_costs, savings_percentage
+                    )
+                except Exception as e:
+                    logger.warning(f"Failed to calculate optimal coverage for {sp_type}: {e}")
+                    optimal_results[sp_type] = {}
+
+    # For global, use overall account savings or 20% default
+    if all_chart_data["global"]["covered"] and all_chart_data["global"]["ondemand"]:
+        hourly_costs = [
+            covered + ondemand
+            for covered, ondemand in zip(
+                all_chart_data["global"]["covered"],
+                all_chart_data["global"]["ondemand"],
+                strict=True,
+            )
+        ]
+
+        if hourly_costs and max(hourly_costs) > 0:
+            # Use overall account savings if available, otherwise 20% default
+            overall_savings_pct = actual_savings.get("savings_percentage", 0.0)
+            savings_percentage = overall_savings_pct if overall_savings_pct > 0 else 20.0
+
+            logger.info(
+                f"Calculating optimal coverage for global: using {savings_percentage:.1f}% discount"
+            )
+            optimal_results["savings_percentage_used"] = savings_percentage
+
+            try:
+                optimal_results["global"] = calculate_optimal_coverage(
+                    hourly_costs, savings_percentage
+                )
+            except Exception as e:
+                logger.warning(f"Failed to calculate optimal coverage for global: {e}")
+                optimal_results["global"] = {}
+
+    return json.dumps(all_chart_data), optimal_results
 
 
 def generate_html_report(
     coverage_data: dict[str, Any],
     savings_data: dict[str, Any],
     config: dict[str, Any] | None = None,
+    raw_data: dict[str, Any] | None = None,
 ) -> str:
     """
     Generate HTML report with coverage trends and savings metrics.
@@ -174,6 +269,7 @@ def generate_html_report(
         coverage_data: Coverage data from SpendingAnalyzer
         savings_data: Savings Plans summary from savings_plans_metrics
         config: Configuration parameters used for the report
+        raw_data: Optional raw AWS API responses to include in the report
 
     Returns:
         str: HTML report content
@@ -181,27 +277,84 @@ def generate_html_report(
     logger.info("Generating HTML report")
     config = config or {}
 
-    report_timestamp = datetime.now(UTC).strftime("%Y-%m-%d %H:%M:%S UTC")
+    now = datetime.now(UTC)
+    report_timestamp = now.strftime("%Y-%m-%d %H:%M:%S UTC")
+
+    # Calculate data period based on lookback days
+    lookback_days = config["lookback_days"]
+    data_end_date = now.date()
+    data_start_date = data_end_date - timedelta(days=lookback_days)
+    data_period = f"{data_start_date.isoformat()} to {data_end_date.isoformat()}"
 
     # Extract coverage summary per type
-    compute_coverage = coverage_data.get("compute", {}).get("summary", {}).get("avg_coverage", 0.0)
+    compute_coverage = (
+        coverage_data.get("compute", {}).get("summary", {}).get("avg_coverage_total", 0.0)
+    )
     database_coverage = (
-        coverage_data.get("database", {}).get("summary", {}).get("avg_coverage", 0.0)
+        coverage_data.get("database", {}).get("summary", {}).get("avg_coverage_total", 0.0)
     )
     sagemaker_coverage = (
-        coverage_data.get("sagemaker", {}).get("summary", {}).get("avg_coverage", 0.0)
+        coverage_data.get("sagemaker", {}).get("summary", {}).get("avg_coverage_total", 0.0)
     )
 
-    # Extract savings summary
+    # Helper function to get CSS class for coverage level
+    def get_coverage_class(coverage: float) -> str:
+        """Return CSS class based on coverage percentage."""
+        if coverage >= 70:
+            return "green"
+        if coverage >= 30:
+            return "orange"
+        return "red"
+
+    # Helper function to get CSS class for utilization level
+    def get_utilization_class(utilization: float) -> str:
+        """Return CSS class based on utilization percentage."""
+        if utilization >= 95:
+            return "green"
+        if utilization >= 80:
+            return "orange"
+        return "red"
+
+    compute_class = get_coverage_class(compute_coverage)
+    database_class = get_coverage_class(database_coverage)
+    sagemaker_class = get_coverage_class(sagemaker_coverage)
+
+    # Calculate overall weighted coverage across all types
+    compute_summary = coverage_data.get("compute", {}).get("summary", {})
+    database_summary = coverage_data.get("database", {}).get("summary", {})
+    sagemaker_summary = coverage_data.get("sagemaker", {}).get("summary", {})
+
+    total_hourly_spend = (
+        compute_summary.get("avg_hourly_total", 0.0)
+        + database_summary.get("avg_hourly_total", 0.0)
+        + sagemaker_summary.get("avg_hourly_total", 0.0)
+    )
+    total_hourly_covered = (
+        compute_summary.get("avg_hourly_covered", 0.0)
+        + database_summary.get("avg_hourly_covered", 0.0)
+        + sagemaker_summary.get("avg_hourly_covered", 0.0)
+    )
+    total_hourly_ondemand = total_hourly_spend - total_hourly_covered
+
+    # Calculate overall coverage percentage (weighted by actual spend)
+    overall_coverage = (
+        (total_hourly_covered / total_hourly_spend * 100) if total_hourly_spend > 0 else 0.0
+    )
+    overall_coverage_class = get_coverage_class(overall_coverage)
+
+    # Extract savings summary (all values are pre-calculated hourly averages)
     plans_count = savings_data.get("plans_count", 0)
     actual_savings = savings_data.get("actual_savings", {})
-    net_savings = actual_savings.get("net_savings", 0.0)
+    net_savings_hourly = actual_savings.get("net_savings_hourly", 0.0)
     savings_percentage = actual_savings.get("savings_percentage", 0.0)
     total_commitment = savings_data.get("total_commitment", 0.0)
     average_utilization = savings_data.get("average_utilization", 0.0)
-    on_demand_equivalent = actual_savings.get("on_demand_equivalent_cost", 0.0)
-    actual_sp_cost = actual_savings.get("actual_sp_cost", 0.0)
+    on_demand_equivalent_hourly = actual_savings.get("on_demand_equivalent_hourly", 0.0)
+    actual_sp_cost_hourly = actual_savings.get("actual_sp_cost_hourly", 0.0)
     breakdown_by_type = actual_savings.get("breakdown_by_type", {})
+
+    # Get CSS class for overall utilization
+    utilization_class = get_utilization_class(average_utilization)
 
     html = f"""<!DOCTYPE html>
 <html lang="en">
@@ -211,6 +364,7 @@ def generate_html_report(
     <title>Savings Plans Coverage & Savings Report</title>
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-annotation@3.0.1/dist/chartjs-plugin-annotation.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/pako@2.1.0/dist/pako.min.js"></script>
     <style>
         body {{
             font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
@@ -240,9 +394,14 @@ def generate_html_report(
         }}
         .summary {{
             display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            grid-template-columns: repeat(5, 1fr);
             gap: 12px;
             margin-bottom: 20px;
+        }}
+        @media (max-width: 900px) {{
+            .summary {{
+                grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+            }}
         }}
         .summary-card {{
             background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
@@ -259,6 +418,9 @@ def generate_html_report(
         }}
         .summary-card.orange {{
             background: linear-gradient(135deg, #f46b45 0%, #eea849 100%);
+        }}
+        .summary-card.red {{
+            background: linear-gradient(135deg, #eb3349 0%, #f45c43 100%);
         }}
         .summary-card h3 {{
             margin: 0 0 6px 0;
@@ -366,8 +528,7 @@ def generate_html_report(
             display: block;
         }}
         .tab-metrics {{
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            display: flex;
             gap: 15px;
             margin-bottom: 20px;
             padding: 15px;
@@ -375,10 +536,14 @@ def generate_html_report(
             border-radius: 8px;
         }}
         .metric-card {{
+            flex: 1;
             background: white;
             padding: 15px;
             border-radius: 6px;
             border-left: 4px solid #667eea;
+        }}
+        .metric-card.blue {{
+            border-left-color: #4d9fff;
         }}
         .metric-card.green {{
             border-left-color: #56ab2f;
@@ -452,56 +617,172 @@ def generate_html_report(
         .info-box strong {{
             color: #003366;
         }}
+        .simulator-cta {{
+            margin-top: 15px;
+            text-align: center;
+        }}
+        .simulator-button {{
+            display: inline-block;
+            padding: 12px 24px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            text-decoration: none;
+            border-radius: 6px;
+            font-weight: 600;
+            font-size: 1em;
+            transition: transform 0.2s, box-shadow 0.2s;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        }}
+        .simulator-button:hover {{
+            transform: translateY(-2px);
+            box-shadow: 0 6px 12px rgba(0,0,0,0.15);
+        }}
+        .simulator-description {{
+            margin-top: 10px;
+            font-size: 0.85em;
+            color: #856404;
+        }}
         .params-grid {{
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
-            gap: 10px;
-            padding: 15px;
+            padding: 12px 15px;
             background-color: #f8f9fa;
             border-radius: 6px;
+            font-size: 0.9em;
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px 20px;
+            align-items: center;
         }}
         .param-item {{
-            display: flex;
-            justify-content: space-between;
-            padding: 8px 12px;
-            background: white;
-            border-radius: 4px;
-            font-size: 0.9em;
+            display: inline-flex;
+            gap: 6px;
+            white-space: nowrap;
         }}
-        .param-label {{
-            font-weight: 600;
+        .param-item strong {{
             color: #232f3e;
         }}
-        .param-value {{
+        .param-item span {{
             color: #6c757d;
+        }}
+        .raw-data-section {{
+            margin-top: 30px;
+            padding: 20px;
+            background-color: #f8f9fa;
+            border-radius: 8px;
+            border: 1px solid #dee2e6;
+        }}
+        .raw-data-section summary {{
+            cursor: pointer;
+            font-size: 1.1em;
+            font-weight: 600;
+            color: #232f3e;
+            padding: 10px;
+            user-select: none;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }}
+        .raw-data-section summary:hover {{
+            background-color: #e9ecef;
+            border-radius: 6px;
+        }}
+        .raw-data-controls {{
+            margin: 15px 0;
+            display: flex;
+            gap: 10px;
+        }}
+        .raw-data-button {{
+            padding: 8px 16px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 0.9em;
+            font-weight: 500;
+            transition: transform 0.2s, box-shadow 0.2s;
+        }}
+        .raw-data-button:hover {{
+            transform: translateY(-2px);
+            box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+        }}
+        .json-viewer {{
+            background-color: #1e1e1e;
+            color: #d4d4d4;
+            padding: 20px;
+            border-radius: 6px;
+            font-family: 'Consolas', 'Monaco', 'Courier New', monospace;
+            font-size: 13px;
+            line-height: 1.5;
+            overflow-x: auto;
+            max-height: 600px;
+            overflow-y: auto;
+        }}
+        .json-key {{
+            color: #9cdcfe;
+        }}
+        .json-string {{
+            color: #ce9178;
+        }}
+        .json-number {{
+            color: #b5cea8;
+        }}
+        .json-boolean {{
+            color: #569cd6;
+        }}
+        .json-null {{
+            color: #569cd6;
+        }}
+        .json-item {{
+            margin-left: 20px;
+        }}
+        .json-toggle {{
+            cursor: pointer;
+            user-select: none;
+            color: #808080;
+            margin-right: 6px;
+            font-family: monospace;
+            display: inline-block;
+            width: 10px;
+        }}
+        .json-toggle:hover {{
+            color: #ffffff;
+        }}
+        .json-children {{
+            display: block;
+        }}
+        .json-children.collapsed {{
+            display: none;
         }}
     </style>
 </head>
 <body>
     <div class="container">
         <h1>Savings Plans Coverage & Savings Report</h1>
-        <div class="subtitle">Generated: {report_timestamp}</div>
+        <div class="subtitle">
+            <div>Generated: {report_timestamp}</div>
+            <div style="margin-top: 5px;"><strong>Data Period:</strong> {data_period}</div>
+        </div>
 
         <div class="summary">
             <div class="summary-card green">
-                <h3>Compute Coverage</h3>
-                <div class="value">{compute_coverage:.1f}%</div>
+                <h3>Hourly Savings</h3>
+                <div class="value">${net_savings_hourly:.2f}</div>
             </div>
-            <div class="summary-card green">
-                <h3>Database Coverage</h3>
-                <div class="value">{database_coverage:.1f}%</div>
+            <div class="summary-card blue">
+                <h3>Average Discount</h3>
+                <div class="value">{savings_percentage:.1f}%</div>
             </div>
-            <div class="summary-card green">
-                <h3>SageMaker Coverage</h3>
-                <div class="value">{sagemaker_coverage:.1f}%</div>
+            <div class="summary-card {overall_coverage_class}">
+                <h3>SP Coverage</h3>
+                <div class="value">{overall_coverage:.1f}%</div>
+            </div>
+            <div class="summary-card {utilization_class}">
+                <h3>SP Utilization</h3>
+                <div class="value">{average_utilization:.1f}%</div>
             </div>
             <div class="summary-card orange">
                 <h3>Active Plans</h3>
                 <div class="value">{plans_count}</div>
-            </div>
-            <div class="summary-card">
-                <h3>Net Savings (30d)</h3>
-                <div class="value">${net_savings:,.0f}</div>
             </div>
         </div>
 
@@ -509,28 +790,19 @@ def generate_html_report(
             <h2>Report Parameters</h2>
             <div class="params-grid">
                 <div class="param-item">
-                    <span class="param-label">Lookback Period</span>
-                    <span class="param-value">{config.get("lookback_days", "N/A")} days</span>
+                    <strong>Lookback Period:</strong> <span>{config["lookback_days"]} days</span>
                 </div>
+                <span style="color: #dee2e6;">•</span>
                 <div class="param-item">
-                    <span class="param-label">Granularity</span>
-                    <span class="param-value">{config.get("granularity", "N/A")}</span>
+                    <strong>Granularity:</strong> <span>{config["granularity"]}</span>
                 </div>
+                <span style="color: #dee2e6;">•</span>
                 <div class="param-item">
-                    <span class="param-label">Compute SP</span>
-                    <span class="param-value">{"✓ Enabled" if config.get("enable_compute_sp", True) else "✗ Disabled"}</span>
+                    <strong>Enabled SP(s):</strong> <span>{", ".join([sp for sp, enabled in [("Compute", config["enable_compute_sp"]), ("Database", config["enable_database_sp"]), ("SageMaker", config["enable_sagemaker_sp"])] if enabled])}</span>
                 </div>
+                <span style="color: #dee2e6;">•</span>
                 <div class="param-item">
-                    <span class="param-label">Database SP</span>
-                    <span class="param-value">{"✓ Enabled" if config.get("enable_database_sp", False) else "✗ Disabled"}</span>
-                </div>
-                <div class="param-item">
-                    <span class="param-label">SageMaker SP</span>
-                    <span class="param-value">{"✓ Enabled" if config.get("enable_sagemaker_sp", False) else "✗ Disabled"}</span>
-                </div>
-                <div class="param-item">
-                    <span class="param-label">Low Util. Threshold</span>
-                    <span class="param-value">{config.get("low_utilization_threshold", "N/A")}%</span>
+                    <strong>Low Util. Threshold:</strong> <span>{config["low_utilization_threshold"]}%</span>
                 </div>
             </div>
         </div>
@@ -574,34 +846,20 @@ def generate_html_report(
         </div>
 
         <div class="section">
-            <h2>Actual Savings Summary (Last 30 Days)</h2>
-"""
-
-    html += f"""
-            <p>
-                <strong>Net Savings:</strong> <span style="color: #28a745; font-size: 1.2em; font-weight: bold;">${net_savings:,.2f}</span>
-                <span style="color: #6c757d; margin-left: 10px;">({savings_percentage:.2f}% savings)</span>
-            </p>
-            <p>
-                <strong>On-Demand Equivalent Cost:</strong> ${on_demand_equivalent:,.2f}
-                <br>
-                <strong>Actual Savings Plans Cost:</strong> ${actual_sp_cost:,.2f}
-                <br>
-                <strong>Net Savings:</strong> ${net_savings:,.2f}
-            </p>
+            <h2>Savings Plans Breakdown by Type</h2>
 """
 
     if breakdown_by_type:
         html += """
-            <h3 style="margin-top: 20px; color: #232f3e;">Savings Plans Breakdown by Type</h3>
             <table>
                 <thead>
                     <tr>
                         <th>Plan Type</th>
                         <th>Active Plans</th>
                         <th>Utilization</th>
-                        <th>Total Hourly Commitment</th>
-                        <th>Monthly Commitment</th>
+                        <th>Commitment/hr</th>
+                        <th>Would Pay On-Demand/hr</th>
+                        <th>Savings/hr</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -609,28 +867,47 @@ def generate_html_report(
         for plan_type, type_data in breakdown_by_type.items():
             plans_count_type = type_data.get("plans_count", 0)
             total_commitment_type = type_data.get("total_commitment", 0.0)
-            monthly_commitment = total_commitment_type * 730
+
+            # Get pre-calculated hourly values
+            actual_sp_cost_hourly = type_data.get("actual_sp_cost_hourly", 0.0)
+            on_demand_equivalent_hourly = type_data.get("on_demand_equivalent_hourly", 0.0)
+            net_savings_hourly = type_data.get("net_savings_hourly", 0.0)
+            type_utilization = type_data.get("average_utilization", 0.0)
 
             plan_type_display = plan_type
             if "Compute" in plan_type:
                 plan_type_display = "Compute Savings Plans"
             elif "SageMaker" in plan_type:
                 plan_type_display = "SageMaker Savings Plans"
+            elif "Database" in plan_type:
+                plan_type_display = "Database Savings Plans"
             elif "EC2Instance" in plan_type:
                 plan_type_display = "EC2 Instance Savings Plans"
-
-            # Use average utilization as approximation for type utilization
-            type_utilization = average_utilization if plans_count_type > 0 else 0.0
 
             html += f"""
                     <tr>
                         <td><strong>{plan_type_display}</strong></td>
                         <td>{plans_count_type}</td>
                         <td class="metric">{type_utilization:.1f}%</td>
-                        <td class="metric">${total_commitment_type:.4f}/hr</td>
-                        <td class="metric">${monthly_commitment:,.2f}/mo</td>
+                        <td class="metric">${total_commitment_type:.2f}/hr</td>
+                        <td class="metric">${on_demand_equivalent_hourly:.2f}/hr</td>
+                        <td class="metric" style="color: #28a745;">${net_savings_hourly:.2f}/hr</td>
                     </tr>
 """
+
+        # Add total row if there are multiple plan types
+        if len(breakdown_by_type) > 1:
+            html += f"""
+                    <tr style="border-top: 2px solid #232f3e; font-weight: bold; background-color: #f8f9fa;">
+                        <td><strong>Total</strong></td>
+                        <td>{plans_count}</td>
+                        <td class="metric">{average_utilization:.1f}%</td>
+                        <td class="metric">${total_commitment:.2f}/hr</td>
+                        <td class="metric">${on_demand_equivalent_hourly:.2f}/hr</td>
+                        <td class="metric" style="color: #28a745;">${net_savings_hourly:.2f}/hr</td>
+                    </tr>
+"""
+
         html += """
                 </tbody>
             </table>
@@ -651,26 +928,20 @@ def generate_html_report(
             key=lambda p: p.get("end_date", "9999-12-31"),
         )
 
-        # Calculate date 3 months from now for expiration highlighting
-        three_months_from_now = datetime.now(UTC) + timedelta(days=90)
+        # Calculate current date and 3 months from now for expiration highlighting
+        now = datetime.now(UTC)
+        three_months_from_now = now + timedelta(days=90)
 
-        html += f"""
-            <p>
-                <strong>Total Hourly Commitment:</strong> ${total_commitment:.4f}/hour
-                (${total_commitment * 730:,.2f}/month)
-                <br>
-                <strong>Average Utilization (30 days):</strong> {average_utilization:.2f}%
-            </p>
+        html += """
             <table>
                 <thead>
                     <tr>
-                        <th>Plan ID</th>
-                        <th>Type</th>
-                        <th>Hourly Commitment</th>
-                        <th>Term</th>
-                        <th>Payment Option</th>
-                        <th>Start Date</th>
-                        <th>End Date</th>
+                        <th style="width: 30%;">Plan ID</th>
+                        <th style="width: 12%;">Type</th>
+                        <th style="width: 16%;">Hourly Commitment</th>
+                        <th style="width: 10%;">Term</th>
+                        <th style="width: 16%;">Payment Option</th>
+                        <th style="width: 16%;">Days Remaining</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -684,21 +955,43 @@ def generate_html_report(
             start_date = plan.get("start_date", "Unknown")
             end_date = plan.get("end_date", "Unknown")
 
-            # Format dates
+            # Format dates and calculate days remaining
             start_date_display = start_date
             end_date_display = end_date
-            if "T" in start_date:
-                start_date_display = start_date.split("T")[0]
-            if "T" in end_date:
-                end_date_display = end_date.split("T")[0]
-
-            # Check if expiring within 3 months
+            days_remaining_display = "N/A"
             expiring_soon = False
+            tooltip_text = ""
+
             try:
+                # Format start date
+                if "T" in start_date:
+                    start_date_display = start_date.split("T")[0]
+
+                # Format end date
                 if "T" in end_date:
                     end_date_parsed = datetime.fromisoformat(end_date.replace("Z", "+00:00"))
+                    end_date_display = end_date.split("T")[0]
                 else:
                     end_date_parsed = datetime.strptime(end_date, "%Y-%m-%d").replace(tzinfo=UTC)
+                    end_date_display = end_date
+
+                # Calculate days remaining
+                days_remaining = (end_date_parsed - now).days
+
+                # Format days remaining display
+                if days_remaining < 0:
+                    days_remaining_display = "Expired"
+                elif days_remaining == 0:
+                    days_remaining_display = "Today"
+                elif days_remaining == 1:
+                    days_remaining_display = "1 day"
+                else:
+                    days_remaining_display = f"{days_remaining} days"
+
+                # Create tooltip with start/end dates
+                tooltip_text = f"Start: {start_date_display} | End: {end_date_display}"
+
+                # Check if expiring within 3 months
                 if end_date_parsed <= three_months_from_now:
                     expiring_soon = True
             except Exception:
@@ -708,13 +1001,12 @@ def generate_html_report(
 
             html += f"""
                     <tr {row_class}>
-                        <td style="font-family: monospace; font-size: 0.85em;">{plan_id[:20]}...</td>
+                        <td style="font-family: monospace; font-size: 0.8em; word-break: break-all;">{plan_id}</td>
                         <td>{plan_type}</td>
-                        <td class="metric">${hourly_commitment:.4f}/hr</td>
+                        <td class="metric">${hourly_commitment:.2f}/hr</td>
                         <td>{term_years} year(s)</td>
                         <td>{payment_option}</td>
-                        <td>{start_date_display}</td>
-                        <td>{end_date_display}</td>
+                        <td class="metric" title="{tooltip_text}" style="cursor: help;">{days_remaining_display}</td>
                     </tr>
 """
         html += """
@@ -726,9 +1018,31 @@ def generate_html_report(
             <div class="no-data">No active Savings Plans found</div>
 """
 
-    html += f"""
+    html += """
         </div>
+"""
 
+    # Add raw data section if provided
+    if raw_data:
+        raw_data_json = json.dumps(raw_data, indent=2, default=str)
+        html += """
+        <div class="section raw-data-section">
+            <details>
+                <summary>
+                    <span>View Raw AWS Data</span>
+                    <span style="font-size: 0.8em; color: #6c757d;">Click to expand</span>
+                </summary>
+                <div class="raw-data-controls">
+                    <button class="raw-data-button" onclick="copyRawData()">Copy to Clipboard</button>
+                    <button class="raw-data-button" onclick="expandAll()">Expand All</button>
+                    <button class="raw-data-button" onclick="collapseAll()">Collapse All</button>
+                </div>
+                <div id="jsonViewer" class="json-viewer"></div>
+            </details>
+        </div>
+"""
+
+    html += f"""
         <div class="footer">
             <p><strong>Savings Plans Autopilot</strong> - Automated Coverage & Savings Report</p>
             <p>Generated: {report_timestamp}</p>
@@ -736,74 +1050,53 @@ def generate_html_report(
     </div>
 """
 
-    # Prepare chart data from coverage timeseries
-    chart_data = _prepare_chart_data(coverage_data)
+    # Prepare chart data from coverage timeseries and calculate optimal coverage
+    chart_data, optimal_coverage_results = _prepare_chart_data(coverage_data, savings_data, config)
 
     # Extract per-type metrics
     compute_summary = coverage_data.get("compute", {}).get("summary", {})
     database_summary = coverage_data.get("database", {}).get("summary", {})
     sagemaker_summary = coverage_data.get("sagemaker", {}).get("summary", {})
 
-    target_coverage = config.get("coverage_target_percent", 90.0)
+    target_coverage = config["coverage_target_percent"]
 
     # Extract savings breakdown by type
     breakdown_by_type = savings_data.get("actual_savings", {}).get("breakdown_by_type", {})
 
+    # Get actual savings percentage used for optimization
+    savings_percentage = optimal_coverage_results.get("savings_percentage_used", 30.0)
+
     def get_type_metrics(sp_type_key, summary, sp_type_name):
         """Calculate metrics for a specific SP type"""
-        current_coverage = summary.get("avg_coverage", 0.0)
+        current_coverage = summary.get("avg_coverage_total", 0.0)
         avg_total_cost = summary.get("avg_hourly_total", 0.0)
         avg_covered_cost = summary.get("avg_hourly_covered", 0.0)
+        avg_uncovered_cost = avg_total_cost - avg_covered_cost
 
-        # Get utilization for this type
-        # Check if we have SP plans of this type and extract utilization
-        type_utilization = 0.0
-        type_keywords = {
-            "Compute": ["compute"],
-            "Database": ["rds", "database"],
-            "SageMaker": ["sagemaker"],
-        }
-        keywords = type_keywords.get(sp_type_name, [sp_type_name.lower()])
+        # Get per-type savings data from breakdown (pre-calculated hourly values)
+        type_breakdown = breakdown_by_type.get(sp_type_name, {})
+        type_savings_pct = type_breakdown.get("savings_percentage", 0.0)
+        type_utilization = type_breakdown.get("average_utilization", 0.0)
+        net_savings_hourly = type_breakdown.get("net_savings_hourly", 0.0)
 
-        for plan in savings_data.get("plans", []):
-            plan_type = plan.get("plan_type", "").lower()
-            if any(keyword in plan_type for keyword in keywords):
-                # If we have plans of this type, use overall utilization as approximation
-                # Note: This is a simplification - ideally we'd query CE API per type
-                type_utilization = average_utilization
-                break
+        # Calculate hourly costs using on-demand equivalents for consistency
+        # This shows what usage would cost at on-demand prices (easier to understand coverage impact)
+        total_spend_hourly = avg_total_cost  # On-demand equivalent of all usage
+        sp_covered_hourly = avg_covered_cost  # On-demand equivalent of SP-covered usage
+        uncovered_spend_hourly = avg_uncovered_cost  # On-demand cost of uncovered usage
 
-        # Actual savings achieved
-        # Savings = what we would pay on-demand minus what we actually pay with SP
-        # SP typically offers 30-40% discount, so if covered_cost is what we pay:
-        # On-demand equivalent = covered_cost / (1 - discount_rate)
-        # Assuming 35% average discount: on_demand_equiv = covered_cost / 0.65
-        # Savings = on_demand_equiv - covered_cost
-        discount_rate = 0.35
-        ondemand_equivalent_for_covered = (
-            avg_covered_cost / (1 - discount_rate) if avg_covered_cost > 0 else 0
-        )
-        actual_savings_hourly = ondemand_equivalent_for_covered - avg_covered_cost
-        actual_savings_monthly = actual_savings_hourly * 730
-
-        # Calculate potential additional savings if we reach target coverage
-        if current_coverage < target_coverage and avg_total_cost > 0:
-            # Additional coverage percentage points needed
-            additional_coverage_points = target_coverage - current_coverage
-            # Additional hourly cost that would be covered
-            additional_covered_hourly = avg_total_cost * (additional_coverage_points / 100)
-            # Savings on that additional coverage (35% discount)
-            potential_additional_hourly = additional_covered_hourly * discount_rate
-            potential_additional_monthly = potential_additional_hourly * 730
-        else:
-            potential_additional_monthly = 0.0
+        # Only use savings percentage if we have actual coverage/savings for this type
+        # Don't show discount % when coverage is 0 - it's misleading
+        discount_pct = type_savings_pct if current_coverage > 0 and type_savings_pct > 0 else 0.0
 
         return {
             "current_coverage": current_coverage,
             "utilization": type_utilization,
-            "actual_savings_monthly": actual_savings_monthly,
-            "potential_additional_savings": potential_additional_monthly,
-            "target_coverage": target_coverage,
+            "actual_savings_hourly": net_savings_hourly,
+            "savings_percentage": discount_pct,
+            "sp_covered_hourly": sp_covered_hourly,
+            "uncovered_spend_hourly": uncovered_spend_hourly,
+            "total_spend_hourly": total_spend_hourly,
         }
 
     compute_metrics = get_type_metrics("compute", compute_summary, "Compute")
@@ -814,10 +1107,16 @@ def generate_html_report(
         {"compute": compute_metrics, "database": database_metrics, "sagemaker": sagemaker_metrics}
     )
 
+    optimal_coverage_json = (
+        json.dumps(optimal_coverage_results) if optimal_coverage_results else "{}"
+    )
+
     html += f"""
     <script>
         const allChartData = {chart_data};
         const metricsData = {metrics_json};
+        const optimalCoverageFromPython = {optimal_coverage_json};
+        const lookbackDays = {lookback_days};
 
         // Tab switching function
         function switchTab(tabName) {{
@@ -991,7 +1290,7 @@ def generate_html_report(
         }}
 
         // Function to render metrics for a specific type
-        function renderMetrics(containerId, metrics, typeName, stats) {{
+        function renderMetrics(containerId, metrics, typeName, stats, typeKey) {{
             const container = document.getElementById(containerId);
 
             // Determine utilization color class
@@ -1003,23 +1302,48 @@ def generate_html_report(
             }}
 
             let optimizationHtml = '';
+            // Show simulator if we have usage stats
             if (stats && Object.keys(stats).length > 0) {{
-                // Calculate optimal coverage recommendation based on percentiles
-                const range = stats.max - stats.min;
-                const variability = (range / stats.max * 100).toFixed(0);
+                // Calculate total hourly costs (covered + ondemand) for THIS TYPE ONLY
+                const typeData = allChartData[typeKey];
+                const hourlyCosts = typeData.covered.map((c, i) =>
+                    (c + typeData.ondemand[i])
+                );
 
-                let recommendation = '';
-                if (variability < 20) {{
-                    recommendation = `Low variability (${{variability}}%). Consider covering close to P95 (${{stats.p95}}/hr) for maximum savings with minimal risk.`;
-                }} else if (variability < 40) {{
-                    recommendation = `Moderate variability (${{variability}}%). Consider covering P75-P90 (${{stats.p75}}-${{stats.p90}}/hr) to balance savings and risk.`;
-                }} else {{
-                    recommendation = `High variability (${{variability}}%). Consider covering P50-P75 (${{stats.p50}}-${{stats.p75}}/hr) to avoid over-commitment during low usage periods.`;
-                }}
+                // Prepare usage data for simulator
+                // Include optimal coverage calculated by Python for validation (type-specific)
+                const typeOptimal = optimalCoverageFromPython[typeKey] || {{}};
+
+                // Convert current coverage from percentage to $/hour
+                // current_coverage is a % of average total cost
+                const avgHourlyCost = hourlyCosts.reduce((sum, c) => sum + c, 0) / hourlyCosts.length;
+                const currentCoverageDollars = avgHourlyCost * (metrics.current_coverage / 100);
+
+                // Use type-specific savings percentage if available, otherwise use conservative 20% default
+                const savingsPercentage = metrics.savings_percentage > 0 ? metrics.savings_percentage : 20;
+
+                const usageData = {{
+                    hourly_costs: hourlyCosts,
+                    stats: stats,
+                    current_coverage: currentCoverageDollars,  // Now in $/hour instead of %
+                    optimal_from_python: typeOptimal,
+                    sp_type: typeName,  // Indicate which SP type this data is for
+                    savings_percentage: savingsPercentage  // Type-specific discount or 20% default
+                }};
+
+                // Compress and encode for URL
+                const compressed = pako.deflate(JSON.stringify(usageData));
+                const base64 = btoa(String.fromCharCode.apply(null, compressed));
+
+                // Use relative path for local development, remote URL for production
+                const baseUrl = window.location.protocol === 'file:'
+                    ? '../../../../docs/index.html'  // Relative: lambda/reporter/local_data/reports → root/docs
+                    : 'https://etiennechabert.github.io/terraform-aws-sp-autopilot/';
+                const simulatorUrl = `${{baseUrl}}?usage=${{encodeURIComponent(base64)}}`;
 
                 optimizationHtml = `
                     <div class="optimization-section">
-                        <h4>📊 Coverage Optimization Guide</h4>
+                        <h4>📊 Hourly Usage Statistics</h4>
                         <div class="percentile-grid">
                             <div class="percentile-item">
                                 <div class="percentile-label">Min Hourly</div>
@@ -1046,44 +1370,61 @@ def generate_html_report(
                                 <div class="percentile-value">${{stats.max}}</div>
                             </div>
                         </div>
-                        <div class="recommendation">
-                            <strong>💡 Recommendation:</strong> ${{recommendation}}
-                        </div>
-                        <div class="info-box">
-                            <strong>📘 How to Choose Your Coverage Level:</strong><br>
-                            Savings Plans commit you to a $/hr rate in exchange for a discount (typically 30-40%).
-                            You save money when actual usage exceeds your commitment, but lose money when usage drops below it.<br><br>
-                            <strong>Decision factors:</strong><br>
-                            • <strong>Higher discount (35-40%):</strong> Can commit more aggressively (P90-P95) - the discount cushions you during low usage<br>
-                            • <strong>Lower discount (20-30%):</strong> Be conservative (P50-P75) - less margin for error if usage drops<br>
-                            • <strong>Break-even example:</strong> With 35% discount, you break even if usage is >65% of commitment.
-                            Covering P75 means 75% of hours exceed this level = profitable most of the time.
+                        <div class="simulator-cta">
+                            <a href="${{simulatorUrl}}" target="_blank" class="simulator-button">
+                                🎯 Optimize Your Coverage with Interactive Simulator
+                            </a>
+                            <p class="simulator-description">
+                                Use our interactive tool to find the optimal coverage level based on your actual usage patterns.
+                                Your hourly data has been pre-loaded for analysis.
+                            </p>
                         </div>
                     </div>
                 `;
             }}
 
-            const html = `
+            // Show 6 metric cards on a single line
+            metricsHtml = `
                 <div class="tab-metrics">
                     <div class="metric-card">
-                        <h4>Current Coverage</h4>
-                        <div class="metric-value">${{metrics.current_coverage.toFixed(1)}}%</div>
+                        <h4>Avg Usage/hr</h4>
+                        <div class="metric-value">${{metrics.total_spend_hourly > 0 ? '$' + metrics.total_spend_hourly.toFixed(2) : '$0'}}</div>
+                    </div>
+                    <div class="metric-card blue">
+                        <h4>Avg SP Covered/hr</h4>
+                        <div class="metric-value">${{metrics.sp_covered_hourly > 0 ? '$' + metrics.sp_covered_hourly.toFixed(2) : 'N/A'}}</div>
+                    </div>
+                    <div class="metric-card">
+                        <h4>Avg On-Demand/hr</h4>
+                        <div class="metric-value">${{metrics.uncovered_spend_hourly > 0 ? '$' + metrics.uncovered_spend_hourly.toFixed(2) : (metrics.current_coverage > 0 ? '$0' : 'N/A')}}</div>
+                    </div>
+                    <div class="metric-card">
+                        <h4>SP Coverage</h4>
+                        <div class="metric-value">${{metrics.current_coverage > 0 ? metrics.current_coverage.toFixed(1) + '%' : 'N/A'}}</div>
                     </div>
                     <div class="metric-card ${{utilizationClass}}">
-                        <h4>Utilization</h4>
+                        <h4>SP Utilization</h4>
                         <div class="metric-value">${{metrics.utilization > 0 ? metrics.utilization.toFixed(1) + '%' : 'N/A'}}</div>
                     </div>
-                    <div class="metric-card green">
-                        <h4>Actual Savings (30 days)</h4>
-                        <div class="metric-value">${{metrics.actual_savings_monthly.toLocaleString('en-US', {{maximumFractionDigits: 0}})}}</div>
-                    </div>
-                    <div class="metric-card orange">
-                        <h4>Potential at ${{metrics.target_coverage}}% Target</h4>
-                        <div class="metric-value">+${{metrics.potential_additional_savings.toLocaleString('en-US', {{maximumFractionDigits: 0}})}}</div>
+                    <div class="metric-card blue">
+                        <h4>SP Discount</h4>
+                        <div class="metric-value">${{metrics.savings_percentage > 0 ? metrics.savings_percentage.toFixed(1) + '%' : 'N/A'}}</div>
                     </div>
                 </div>
-                ${{optimizationHtml}}
             `;
+
+            // Add info box if there's no coverage
+            if (metrics.current_coverage === 0 && metrics.total_spend_hourly > 0) {{
+                metricsHtml += `
+                    <div class="info-box">
+                        <strong>💡 Opportunity:</strong> You have no Savings Plans coverage for this service type.
+                        You're currently spending <strong>$${{metrics.total_spend_hourly.toFixed(2)}}/hour</strong> on-demand.
+                        Consider purchasing Savings Plans to reduce costs - typical discounts range from 20-40% depending on commitment term and payment option.
+                    </div>
+                `;
+            }}
+
+            const html = metricsHtml + optimizationHtml;
             container.innerHTML = html;
         }}
 
@@ -1094,10 +1435,171 @@ def generate_html_report(
         createChart('sagemakerChart', allChartData.sagemaker, 'SageMaker Savings Plans - Hourly Usage', 'sagemaker', true);
 
         // Render metrics for each type
-        renderMetrics('compute-metrics', metricsData.compute, 'Compute', allChartData.compute.stats);
-        renderMetrics('database-metrics', metricsData.database, 'Database', allChartData.database.stats);
-        renderMetrics('sagemaker-metrics', metricsData.sagemaker, 'SageMaker', allChartData.sagemaker.stats);
+        renderMetrics('compute-metrics', metricsData.compute, 'Compute', allChartData.compute.stats, 'compute');
+        renderMetrics('database-metrics', metricsData.database, 'Database', allChartData.database.stats, 'database');
+        renderMetrics('sagemaker-metrics', metricsData.sagemaker, 'SageMaker', allChartData.sagemaker.stats, 'sagemaker');
+    </script>"""
+
+    # Add JSON viewer JavaScript if raw data is provided
+    if raw_data:
+        # Convert to JSON and escape </script> to prevent breaking out of script tag
+        raw_data_json = json.dumps(raw_data, indent=2, default=str)
+        # Replace </script> with <\/script> to prevent early script termination
+        raw_data_json = raw_data_json.replace("</script>", r"<\/script>")
+
+        # Embed JSON in a script tag with type="application/json"
+        html += f"""
+    <script type="application/json" id="rawDataJsonSource">
+{raw_data_json}
     </script>
+    <script>
+
+        function escapeHtml(text) {{
+            return String(text).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+        }}
+
+        function buildJsonTree(data, isRoot = false) {{
+            if (data === null) {{
+                return '<span class="json-null">null</span>';
+            }}
+
+            if (typeof data !== 'object') {{
+                if (typeof data === 'string') {{
+                    return '<span class="json-string">"' + escapeHtml(data) + '"</span>';
+                }} else if (typeof data === 'number') {{
+                    return '<span class="json-number">' + data + '</span>';
+                }} else if (typeof data === 'boolean') {{
+                    return '<span class="json-boolean">' + data + '</span>';
+                }}
+                return escapeHtml(String(data));
+            }}
+
+            const isArray = Array.isArray(data);
+            const entries = isArray ? data : Object.entries(data);
+            const isEmpty = isArray ? data.length === 0 : Object.keys(data).length === 0;
+
+            if (isEmpty) {{
+                return isArray ? '[]' : '{{}}';
+            }}
+
+            const id = 'tree-' + Math.random().toString(36).substr(2, 9);
+            const openBracket = isArray ? '[' : '{{';
+            const closeBracket = isArray ? ']' : '}}';
+
+            let html = '<span class="json-toggle" onclick="toggleTree(\\'' + id + '\\')">▼</span>';
+            html += openBracket;
+            html += '<div class="json-children" id="' + id + '">';
+
+            if (isArray) {{
+                data.forEach((item, index) => {{
+                    html += '<div class="json-item">';
+                    html += buildJsonTree(item);
+                    if (index < data.length - 1) html += ',';
+                    html += '</div>';
+                }});
+            }} else {{
+                const keys = Object.keys(data);
+                keys.forEach((key, index) => {{
+                    html += '<div class="json-item">';
+                    html += '<span class="json-key">"' + escapeHtml(key) + '"</span>: ';
+                    html += buildJsonTree(data[key]);
+                    if (index < keys.length - 1) html += ',';
+                    html += '</div>';
+                }});
+            }}
+
+            html += '</div>';
+            html += closeBracket;
+
+            return html;
+        }}
+
+        function toggleTree(id) {{
+            const element = document.getElementById(id);
+            const toggle = element.previousElementSibling;
+            if (element.classList.contains('collapsed')) {{
+                element.classList.remove('collapsed');
+                toggle.textContent = '▼';
+            }} else {{
+                element.classList.add('collapsed');
+                toggle.textContent = '▶';
+            }}
+        }}
+
+        function expandAll() {{
+            document.querySelectorAll('.json-children').forEach(el => {{
+                el.classList.remove('collapsed');
+            }});
+            document.querySelectorAll('.json-toggle').forEach(el => {{
+                el.textContent = '▼';
+            }});
+        }}
+
+        function collapseAll() {{
+            // Get all json-children elements
+            const allChildren = document.querySelectorAll('.json-children');
+
+            // Skip the first one (root level), collapse the rest
+            allChildren.forEach((el, index) => {{
+                if (index > 0) {{
+                    el.classList.add('collapsed');
+                    // Update the toggle arrow for this element
+                    const toggle = el.previousElementSibling;
+                    if (toggle && toggle.classList.contains('json-toggle')) {{
+                        toggle.textContent = '▶';
+                    }}
+                }}
+            }});
+        }}
+
+        // Get raw data from the JSON script tag
+        function getRawDataJson() {{
+            const dataScript = document.getElementById('rawDataJsonSource');
+            return dataScript ? dataScript.textContent : null;
+        }}
+
+        function copyRawData() {{
+            const rawDataJson = getRawDataJson();
+            if (rawDataJson) {{
+                navigator.clipboard.writeText(rawDataJson).then(() => {{
+                    alert('Raw data copied to clipboard!');
+                }}).catch(err => {{
+                    console.error('Failed to copy:', err);
+                    alert('Failed to copy to clipboard');
+                }});
+            }}
+        }}
+
+        // Initialize JSON viewer on page load
+        function initJsonViewer() {{
+            const viewer = document.getElementById('jsonViewer');
+            const rawDataJson = getRawDataJson();
+
+            if (viewer && rawDataJson) {{
+                try {{
+                    const data = JSON.parse(rawDataJson);
+                    viewer.innerHTML = buildJsonTree(data, true);
+                }} catch (e) {{
+                    console.error('JSON parse error:', e);
+                    viewer.innerHTML = '<div style="color: #ff6b6b; padding: 10px;">Error rendering JSON: ' + e.message + '</div><pre style="color: #d4d4d4;">' + rawDataJson.substring(0, 1000) + '...</pre>';
+                }}
+            }} else {{
+                console.log('Viewer element or rawDataJson not found', {{ viewer: !!viewer, rawDataJson: !!rawDataJson }});
+                if (viewer && !rawDataJson) {{
+                    viewer.innerHTML = '<div style="color: #ff6b6b; padding: 10px;">No raw data available</div>';
+                }}
+            }}
+        }}
+
+        // Run immediately if DOM is already loaded, otherwise wait
+        if (document.readyState === 'loading') {{
+            document.addEventListener('DOMContentLoaded', initJsonViewer);
+        }} else {{
+            initJsonViewer();
+        }}
+    </script>"""
+
+    html += """
 </body>
 </html>
 """
@@ -1144,7 +1646,6 @@ def generate_json_report(
                 "type": plan_type,
                 "plans_count": type_data.get("plans_count", 0),
                 "total_hourly_commitment": round(type_data.get("total_commitment", 0.0), 4),
-                "total_monthly_commitment": round(type_data.get("total_commitment", 0.0) * 730, 2),
             }
         )
 
@@ -1164,30 +1665,35 @@ def generate_json_report(
         },
         "coverage_summary": {
             "compute": {
-                "avg_coverage_percentage": round(compute_summary.get("avg_coverage", 0.0), 2),
+                "avg_coverage_percentage": round(compute_summary.get("avg_coverage_total", 0.0), 2),
                 "avg_hourly_spend": round(compute_summary.get("avg_hourly_total", 0.0), 4),
             },
             "database": {
-                "avg_coverage_percentage": round(database_summary.get("avg_coverage", 0.0), 2),
+                "avg_coverage_percentage": round(
+                    database_summary.get("avg_coverage_total", 0.0), 2
+                ),
                 "avg_hourly_spend": round(database_summary.get("avg_hourly_total", 0.0), 4),
             },
             "sagemaker": {
-                "avg_coverage_percentage": round(sagemaker_summary.get("avg_coverage", 0.0), 2),
+                "avg_coverage_percentage": round(
+                    sagemaker_summary.get("avg_coverage_total", 0.0), 2
+                ),
                 "avg_hourly_spend": round(sagemaker_summary.get("avg_hourly_total", 0.0), 4),
             },
         },
         "savings_summary": {
             "active_plans_count": savings_data.get("plans_count", 0),
             "total_hourly_commitment": round(savings_data.get("total_commitment", 0.0), 4),
-            "total_monthly_commitment": round(savings_data.get("total_commitment", 0.0) * 730, 2),
             "average_utilization_percentage": round(
                 savings_data.get("average_utilization", 0.0), 2
             ),
         },
         "actual_savings": {
-            "sp_cost": round(actual_savings.get("actual_sp_cost", 0.0), 2),
-            "on_demand_cost": round(actual_savings.get("on_demand_equivalent_cost", 0.0), 2),
-            "net_savings": round(actual_savings.get("net_savings", 0.0), 2),
+            "sp_cost_hourly": round(actual_savings.get("actual_sp_cost_hourly", 0.0), 2),
+            "on_demand_cost_hourly": round(
+                actual_savings.get("on_demand_equivalent_hourly", 0.0), 2
+            ),
+            "net_savings_hourly": round(actual_savings.get("net_savings_hourly", 0.0), 2),
             "savings_percentage": round(actual_savings.get("savings_percentage", 0.0), 2),
             "breakdown": breakdown_array,
         },
@@ -1232,14 +1738,13 @@ def generate_csv_report(
         "metric,value",
         f"active_plans_count,{savings_data.get('plans_count', 0)}",
         f"total_hourly_commitment,{savings_data.get('total_commitment', 0.0):.4f}",
-        f"total_monthly_commitment,{savings_data.get('total_commitment', 0.0) * 730:.2f}",
         f"average_utilization_percentage,{savings_data.get('average_utilization', 0.0):.2f}",
-        f"compute_avg_coverage,{compute_summary.get('avg_coverage', 0.0):.2f}",
-        f"database_avg_coverage,{database_summary.get('avg_coverage', 0.0):.2f}",
-        f"sagemaker_avg_coverage,{sagemaker_summary.get('avg_coverage', 0.0):.2f}",
-        f"actual_sp_cost,{actual_savings.get('actual_sp_cost', 0.0):.2f}",
-        f"on_demand_equivalent_cost,{actual_savings.get('on_demand_equivalent_cost', 0.0):.2f}",
-        f"net_savings,{actual_savings.get('net_savings', 0.0):.2f}",
+        f"compute_avg_coverage,{compute_summary.get('avg_coverage_total', 0.0):.2f}",
+        f"database_avg_coverage,{database_summary.get('avg_coverage_total', 0.0):.2f}",
+        f"sagemaker_avg_coverage,{sagemaker_summary.get('avg_coverage_total', 0.0):.2f}",
+        f"actual_sp_cost_hourly,{actual_savings.get('actual_sp_cost_hourly', 0.0):.2f}",
+        f"on_demand_equivalent_hourly,{actual_savings.get('on_demand_equivalent_hourly', 0.0):.2f}",
+        f"net_savings_hourly,{actual_savings.get('net_savings_hourly', 0.0):.2f}",
         f"savings_percentage,{actual_savings.get('savings_percentage', 0.0):.2f}",
         "",
         "## Active Savings Plans",

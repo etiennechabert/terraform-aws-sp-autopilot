@@ -30,12 +30,20 @@
         const urlState = URLState.decodeState();
         if (urlState) {
             console.log('Restoring state from URL:', urlState);
-            appState = { ...appState, ...urlState };
+
+            // Check if we have usage data from reporter
+            if (urlState.usageData) {
+                console.log('Loading real usage data from reporter');
+                loadUsageData(urlState.usageData);
+            } else {
+                appState = { ...appState, ...urlState };
+            }
         }
 
         // Initialize charts
         ChartManager.initLoadChart('load-chart');
         ChartManager.initCostChart('cost-chart');
+        ChartManager.initSavingsCurveChart('savings-curve-chart');
 
         // Setup event listeners
         setupEventListeners();
@@ -48,6 +56,139 @@
         calculateAndUpdateCosts();
 
         console.log('Initialization complete');
+    }
+
+    /**
+     * Load real usage data from reporter
+     * @param {Object} usageData - Usage data from reporter
+     */
+    function loadUsageData(usageData) {
+        console.log('Processing usage data:', usageData);
+
+        const hourlyCosts = usageData.hourly_costs;
+        const stats = usageData.stats;
+
+        // Extract min/max from actual data
+        const minCost = Math.min(...hourlyCosts);
+        const maxCost = Math.max(...hourlyCosts);
+
+        // Create normalized curve (0-100) from real costs
+        const range = maxCost - minCost;
+        const customCurve = hourlyCosts.map(cost => {
+            if (range === 0) return 50; // All same value
+            return ((cost - minCost) / range) * 100;
+        });
+
+        // Validate optimal coverage calculation (Python vs JavaScript)
+        // Round to 2 decimals to avoid excessive precision in UI
+        const savingsPercentage = Math.round((usageData.savings_percentage || 30) * 100) / 100;
+        if (usageData.optimal_from_python && Object.keys(usageData.optimal_from_python).length > 0) {
+            validateOptimalCoverage(hourlyCosts, usageData.optimal_from_python, savingsPercentage);
+        }
+
+        // Use current coverage from user's actual commitment, or default to min-hourly
+        const currentCoverage = usageData.current_coverage || minCost;
+
+        // Update app state with real data
+        appState = {
+            ...appState,
+            pattern: 'custom',
+            minCost: minCost,
+            maxCost: maxCost,
+            coverageCost: currentCoverage,  // Set to user's actual current coverage
+            customCurve: customCurve,
+            savingsPercentage: savingsPercentage,  // Use actual discount from user's SPs
+            usageDataLoaded: true,
+            usageData: usageData,  // Store full usage data for banner
+            usageStats: stats,
+            currentCoverage: currentCoverage,
+            optimalFromPython: usageData.optimal_from_python
+        };
+
+        // Show indicator that real data is loaded
+        showUsageDataBanner();
+    }
+
+    /**
+     * Validate that Python and JavaScript calculate the same optimal coverage
+     * @param {Array<number>} hourlyCosts - Hourly costs from reporter
+     * @param {Object} pythonResult - Optimal coverage calculated by Python
+     * @param {number} savingsPercentage - Actual savings percentage from user's SPs
+     */
+    function validateOptimalCoverage(hourlyCosts, pythonResult, savingsPercentage) {
+        // Calculate using JavaScript implementation with the same savings percentage
+        const jsResult = CostCalculator.calculateOptimalCoverage(hourlyCosts, savingsPercentage);
+
+        // Compare coverage values (allow 1% tolerance for floating point differences)
+        const pythonCoverage = pythonResult.coverage_hourly || 0;
+        const jsCoverage = jsResult.coverageUnits || 0;
+        const difference = Math.abs(pythonCoverage - jsCoverage);
+        const tolerance = Math.max(pythonCoverage, jsCoverage) * 0.01; // 1% tolerance
+
+        if (difference > tolerance) {
+            console.warn('⚠️ Mismatch detected between Python and JavaScript optimal coverage calculations!');
+            console.warn(`Python: $${pythonCoverage.toFixed(2)}/hr`);
+            console.warn(`JavaScript: $${jsCoverage.toFixed(2)}/hr`);
+            console.warn(`Difference: $${difference.toFixed(2)}/hr`);
+
+            showMismatchWarning(pythonCoverage, jsCoverage);
+        } else {
+            console.log('✓ Python and JavaScript optimal coverage calculations match');
+            console.log(`Optimal: $${jsCoverage.toFixed(2)}/hr`);
+        }
+    }
+
+    /**
+     * Show warning banner when Python and JavaScript calculations mismatch
+     * @param {number} pythonValue - Python calculated value
+     * @param {number} jsValue - JavaScript calculated value
+     */
+    function showMismatchWarning(pythonValue, jsValue) {
+        const header = document.querySelector('.header-content');
+        if (!header) return;
+
+        const warning = document.createElement('div');
+        warning.className = 'mismatch-warning';
+        warning.innerHTML = `
+            <div class="warning-content">
+                <span class="warning-icon">⚠️</span>
+                <span class="warning-text">
+                    <strong>Algorithm Mismatch Detected</strong><br>
+                    Python calculated: $${pythonValue.toFixed(2)}/hr | JavaScript calculated: $${jsValue.toFixed(2)}/hr<br>
+                    <small>The Python and JavaScript implementations may be out of sync. Please report this issue.</small>
+                </span>
+            </div>
+        `;
+
+        header.appendChild(warning);
+    }
+
+    /**
+     * Show banner indicating real usage data is loaded
+     */
+    function showUsageDataBanner() {
+        const header = document.querySelector('.header-content');
+        if (!header) return;
+
+        const spType = appState.usageDataLoaded && appState.usageData?.sp_type
+            ? appState.usageData.sp_type
+            : 'All Types';
+
+        const savingsPct = appState.savingsPercentage || 30;
+
+        const banner = document.createElement('div');
+        banner.className = 'usage-data-banner';
+        banner.innerHTML = `
+            <div class="banner-content">
+                <span class="banner-icon">📊</span>
+                <span class="banner-text">
+                    <strong>Real Usage Data Loaded</strong> - ${spType} Savings Plans<br>
+                    <small>Using your actual ${savingsPct.toFixed(1)}% discount rate</small>
+                </span>
+            </div>
+        `;
+
+        header.appendChild(banner);
     }
 
     /**
@@ -421,15 +562,116 @@
 
         // Update optimal suggestion
         updateOptimalSuggestion(currentCostResults);
+
+        // Calculate and update savings curve (0-200% of min-hourly)
+        updateSavingsCurveDisplay(hourlyCosts);
+    }
+
+    /**
+     * Update savings curve chart display
+     * @param {Array<number>} hourlyCosts - Hourly costs
+     */
+    function updateSavingsCurveDisplay(hourlyCosts) {
+        if (!hourlyCosts || hourlyCosts.length === 0) return;
+
+        const minCost = Math.min(...hourlyCosts);
+        const maxCost = Math.max(...hourlyCosts);
+        const savingsPercentage = appState.savingsPercentage;
+        const baselineCost = hourlyCosts.reduce((sum, cost) => sum + cost, 0);
+
+        // First pass: find breakeven point by testing coverage levels
+        let breakevenCoverage = maxCost;
+        const discountFactor = (1 - savingsPercentage / 100);
+        const testIncrement = maxCost / 500; // Fine granularity for finding breakeven
+
+        for (let coverageCost = 0; coverageCost <= maxCost; coverageCost += testIncrement) {
+            let commitmentCost = 0;
+            let spilloverCost = 0;
+
+            for (let i = 0; i < hourlyCosts.length; i++) {
+                commitmentCost += coverageCost * discountFactor;
+                spilloverCost += Math.max(0, hourlyCosts[i] - coverageCost);
+            }
+
+            const totalCost = commitmentCost + spilloverCost;
+            const netSavings = baselineCost - totalCost;
+
+            // Found where we cross back to negative savings
+            if (netSavings < 0) {
+                breakevenCoverage = coverageCost - testIncrement;
+                break;
+            }
+        }
+
+        // Set chart range to breakeven + 10% buffer (or max if breakeven is close to max)
+        const bufferMultiplier = 1.1;
+        const chartMaxCost = Math.min(breakevenCoverage * bufferMultiplier, maxCost);
+
+        // Generate curve data from $0 to chartMaxCost with high resolution
+        const curveData = [];
+        const increment = chartMaxCost / 500; // 500 data points for smooth curve
+
+        for (let coverageCost = 0; coverageCost <= chartMaxCost; coverageCost += increment) {
+            let commitmentCost = 0;
+            let spilloverCost = 0;
+
+            for (let i = 0; i < hourlyCosts.length; i++) {
+                commitmentCost += coverageCost * discountFactor;
+                spilloverCost += Math.max(0, hourlyCosts[i] - coverageCost);
+            }
+
+            const totalCost = commitmentCost + spilloverCost;
+            const netSavings = baselineCost - totalCost;
+            const savingsPercent = baselineCost > 0 ? (netSavings / baselineCost) * 100 : 0;
+
+            curveData.push({
+                coverage: coverageCost,
+                netSavings: netSavings,
+                savingsPercent: savingsPercent,
+                extraSavings: 0  // Will be calculated below
+            });
+        }
+
+        // Calculate min-hourly baseline savings (find point closest to min-hourly)
+        const minHourlyPoint = curveData.reduce((prev, curr) => {
+            return Math.abs(curr.coverage - minCost) < Math.abs(prev.coverage - minCost) ? curr : prev;
+        });
+        const minHourlySavings = minHourlyPoint.netSavings;
+
+        // Calculate extra savings for each point
+        curveData.forEach(point => {
+            point.extraSavings = point.netSavings - minHourlySavings;
+        });
+
+        // Get optimal coverage for annotation
+        const optimalResult = CostCalculator.calculateOptimalCoverage(hourlyCosts, savingsPercentage);
+
+        // Always use the current slider position for the vertical line
+        const currentCoverageFromData = appState.coverageCost;
+
+        // Update chart
+        ChartManager.updateSavingsCurveChart(
+            curveData,
+            minHourlySavings,
+            optimalResult.coverageUnits,
+            minCost,
+            chartMaxCost,
+            baselineCost,
+            currentCoverageFromData
+        );
     }
 
     /**
      * Update coverage display
      */
     function updateCoverageDisplay(coverageCost) {
+        // Calculate percentage of min-hourly
+        const minCost = appState.minCost || 1;
+        const percentOfMin = (coverageCost / minCost) * 100;
+
         const displayElement = document.getElementById('coverage-display');
         if (displayElement) {
-            displayElement.textContent = `$${coverageCost.toFixed(2)}/hour`;
+            displayElement.textContent = `$${coverageCost.toFixed(2)}/hour (${percentOfMin.toFixed(0)}%)`;
         }
 
         const unitsElement = document.getElementById('coverage-units');
@@ -437,7 +679,8 @@
             // Calculate actual commitment cost with discount applied
             const discountFactor = (1 - appState.savingsPercentage / 100);
             const actualCost = coverageCost * discountFactor;
-            unitsElement.textContent = `${CostCalculator.formatCurrency(actualCost)}/hour vs ${CostCalculator.formatCurrency(coverageCost)}/hour On-Demand`;
+
+            unitsElement.textContent = `Cost ${CostCalculator.formatCurrency(actualCost)}/hour vs ${CostCalculator.formatCurrency(coverageCost)}/hour On-Demand`;
         }
     }
 
@@ -551,16 +794,37 @@
             results.optimalCoveragePercentage
         );
 
-        // Convert optimal percentage to dollars for display
-        const optimalCost = (results.optimalCoveragePercentage / 100) * appState.maxCost;
+        // Use optimal coverage directly (in $/hour), not recalculated from percentage
+        const optimalCost = results.optimalCoverageUnits;
         const currentCost = appState.coverageCost;
+
+        // Calculate min-hourly percentage
+        const minCost = appState.minCost;
+        const optimalPercentOfMin = (optimalCost / minCost) * 100;
 
         // Update status class
         suggestionElement.classList.remove('status-optimal', 'status-warning', 'status-danger');
         suggestionElement.classList.add(`status-${suggestion.status}`);
 
-        // Update title with optimal dollar amount
-        titleElement.textContent = `Optimal Coverage Suggestion: ${CostCalculator.formatCurrency(optimalCost)}/hour`;
+        // Update title with optimal dollar amount and extra savings info
+        const minHourlySavings = results.optimalCoverage.minHourlySavings || 0;
+        const extraSavings = results.optimalCoverage.extraSavings || 0;
+        const totalSavings = results.optimalCoverage.maxNetSavings || 0;
+
+        // Always show percentage of min-hourly
+        if (extraSavings > 0.01) {
+            titleElement.innerHTML = `Optimal: ${CostCalculator.formatCurrency(optimalCost)}/hour (${optimalPercentOfMin.toFixed(0)}% of min-hourly)<br>
+                <small style="font-weight: normal; opacity: 0.9;">
+                    Baseline: ${CostCalculator.formatCurrency(minHourlySavings)}/wk |
+                    Extra: +${CostCalculator.formatCurrency(extraSavings)}/wk =
+                    ${CostCalculator.formatCurrency(totalSavings)}/wk total
+                </small>`;
+        } else {
+            titleElement.innerHTML = `Optimal: ${CostCalculator.formatCurrency(optimalCost)}/hour (${optimalPercentOfMin.toFixed(0)}% of min-hourly)<br>
+                <small style="font-weight: normal; opacity: 0.9;">
+                    Baseline savings: ${CostCalculator.formatCurrency(totalSavings)}/wk
+                </small>`;
+        }
 
         // Update text with dollar amounts
         let message = suggestion.message;
