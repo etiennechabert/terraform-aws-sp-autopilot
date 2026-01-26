@@ -258,10 +258,10 @@ def _prepare_chart_data(
     return json.dumps(all_chart_data), optimal_results
 
 
-def _render_scheduler_preview_section(
-    preview_data: dict[str, Any] | None, config: dict[str, Any]
+def _render_sp_type_scheduler_preview(
+    sp_type: str, preview_data: dict[str, Any] | None, config: dict[str, Any]
 ) -> str:
-    """Render the scheduler preview section comparing all three strategies."""
+    """Render scheduler preview comparison for a specific SP type."""
 
     strategy_names = {
         "fixed": "Fixed",
@@ -275,42 +275,39 @@ def _render_scheduler_preview_section(
         "follow_aws": "Follows AWS Cost Explorer recommendations.",
     }
 
-    # Helper to render comparison for a specific SP type
-    def render_sp_type_comparison(sp_type: str) -> str:
-        if not preview_data:
-            return '<div class="no-data">Preview data not available</div>'
+    if not preview_data:
+        return ""  # Return empty string if no preview data
 
-        if preview_data.get("error"):
-            return f"""
-                <div class="no-data" style="color: #dc3545;">
-                    Failed to calculate preview: {preview_data["error"]}
-                </div>
-            """
+    if preview_data.get("error"):
+        return f"""
+            <div class="info-box" style="background: #fff3cd; border-left: 4px solid #ffc107; margin-top: 20px;">
+                <strong>Scheduler Preview:</strong> Failed to calculate - {preview_data["error"]}
+            </div>
+        """
 
-        strategies = preview_data.get("strategies", {})
-        configured_strategy = preview_data.get("configured_strategy", "fixed")
-        target_coverage = config.get("coverage_target_percent", 90.0)
+    strategies = preview_data.get("strategies", {})
+    configured_strategy = preview_data.get("configured_strategy", "fixed")
+    target_coverage = config.get("coverage_target_percent", 90.0)
 
-        # Collect purchases from all strategies for this SP type
-        strategy_purchases = {}
-        for strategy_name, strategy_data in strategies.items():
-            for purchase in strategy_data.get("purchases", []):
-                if purchase.get("sp_type") == sp_type:
-                    strategy_purchases[strategy_name] = purchase
-                    break
+    # Collect purchases from all strategies for this SP type
+    strategy_purchases = {}
+    for strategy_name, strategy_data in strategies.items():
+        for purchase in strategy_data.get("purchases", []):
+            if purchase.get("sp_type") == sp_type:
+                strategy_purchases[strategy_name] = purchase
+                break
 
-        if not strategy_purchases:
-            return f"""
-                <div class="no-data">
-                    No purchases recommended for {sp_type.capitalize()} Savings Plans by any strategy.
-                    You may already be at or above your target coverage.
-                </div>
-            """
+    if not strategy_purchases:
+        return ""  # Return empty if no recommendations
 
-        # Build comparison table
-        html = f"""
-            <div style="margin: 20px 0;">
-                <h3 style="color: #232f3e; margin-bottom: 15px;">{sp_type.capitalize()} Savings Plans - Strategy Comparison</h3>
+    # Build comparison table
+    html = f"""
+        <div style="margin-top: 30px; padding-top: 20px; border-top: 2px solid #e0e0e0;">
+            <h3 style="color: #232f3e; margin-bottom: 15px;">📊 Scheduler Preview - Strategy Comparison</h3>
+            <div class="info-box" style="background: #fff9e6; border-left: 4px solid #ffc107; margin-bottom: 15px;">
+                <strong>What is this?</strong> Compares what each scheduler strategy would purchase if it ran right now.
+                The currently configured strategy ({configured_strategy.upper()}) is highlighted.
+            </div>
 
                 <table style="width: 100%;">
                     <thead>
@@ -326,54 +323,50 @@ def _render_scheduler_preview_section(
                         </tr>
                     </thead>
                     <tbody>
-        """
+    """
 
-        # Render row for each strategy
-        for strategy_type in ["fixed", "dichotomy", "follow_aws"]:
-            purchase = strategy_purchases.get(strategy_type)
-            strategy_display = strategy_names.get(strategy_type, strategy_type)
+    # Render row for each strategy
+    for strategy_type in ["fixed", "dichotomy", "follow_aws"]:
+        purchase = strategy_purchases.get(strategy_type)
+        strategy_display = strategy_names.get(strategy_type, strategy_type)
 
-            if not purchase:
-                # Show "No recommendation" row
-                is_configured = strategy_type == configured_strategy
-                row_class = (
-                    'style="background: #fff9e6; font-weight: 600;"' if is_configured else ""
-                )
-                configured_badge = (
-                    ' <span style="background: #ff9900; color: white; padding: 2px 8px; border-radius: 3px; font-size: 0.75em; font-weight: 600;">CONFIGURED</span>'
-                    if is_configured
-                    else ""
-                )
+        if not purchase:
+            # Show "No recommendation" row
+            is_configured = strategy_type == configured_strategy
+            row_class = 'style="background: #fff9e6; font-weight: 600;"' if is_configured else ""
+            configured_badge = (
+                ' <span style="background: #ff9900; color: white; padding: 2px 8px; border-radius: 3px; font-size: 0.75em; font-weight: 600;">CONFIGURED</span>'
+                if is_configured
+                else ""
+            )
 
-                html += f"""
+            html += f"""
                     <tr {row_class}>
                         <td><strong>{strategy_display}</strong>{configured_badge}</td>
                         <td colspan="7" style="color: #6c757d; font-style: italic;">No recommendation</td>
                     </tr>
                 """
-            else:
-                # Show purchase recommendation
-                hourly_commit = purchase["hourly_commitment"]
-                purchase_percent = purchase.get("purchase_percent", 0.0)
-                current_cov = purchase["current_coverage"]
-                projected_cov = purchase["projected_coverage"]
-                cov_increase = projected_cov - current_cov
-                term = purchase.get("term", "N/A")
-                payment_option = purchase.get("payment_option", "N/A")
+        else:
+            # Show purchase recommendation
+            hourly_commit = purchase["hourly_commitment"]
+            purchase_percent = purchase.get("purchase_percent", 0.0)
+            current_cov = purchase["current_coverage"]
+            projected_cov = purchase["projected_coverage"]
+            cov_increase = projected_cov - current_cov
+            term = purchase.get("term", "N/A")
+            payment_option = purchase.get("payment_option", "N/A")
 
-                is_configured = strategy_type == configured_strategy
-                row_class = (
-                    'style="background: #fff9e6; font-weight: 600;"' if is_configured else ""
-                )
-                configured_badge = (
-                    ' <span style="background: #ff9900; color: white; padding: 2px 8px; border-radius: 3px; font-size: 0.75em; font-weight: 600;">CONFIGURED</span>'
-                    if is_configured
-                    else ""
-                )
+            is_configured = strategy_type == configured_strategy
+            row_class = 'style="background: #fff9e6; font-weight: 600;"' if is_configured else ""
+            configured_badge = (
+                ' <span style="background: #ff9900; color: white; padding: 2px 8px; border-radius: 3px; font-size: 0.75em; font-weight: 600;">CONFIGURED</span>'
+                if is_configured
+                else ""
+            )
 
-                coverage_class = "green" if projected_cov >= target_coverage else "orange"
+            coverage_class = "green" if projected_cov >= target_coverage else "orange"
 
-                html += f"""
+            html += f"""
                     <tr {row_class}>
                         <td><strong>{strategy_display}</strong>{configured_badge}</td>
                         <td class="metric" style="color: #2196f3; font-weight: bold;">${hourly_commit:.4f}/hr</td>
@@ -386,86 +379,54 @@ def _render_scheduler_preview_section(
                     </tr>
                 """
 
-        html += """
-                    </tbody>
-                </table>
-            </div>
-        """
-
-        # Add strategy descriptions with parameters
-        html += """
-            <div class="info-box" style="margin-top: 20px; background: #f8f9fa; border-left: 4px solid #6c757d;">
-                <strong>Strategy Descriptions:</strong>
-                <ul style="margin: 10px 0 0 20px; padding: 0;">
-        """
-
-        is_configured_fixed = configured_strategy == "fixed"
-        is_configured_dichotomy = configured_strategy == "dichotomy"
-
-        # Fixed strategy
-        fixed_params = (
-            f"(max purchase: {config.get('max_purchase_percent', 10.0):.0f}%)"
-            if is_configured_fixed
-            else "(default: max purchase 10%)"
-        )
-        html += f"""
-                    <li><strong>Fixed:</strong> {strategy_descriptions["fixed"]} {fixed_params}</li>
-        """
-
-        # Dichotomy strategy
-        if is_configured_dichotomy:
-            max_purchase = config.get("max_purchase_percent", 50.0)
-            min_purchase = config.get("min_purchase_percent", 1.0)
-            dichotomy_params = f"(max: {max_purchase:.0f}%, min: {min_purchase:.0f}%)"
-        else:
-            dichotomy_params = "(default: max 50%, min 1%)"
-        html += f"""
-                    <li><strong>Dichotomy:</strong> {strategy_descriptions["dichotomy"]} {dichotomy_params}</li>
-        """
-
-        # Follow AWS strategy
-        html += f"""
-                    <li><strong>Follow AWS:</strong> {strategy_descriptions["follow_aws"]}</li>
-        """
-
-        html += """
-                </ul>
-            </div>
-        """
-
-        return html
-
-    configured_strategy = (
-        preview_data.get("configured_strategy", "unknown") if preview_data else "unknown"
-    )
-
-    return f"""
-        <div class="section">
-            <h2>Scheduler Preview</h2>
-            <div class="info-box" style="background: #fff9e6; border-left: 4px solid #ffc107; margin-bottom: 20px;">
-                <strong>What is this?</strong> This section compares what each scheduler strategy would purchase if it ran right now.
-                The currently configured strategy ({configured_strategy.upper()}) is highlighted.
-            </div>
-
-            <div class="tabs">
-                <button class="tab active" onclick="switchTab('preview-compute')">Compute</button>
-                <button class="tab" onclick="switchTab('preview-database')">Database</button>
-                <button class="tab" onclick="switchTab('preview-sagemaker')">SageMaker</button>
-            </div>
-
-            <div id="preview-compute-tab" class="tab-content active">
-                {render_sp_type_comparison("compute")}
-            </div>
-
-            <div id="preview-database-tab" class="tab-content">
-                {render_sp_type_comparison("database")}
-            </div>
-
-            <div id="preview-sagemaker-tab" class="tab-content">
-                {render_sp_type_comparison("sagemaker")}
-            </div>
+    html += """
+                </tbody>
+            </table>
         </div>
     """
+
+    # Add strategy descriptions with parameters
+    html += """
+        <div class="info-box" style="margin-top: 20px; background: #f8f9fa; border-left: 4px solid #6c757d;">
+            <strong>Strategy Descriptions:</strong>
+            <ul style="margin: 10px 0 0 20px; padding: 0;">
+    """
+
+    is_configured_fixed = configured_strategy == "fixed"
+    is_configured_dichotomy = configured_strategy == "dichotomy"
+
+    # Fixed strategy
+    fixed_params = (
+        f"(max purchase: {config.get('max_purchase_percent', 10.0):.0f}%)"
+        if is_configured_fixed
+        else "(default: max purchase 10%)"
+    )
+    html += f"""
+                <li><strong>Fixed:</strong> {strategy_descriptions["fixed"]} {fixed_params}</li>
+    """
+
+    # Dichotomy strategy
+    if is_configured_dichotomy:
+        max_purchase = config.get("max_purchase_percent", 50.0)
+        min_purchase = config.get("min_purchase_percent", 1.0)
+        dichotomy_params = f"(max: {max_purchase:.0f}%, min: {min_purchase:.0f}%)"
+    else:
+        dichotomy_params = "(default: max 50%, min 1%)"
+    html += f"""
+                <li><strong>Dichotomy:</strong> {strategy_descriptions["dichotomy"]} {dichotomy_params}</li>
+    """
+
+    # Follow AWS strategy
+    html += f"""
+                <li><strong>Follow AWS:</strong> {strategy_descriptions["follow_aws"]}</li>
+    """
+
+    html += """
+            </ul>
+        </div>
+    """
+
+    return html
 
 
 def generate_html_report(
@@ -1073,7 +1034,7 @@ def generate_html_report(
         </div>
 
         <div class="section">
-            <h2>Usage Over Time</h2>
+            <h2>Usage Over Time and Scheduler Preview</h2>
 
             <div class="tabs">
                 <button class="tab active" onclick="switchTab('global')">Global (All Types)</button>
@@ -1099,6 +1060,7 @@ def generate_html_report(
                     </button>
                     <canvas id="computeChart"></canvas>
                 </div>
+                {_render_sp_type_scheduler_preview("compute", preview_data, config or {{}})}
             </div>
 
             <div id="database-tab" class="tab-content">
@@ -1109,6 +1071,7 @@ def generate_html_report(
                     </button>
                     <canvas id="databaseChart"></canvas>
                 </div>
+                {_render_sp_type_scheduler_preview("database", preview_data, config or {{}})}
             </div>
 
             <div id="sagemaker-tab" class="tab-content">
@@ -1119,10 +1082,9 @@ def generate_html_report(
                     </button>
                     <canvas id="sagemakerChart"></canvas>
                 </div>
+                {_render_sp_type_scheduler_preview("sagemaker", preview_data, config or {{}})}
             </div>
         </div>
-
-        {_render_scheduler_preview_section(preview_data, config or {})}
 
         <div class="section">
             <h2>Existing Savings Plans</h2>

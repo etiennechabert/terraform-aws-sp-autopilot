@@ -542,11 +542,11 @@ def test_handler_with_scheduler_preview_fixed_strategy(monkeypatch, mock_clients
     if isinstance(report_html, bytes):
         report_html = report_html.decode("utf-8")
 
-    # Verify scheduler preview section is present in HTML
-    assert "Scheduler Preview" in report_html, "Scheduler preview section should be in HTML"
-    assert "preview-compute" in report_html, "Preview should have compute tab"
-    assert "preview-database" in report_html, "Preview should have database tab"
-    assert "preview-sagemaker" in report_html, "Preview should have sagemaker tab"
+    # Verify scheduler preview is embedded within usage tabs
+    assert "Usage Over Time and Scheduler Preview" in report_html, "Section title should be updated"
+    assert "Scheduler Preview - Strategy Comparison" in report_html, (
+        "Preview comparison should be in HTML"
+    )
 
     # Verify all three strategies are shown in the comparison
     assert "Fixed" in report_html, "Preview should show Fixed strategy"
@@ -616,9 +616,9 @@ def test_handler_with_scheduler_preview_dichotomy_strategy(
     if isinstance(report_html, bytes):
         report_html = report_html.decode("utf-8")
 
-    # Verify scheduler preview section is present
-    assert "Scheduler Preview" in report_html
-    assert "preview-compute" in report_html
+    # Verify scheduler preview is embedded within usage tabs
+    assert "Usage Over Time and Scheduler Preview" in report_html
+    assert "Scheduler Preview - Strategy Comparison" in report_html
 
     # Verify all three strategies are shown in the comparison
     assert "Fixed" in report_html
@@ -684,9 +684,9 @@ def test_handler_with_scheduler_preview_follow_aws_strategy(
     if isinstance(report_html, bytes):
         report_html = report_html.decode("utf-8")
 
-    # Verify scheduler preview section is present
-    assert "Scheduler Preview" in report_html
-    assert "preview-compute" in report_html
+    # Verify scheduler preview is embedded within usage tabs
+    assert "Usage Over Time and Scheduler Preview" in report_html
+    assert "Scheduler Preview - Strategy Comparison" in report_html
 
     # Verify all three strategies are shown in the comparison
     assert "Fixed" in report_html

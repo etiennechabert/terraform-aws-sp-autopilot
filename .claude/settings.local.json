@@ -1,0 +1,20 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(python3:*)",
+      "Bash(git checkout:*)",
+      "Bash(ls:*)",
+      "Bash(git add:*)",
+      "Bash(git commit:*)",
+      "Bash(git reset:*)",
+      "Bash(git push:*)",
+      "Bash(gh pr create --draft --title \"Add staggered SP purchase strategy documentation\" --body \"$\\(cat <<''EOF''\n## Overview\n\nThis PR adds comprehensive documentation for an advanced Savings Plan purchase strategy that enables safely pushing coverage beyond the conservative min-hourly baseline \\(100%\\) to capture additional savings.\n\n## What''s New\n\n- **New Document:** `docs/STAGGERED_SP_STRATEGY.md`\n- Describes two-level coverage strategy \\(safe vs optimal\\)\n- Documents the 3Y plan clustering problem and solutions\n- Introduces dynamic dichotomy purchase algorithm\n- Defines renewal split strategy for progressive redistribution\n\n## Key Concepts\n\n### Dynamic Dichotomy\nInstead of equal monthly purchases, initial purchases follow `X, X/2, X/4, X/8...` where X is calculated based on target coverage level. This sums to the target while creating natural size graduation.\n\n### Renewal Splits\nWhen a plan expires, it''s replaced with **two smaller plans** purchased in different months:\n- Year 1: Purchase $20/hr → Expires Year 2\n- Year 2: Split to 2x $10/hr in Month 1 and Month 7 → Expire Year 3\n- Year 3: Split to 4x $5/hr distributed across months → Expire Year 4\n\nOver 3-4 cycles, this converges to even monthly distribution while maintaining flexibility.\n\n## Implementation Status\n\nThis is a **design document only** - no code changes yet. It captures:\n- Strategy concepts and rationale\n- Implementation considerations\n- Open questions for algorithm design\n- Recommended phases for rollout\n\n## Open Questions\n\n1. **Split Placement:** Where exactly should the 2 renewal purchases be placed?\n   - Maximize time gap between renewals?\n   - Fill gaps in existing coverage?\n   - Round-robin distribution?\n\n2. **Stopping Threshold:** When to stop splitting tiny plans?\n   - Absolute minimum \\(1% of min-hourly\\)?\n   - Percentage of total coverage?\n   - Never stop?\n\n3. **Adaptive Renewals:** Should renewal amounts adjust based on new optimal calculations?\n   - Conservative: Always renew at same total amount\n   - Adaptive: Adjust based on gap to current optimal\n\n4. **3Y Migration:** How to transition existing 1Y plans to 3Y without clustering?\n   - Hybrid 50/50 approach?\n   - Accept yearly clustering?\n   - 3-cohort system?\n\n## Next Steps \\(Future PRs\\)\n\n- [ ] Implement dichotomy calculator in Python\n- [ ] Build renewal split algorithm\n- [ ] Create SP tracking database schema\n- [ ] Add purchase schedule visualization to GH-Page\n- [ ] Generate recommended monthly purchases in reporter\n- [ ] Build renewal reminder system\n\n## Related\n\nThis strategy builds on the optimal coverage calculation already implemented in:\n- `lambda/shared/optimal_coverage.py` - Core optimization algorithm\n- Interactive simulator showing savings curve with optimal point\n- Reporter showing baseline vs extra savings potential\n\nBy enabling staggered purchases with progressive redistribution, users can safely operate in the green \"extra savings\" zone beyond min-hourly coverage.\n\n---\n\n**Note:** This is a draft PR to document the strategy for future reference. Feedback welcome on the approach and open questions before implementation begins.\nEOF\n\\)\")",
+      "Bash(gh pr close:*)",
+      "Bash(git branch:*)",
+      "Bash(gh pr create:*)",
+      "Bash(gh pr list:*)",
+      "Bash(gh pr view:*)",
+      "Bash(python -m pytest:*)"
+    ]
+  }
+}
