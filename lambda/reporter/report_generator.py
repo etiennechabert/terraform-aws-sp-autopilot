@@ -336,9 +336,27 @@ def generate_html_report(
     )
     total_hourly_ondemand = total_hourly_spend - total_hourly_covered
 
-    # Calculate overall coverage percentage (weighted by actual spend)
+    # Calculate overall coverage percentage relative to min-hourly (first optimization target)
+    # Extract min-hourly from timeseries data for each SP type
+    def get_min_hourly_from_timeseries(sp_type_data):
+        """Extract minimum hourly cost from timeseries data."""
+        timeseries = sp_type_data.get("timeseries", {})
+        total_costs = []
+        for ts_data in timeseries.values():
+            total = ts_data.get("covered_cost", 0.0) + ts_data.get("ondemand_cost", 0.0)
+            if total > 0:  # Only consider non-zero costs
+                total_costs.append(total)
+        return min(total_costs) if total_costs else 0.0
+
+    compute_min = get_min_hourly_from_timeseries(coverage_data.get("compute", {}))
+    database_min = get_min_hourly_from_timeseries(coverage_data.get("database", {}))
+    sagemaker_min = get_min_hourly_from_timeseries(coverage_data.get("sagemaker", {}))
+
+    total_min_hourly = compute_min + database_min + sagemaker_min
+
+    # Coverage as percentage of min-hourly (more meaningful than % of total)
     overall_coverage = (
-        (total_hourly_covered / total_hourly_spend * 100) if total_hourly_spend > 0 else 0.0
+        (total_hourly_covered / total_min_hourly * 100) if total_min_hourly > 0 else 0.0
     )
     overall_coverage_class = get_coverage_class(overall_coverage)
 
@@ -773,7 +791,7 @@ def generate_html_report(
                 <div class="value">{savings_percentage:.1f}%</div>
             </div>
             <div class="summary-card {overall_coverage_class}">
-                <h3>SP Coverage</h3>
+                <h3>SP Coverage min-hourly</h3>
                 <div class="value">{overall_coverage:.1f}%</div>
             </div>
             <div class="summary-card {utilization_class}">
@@ -1399,8 +1417,18 @@ def generate_html_report(
                         <div class="metric-value">${{metrics.uncovered_spend_hourly > 0 ? '$' + metrics.uncovered_spend_hourly.toFixed(2) : (metrics.current_coverage > 0 ? '$0' : 'N/A')}}</div>
                     </div>
                     <div class="metric-card">
-                        <h4>SP Coverage</h4>
-                        <div class="metric-value">${{metrics.current_coverage > 0 ? metrics.current_coverage.toFixed(1) + '%' : 'N/A'}}</div>
+                        <h4>SP Coverage min-hourly</h4>
+                        <div class="metric-value">${{
+                            (() => {{
+                                if (metrics.current_coverage === 0) return 'N/A';
+                                const minHourly = stats?.min || 0;
+                                if (minHourly === 0) return 'N/A';
+                                // sp_covered_hourly is on-demand equivalent of covered usage
+                                // Calculate coverage as % of min-hourly instead of total
+                                const coverageMinHourlyPct = (metrics.sp_covered_hourly / minHourly) * 100;
+                                return coverageMinHourlyPct.toFixed(1) + '%';
+                            }})()
+                        }}</div>
                     </div>
                     <div class="metric-card ${{utilizationClass}}">
                         <h4>SP Utilization</h4>
@@ -1424,7 +1452,7 @@ def generate_html_report(
                         <strong>Key insights:</strong>
                         <ul style="margin: 0.5em 0 0 1.5em; padding: 0;">
                             <li>Once you have your first Savings Plan in place, we'll know your precise discount rate for accurate optimization.</li>
-                            <li>Any coverage up to your min-hourly usage (${{metrics.min_hourly.toFixed(2)}}/hour) will be beneficial regardless of the exact discount.</li>
+                            <li>Any coverage up to your min-hourly usage (${{stats?.min ? stats.min.toFixed(2) : 'N/A'}}/hour) will be beneficial regardless of the exact discount.</li>
                             <li>To optimize coverage above min-hourly, we need your precise discount rate to calculate the optimal commitment level.</li>
                         </ul>
                     </div>
