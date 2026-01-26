@@ -15,25 +15,10 @@ logger = logging.getLogger()
 logger.setLevel(logging.INFO)
 
 
-def generate_html_report(
-    coverage_history: list[dict[str, Any]], savings_data: dict[str, Any]
-) -> str:
-    """
-    Generate HTML report with coverage trends and savings metrics.
-
-    Args:
-        coverage_history: List of coverage data points by day
-        savings_data: Savings Plans data including commitment and estimated savings
-
-    Returns:
-        str: HTML report content
-    """
-    logger.info("Generating HTML report")
-
-    # Calculate report timestamp
-    report_timestamp = datetime.now(UTC).strftime("%Y-%m-%d %H:%M:%S UTC")
-
-    # Calculate coverage summary
+def _calculate_coverage_summary(
+    coverage_history: list[dict[str, Any]],
+) -> tuple[float, float, str, str]:
+    """Calculate coverage metrics and trend indicators."""
     avg_coverage = 0.0
     if coverage_history:
         total_coverage = sum(item.get("coverage_percentage", 0.0) for item in coverage_history)
@@ -43,7 +28,6 @@ def generate_html_report(
         coverage_history[-1].get("coverage_percentage", 0.0) if coverage_history else 0.0
     )
 
-    # Calculate trend direction
     if len(coverage_history) >= 2:
         first_coverage = coverage_history[0].get("coverage_percentage", 0.0)
         last_coverage = coverage_history[-1].get("coverage_percentage", 0.0)
@@ -54,9 +38,20 @@ def generate_html_report(
         trend_symbol = "→"
         trend_color = "#6c757d"
 
-    # Build HTML content using string builder pattern
-    html_parts = []
-    html_parts.append(f"""<!DOCTYPE html>
+    return avg_coverage, current_coverage, trend_symbol, trend_color
+
+
+def _build_html_header(
+    report_timestamp: str,
+    current_coverage: float,
+    avg_coverage: float,
+    coverage_history: list[dict[str, Any]],
+    savings_data: dict[str, Any],
+    trend_symbol: str,
+    trend_color: str,
+) -> str:
+    """Build HTML header, styles, and summary cards."""
+    return f"""<!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
@@ -205,11 +200,18 @@ def generate_html_report(
 
         <div class="section">
             <h2>Coverage Trends <span class="trend" style="color: {trend_color};">{trend_symbol}</span></h2>
-""")
+"""
 
-    # Coverage history table
-    if coverage_history:
-        html_parts.append("""
+
+def _build_coverage_table(coverage_history: list[dict[str, Any]]) -> str:
+    """Build coverage history table HTML."""
+    if not coverage_history:
+        return """
+            <div class="no-data">No coverage data available</div>
+"""
+
+    parts = [
+        """
             <table>
                 <thead>
                     <tr>
@@ -221,15 +223,18 @@ def generate_html_report(
                     </tr>
                 </thead>
                 <tbody>
-""")
-        for item in coverage_history:
-            date = item.get("date", "Unknown")
-            coverage_pct = item.get("coverage_percentage", 0.0)
-            covered_hours = item.get("covered_hours", 0.0)
-            on_demand_hours = item.get("on_demand_hours", 0.0)
-            total_hours = item.get("total_hours", 0.0)
+"""
+    ]
 
-            html_parts.append(f"""
+    for item in coverage_history:
+        date = item.get("date", "Unknown")
+        coverage_pct = item.get("coverage_percentage", 0.0)
+        covered_hours = item.get("covered_hours", 0.0)
+        on_demand_hours = item.get("on_demand_hours", 0.0)
+        total_hours = item.get("total_hours", 0.0)
+
+        parts.append(
+            f"""
                     <tr>
                         <td>{date}</td>
                         <td class="metric">{coverage_pct:.2f}%</td>
@@ -237,30 +242,37 @@ def generate_html_report(
                         <td>{on_demand_hours:,.0f}</td>
                         <td>{total_hours:,.0f}</td>
                     </tr>
-""")
-        html_parts.append("""
+"""
+        )
+
+    parts.append(
+        """
                 </tbody>
             </table>
-""")
-    else:
-        html_parts.append("""
-            <div class="no-data">No coverage data available</div>
-""")
+"""
+    )
 
-    html_parts.append("""
-        </div>
+    return "".join(parts)
 
-        <div class="section">
-            <h2>Active Savings Plans</h2>
-""")
 
-    # Savings Plans table
+def _format_plan_date(date_str: str) -> str:
+    """Extract date part from ISO timestamp if present."""
+    return date_str.split("T")[0] if "T" in date_str else date_str
+
+
+def _build_savings_plans_table(savings_data: dict[str, Any]) -> str:
+    """Build active savings plans table HTML."""
     plans = savings_data.get("plans", [])
-    if plans:
-        total_commitment = savings_data.get("total_commitment", 0.0)
-        avg_utilization = savings_data.get("average_utilization", 0.0)
+    if not plans:
+        return """
+            <div class="no-data">No active Savings Plans found</div>
+"""
 
-        html_parts.append(f"""
+    total_commitment = savings_data.get("total_commitment", 0.0)
+    avg_utilization = savings_data.get("average_utilization", 0.0)
+
+    parts = [
+        f"""
             <p>
                 <strong>Total Hourly Commitment:</strong> ${total_commitment:.4f}/hr
                 <br>
@@ -279,23 +291,20 @@ def generate_html_report(
                     </tr>
                 </thead>
                 <tbody>
-""")
-        for plan in plans:
-            plan_id = plan.get("plan_id", "Unknown")
-            plan_type = plan.get("plan_type", "Unknown")
-            hourly_commitment = plan.get("hourly_commitment", 0.0)
-            term_years = plan.get("term_years", 0)
-            payment_option = plan.get("payment_option", "Unknown")
-            start_date = plan.get("start_date", "Unknown")
-            end_date = plan.get("end_date", "Unknown")
+"""
+    ]
 
-            # Format dates (extract date part from ISO timestamp)
-            if "T" in start_date:
-                start_date = start_date.split("T")[0]
-            if "T" in end_date:
-                end_date = end_date.split("T")[0]
+    for plan in plans:
+        plan_id = plan.get("plan_id", "Unknown")
+        plan_type = plan.get("plan_type", "Unknown")
+        hourly_commitment = plan.get("hourly_commitment", 0.0)
+        term_years = plan.get("term_years", 0)
+        payment_option = plan.get("payment_option", "Unknown")
+        start_date = _format_plan_date(plan.get("start_date", "Unknown"))
+        end_date = _format_plan_date(plan.get("end_date", "Unknown"))
 
-            html_parts.append(f"""
+        parts.append(
+            f"""
                     <tr>
                         <td style="font-family: monospace; font-size: 0.85em;">{plan_id[:20]}...</td>
                         <td>{plan_type}</td>
@@ -305,17 +314,32 @@ def generate_html_report(
                         <td>{start_date}</td>
                         <td>{end_date}</td>
                     </tr>
-""")
-        html_parts.append("""
+"""
+        )
+
+    parts.append(
+        """
                 </tbody>
             </table>
-""")
-    else:
-        html_parts.append("""
-            <div class="no-data">No active Savings Plans found</div>
-""")
+"""
+    )
 
-    # Actual Savings Summary Section
+    return "".join(parts)
+
+
+def _get_plan_type_display_name(plan_type: str) -> str:
+    """Map plan type codes to readable names."""
+    if "Compute" in plan_type:
+        return "Compute Savings Plans"
+    if "SageMaker" in plan_type:
+        return "SageMaker Savings Plans"
+    if "EC2Instance" in plan_type:
+        return "EC2 Instance Savings Plans"
+    return plan_type
+
+
+def _build_actual_savings_section(savings_data: dict[str, Any]) -> str:
+    """Build actual savings summary section HTML."""
     actual_savings = savings_data.get("actual_savings", {})
     net_savings = actual_savings.get("net_savings", 0.0)
     on_demand_equivalent = actual_savings.get("on_demand_equivalent_cost", 0.0)
@@ -323,14 +347,8 @@ def generate_html_report(
     savings_pct = actual_savings.get("savings_percentage", 0.0)
     breakdown_by_type = actual_savings.get("breakdown_by_type", {})
 
-    html_parts.append("""
-        </div>
-
-        <div class="section">
-            <h2>Actual Savings Summary (Last 30 Days)</h2>
-""")
-
-    html_parts.append(f"""
+    parts = [
+        f"""
             <p>
                 <strong>Net Savings:</strong> <span style="color: #28a745; font-size: 1.2em; font-weight: bold;">${net_savings:,.2f}</span>
                 <span style="color: #6c757d; margin-left: 10px;">({savings_pct:.2f}% savings)</span>
@@ -342,11 +360,12 @@ def generate_html_report(
                 <br>
                 <strong>Net Savings:</strong> ${net_savings:,.2f}
             </p>
-""")
+"""
+    ]
 
-    # Breakdown by Plan Type
     if breakdown_by_type:
-        html_parts.append("""
+        parts.append(
+            """
             <h3 style="margin-top: 20px; color: #232f3e;">Savings Plans Breakdown by Type</h3>
             <table>
                 <thead>
@@ -357,39 +376,86 @@ def generate_html_report(
                     </tr>
                 </thead>
                 <tbody>
-""")
+"""
+        )
 
         for plan_type, type_data in breakdown_by_type.items():
             plans_count = type_data.get("plans_count", 0)
             total_commitment = type_data.get("total_commitment", 0.0)
+            plan_type_display = _get_plan_type_display_name(plan_type)
 
-            # Map plan types to readable names
-            plan_type_display = plan_type
-            if "Compute" in plan_type:
-                plan_type_display = "Compute Savings Plans"
-            elif "SageMaker" in plan_type:
-                plan_type_display = "SageMaker Savings Plans"
-            elif "EC2Instance" in plan_type:
-                plan_type_display = "EC2 Instance Savings Plans"
-
-            html_parts.append(f"""
+            parts.append(
+                f"""
                     <tr>
                         <td><strong>{plan_type_display}</strong></td>
                         <td>{plans_count}</td>
                         <td class="metric">${total_commitment:.4f}/hr</td>
                     </tr>
-""")
+"""
+            )
 
-        html_parts.append("""
+        parts.append(
+            """
                 </tbody>
             </table>
-""")
+"""
+        )
     else:
-        html_parts.append("""
+        parts.append(
+            """
             <p style="color: #6c757d; font-style: italic;">No savings plan type breakdown available</p>
-""")
+"""
+        )
 
-    html_parts.append(f"""
+    return "".join(parts)
+
+
+def generate_html_report(
+    coverage_history: list[dict[str, Any]], savings_data: dict[str, Any]
+) -> str:
+    """
+    Generate HTML report with coverage trends and savings metrics.
+
+    Args:
+        coverage_history: List of coverage data points by day
+        savings_data: Savings Plans data including commitment and estimated savings
+
+    Returns:
+        str: HTML report content
+    """
+    logger.info("Generating HTML report")
+
+    report_timestamp = datetime.now(UTC).strftime("%Y-%m-%d %H:%M:%S UTC")
+    avg_coverage, current_coverage, trend_symbol, trend_color = _calculate_coverage_summary(
+        coverage_history
+    )
+
+    html_parts = [
+        _build_html_header(
+            report_timestamp,
+            current_coverage,
+            avg_coverage,
+            coverage_history,
+            savings_data,
+            trend_symbol,
+            trend_color,
+        ),
+        _build_coverage_table(coverage_history),
+        """
+        </div>
+
+        <div class="section">
+            <h2>Active Savings Plans</h2>
+""",
+        _build_savings_plans_table(savings_data),
+        """
+        </div>
+
+        <div class="section">
+            <h2>Actual Savings Summary (Last 30 Days)</h2>
+""",
+        _build_actual_savings_section(savings_data),
+        f"""
         </div>
 
         <div class="footer">
@@ -399,7 +465,8 @@ def generate_html_report(
     </div>
 </body>
 </html>
-""")
+""",
+    ]
 
     html = "".join(html_parts)
     logger.info(f"HTML report generated ({len(html)} bytes)")
