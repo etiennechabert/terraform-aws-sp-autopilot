@@ -307,9 +307,6 @@ def _render_sp_type_scheduler_preview(
             <div class="info-box" style="background: #fff9e6; border-left: 4px solid #ffc107; margin-bottom: 15px;">
                 <strong>What is this?</strong> Compares what each scheduler strategy would purchase if it ran right now.
                 The currently configured strategy ({configured_strategy.upper()}) is highlighted. Other strategies are running with default parameters.
-                <small style="opacity: 0.85; margin-left: 10px;">
-                    💡 Hover over strategy names to see details and configuration.
-                </small>
             </div>
 
                 <table style="width: 100%;">
