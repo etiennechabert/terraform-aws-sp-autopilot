@@ -163,6 +163,35 @@ class StorageAdapter:
             return object_key  # Already a file path
         return f"s3://{self.bucket_name}/{object_key}"
 
+    def generate_presigned_url(self, object_key: str, expiration: int = 604800) -> str:
+        """
+        Generate a pre-signed URL for accessing a report.
+
+        Args:
+            object_key: S3 object key
+            expiration: URL expiration time in seconds (default: 7 days = 604800)
+
+        Returns:
+            str: Pre-signed URL for accessing the object
+
+        Raises:
+            ValueError: If called in local mode (pre-signed URLs only work with S3)
+        """
+        if self.is_local:
+            raise ValueError("Pre-signed URLs are not supported in local mode")
+
+        try:
+            url = self.s3_client.generate_presigned_url(
+                ClientMethod="get_object",
+                Params={"Bucket": self.bucket_name, "Key": object_key},
+                ExpiresIn=expiration,
+            )
+            logger.info(f"Generated pre-signed URL for {object_key} (expires in {expiration}s)")
+            return url
+        except Exception as e:
+            logger.error(f"Failed to generate pre-signed URL: {e}")
+            raise
+
     def list_reports(self, max_items: int = 100) -> list:
         """
         List available reports.
