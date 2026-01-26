@@ -224,8 +224,8 @@
         if (coverageSlider) {
             // Set slider max to match maxCost
             coverageSlider.max = appState.maxCost;
-            // Set step to 1% of max cost
-            coverageSlider.step = appState.maxCost / 100;
+            // Set step to 0.1% of max cost for precise control
+            coverageSlider.step = appState.maxCost / 1000;
             coverageSlider.value = appState.coverageCost;
             coverageSlider.addEventListener('input', handleCoverageChange);
         }
@@ -295,7 +295,7 @@
         const coverageSlider = document.getElementById('coverage-slider');
         if (coverageSlider) {
             coverageSlider.max = appState.maxCost;
-            coverageSlider.step = appState.maxCost / 100;
+            coverageSlider.step = appState.maxCost / 1000;
             coverageSlider.value = appState.coverageCost;
         }
         updateCoverageDisplay(appState.coverageCost);
@@ -365,7 +365,7 @@
             const coverageSlider = document.getElementById('coverage-slider');
             if (coverageSlider) {
                 coverageSlider.max = appState.maxCost;
-                coverageSlider.step = appState.maxCost / 100; // 1% of max cost
+                coverageSlider.step = appState.maxCost / 1000; // 0.1% of max cost for precise control
                 // Cap coverage if it exceeds new max
                 if (appState.coverageCost > appState.maxCost) {
                     appState.coverageCost = appState.maxCost;
@@ -730,7 +730,7 @@
 
         const displayElement = document.getElementById('coverage-display');
         if (displayElement) {
-            displayElement.textContent = `$${coverageCost.toFixed(2)}/hour (${percentOfMin.toFixed(0)}%)`;
+            displayElement.textContent = `$${coverageCost.toFixed(2)}/hour (${percentOfMin.toFixed(1)}%)`;
         }
 
         const unitsElement = document.getElementById('coverage-units');
