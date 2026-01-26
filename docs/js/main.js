@@ -717,22 +717,25 @@
      * Update metrics display
      */
     function updateMetricsDisplay(results) {
+        // Convert weekly costs to hourly rates (divide by 168 hours)
+        const hoursPerWeek = 168;
+
         // Pure On-Demand cost (baseline)
         const onDemandElement = document.getElementById('metric-ondemand');
         if (onDemandElement) {
-            onDemandElement.textContent = CostCalculator.formatCurrency(results.onDemandCost);
+            onDemandElement.textContent = CostCalculator.formatCurrency(results.onDemandCost / hoursPerWeek) + '/hr';
         }
 
         // Total Cost with SP (commitment + spillover)
         const savingsPlanElement = document.getElementById('metric-savingsplan');
         if (savingsPlanElement) {
-            savingsPlanElement.textContent = CostCalculator.formatCurrency(results.savingsPlanCost);
+            savingsPlanElement.textContent = CostCalculator.formatCurrency(results.savingsPlanCost / hoursPerWeek) + '/hr';
         }
 
         // Net Savings
         const savingsElement = document.getElementById('metric-savings');
         if (savingsElement) {
-            savingsElement.textContent = CostCalculator.formatCurrency(results.savings);
+            savingsElement.textContent = CostCalculator.formatCurrency(results.savings / hoursPerWeek) + '/hr';
 
             // Change color based on positive/negative savings
             const savingsContainer = savingsElement.closest('.metric-item');
@@ -755,7 +758,7 @@
         // SP Commitment Cost
         const commitmentElement = document.getElementById('metric-commitment');
         if (commitmentElement) {
-            commitmentElement.textContent = CostCalculator.formatCurrency(results.commitmentCost);
+            commitmentElement.textContent = CostCalculator.formatCurrency(results.commitmentCost / hoursPerWeek) + '/hr';
         }
 
         const commitmentPctElement = document.getElementById('metric-commitment-pct');
@@ -769,7 +772,7 @@
         // Spillover Cost
         const spilloverElement = document.getElementById('metric-spillover');
         if (spilloverElement) {
-            spilloverElement.textContent = CostCalculator.formatCurrency(results.spilloverCost);
+            spilloverElement.textContent = CostCalculator.formatCurrency(results.spilloverCost / hoursPerWeek) + '/hr';
         }
 
         const spilloverPctElement = document.getElementById('metric-spillover-pct');
@@ -780,7 +783,7 @@
         // Wasted commitment
         const wasteElement = document.getElementById('metric-waste');
         if (wasteElement) {
-            wasteElement.textContent = CostCalculator.formatCurrency(results.wastedCommitment);
+            wasteElement.textContent = CostCalculator.formatCurrency(results.wastedCommitment / hoursPerWeek) + '/hr';
         }
 
         const wastePctElement = document.getElementById('metric-waste-pct');
