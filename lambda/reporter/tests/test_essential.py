@@ -403,3 +403,85 @@ def test_handler_initialize_clients_failure_triggers_error_notification(mock_env
         assert call_kwargs["sns_client"] == mock_sns
         assert call_kwargs["lambda_name"] == "Reporter"
         assert "AccessDenied" in call_kwargs["error_message"]
+
+
+def test_handler_with_debug_data_enabled(monkeypatch, mock_clients, aws_mock_builder):
+    """Test handler with include_debug_data enabled."""
+    monkeypatch.setenv("INCLUDE_DEBUG_DATA", "true")
+    monkeypatch.setenv("EMAIL_REPORTS", "false")
+
+    # Mock SpendingAnalyzer - Cost Explorer coverage data
+    mock_clients["ce"].get_savings_plans_coverage.return_value = aws_mock_builder.coverage(
+        coverage_percentage=80.0
+    )
+
+    # Mock Savings Plans data
+    mock_clients[
+        "savingsplans"
+    ].describe_savings_plans.return_value = aws_mock_builder.describe_savings_plans(plans_count=1)
+
+    # Mock utilization and savings
+    mock_clients["ce"].get_savings_plans_utilization.return_value = aws_mock_builder.utilization(
+        utilization_percentage=90.0
+    )
+
+    # Mock S3 upload
+    mock_clients["s3"].put_object.return_value = {}
+
+    # Mock aws_debug module
+    with (
+        patch("shared.aws_debug.clear_responses") as mock_clear,
+        patch("shared.aws_debug.get_responses") as mock_get_responses,
+    ):
+        mock_get_responses.return_value = [{"api": "test", "response": "data"}]
+
+        result = handler.handler({}, None)
+
+        # Verify debug functions were called
+        assert mock_clear.called
+        assert mock_get_responses.called
+
+        # Verify successful execution
+        assert result["statusCode"] == 200
+        body = json.loads(result["body"])
+        assert "message" in body
+
+
+def test_handler_local_mode_auto_open(monkeypatch, mock_clients, aws_mock_builder):
+    """Test handler in local mode with HTML auto-open."""
+    monkeypatch.setenv("LOCAL_MODE", "true")
+    monkeypatch.setenv("REPORT_FORMAT", "html")
+    monkeypatch.setenv("EMAIL_REPORTS", "false")
+
+    # Mock SpendingAnalyzer
+    mock_clients["ce"].get_savings_plans_coverage.return_value = aws_mock_builder.coverage(
+        coverage_percentage=70.0
+    )
+
+    # Mock Savings Plans data
+    mock_clients[
+        "savingsplans"
+    ].describe_savings_plans.return_value = aws_mock_builder.describe_savings_plans(plans_count=1)
+
+    # Mock utilization
+    mock_clients["ce"].get_savings_plans_utilization.return_value = aws_mock_builder.utilization(
+        utilization_percentage=85.0
+    )
+
+    # Mock S3 upload to return a local file path
+    def mock_upload_report(*args, **kwargs):
+        return "/tmp/test-report.html"
+
+    # Mock webbrowser.open
+    with (
+        patch("handler.webbrowser.open") as mock_browser,
+        patch("handler.Path.exists", return_value=True),
+        patch.object(handler.StorageAdapter, "upload_report", side_effect=mock_upload_report),
+    ):
+        result = handler.handler({}, None)
+
+        # Verify browser was opened in local mode
+        assert mock_browser.called
+
+        # Verify successful execution
+        assert result["statusCode"] == 200
