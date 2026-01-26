@@ -1294,7 +1294,7 @@ def generate_html_report(
             <details>
                 <summary>
                     <span>View Raw AWS Data</span>
-                    <span style="font-size: 0.8em; color: #6c757d;">Click to expand</span>
+                    <span style="font-size: 0.8em; color: #6c757d;">Click to expand • Toggle via <code>INCLUDE_DEBUG_DATA</code> env var</span>
                 </summary>
                 <div class="raw-data-controls">
                     <button class="raw-data-button" onclick="copyRawData()">Copy to Clipboard</button>
