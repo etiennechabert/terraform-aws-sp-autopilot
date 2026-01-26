@@ -31,6 +31,7 @@ def generate_report(
     report_format: str = "html",
     config: dict[str, Any] | None = None,
     raw_data: dict[str, Any] | None = None,
+    preview_data: dict[str, Any] | None = None,
 ) -> str:
     """
     Generate report in specified format.
@@ -41,6 +42,7 @@ def generate_report(
         report_format: Format - "html", "json", or "csv"
         config: Configuration parameters used for the report
         raw_data: Optional raw AWS API responses to include in the report
+        preview_data: Optional scheduler preview data
 
     Returns:
         str: Generated report content
@@ -53,7 +55,7 @@ def generate_report(
     if report_format == "csv":
         return generate_csv_report(coverage_data, savings_data, config)
     if report_format == "html":
-        return generate_html_report(coverage_data, savings_data, config, raw_data)
+        return generate_html_report(coverage_data, savings_data, config, raw_data, preview_data)
     raise ValueError(f"Invalid report format: {report_format}")
 
 
@@ -256,11 +258,163 @@ def _prepare_chart_data(
     return json.dumps(all_chart_data), optimal_results
 
 
+def _render_sp_type_scheduler_preview(
+    sp_type: str, preview_data: dict[str, Any] | None, config: dict[str, Any]
+) -> str:
+    """Render scheduler preview comparison for a specific SP type."""
+
+    strategy_names = {
+        "fixed": "Fixed",
+        "dichotomy": "Dichotomy",
+        "follow_aws": "Follow AWS",
+    }
+
+    strategy_descriptions = {
+        "fixed": "Purchases a fixed percentage of uncovered spend at a time.",
+        "dichotomy": "Uses exponentially decreasing purchase sizes based on coverage gap.",
+        "follow_aws": "Follows AWS Cost Explorer recommendations. Tends to aim for 100% coverage to min-hourly in a single purchase (no ramp-up, high risk of waste if workload decreases).",
+    }
+
+    if not preview_data:
+        return ""  # Return empty string if no preview data
+
+    if preview_data.get("error"):
+        return f"""
+            <div class="info-box" style="background: #fff3cd; border-left: 4px solid #ffc107; margin-top: 20px;">
+                <strong>Scheduler Preview:</strong> Failed to calculate - {preview_data["error"]}
+            </div>
+        """
+
+    strategies = preview_data.get("strategies", {})
+    configured_strategy = preview_data.get("configured_strategy", "fixed")
+    target_coverage = config.get("coverage_target_percent", 90.0)
+
+    # Collect purchases from all strategies for this SP type
+    strategy_purchases = {}
+    for strategy_name, strategy_data in strategies.items():
+        for purchase in strategy_data.get("purchases", []):
+            if purchase.get("sp_type") == sp_type:
+                strategy_purchases[strategy_name] = purchase
+                break
+
+    if not strategy_purchases:
+        return ""  # Return empty if no recommendations
+
+    # Build comparison table
+    html = """
+        <div style="margin-top: 30px; padding-top: 20px; border-top: 2px solid #e0e0e0;">
+            <h3 style="color: #232f3e; margin-bottom: 15px;">🔮 Scheduler Preview - Strategy Comparison 🧞‍♂️</h3>
+                <table style="width: 100%;">
+                    <thead>
+                        <tr>
+                            <th>Strategy</th>
+                            <th>Hourly Commitment</th>
+                            <th>Purchase %</th>
+                            <th>Current Coverage</th>
+                            <th>Projected Coverage</th>
+                            <th>Coverage Increase</th>
+                            <th>Term</th>
+                            <th>Payment</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+    """
+
+    # Render row for each strategy
+    for strategy_type in ["fixed", "dichotomy", "follow_aws"]:
+        purchase = strategy_purchases.get(strategy_type)
+        strategy_display = strategy_names.get(strategy_type, strategy_type)
+        is_configured = strategy_type == configured_strategy
+
+        # Build tooltip description with parameters and configuration info
+        strategy_desc = strategy_descriptions[strategy_type]
+        if strategy_type == "fixed":
+            if is_configured:
+                params = f"max purchase: {config.get('max_purchase_percent', 10.0):.0f}%"
+            else:
+                params = "default: max purchase 10%"
+            tooltip = f"{strategy_desc} ({params}) | Configure: PURCHASE_STRATEGY_TYPE=fixed, MAX_PURCHASE_PERCENT"
+        elif strategy_type == "dichotomy":
+            if is_configured:
+                max_p = config.get("max_purchase_percent", 50.0)
+                min_p = config.get("min_purchase_percent", 1.0)
+                params = f"max: {max_p:.0f}%, min: {min_p:.0f}%"
+            else:
+                params = "default: max 50%, min 1%"
+            tooltip = f"{strategy_desc} ({params}) | Configure: PURCHASE_STRATEGY_TYPE=dichotomy, MAX_PURCHASE_PERCENT, MIN_PURCHASE_PERCENT"
+        else:  # follow_aws
+            tooltip = f"{strategy_desc} | Configure: PURCHASE_STRATEGY_TYPE=follow_aws"
+
+        if not purchase:
+            # Show "No purchase needed" row
+            row_style = (
+                'style="background: #fff9e6; font-weight: 600; cursor: help;"'
+                if is_configured
+                else 'style="cursor: help;"'
+            )
+            configured_badge = (
+                ' <span style="background: #ff9900; color: white; padding: 2px 8px; border-radius: 3px; font-size: 0.75em; font-weight: 600;">CONFIGURED</span>'
+                if is_configured
+                else ""
+            )
+
+            html += f"""
+                    <tr {row_style} data-tooltip="{tooltip}">
+                        <td><strong><span class="strategy-name">{strategy_display}</span></strong>{configured_badge}</td>
+                        <td colspan="7" style="color: #6c757d; font-style: italic;">No purchase needed</td>
+                    </tr>
+                """
+        else:
+            # Show purchase recommendation
+            hourly_commit = purchase["hourly_commitment"]
+            purchase_percent = purchase.get("purchase_percent", 0.0)
+            current_cov = purchase["current_coverage"]
+            projected_cov = purchase["projected_coverage"]
+            cov_increase = projected_cov - current_cov
+            term = purchase.get("term", "N/A")
+            payment_option = purchase.get("payment_option", "N/A")
+
+            row_style = (
+                'style="background: #fff9e6; font-weight: 600; cursor: help;"'
+                if is_configured
+                else 'style="cursor: help;"'
+            )
+            configured_badge = (
+                ' <span style="background: #ff9900; color: white; padding: 2px 8px; border-radius: 3px; font-size: 0.75em; font-weight: 600;">CONFIGURED</span>'
+                if is_configured
+                else ""
+            )
+
+            coverage_class = "green" if projected_cov >= target_coverage else "orange"
+
+            html += f"""
+                    <tr {row_style} data-tooltip="{tooltip}">
+                        <td><strong><span class="strategy-name">{strategy_display}</span></strong>{configured_badge}</td>
+                        <td class="metric" style="color: #2196f3; font-weight: bold;">${hourly_commit:.4f}/hr</td>
+                        <td class="metric">{purchase_percent:.1f}%</td>
+                        <td class="metric">{current_cov:.1f}%</td>
+                        <td class="metric {coverage_class}" style="font-weight: bold;">{projected_cov:.1f}%</td>
+                        <td class="metric" style="color: #28a745;">+{cov_increase:.1f}%</td>
+                        <td>{term}</td>
+                        <td>{payment_option}</td>
+                    </tr>
+                """
+
+    html += """
+                </tbody>
+            </table>
+        </div>
+    """
+
+    return html
+
+
 def generate_html_report(
     coverage_data: dict[str, Any],
     savings_data: dict[str, Any],
     config: dict[str, Any] | None = None,
     raw_data: dict[str, Any] | None = None,
+    preview_data: dict[str, Any] | None = None,
 ) -> str:
     """
     Generate HTML report with coverage trends and savings metrics.
@@ -453,14 +607,22 @@ def generate_html_report(
             margin: 0;
         }}
         .section {{
-            margin-bottom: 25px;
+            margin-bottom: 40px;
+            padding-top: 30px;
+            border-top: 3px solid #e8e8e8;
+        }}
+        .section:first-of-type {{
+            border-top: none;
+            padding-top: 0;
         }}
         h2 {{
             color: #232f3e;
-            border-bottom: 2px solid #e0e0e0;
-            padding-bottom: 6px;
-            margin-bottom: 12px;
-            font-size: 1.3em;
+            border-bottom: 3px solid #ff9900;
+            padding-bottom: 10px;
+            margin-top: 0;
+            margin-bottom: 20px;
+            font-size: 1.5em;
+            font-weight: 600;
         }}
         table {{
             width: 100%;
@@ -797,6 +959,41 @@ def generate_html_report(
         .json-children.collapsed {{
             display: none;
         }}
+
+        /* Custom tooltips for strategy rows */
+        .strategy-name {{
+            position: relative;
+            display: inline-block;
+            text-decoration: underline dotted;
+            text-decoration-color: rgba(0, 0, 0, 0.3);
+            text-underline-offset: 3px;
+        }}
+        tr[data-tooltip] {{
+            position: relative;
+        }}
+        tr[data-tooltip]:hover::after {{
+            content: attr(data-tooltip);
+            position: absolute;
+            left: 10%;
+            top: 100%;
+            z-index: 1000;
+            width: 400px;
+            padding: 12px 16px;
+            background: #232f3e;
+            color: white;
+            border-radius: 6px;
+            font-size: 0.85em;
+            line-height: 1.5;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+            margin-top: 8px;
+            white-space: normal;
+            pointer-events: none;
+            animation: tooltipFadeIn 0.2s ease-in;
+        }}
+        @keyframes tooltipFadeIn {{
+            from {{ opacity: 0; transform: translateY(-5px); }}
+            to {{ opacity: 1; transform: translateY(0); }}
+        }}
     </style>
 </head>
 <body>
@@ -852,7 +1049,7 @@ def generate_html_report(
         </div>
 
         <div class="section">
-            <h2>Usage Over Time</h2>
+            <h2>Usage Over Time and Scheduler Preview</h2>
 
             <div class="tabs">
                 <button class="tab active" onclick="switchTab('global')">Global (All Types)</button>
@@ -878,6 +1075,7 @@ def generate_html_report(
                     </button>
                     <canvas id="computeChart"></canvas>
                 </div>
+                {_render_sp_type_scheduler_preview("compute", preview_data, config or {{}})}
             </div>
 
             <div id="database-tab" class="tab-content">
@@ -888,6 +1086,7 @@ def generate_html_report(
                     </button>
                     <canvas id="databaseChart"></canvas>
                 </div>
+                {_render_sp_type_scheduler_preview("database", preview_data, config or {{}})}
             </div>
 
             <div id="sagemaker-tab" class="tab-content">
@@ -898,11 +1097,14 @@ def generate_html_report(
                     </button>
                     <canvas id="sagemakerChart"></canvas>
                 </div>
+                {_render_sp_type_scheduler_preview("sagemaker", preview_data, config or {{}})}
             </div>
         </div>
 
         <div class="section">
-            <h2>Savings Plans Breakdown by Type</h2>
+            <h2>Existing Savings Plans</h2>
+
+            <h3 style="color: #232f3e; margin-top: 25px; margin-bottom: 15px; font-size: 1.2em;">Breakdown by Type</h3>
 """
 
     if breakdown_by_type:
@@ -970,10 +1172,7 @@ def generate_html_report(
 """
 
     html += """
-        </div>
-
-        <div class="section">
-            <h2>Active Savings Plans</h2>
+            <h3 style="color: #232f3e; margin-top: 35px; margin-bottom: 15px; font-size: 1.2em;">Active Plans Details</h3>
 """
 
     plans = savings_data.get("plans", [])
@@ -1086,7 +1285,7 @@ def generate_html_report(
             <details>
                 <summary>
                     <span>View Raw AWS Data</span>
-                    <span style="font-size: 0.8em; color: #6c757d;">Click to expand</span>
+                    <span style="font-size: 0.8em; color: #6c757d;">Click to expand • Toggle via <code>INCLUDE_DEBUG_DATA</code> env var</span>
                 </summary>
                 <div class="raw-data-controls">
                     <button class="raw-data-button" onclick="copyRawData()">Copy to Clipboard</button>
@@ -1102,6 +1301,10 @@ def generate_html_report(
         <div class="footer">
             <p><strong>Savings Plans Autopilot</strong> - Automated Coverage & Savings Report</p>
             <p>Generated: {report_timestamp}</p>
+            <p style="margin-top: 15px; font-size: 0.9em;">
+                Powered by <a href="https://github.com/etiennechabert/terraform-aws-sp-autopilot" target="_blank" style="color: #2196f3; text-decoration: none;">terraform-aws-sp-autopilot</a>
+                <span style="opacity: 0.6;">| Open source on GitHub | Apache License 2.0</span>
+            </p>
         </div>
     </div>
 """
@@ -1214,15 +1417,20 @@ def generate_html_report(
             chart.update();
         }}
 
-        // Tab switching function
+        // Tab switching function (scoped to parent section)
         function switchTab(tabName) {{
-            // Hide all tab contents
-            document.querySelectorAll('.tab-content').forEach(function(content) {{
+            // Find the clicked button's parent section
+            const clickedButton = event.target;
+            const tabsContainer = clickedButton.closest('.tabs');
+            const section = tabsContainer.closest('.section');
+
+            // Hide all tab contents within this section only
+            section.querySelectorAll('.tab-content').forEach(function(content) {{
                 content.classList.remove('active');
             }});
 
-            // Remove active class from all tabs
-            document.querySelectorAll('.tab').forEach(function(tab) {{
+            // Remove active class from all tabs within this section only
+            section.querySelectorAll('.tab').forEach(function(tab) {{
                 tab.classList.remove('active');
             }});
 
@@ -1230,7 +1438,7 @@ def generate_html_report(
             document.getElementById(tabName + '-tab').classList.add('active');
 
             // Add active class to clicked tab
-            event.target.classList.add('active');
+            clickedButton.classList.add('active');
         }}
 
         // Function to create chart for a specific type
@@ -1285,7 +1493,7 @@ def generate_html_report(
                         type: 'line',
                         yMin: minHourly,
                         yMax: minHourly,
-                        borderColor: 'rgba(255, 215, 0, 0.9)',
+                        borderColor: 'rgba(70, 70, 70, 0.9)',
                         borderWidth: 3,
                         borderDash: [8, 4],
                         label: {{

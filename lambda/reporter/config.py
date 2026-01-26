@@ -88,6 +88,55 @@ CONFIG_SCHEMA = {
         "default": "90.0",
         "env_var": "COVERAGE_TARGET_PERCENT",
     },
+    # Scheduler strategy parameters (for preview simulation)
+    "purchase_strategy_type": {
+        "required": False,
+        "type": "str",
+        "default": "fixed",
+        "env_var": "PURCHASE_STRATEGY_TYPE",
+    },
+    "max_purchase_percent": {
+        "required": False,
+        "type": "float",
+        "default": "10.0",
+        "env_var": "MAX_PURCHASE_PERCENT",
+    },
+    "min_purchase_percent": {
+        "required": False,
+        "type": "float",
+        "default": "1.0",
+        "env_var": "MIN_PURCHASE_PERCENT",
+    },
+    "compute_sp_term": {
+        "required": False,
+        "type": "str",
+        "default": "THREE_YEAR",
+        "env_var": "COMPUTE_SP_TERM",
+    },
+    "compute_sp_payment_option": {
+        "required": False,
+        "type": "str",
+        "default": "ALL_UPFRONT",
+        "env_var": "COMPUTE_SP_PAYMENT_OPTION",
+    },
+    "database_sp_payment_option": {
+        "required": False,
+        "type": "str",
+        "default": "NO_UPFRONT",
+        "env_var": "DATABASE_SP_PAYMENT_OPTION",
+    },
+    "sagemaker_sp_term": {
+        "required": False,
+        "type": "str",
+        "default": "THREE_YEAR",
+        "env_var": "SAGEMAKER_SP_TERM",
+    },
+    "sagemaker_sp_payment_option": {
+        "required": False,
+        "type": "str",
+        "default": "ALL_UPFRONT",
+        "env_var": "SAGEMAKER_SP_PAYMENT_OPTION",
+    },
 }
 
 
