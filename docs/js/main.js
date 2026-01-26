@@ -51,6 +51,9 @@
         // Initialize UI from state
         updateUIFromState();
 
+        // Initialize legend colors
+        updateLegendColors();
+
         // Generate initial pattern and calculate costs
         updateLoadPattern();
         calculateAndUpdateCosts();
@@ -221,8 +224,8 @@
         if (coverageSlider) {
             // Set slider max to match maxCost
             coverageSlider.max = appState.maxCost;
-            // Set step to 1% of max cost
-            coverageSlider.step = appState.maxCost / 100;
+            // Set step to 0.1% of max cost for precise control
+            coverageSlider.step = appState.maxCost / 1000;
             coverageSlider.value = appState.coverageCost;
             coverageSlider.addEventListener('input', handleCoverageChange);
         }
@@ -292,7 +295,7 @@
         const coverageSlider = document.getElementById('coverage-slider');
         if (coverageSlider) {
             coverageSlider.max = appState.maxCost;
-            coverageSlider.step = appState.maxCost / 100;
+            coverageSlider.step = appState.maxCost / 1000;
             coverageSlider.value = appState.coverageCost;
         }
         updateCoverageDisplay(appState.coverageCost);
@@ -362,7 +365,7 @@
             const coverageSlider = document.getElementById('coverage-slider');
             if (coverageSlider) {
                 coverageSlider.max = appState.maxCost;
-                coverageSlider.step = appState.maxCost / 100; // 1% of max cost
+                coverageSlider.step = appState.maxCost / 1000; // 0.1% of max cost for precise control
                 // Cap coverage if it exceeds new max
                 if (appState.coverageCost > appState.maxCost) {
                     appState.coverageCost = appState.maxCost;
@@ -420,6 +423,9 @@
      * Handle share button click
      */
     async function handleShare() {
+        // Ensure URL is updated with current state (bypass debounce)
+        URLState.updateURL(appState);
+
         const success = await URLState.copyURLToClipboard();
 
         if (success) {
@@ -489,9 +495,46 @@
         // Update all chart colors
         ChartManager.updateChartColors(themeName);
 
+        // Update legend colors
+        updateLegendColors(themeName);
+
         // Show toast notification
         const themeColors = ColorThemes.getThemeColors(themeName);
         showToast(`Color theme changed to: ${themeColors.name || themeName}`);
+    }
+
+    /**
+     * Update savings curve legend colors based on theme
+     */
+    function updateLegendColors(themeName = null) {
+        const themeColors = ColorThemes.getThemeColors(themeName);
+        const curves = themeColors.savingsCurve;
+
+        // Helper to extract RGB from rgba string
+        function rgbaToGradient(borderColor, bgColor) {
+            // Extract RGB values from background color (rgba format)
+            const match = bgColor.match(/rgba?\((\d+),\s*(\d+),\s*(\d+)(?:,\s*([\d.]+))?\)/);
+            if (match) {
+                const r = match[1];
+                const g = match[2];
+                const b = match[3];
+                return `linear-gradient(90deg, rgba(${r},${g},${b},0.3), rgba(${r},${g},${b},0.6))`;
+            }
+            return bgColor;
+        }
+
+        // Update each legend color
+        const legendBuilding = document.getElementById('legend-building');
+        const legendGaining = document.getElementById('legend-gaining');
+        const legendWasting = document.getElementById('legend-wasting');
+        const legendVeryBad = document.getElementById('legend-veryBad');
+        const legendLosingMoney = document.getElementById('legend-losingMoney');
+
+        if (legendBuilding) legendBuilding.style.background = rgbaToGradient(curves.building.border, curves.building.background);
+        if (legendGaining) legendGaining.style.background = rgbaToGradient(curves.gaining.border, curves.gaining.background);
+        if (legendWasting) legendWasting.style.background = rgbaToGradient(curves.wasting.border, curves.wasting.background);
+        if (legendVeryBad) legendVeryBad.style.background = rgbaToGradient(curves.veryBad.border, curves.veryBad.background);
+        if (legendLosingMoney) legendLosingMoney.style.background = rgbaToGradient(curves.losingMoney.border, curves.losingMoney.background);
     }
 
     /**
@@ -531,6 +574,9 @@
 
         // Update load chart with cost data
         ChartManager.updateLoadChart(costPattern);
+
+        // Update savings rate hint to reflect new average usage
+        updateSavingsRateHint();
     }
 
     /**
@@ -638,22 +684,35 @@
         });
         const minHourlySavings = minHourlyPoint.netSavings;
 
-        // Calculate extra savings for each point
-        curveData.forEach(point => {
-            point.extraSavings = point.netSavings - minHourlySavings;
+        // Find optimal point directly from curve data (point with maximum savings)
+        const optimalPoint = curveData.reduce((prev, curr) => {
+            return curr.netSavings > prev.netSavings ? curr : prev;
         });
+        const optimalCoverage = optimalPoint.coverage;
+        const optimalNetSavings = optimalPoint.netSavings;
 
-        // Get optimal coverage for annotation
+        // Also get the optimal from calculator for validation
         const optimalResult = CostCalculator.calculateOptimalCoverage(hourlyCosts, savingsPercentage);
+
+        // Calculate extra savings for each point
+        // - Below optimal: extra savings vs min-hourly (positive gain)
+        // - Past optimal: waste vs optimal (negative)
+        curveData.forEach(point => {
+            if (point.coverage <= optimalCoverage) {
+                point.extraSavings = point.netSavings - minHourlySavings;
+            } else {
+                point.extraSavings = point.netSavings - optimalNetSavings;
+            }
+        });
 
         // Always use the current slider position for the vertical line
         const currentCoverageFromData = appState.coverageCost;
 
-        // Update chart
+        // Update chart (use optimal from curve data for consistency)
         ChartManager.updateSavingsCurveChart(
             curveData,
             minHourlySavings,
-            optimalResult.coverageUnits,
+            optimalCoverage,
             minCost,
             chartMaxCost,
             baselineCost,
@@ -671,7 +730,7 @@
 
         const displayElement = document.getElementById('coverage-display');
         if (displayElement) {
-            displayElement.textContent = `$${coverageCost.toFixed(2)}/hour (${percentOfMin.toFixed(0)}%)`;
+            displayElement.textContent = `$${coverageCost.toFixed(2)}/hour (${percentOfMin.toFixed(1)}%)`;
         }
 
         const unitsElement = document.getElementById('coverage-units');
@@ -681,6 +740,26 @@
             const actualCost = coverageCost * discountFactor;
 
             unitsElement.textContent = `Cost ${CostCalculator.formatCurrency(actualCost)}/hour vs ${CostCalculator.formatCurrency(coverageCost)}/hour On-Demand`;
+        }
+
+        // Update savings rate hint to reflect coverage commitment
+        updateSavingsRateHint();
+    }
+
+    /**
+     * Update savings rate hint to show coverage commitment vs average usage
+     */
+    function updateSavingsRateHint() {
+        const rateElement = document.getElementById('savings-rate');
+        if (rateElement) {
+            // Calculate average usage from hourly costs
+            const hourlyCosts = appState.hourlyCosts || [];
+            const avgUsage = hourlyCosts.length > 0
+                ? hourlyCosts.reduce((sum, cost) => sum + cost, 0) / hourlyCosts.length
+                : 0;
+
+            const coverageCommitment = appState.coverageCost || 0;
+            rateElement.textContent = `Coverage $${coverageCommitment.toFixed(3)}/hr vs $${avgUsage.toFixed(3)}/hr Avg Usage`;
         }
     }
 
@@ -693,33 +772,33 @@
             displayElement.textContent = `${value}%`;
         }
 
-        const rateElement = document.getElementById('savings-rate');
-        if (rateElement) {
-            const savingsPlanRate = appState.onDemandRate * (1 - value / 100);
-            rateElement.textContent = `$${savingsPlanRate.toFixed(3)}/hour vs $${appState.onDemandRate.toFixed(3)}/hour On-Demand`;
-        }
+        // Update the hint text
+        updateSavingsRateHint();
     }
 
     /**
      * Update metrics display
      */
     function updateMetricsDisplay(results) {
+        // Convert weekly costs to hourly rates (divide by 168 hours)
+        const hoursPerWeek = 168;
+
         // Pure On-Demand cost (baseline)
         const onDemandElement = document.getElementById('metric-ondemand');
         if (onDemandElement) {
-            onDemandElement.textContent = CostCalculator.formatCurrency(results.onDemandCost);
+            onDemandElement.textContent = CostCalculator.formatCurrency(results.onDemandCost / hoursPerWeek) + '/hr';
         }
 
         // Total Cost with SP (commitment + spillover)
         const savingsPlanElement = document.getElementById('metric-savingsplan');
         if (savingsPlanElement) {
-            savingsPlanElement.textContent = CostCalculator.formatCurrency(results.savingsPlanCost);
+            savingsPlanElement.textContent = CostCalculator.formatCurrency(results.savingsPlanCost / hoursPerWeek) + '/hr';
         }
 
         // Net Savings
         const savingsElement = document.getElementById('metric-savings');
         if (savingsElement) {
-            savingsElement.textContent = CostCalculator.formatCurrency(results.savings);
+            savingsElement.textContent = CostCalculator.formatCurrency(results.savings / hoursPerWeek) + '/hr';
 
             // Change color based on positive/negative savings
             const savingsContainer = savingsElement.closest('.metric-item');
@@ -742,7 +821,7 @@
         // SP Commitment Cost
         const commitmentElement = document.getElementById('metric-commitment');
         if (commitmentElement) {
-            commitmentElement.textContent = CostCalculator.formatCurrency(results.commitmentCost);
+            commitmentElement.textContent = CostCalculator.formatCurrency(results.commitmentCost / hoursPerWeek) + '/hr';
         }
 
         const commitmentPctElement = document.getElementById('metric-commitment-pct');
@@ -756,7 +835,7 @@
         // Spillover Cost
         const spilloverElement = document.getElementById('metric-spillover');
         if (spilloverElement) {
-            spilloverElement.textContent = CostCalculator.formatCurrency(results.spilloverCost);
+            spilloverElement.textContent = CostCalculator.formatCurrency(results.spilloverCost / hoursPerWeek) + '/hr';
         }
 
         const spilloverPctElement = document.getElementById('metric-spillover-pct');
@@ -767,7 +846,7 @@
         // Wasted commitment
         const wasteElement = document.getElementById('metric-waste');
         if (wasteElement) {
-            wasteElement.textContent = CostCalculator.formatCurrency(results.wastedCommitment);
+            wasteElement.textContent = CostCalculator.formatCurrency(results.wastedCommitment / hoursPerWeek) + '/hr';
         }
 
         const wastePctElement = document.getElementById('metric-waste-pct');
@@ -786,56 +865,33 @@
 
         if (!suggestionElement || !textElement || !titleElement) return;
 
-        // Convert current coverage cost to percentage for comparison
-        const currentCoveragePercent = (appState.coverageCost / appState.maxCost) * 100;
-
-        const suggestion = CostCalculator.getOptimizationSuggestion(
-            currentCoveragePercent,
-            results.optimalCoveragePercentage
-        );
-
-        // Use optimal coverage directly (in $/hour), not recalculated from percentage
+        // Use dollar values directly (no percentage conversion needed)
         const optimalCost = results.optimalCoverageUnits;
         const currentCost = appState.coverageCost;
-
-        // Calculate min-hourly percentage
         const minCost = appState.minCost;
-        const optimalPercentOfMin = (optimalCost / minCost) * 100;
+
+        // Get suggestion with dollar values (avoids rounding issues)
+        const suggestion = CostCalculator.getOptimizationSuggestionDollars(
+            currentCost,
+            optimalCost,
+            minCost
+        );
 
         // Update status class
         suggestionElement.classList.remove('status-optimal', 'status-warning', 'status-danger');
         suggestionElement.classList.add(`status-${suggestion.status}`);
 
-        // Update title with optimal dollar amount and extra savings info
-        const minHourlySavings = results.optimalCoverage.minHourlySavings || 0;
-        const extraSavings = results.optimalCoverage.extraSavings || 0;
+        // Update title with optimal dollar amount and potential savings
         const totalSavings = results.optimalCoverage.maxNetSavings || 0;
+        const monthlySavings = totalSavings * 4.33; // Convert weekly to monthly (~30 days / 7 days)
 
-        // Always show percentage of min-hourly
-        if (extraSavings > 0.01) {
-            titleElement.innerHTML = `Optimal: ${CostCalculator.formatCurrency(optimalCost)}/hour (${optimalPercentOfMin.toFixed(0)}% of min-hourly)<br>
-                <small style="font-weight: normal; opacity: 0.9;">
-                    Baseline: ${CostCalculator.formatCurrency(minHourlySavings)}/wk |
-                    Extra: +${CostCalculator.formatCurrency(extraSavings)}/wk =
-                    ${CostCalculator.formatCurrency(totalSavings)}/wk total
-                </small>`;
-        } else {
-            titleElement.innerHTML = `Optimal: ${CostCalculator.formatCurrency(optimalCost)}/hour (${optimalPercentOfMin.toFixed(0)}% of min-hourly)<br>
-                <small style="font-weight: normal; opacity: 0.9;">
-                    Baseline savings: ${CostCalculator.formatCurrency(totalSavings)}/wk
-                </small>`;
-        }
+        titleElement.innerHTML = `Optimal: ${CostCalculator.formatCurrency(optimalCost)}/hour<br>
+            <small style="font-weight: normal; opacity: 0.9;">
+                Potential savings: ${CostCalculator.formatCurrency(monthlySavings)}/month
+            </small>`;
 
-        // Update text with dollar amounts
-        let message = suggestion.message;
-        // Replace percentage values with dollar values
-        message = message.replace(/\d+\.\d+%/g, (match) => {
-            const percent = parseFloat(match);
-            const dollarValue = (percent / 100) * appState.maxCost;
-            return `$${dollarValue.toFixed(2)}/hour`;
-        });
-
-        textElement.textContent = `${suggestion.icon} ${message}`;
+        // Message already has dollar values formatted correctly
+        textElement.textContent = `${suggestion.icon} ${suggestion.message}`;
     }
 
     /**

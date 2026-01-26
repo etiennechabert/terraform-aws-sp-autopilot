@@ -29,7 +29,7 @@ def check_and_alert_low_utilization(
         config: Configuration dictionary
         savings_data: Savings Plans summary data
     """
-    threshold = config.get("low_utilization_threshold", 70.0)
+    threshold = config["low_utilization_threshold"]
     average_utilization = savings_data.get("average_utilization", 0.0)
     plans_count = savings_data.get("plans_count", 0)
 
@@ -132,7 +132,9 @@ def send_report_email(
     )
 
     # Extract metrics
-    compute_coverage = coverage_data.get("compute", {}).get("summary", {}).get("avg_coverage", 0.0)
+    compute_coverage = (
+        coverage_data.get("compute", {}).get("summary", {}).get("avg_coverage_total", 0.0)
+    )
     plans_count = savings_data.get("plans_count", 0)
     total_commitment = savings_data.get("total_commitment", 0.0)
     average_utilization = savings_data.get("average_utilization", 0.0)
@@ -144,7 +146,7 @@ def send_report_email(
     savings_percentage = actual_savings.get("savings_percentage", 0.0)
     breakdown_by_type = actual_savings.get("breakdown_by_type", {})
 
-    subject = f"Savings Plans Report - {compute_coverage:.1f}% Coverage, ${net_savings:,.0f}/mo Actual Savings"
+    subject = f"Savings Plans Report - {compute_coverage:.1f}% Coverage, ${net_savings:,.0f} Actual Savings (30d)"
 
     body_lines = [
         "AWS Savings Plans - Coverage & Savings Report",
@@ -158,7 +160,7 @@ def send_report_email(
         "SAVINGS SUMMARY:",
         "-" * 60,
         f"Active Savings Plans: {plans_count}",
-        f"Total Hourly Commitment: ${total_commitment:.4f}/hour (${total_commitment * 730:,.2f}/month)",
+        f"Total Hourly Commitment: ${total_commitment:.4f}/hr",
         f"Average Utilization (30 days): {average_utilization:.2f}%",
         "",
         "ACTUAL SAVINGS SUMMARY (30 days):",

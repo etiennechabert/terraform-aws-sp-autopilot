@@ -108,11 +108,11 @@ locals {
 
   # Reporting Settings
 
-  enable_reports         = try(var.reporting.enabled, true)
-  report_format          = try(var.reporting.format, "html")
-  email_reports          = try(var.reporting.email_reports, false)
-  include_debug_data     = try(var.reporting.include_debug_data, false)
-  report_retention_days  = try(var.reporting.retention_days, 365)
+  enable_reports        = try(var.reporting.enabled, true)
+  report_format         = try(var.reporting.format, "html")
+  email_reports         = try(var.reporting.email_reports, false)
+  include_debug_data    = try(var.reporting.include_debug_data, false)
+  report_retention_days = try(var.reporting.retention_days, 365)
 
   s3_lifecycle_transition_ia_days         = try(var.reporting.s3_lifecycle.transition_ia_days, 90)
   s3_lifecycle_transition_glacier_days    = try(var.reporting.s3_lifecycle.transition_glacier_days, 180)

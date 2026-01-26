@@ -30,7 +30,7 @@
                 "MIN_PURCHASE_PERCENT": "1",
                 "COMPUTE_SP_TERM": "THREE_YEAR",
                 "RENEWAL_WINDOW_DAYS": "7",
-                "LOOKBACK_DAYS": "13",
+                "LOOKBACK_DAYS": "14",
                 "MIN_COMMITMENT_PER_PLAN": "0",
                 "COMPUTE_SP_PAYMENT_OPTION": "NO_UPFRONT"
             },
@@ -65,7 +65,7 @@
                 "DICHOTOMY_INITIAL_PERCENT": "50",
                 "COMPUTE_SP_TERM": "THREE_YEAR",
                 "RENEWAL_WINDOW_DAYS": "7",
-                "LOOKBACK_DAYS": "13",
+                "LOOKBACK_DAYS": "14",
                 "MIN_COMMITMENT_PER_PLAN": "0",
                 "COMPUTE_SP_PAYMENT_OPTION": "NO_UPFRONT"
             },
@@ -99,7 +99,7 @@
                 "PURCHASE_STRATEGY_TYPE": "follow_aws",
                 "COMPUTE_SP_TERM": "THREE_YEAR",
                 "RENEWAL_WINDOW_DAYS": "7",
-                "LOOKBACK_DAYS": "13",
+                "LOOKBACK_DAYS": "14",
                 "MIN_COMMITMENT_PER_PLAN": "0",
                 "COMPUTE_SP_PAYMENT_OPTION": "NO_UPFRONT"
             },
@@ -157,11 +157,13 @@
                 "ENABLE_DATABASE_SP": "true",
                 "ENABLE_SAGEMAKER_SP": "true",
                 // Data collection settings
-                "LOOKBACK_DAYS": "30",
+                "LOOKBACK_DAYS": "14",
                 "GRANULARITY": "HOURLY",
                 // Alert settings
                 "LOW_UTILIZATION_THRESHOLD": "70",
-                "LOW_UTILIZATION_ALERT_ENABLED": "false"
+                "LOW_UTILIZATION_ALERT_ENABLED": "false",
+                // Debug data
+                "INCLUDE_DEBUG_DATA": "true"
             },
             "console": "integratedTerminal",
             "cwd": "${workspaceFolder}/lambda/reporter"
@@ -193,11 +195,13 @@
                 "ENABLE_DATABASE_SP": "true",
                 "ENABLE_SAGEMAKER_SP": "true",
                 // Data collection settings
-                "LOOKBACK_DAYS": "30",
+                "LOOKBACK_DAYS": "14",
                 "GRANULARITY": "HOURLY",
                 // Alert settings
                 "LOW_UTILIZATION_THRESHOLD": "70",
-                "LOW_UTILIZATION_ALERT_ENABLED": "false"
+                "LOW_UTILIZATION_ALERT_ENABLED": "false",
+                // Debug data
+                "INCLUDE_DEBUG_DATA": "true"
             },
             "console": "integratedTerminal",
             "cwd": "${workspaceFolder}/lambda/reporter"
@@ -229,11 +233,13 @@
                 "ENABLE_DATABASE_SP": "true",
                 "ENABLE_SAGEMAKER_SP": "true",
                 // Data collection settings
-                "LOOKBACK_DAYS": "30",
+                "LOOKBACK_DAYS": "14",
                 "GRANULARITY": "HOURLY",
                 // Alert settings
                 "LOW_UTILIZATION_THRESHOLD": "70",
-                "LOW_UTILIZATION_ALERT_ENABLED": "false"
+                "LOW_UTILIZATION_ALERT_ENABLED": "false",
+                // Debug data
+                "INCLUDE_DEBUG_DATA": "true"
             },
             "console": "integratedTerminal",
             "cwd": "${workspaceFolder}/lambda/reporter"

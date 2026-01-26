@@ -32,8 +32,8 @@ def check_and_alert_low_utilization(
     Returns:
         None: Sends alert notifications if utilization is below threshold
     """
-    # Get threshold from config (defaults to 70%)
-    threshold = config.get("low_utilization_threshold", 70.0)
+    # Get threshold from config
+    threshold = config["low_utilization_threshold"]
 
     # Get average utilization from savings data
     average_utilization = savings_data.get("average_utilization", 0.0)

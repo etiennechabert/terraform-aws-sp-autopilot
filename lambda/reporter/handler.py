@@ -72,6 +72,7 @@ def handler(event: dict[str, Any], context: Any) -> dict[str, Any]:
     # Clear any previous AWS API responses and start fresh (if debug data collection is enabled)
     if config.get("include_debug_data", False):
         from shared.aws_debug import clear_responses
+
         clear_responses()
 
     # Collect coverage data using SpendingAnalyzer
@@ -122,26 +123,27 @@ def handler(event: dict[str, Any], context: Any) -> dict[str, Any]:
         reordered["plans"] = data["plans"]
         return reordered
 
-    raw_data = {
-        "coverage_data": reorder_coverage_data(coverage_data),
-        "savings_data": reorder_savings_data(savings_data),
-        "config": {
-            "lookback_days": config["lookback_days"],
-            "granularity": config["granularity"],
-            "coverage_target_percent": config["coverage_target_percent"],
-            "enable_compute_sp": config["enable_compute_sp"],
-            "enable_database_sp": config["enable_database_sp"],
-            "enable_sagemaker_sp": config["enable_sagemaker_sp"],
-            "low_utilization_threshold": config["low_utilization_threshold"],
-            "report_format": config["report_format"],
-            "email_reports": config["email_reports"],
-        },
-    }
-
-    # Include debug data only if enabled
+    # Only include raw data section if debug data is enabled
+    raw_data = None
     if config.get("include_debug_data", False):
         from shared.aws_debug import get_responses
-        raw_data["aws_api_responses"] = get_responses()
+
+        raw_data = {
+            "coverage_data": reorder_coverage_data(coverage_data),
+            "savings_data": reorder_savings_data(savings_data),
+            "config": {
+                "lookback_days": config["lookback_days"],
+                "granularity": config["granularity"],
+                "coverage_target_percent": config["coverage_target_percent"],
+                "enable_compute_sp": config["enable_compute_sp"],
+                "enable_database_sp": config["enable_database_sp"],
+                "enable_sagemaker_sp": config["enable_sagemaker_sp"],
+                "low_utilization_threshold": config["low_utilization_threshold"],
+                "report_format": config["report_format"],
+                "email_reports": config["email_reports"],
+            },
+            "aws_api_responses": get_responses(),
+        }
 
     # Generate report
     report_content = report_generator.generate_report(
