@@ -20,6 +20,7 @@ from typing import Any
 
 import notifications as notifications_module
 import report_generator
+import scheduler_preview
 from config import CONFIG_SCHEMA
 
 from shared.handler_utils import (
@@ -98,6 +99,20 @@ def handler(event: dict[str, Any], context: Any) -> dict[str, Any]:
     # Check for low utilization and alert if needed
     notifications_module.check_and_alert_low_utilization(clients["sns"], config, savings_data)
 
+    # Calculate scheduler preview (what would scheduler purchase + optimal analysis)
+    preview_data = scheduler_preview.calculate_scheduler_preview(
+        config, clients, coverage_data, savings_data
+    )
+
+    # Count total recommendations across all strategies
+    total_recs = sum(
+        len(s.get("purchases", [])) for s in preview_data.get("strategies", {}).values()
+    )
+    logger.info(
+        f"Scheduler preview calculated - Configured: {preview_data.get('configured_strategy', 'unknown')}, "
+        f"Total recommendations: {total_recs}"
+    )
+
     # Prepare raw data for HTML report - reorder for better readability
     def reorder_coverage_data(data):
         """Reorder coverage data to show summary before timeseries for better readability."""
@@ -147,7 +162,7 @@ def handler(event: dict[str, Any], context: Any) -> dict[str, Any]:
 
     # Generate report
     report_content = report_generator.generate_report(
-        coverage_data, savings_data, config["report_format"], config, raw_data
+        coverage_data, savings_data, config["report_format"], config, raw_data, preview_data
     )
     logger.info(
         f"Report generated ({len(report_content)} bytes, format: {config['report_format']})"
