@@ -69,10 +69,10 @@ def handler(event: dict[str, Any], context: Any) -> dict[str, Any]:
         ),
     )
 
-    # Clear any previous AWS API responses and start fresh
-    from shared.aws_debug import clear_responses, get_responses
-
-    clear_responses()
+    # Clear any previous AWS API responses and start fresh (if debug data collection is enabled)
+    if config.get("include_debug_data", False):
+        from shared.aws_debug import clear_responses
+        clear_responses()
 
     # Collect coverage data using SpendingAnalyzer
     analyzer = SpendingAnalyzer(clients["savingsplans"], clients["ce"])
@@ -136,8 +136,12 @@ def handler(event: dict[str, Any], context: Any) -> dict[str, Any]:
             "report_format": config["report_format"],
             "email_reports": config["email_reports"],
         },
-        "aws_api_responses": get_responses(),
     }
+
+    # Include debug data only if enabled
+    if config.get("include_debug_data", False):
+        from shared.aws_debug import get_responses
+        raw_data["aws_api_responses"] = get_responses()
 
     # Generate report
     report_content = report_generator.generate_report(

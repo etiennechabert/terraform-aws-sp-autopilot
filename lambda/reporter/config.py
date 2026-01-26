@@ -27,6 +27,12 @@ CONFIG_SCHEMA = {
         "default": "false",
         "env_var": "EMAIL_REPORTS",
     },
+    "include_debug_data": {
+        "required": False,
+        "type": "bool",
+        "default": "false",
+        "env_var": "INCLUDE_DEBUG_DATA",
+    },
     "enable_compute_sp": {
         "required": False,
         "type": "bool",
