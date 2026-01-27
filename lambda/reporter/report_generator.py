@@ -672,7 +672,7 @@ def _parse_plan_dates(
 
         if end_date_parsed <= three_months_from_now:
             expiring_soon = True
-    except Exception:
+    except (ValueError, AttributeError, TypeError):
         pass
 
     return start_date_display, end_date_display, days_remaining_display, expiring_soon, tooltip_text
