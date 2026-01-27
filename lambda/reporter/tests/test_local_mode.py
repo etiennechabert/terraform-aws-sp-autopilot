@@ -14,23 +14,23 @@ from unittest.mock import Mock, patch
 import pytest
 
 
-# Set environment variables before any imports
-os.environ["AWS_DEFAULT_REGION"] = "us-east-1"
-os.environ["LOCAL_MODE"] = "true"
-os.environ["REPORTS_BUCKET"] = "not-used-in-local-mode"
-os.environ["SNS_TOPIC_ARN"] = "arn:aws:sns:us-east-1:123456789012:test-topic"
-os.environ["REPORT_FORMAT"] = "html"
-os.environ["EMAIL_REPORTS"] = "false"  # Skip SNS in local mode
-os.environ["LOOKBACK_DAYS"] = "7"
-os.environ["GRANULARITY"] = "HOURLY"
-os.environ["COVERAGE_TARGET_PERCENT"] = "90"
-os.environ["ENABLE_COMPUTE_SP"] = "true"
-os.environ["ENABLE_DATABASE_SP"] = "false"
-os.environ["ENABLE_SAGEMAKER_SP"] = "false"
-os.environ["LOW_UTILIZATION_THRESHOLD"] = "70"
-os.environ["LOW_UTILIZATION_ALERT_ENABLED"] = "false"
-os.environ["INCLUDE_DEBUG_DATA"] = "true"
-os.environ["AUTO_OPEN_REPORTS"] = "false"  # Disable browser auto-open during tests
+# Set minimal environment variables before imports
+# LOCAL_MODE will be set per-test using monkeypatch to avoid polluting other tests
+os.environ.setdefault("AWS_DEFAULT_REGION", "us-east-1")
+os.environ.setdefault("REPORTS_BUCKET", "not-used-in-local-mode")
+os.environ.setdefault("SNS_TOPIC_ARN", "arn:aws:sns:us-east-1:123456789012:test-topic")
+os.environ.setdefault("REPORT_FORMAT", "html")
+os.environ.setdefault("EMAIL_REPORTS", "false")
+os.environ.setdefault("LOOKBACK_DAYS", "7")
+os.environ.setdefault("GRANULARITY", "HOURLY")
+os.environ.setdefault("COVERAGE_TARGET_PERCENT", "90")
+os.environ.setdefault("ENABLE_COMPUTE_SP", "true")
+os.environ.setdefault("ENABLE_DATABASE_SP", "false")
+os.environ.setdefault("ENABLE_SAGEMAKER_SP", "false")
+os.environ.setdefault("LOW_UTILIZATION_THRESHOLD", "70")
+os.environ.setdefault("LOW_UTILIZATION_ALERT_ENABLED", "false")
+os.environ.setdefault("INCLUDE_DEBUG_DATA", "true")
+os.environ.setdefault("AUTO_OPEN_REPORTS", "false")
 
 # Add lambda directory to path
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
@@ -76,7 +76,9 @@ def test_handler_local_mode_html_report(mock_aws_clients, monkeypatch):
     """Test reporter generates HTML report to local filesystem."""
     # Set unique local data directory for this test
     test_data_dir = f"/tmp/sp-autopilot-test-{os.getpid()}-html"
+    monkeypatch.setenv("LOCAL_MODE", "true")
     monkeypatch.setenv("LOCAL_DATA_DIR", test_data_dir)
+    monkeypatch.setenv("EMAIL_REPORTS", "false")
 
     response = handler.handler({}, {})
 
@@ -109,8 +111,10 @@ def test_handler_local_mode_html_report(mock_aws_clients, monkeypatch):
 def test_handler_local_mode_json_report(mock_aws_clients, monkeypatch):
     """Test reporter generates JSON report to local filesystem."""
     test_data_dir = f"/tmp/sp-autopilot-test-{os.getpid()}-json"
+    monkeypatch.setenv("LOCAL_MODE", "true")
     monkeypatch.setenv("LOCAL_DATA_DIR", test_data_dir)
     monkeypatch.setenv("REPORT_FORMAT", "json")
+    monkeypatch.setenv("EMAIL_REPORTS", "false")
 
     response = handler.handler({}, {})
 
@@ -134,8 +138,10 @@ def test_handler_local_mode_json_report(mock_aws_clients, monkeypatch):
 def test_handler_local_mode_with_debug_data(mock_aws_clients, monkeypatch):
     """Test reporter includes debug data in local mode."""
     test_data_dir = f"/tmp/sp-autopilot-test-{os.getpid()}-debug"
+    monkeypatch.setenv("LOCAL_MODE", "true")
     monkeypatch.setenv("LOCAL_DATA_DIR", test_data_dir)
     monkeypatch.setenv("INCLUDE_DEBUG_DATA", "true")
+    monkeypatch.setenv("EMAIL_REPORTS", "false")
 
     response = handler.handler({}, {})
 

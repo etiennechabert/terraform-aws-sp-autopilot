@@ -14,23 +14,23 @@ from unittest.mock import Mock, patch
 import pytest
 
 
-# Set environment variables before any imports
-os.environ["AWS_DEFAULT_REGION"] = "us-east-1"
-os.environ["LOCAL_MODE"] = "true"
-os.environ["QUEUE_URL"] = "not-used-in-local-mode"
-os.environ["SNS_TOPIC_ARN"] = "arn:aws:sns:us-east-1:123456789012:test-topic"
-os.environ["DRY_RUN"] = "false"
-os.environ["LOOKBACK_DAYS"] = "7"
-os.environ["MIN_DATA_DAYS"] = "7"
-os.environ["GRANULARITY"] = "HOURLY"
-os.environ["COVERAGE_TARGET_PERCENT"] = "80"
-os.environ["ENABLE_COMPUTE_SP"] = "true"
-os.environ["ENABLE_DATABASE_SP"] = "false"
-os.environ["ENABLE_SAGEMAKER_SP"] = "false"
-os.environ["PURCHASE_STRATEGY_TYPE"] = "fixed"
-os.environ["MAX_PURCHASE_PERCENT"] = "10"
-os.environ["MIN_COMMITMENT_PER_PLAN"] = "0.001"
-os.environ["COMPUTE_SP_PLAN_TYPE"] = "NO_UPFRONT:1_YEAR"
+# Set minimal environment variables before imports
+# LOCAL_MODE will be set per-test using monkeypatch to avoid polluting other tests
+os.environ.setdefault("AWS_DEFAULT_REGION", "us-east-1")
+os.environ.setdefault("QUEUE_URL", "not-used-in-local-mode")
+os.environ.setdefault("SNS_TOPIC_ARN", "arn:aws:sns:us-east-1:123456789012:test-topic")
+os.environ.setdefault("DRY_RUN", "false")
+os.environ.setdefault("LOOKBACK_DAYS", "7")
+os.environ.setdefault("MIN_DATA_DAYS", "7")
+os.environ.setdefault("GRANULARITY", "HOURLY")
+os.environ.setdefault("COVERAGE_TARGET_PERCENT", "80")
+os.environ.setdefault("ENABLE_COMPUTE_SP", "true")
+os.environ.setdefault("ENABLE_DATABASE_SP", "false")
+os.environ.setdefault("ENABLE_SAGEMAKER_SP", "false")
+os.environ.setdefault("PURCHASE_STRATEGY_TYPE", "fixed")
+os.environ.setdefault("MAX_PURCHASE_PERCENT", "10")
+os.environ.setdefault("MIN_COMMITMENT_PER_PLAN", "0.001")
+os.environ.setdefault("COMPUTE_SP_PLAN_TYPE", "NO_UPFRONT:1_YEAR")
 
 # Add lambda directory to path
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
@@ -67,6 +67,7 @@ def mock_aws_clients(aws_mock_builder):
 def test_handler_local_mode_queue_messages(mock_aws_clients, monkeypatch):
     """Test scheduler writes purchase messages to local filesystem queue."""
     test_data_dir = f"/tmp/sp-autopilot-test-{os.getpid()}-queue"
+    monkeypatch.setenv("LOCAL_MODE", "true")
     monkeypatch.setenv("LOCAL_DATA_DIR", test_data_dir)
 
     response = handler.handler({}, {})
@@ -102,6 +103,7 @@ def test_handler_local_mode_queue_messages(mock_aws_clients, monkeypatch):
 def test_handler_local_mode_no_purchases_needed(mock_aws_clients, monkeypatch, aws_mock_builder):
     """Test scheduler with no purchases needed (high coverage)."""
     test_data_dir = f"/tmp/sp-autopilot-test-{os.getpid()}-no-purchase"
+    monkeypatch.setenv("LOCAL_MODE", "true")
     monkeypatch.setenv("LOCAL_DATA_DIR", test_data_dir)
 
     # Mock 95% coverage - above 80% target, no purchase needed
@@ -122,6 +124,7 @@ def test_handler_local_mode_no_purchases_needed(mock_aws_clients, monkeypatch, a
 def test_handler_local_mode_dry_run(mock_aws_clients, monkeypatch):
     """Test scheduler in dry-run mode (no queue messages)."""
     test_data_dir = f"/tmp/sp-autopilot-test-{os.getpid()}-dryrun"
+    monkeypatch.setenv("LOCAL_MODE", "true")
     monkeypatch.setenv("LOCAL_DATA_DIR", test_data_dir)
     monkeypatch.setenv("DRY_RUN", "true")
 
@@ -141,6 +144,7 @@ def test_handler_local_mode_dry_run(mock_aws_clients, monkeypatch):
 def test_handler_local_mode_multiple_plan_types(mock_aws_clients, monkeypatch, aws_mock_builder):
     """Test scheduler with multiple SP types enabled."""
     test_data_dir = f"/tmp/sp-autopilot-test-{os.getpid()}-multi"
+    monkeypatch.setenv("LOCAL_MODE", "true")
     monkeypatch.setenv("LOCAL_DATA_DIR", test_data_dir)
     monkeypatch.setenv("ENABLE_DATABASE_SP", "true")
     monkeypatch.setenv("DATABASE_SP_PLAN_TYPE", "NO_UPFRONT:1_YEAR")

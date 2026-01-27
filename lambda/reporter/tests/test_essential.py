@@ -500,6 +500,13 @@ def test_handler_local_mode_auto_open(monkeypatch, mock_clients, aws_mock_builde
         utilization_percentage=85.0
     )
 
+    # Mock scheduler_preview recommendations
+    mock_clients[
+        "ce"
+    ].get_savings_plans_purchase_recommendation.return_value = aws_mock_builder.recommendation(
+        sp_type="compute", hourly_commitment=5.0
+    )
+
     # Mock S3 upload to return a local file path
     def mock_upload_report(*args, **kwargs):
         return "/tmp/test-report.html"
