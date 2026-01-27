@@ -146,14 +146,43 @@ def send_report_email(
         f"https://s3.console.aws.amazon.com/s3/object/{bucket_name}?prefix={s3_object_key}"
     )
 
-    # Extract key metrics for subject line
-    compute_coverage = (
-        coverage_data.get("compute", {}).get("summary", {}).get("avg_coverage_total", 0.0)
-    )
+    # Extract key metrics matching report header (same calculation as report_generator.py)
     actual_savings = savings_data.get("actual_savings", {})
-    net_savings = actual_savings.get("net_savings", 0.0)
 
-    subject = f"Savings Plans Report Available - {compute_coverage:.1f}% Coverage"
+    # Calculate overall coverage (min-hourly based) - matches report header
+    compute_data = coverage_data.get("compute", {})
+    database_data = coverage_data.get("database", {})
+    sagemaker_data = coverage_data.get("sagemaker", {})
+
+    compute_covered = compute_data.get("summary", {}).get("total_hourly_covered", 0.0)
+    database_covered = database_data.get("summary", {}).get("total_hourly_covered", 0.0)
+    sagemaker_covered = sagemaker_data.get("summary", {}).get("total_hourly_covered", 0.0)
+    total_hourly_covered = compute_covered + database_covered + sagemaker_covered
+
+    def get_min_hourly_from_timeseries(type_data):
+        """Extract minimum hourly on-demand spend from timeseries."""
+        timeseries = type_data.get("timeseries", [])
+        if not timeseries:
+            return 0.0
+        on_demand_values = [point.get("on_demand_spend", 0.0) for point in timeseries]
+        return min(on_demand_values) if on_demand_values else 0.0
+
+    compute_min = get_min_hourly_from_timeseries(compute_data)
+    database_min = get_min_hourly_from_timeseries(database_data)
+    sagemaker_min = get_min_hourly_from_timeseries(sagemaker_data)
+    total_min_hourly = compute_min + database_min + sagemaker_min
+
+    overall_coverage = (
+        (total_hourly_covered / total_min_hourly * 100) if total_min_hourly > 0 else 0.0
+    )
+
+    # Extract all KPIs matching report header
+    net_savings_hourly = actual_savings.get("net_savings_hourly", 0.0)
+    savings_percentage = actual_savings.get("savings_percentage", 0.0)
+    average_utilization = savings_data.get("average_utilization", 0.0)
+    plans_count = savings_data.get("plans_count", 0)
+
+    subject = f"Savings Plans Report Available - {overall_coverage:.1f}% Coverage"
 
     # Format the report date in a user-friendly way
     report_date = datetime.now(UTC).strftime("%B %d, %Y")
@@ -164,21 +193,28 @@ def send_report_email(
         "",
         "Your periodic Savings Plans coverage and savings report is ready.",
         "",
-        f"📊 View Full Report: {s3_url}",
+        "📊 KEY METRICS",
         "",
-        "⏰ This link expires in 7 days",
+        f"  Hourly Savings .......... ${net_savings_hourly:.2f}",
+        f"  Average Discount ........ {savings_percentage:.1f}%",
+        f"  SP Coverage (min-hourly). {overall_coverage:.1f}%",
+        f"  SP Utilization .......... {average_utilization:.1f}%",
+        f"  Active Plans ............ {plans_count}",
+        "",
+        "-" * 60,
+        "",
+        "📄 VIEW FULL REPORT",
+        "",
+        "Click the link below to access your detailed report:",
+        "(Link expires in 7 days)",
+        "",
+        s3_url,
         "",
         "-" * 60,
         "",
-        "Quick Summary:",
-        f"  • Coverage: {compute_coverage:.1f}%",
-        f"  • Net Savings (30d): ${net_savings:,.0f}",
-        "",
-        "Access the full report for detailed breakdowns, charts, and trends.",
-        "",
-        "-" * 60,
-        f"S3 Location: s3://{bucket_name}/{s3_object_key}",
-        f"AWS Console: {s3_console_url}",
+        "Alternative access:",
+        f"  S3: s3://{bucket_name}/{s3_object_key}",
+        f"  Console: {s3_console_url}",
         "",
         "This is an automated report from AWS Savings Plans Automation.",
     ]

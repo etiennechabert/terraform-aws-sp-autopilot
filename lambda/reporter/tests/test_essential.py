@@ -61,6 +61,11 @@ def mock_clients():
         mock_s3 = Mock()
         mock_sns = Mock()
 
+        # Mock S3 generate_presigned_url to return a string (for email notifications)
+        mock_s3.generate_presigned_url.return_value = (
+            "https://test-bucket.s3.amazonaws.com/test-report.html?X-Amz-Algorithm=AWS4-HMAC-SHA256"
+        )
+
         mock_init.return_value = {
             "ce": mock_ce,
             "savingsplans": mock_sp,
