@@ -1,6 +1,6 @@
 # S3 bucket for report storage
 
-
+# checkov:skip=CKV_AWS_18:S3 access logging is optional via s3_access_logging variable (disabled by default for cost optimization)
 resource "aws_s3_bucket" "reports" {
   bucket = "${local.module_name}-reports-${data.aws_caller_identity.current.account_id}"
 
@@ -65,6 +65,50 @@ resource "aws_s3_bucket_policy" "reports_https_only" {
       }
     ]
   })
+}
+
+# S3 bucket for access logs (only created if logging is enabled)
+resource "aws_s3_bucket" "reports_logs" {
+  count  = var.s3_access_logging.enabled ? 1 : 0
+  bucket = "${local.module_name}-reports-logs-${data.aws_caller_identity.current.account_id}"
+
+  tags = merge(
+    local.common_tags,
+    {
+      Name = "${local.module_name}-reports-logs"
+    }
+  )
+}
+
+resource "aws_s3_bucket_public_access_block" "reports_logs" {
+  count  = var.s3_access_logging.enabled ? 1 : 0
+  bucket = aws_s3_bucket.reports_logs[0].id
+
+  block_public_acls       = true
+  block_public_policy     = true
+  ignore_public_acls      = true
+  restrict_public_buckets = true
+}
+
+resource "aws_s3_bucket_lifecycle_configuration" "reports_logs" {
+  count  = var.s3_access_logging.enabled ? 1 : 0
+  bucket = aws_s3_bucket.reports_logs[0].id
+
+  rule {
+    id     = "cleanup-old-logs"
+    status = "Enabled"
+
+    expiration {
+      days = var.s3_access_logging.expiration_days
+    }
+  }
+}
+
+resource "aws_s3_bucket_logging" "reports" {
+  count         = var.s3_access_logging.enabled ? 1 : 0
+  bucket        = aws_s3_bucket.reports.id
+  target_bucket = aws_s3_bucket.reports_logs[0].id
+  target_prefix = var.s3_access_logging.target_prefix
 }
 
 resource "aws_s3_bucket_lifecycle_configuration" "reports" {
