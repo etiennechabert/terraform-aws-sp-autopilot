@@ -32,6 +32,7 @@ os.environ.setdefault("ENABLE_DATABASE_SP", "false")
 os.environ.setdefault("ENABLE_SAGEMAKER_SP", "false")
 os.environ.setdefault("LOW_UTILIZATION_THRESHOLD", "70")
 os.environ.setdefault("LOW_UTILIZATION_ALERT_ENABLED", "false")
+os.environ.setdefault("INCLUDE_DEBUG_DATA", "true")  # Enable debug mode for aws_debug.py coverage
 
 # Add lambda directory to path
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
@@ -98,6 +99,13 @@ def test_handler_success_with_active_plans(mock_env_vars, mock_clients, aws_mock
         utilization_percentage=85.0
     )
 
+    # Mock scheduler_preview recommendations
+    mock_clients[
+        "ce"
+    ].get_savings_plans_purchase_recommendation.return_value = aws_mock_builder.recommendation(
+        sp_type="compute", hourly_commitment=5.0
+    )
+
     # Mock S3 upload
     mock_clients["s3"].put_object.return_value = {}
 
@@ -140,6 +148,11 @@ def test_handler_success_without_email(mock_env_vars, mock_clients, aws_mock_bui
     ].describe_savings_plans.return_value = aws_mock_builder.describe_savings_plans(plans_count=1)
     mock_clients["ce"].get_savings_plans_utilization.return_value = aws_mock_builder.utilization(
         utilization_percentage=80.0
+    )
+    mock_clients[
+        "ce"
+    ].get_savings_plans_purchase_recommendation.return_value = aws_mock_builder.recommendation(
+        sp_type="compute", hourly_commitment=5.0
     )
     mock_clients["s3"].put_object.return_value = {}
 
@@ -471,6 +484,7 @@ def test_handler_local_mode_auto_open(monkeypatch, mock_clients, aws_mock_builde
     monkeypatch.setenv("LOCAL_MODE", "true")
     monkeypatch.setenv("REPORT_FORMAT", "html")
     monkeypatch.setenv("EMAIL_REPORTS", "false")
+    monkeypatch.setenv("AUTO_OPEN_REPORTS", "true")
 
     # Mock SpendingAnalyzer
     mock_clients["ce"].get_savings_plans_coverage.return_value = aws_mock_builder.coverage(
@@ -485,6 +499,13 @@ def test_handler_local_mode_auto_open(monkeypatch, mock_clients, aws_mock_builde
     # Mock utilization
     mock_clients["ce"].get_savings_plans_utilization.return_value = aws_mock_builder.utilization(
         utilization_percentage=85.0
+    )
+
+    # Mock scheduler_preview recommendations
+    mock_clients[
+        "ce"
+    ].get_savings_plans_purchase_recommendation.return_value = aws_mock_builder.recommendation(
+        sp_type="compute", hourly_commitment=5.0
     )
 
     # Mock S3 upload to return a local file path

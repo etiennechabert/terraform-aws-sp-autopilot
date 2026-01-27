@@ -6,6 +6,7 @@ for debugging and development purposes.
 """
 
 import os
+import uuid
 from pathlib import Path
 
 
@@ -25,9 +26,11 @@ def get_local_data_dir() -> Path:
 
     Returns:
         Path: Path object pointing to the local data directory.
-              Defaults to './local_data' if LOCAL_DATA_DIR is not set.
+              Defaults to '/tmp/sp-autopilot-{random-id}/' if LOCAL_DATA_DIR is not set.
+              Files are persisted (not cleaned up) for debugging convenience.
     """
-    data_dir = Path(os.getenv("LOCAL_DATA_DIR", "./local_data"))
+    default_dir = f"/tmp/sp-autopilot-{uuid.uuid4().hex[:8]}"
+    data_dir = Path(os.getenv("LOCAL_DATA_DIR", default_dir))
     # Ensure directory exists
     data_dir.mkdir(parents=True, exist_ok=True)
     return data_dir

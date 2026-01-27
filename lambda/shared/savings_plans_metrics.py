@@ -173,6 +173,66 @@ def get_active_savings_plans(
         raise
 
 
+def _round_start_time_for_hourly(start_time: datetime) -> datetime:
+    """Round start time UP to next midnight for HOURLY granularity."""
+    if (
+        start_time.hour != 0
+        or start_time.minute != 0
+        or start_time.second != 0
+        or start_time.microsecond != 0
+    ):
+        return start_time.replace(hour=0, minute=0, second=0, microsecond=0) + timedelta(days=1)
+    return start_time.replace(hour=0, minute=0, second=0, microsecond=0)
+
+
+def _process_utilization_data(utilizations: list[dict[str, Any]]) -> dict[str, Any]:
+    """Process utilization data from API response."""
+    total_utilization = 0.0
+    count = 0
+    utilization_by_day = []
+    total_net_savings = 0.0
+    total_on_demand_equivalent = 0.0
+    total_amortized_commitment = 0.0
+
+    for util_item in utilizations:
+        time_period = util_item.get("TimePeriod", {})
+
+        utilization = util_item.get("Utilization", {})
+        utilization_percentage = utilization.get("UtilizationPercentage")
+
+        if utilization_percentage:
+            util_pct = float(utilization_percentage)
+            total_utilization += util_pct
+            count += 1
+
+            utilization_by_day.append(
+                {
+                    "date": time_period.get("Start"),
+                    "utilization": util_pct,
+                }
+            )
+
+        savings = util_item.get("Savings", {})
+        net_savings = savings.get("NetSavings", "0")
+        on_demand_equivalent = savings.get("OnDemandCostEquivalent", "0")
+
+        amortized = util_item.get("AmortizedCommitment", {})
+        amortized_commitment = amortized.get("TotalAmortizedCommitment", "0")
+
+        total_net_savings += float(net_savings)
+        total_on_demand_equivalent += float(on_demand_equivalent)
+        total_amortized_commitment += float(amortized_commitment)
+
+    return {
+        "total_utilization": total_utilization,
+        "count": count,
+        "utilization_by_day": utilization_by_day,
+        "total_net_savings": total_net_savings,
+        "total_on_demand_equivalent": total_on_demand_equivalent,
+        "total_amortized_commitment": total_amortized_commitment,
+    }
+
+
 def get_savings_plans_metrics(
     ce_client: CostExplorerClient,
     plan_type: str,
@@ -218,19 +278,8 @@ def get_savings_plans_metrics(
         end_time = datetime.now(UTC)
         start_time = end_time - timedelta(days=lookback_days)
 
-        # Round start_time UP to next midnight for HOURLY to stay within AWS retention window
         if granularity == "HOURLY":
-            if (
-                start_time.hour != 0
-                or start_time.minute != 0
-                or start_time.second != 0
-                or start_time.microsecond != 0
-            ):
-                start_time = start_time.replace(
-                    hour=0, minute=0, second=0, microsecond=0
-                ) + timedelta(days=1)
-            else:
-                start_time = start_time.replace(hour=0, minute=0, second=0, microsecond=0)
+            start_time = _round_start_time_for_hourly(start_time)
 
         # Format dates based on granularity
         # HOURLY requires ISO 8601 (yyyy-MM-ddTHH:mm:ssZ)
@@ -275,44 +324,13 @@ def get_savings_plans_metrics(
                 "savings_percentage": 0.0,
             }
 
-        # Extract both utilization and savings from the same response
-        total_utilization = 0.0
-        count = 0
-        utilization_by_day = []
-        total_net_savings = 0.0
-        total_on_demand_equivalent = 0.0
-        total_amortized_commitment = 0.0
-
-        for util_item in utilizations:
-            time_period = util_item.get("TimePeriod", {})
-
-            # Extract utilization metrics
-            utilization = util_item.get("Utilization", {})
-            utilization_percentage = utilization.get("UtilizationPercentage")
-
-            if utilization_percentage:
-                util_pct = float(utilization_percentage)
-                total_utilization += util_pct
-                count += 1
-
-                utilization_by_day.append(
-                    {
-                        "date": time_period.get("Start"),
-                        "utilization": util_pct,
-                    }
-                )
-
-            # Extract savings metrics
-            savings = util_item.get("Savings", {})
-            net_savings = savings.get("NetSavings", "0")
-            on_demand_equivalent = savings.get("OnDemandCostEquivalent", "0")
-
-            amortized = util_item.get("AmortizedCommitment", {})
-            amortized_commitment = amortized.get("TotalAmortizedCommitment", "0")
-
-            total_net_savings += float(net_savings)
-            total_on_demand_equivalent += float(on_demand_equivalent)
-            total_amortized_commitment += float(amortized_commitment)
+        processed = _process_utilization_data(utilizations)
+        total_utilization = processed["total_utilization"]
+        count = processed["count"]
+        utilization_by_day = processed["utilization_by_day"]
+        total_net_savings = processed["total_net_savings"]
+        total_on_demand_equivalent = processed["total_on_demand_equivalent"]
+        total_amortized_commitment = processed["total_amortized_commitment"]
 
         # Calculate averages
         average_utilization = total_utilization / count if count > 0 else 0.0

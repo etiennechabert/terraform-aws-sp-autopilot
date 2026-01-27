@@ -408,16 +408,69 @@ open htmlcov/index.html
 
 ## Integration Tests vs Unit Tests
 
-**We write Integration Tests for Lambdas:**
-- Test full Lambda execution path
+**Primary Strategy: Integration Tests (80%+ coverage)**
+
+We write Integration Tests for Lambdas as the PRIMARY testing strategy:
+- Test full Lambda execution path through `handler.handler()`
 - Mock only AWS (external boundary)
 - Test integration between internal modules
-- Test through handler entry point
+- Achieves 80%+ coverage through real execution paths
 
-**We do NOT write Unit Tests for internal functions:**
-- Internal functions are tested via handler invocation
-- Refactoring internals does not break tests
-- Focus on behavior, not implementation
+**Exception: Unit Tests for Critical Algorithms**
+
+Unit tests are ONLY allowed for modules that meet **ALL** of these criteria:
+1. ✅ **Pure algorithmic logic** - Mathematical/computational functions with no side effects
+2. ✅ **Complex branching** - Multiple conditional paths with edge cases
+3. ✅ **Hard to trigger via integration** - Edge cases require complex AWS mock setups
+4. ✅ **Critical correctness** - Bugs would cause financial impact (incorrect purchases)
+5. ✅ **Testable in isolation** - Function doesn't depend on AWS state or side effects
+
+**Approved modules for unit tests:**
+- `shared/optimal_coverage.py` - Coverage optimization algorithm (190 lines)
+- `scheduler/dichotomy_strategy.py` - Binary search purchase sizing (277 lines)
+- `scheduler/fixed_strategy.py` - Purchase calculation logic (189 lines)
+- `scheduler/purchase_calculator.py` - Term mix splitting (154 lines)
+- `shared/spending_analyzer.py` - Statistics/percentile calculations (496 lines)
+
+**Unit Test Rules:**
+1. Test ONLY the pure algorithmic function
+2. NO mocking (pure functions don't need it)
+3. Focus on edge cases and mathematical correctness
+4. Place in `tests/unit/` subdirectory
+5. Integration tests still required for real execution path
+6. Max 20% of total test count can be unit tests
+
+**Example:**
+```python
+# ✅ ALLOWED - Pure algorithm unit test
+def test_optimal_coverage_all_costs_equal():
+    result = calculate_optimal_coverage([10.0] * 168, 30)
+    assert result["coverage_hourly"] == 10.0
+
+# ❌ FORBIDDEN - Integration concern
+def test_strategy_with_mocked_analyzer():
+    with patch("handler.SpendingAnalyzer"):
+        ...  # This belongs in test_handler.py
+```
+
+**Modules that should NOT have unit tests** (integration only):
+- AWS API wrappers (follow_aws_strategy, recommendations, savings_plans_metrics)
+- String formatting (email_notifications)
+- SQS/SNS interactions (queue_manager, notifications)
+- Config parsing (config)
+- Handler orchestration (handler)
+
+**File Structure:**
+```
+lambda/scheduler/tests/
+├── test_handler_import.py    # Import validation (required)
+├── test_handler.py            # Integration tests (PRIMARY)
+└── unit/                      # Unit tests for algorithms ONLY
+    ├── conftest.py            # Path setup
+    ├── test_dichotomy_algorithm.py
+    ├── test_fixed_strategy_algorithm.py
+    └── test_purchase_calculator.py
+```
 
 ---
 

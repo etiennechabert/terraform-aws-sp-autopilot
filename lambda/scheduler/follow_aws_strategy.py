@@ -114,8 +114,10 @@ def calculate_purchase_need_follow_aws(
 
         purchase_plans.append(purchase_plan)
         logger.info(
-            f"{sp_type['name']} SP purchase planned: ${hourly_commitment_float}/hour "
-            f"(100% of AWS recommendation, recommendation_id: {purchase_plan['recommendation_id']})"
+            "%s SP purchase planned: $%s/hour (100%% of AWS recommendation, recommendation_id: %s)",
+            sp_type["name"],
+            hourly_commitment_float,
+            purchase_plan["recommendation_id"],
         )
 
     logger.info(f"Follow AWS strategy purchase need calculated: {len(purchase_plans)} plans")
