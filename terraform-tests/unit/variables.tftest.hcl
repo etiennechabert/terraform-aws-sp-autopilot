@@ -49,14 +49,14 @@ run "test_coverage_target_percent_valid_min" {
   }
 }
 
-# Test: coverage_target_percent - valid maximum value (100)
+# Test: coverage_target_percent - valid maximum value (95, recommended limit)
 run "test_coverage_target_percent_valid_max" {
   command = plan
 
   variables {
     purchase_strategy = {
-      coverage_target_percent = 100
-      max_coverage_cap        = 100
+      coverage_target_percent = 95
+      max_coverage_cap        = 95
       simple = {
         max_purchase_percent = 5
       }
@@ -137,6 +137,62 @@ run "test_coverage_target_percent_invalid_negative" {
     purchase_strategy = {
       coverage_target_percent = -10
       max_coverage_cap        = 90
+      simple = {
+        max_purchase_percent = 5
+      }
+    }
+    sp_plans = {
+      compute = {
+        enabled              = true
+        all_upfront_one_year = 1
+      }
+    }
+    notifications = {
+      emails = ["test@example.com"]
+    }
+  }
+
+  expect_failures = [
+    var.purchase_strategy,
+  ]
+}
+
+# Test: coverage_target_percent - warning at 96 (exceeds recommended maximum)
+run "test_coverage_target_percent_warning_at_96" {
+  command = plan
+
+  variables {
+    purchase_strategy = {
+      coverage_target_percent = 96
+      max_coverage_cap        = 96
+      simple = {
+        max_purchase_percent = 5
+      }
+    }
+    sp_plans = {
+      compute = {
+        enabled              = true
+        all_upfront_one_year = 1
+      }
+    }
+    notifications = {
+      emails = ["test@example.com"]
+    }
+  }
+
+  expect_failures = [
+    var.purchase_strategy,
+  ]
+}
+
+# Test: coverage_target_percent - warning at 100 (exceeds recommended maximum)
+run "test_coverage_target_percent_warning_at_100" {
+  command = plan
+
+  variables {
+    purchase_strategy = {
+      coverage_target_percent = 100
+      max_coverage_cap        = 100
       simple = {
         max_purchase_percent = 5
       }
@@ -885,6 +941,112 @@ run "test_dichotomy_strategy_invalid_min_gte_max" {
       dichotomy = {
         max_purchase_percent = 5
         min_purchase_percent = 10
+      }
+    }
+    sp_plans = {
+      compute = {
+        enabled              = true
+        all_upfront_one_year = 1
+      }
+    }
+    notifications = {
+      emails = ["test@example.com"]
+    }
+  }
+
+  expect_failures = [
+    var.purchase_strategy,
+  ]
+}
+
+# Test: fixed strategy - valid max_purchase_percent at 80% (limit)
+run "test_fixed_strategy_max_purchase_percent_valid_at_80" {
+  command = plan
+
+  variables {
+    purchase_strategy = {
+      coverage_target_percent = 80
+      max_coverage_cap        = 90
+      fixed = {
+        max_purchase_percent = 80
+      }
+    }
+    sp_plans = {
+      compute = {
+        enabled              = true
+        all_upfront_one_year = 1
+      }
+    }
+    notifications = {
+      emails = ["test@example.com"]
+    }
+  }
+}
+
+# Test: fixed strategy - warning at 81% (exceeds recommended maximum)
+run "test_fixed_strategy_max_purchase_percent_warning_at_81" {
+  command = plan
+
+  variables {
+    purchase_strategy = {
+      coverage_target_percent = 80
+      max_coverage_cap        = 90
+      fixed = {
+        max_purchase_percent = 81
+      }
+    }
+    sp_plans = {
+      compute = {
+        enabled              = true
+        all_upfront_one_year = 1
+      }
+    }
+    notifications = {
+      emails = ["test@example.com"]
+    }
+  }
+
+  expect_failures = [
+    var.purchase_strategy,
+  ]
+}
+
+# Test: dichotomy strategy - valid max_purchase_percent at 80% (limit)
+run "test_dichotomy_strategy_max_purchase_percent_valid_at_80" {
+  command = plan
+
+  variables {
+    purchase_strategy = {
+      coverage_target_percent = 80
+      max_coverage_cap        = 90
+      dichotomy = {
+        max_purchase_percent = 80
+        min_purchase_percent = 30
+      }
+    }
+    sp_plans = {
+      compute = {
+        enabled              = true
+        all_upfront_one_year = 1
+      }
+    }
+    notifications = {
+      emails = ["test@example.com"]
+    }
+  }
+}
+
+# Test: dichotomy strategy - warning at 81% (exceeds recommended maximum)
+run "test_dichotomy_strategy_max_purchase_percent_warning_at_81" {
+  command = plan
+
+  variables {
+    purchase_strategy = {
+      coverage_target_percent = 80
+      max_coverage_cap        = 90
+      dichotomy = {
+        max_purchase_percent = 81
+        min_purchase_percent = 30
       }
     }
     sp_plans = {
