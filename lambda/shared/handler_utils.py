@@ -71,7 +71,7 @@ def _get_env_value(env_var: str, is_required: bool, default_value: Any) -> str |
     return os.environ.get(env_var)
 
 
-def _convert_field_value(raw_value: str, field_type: str, field_name: str, env_var: str) -> Any:
+def _convert_field_value(raw_value: str, field_type: str, field_name: str) -> Any:
     """Convert raw string value to the specified type."""
     if field_type == "str":
         return raw_value
@@ -151,7 +151,7 @@ def load_config_from_env(
             continue
 
         try:
-            config[field_name] = _convert_field_value(raw_value, field_type, field_name, env_var)
+            config[field_name] = _convert_field_value(raw_value, field_type, field_name)
         except json.JSONDecodeError as e:
             raise json.JSONDecodeError(
                 f"Failed to parse JSON for field '{field_name}' (env var '{env_var}'): {e.msg}",
