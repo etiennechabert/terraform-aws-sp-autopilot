@@ -189,6 +189,63 @@ def _validate_tags_field(config: dict[str, Any]) -> None:
             )
 
 
+def _validate_purchase_percent_constraints(config: dict[str, Any]) -> None:
+    """Validate min_purchase_percent < max_purchase_percent."""
+    if (
+        "min_purchase_percent" in config
+        and "max_purchase_percent" in config
+        and config["min_purchase_percent"] >= config["max_purchase_percent"]
+    ):
+        raise ValueError(
+            f"Field 'min_purchase_percent' ({config['min_purchase_percent']}) "
+            f"must be less than 'max_purchase_percent' ({config['max_purchase_percent']})"
+        )
+
+
+def _validate_renewal_window_days(config: dict[str, Any]) -> None:
+    """Validate renewal_window_days is a positive integer."""
+    if "renewal_window_days" in config:
+        _validate_positive_number(config["renewal_window_days"], "renewal_window_days")
+        if not isinstance(config["renewal_window_days"], int):
+            raise ValueError(
+                f"Field 'renewal_window_days' must be an integer, "
+                f"got {type(config['renewal_window_days']).__name__}: "
+                f"{config['renewal_window_days']}"
+            )
+
+
+def _validate_sp_terms(config: dict[str, Any]) -> None:
+    """Validate term values for compute and sagemaker."""
+    _validate_term_value(config, "compute_sp_term")
+    _validate_term_value(config, "sagemaker_sp_term")
+
+
+def _validate_sp_payment_options(config: dict[str, Any]) -> None:
+    """Validate payment options for all SP types."""
+    _validate_payment_option(config, "compute_sp_payment_option")
+    _validate_payment_option(config, "sagemaker_sp_payment_option")
+    _validate_payment_option(config, "database_sp_payment_option")
+
+
+def _validate_strategy_and_granularity(config: dict[str, Any]) -> None:
+    """Validate purchase strategy type and granularity."""
+    if "purchase_strategy_type" in config:
+        strategy_type = config["purchase_strategy_type"]
+        if strategy_type not in VALID_PURCHASE_STRATEGIES:
+            raise ValueError(
+                f"Invalid purchase_strategy_type: '{strategy_type}'. "
+                f"Must be one of: {', '.join(VALID_PURCHASE_STRATEGIES)}"
+            )
+
+    if "granularity" in config:
+        granularity = config["granularity"]
+        if granularity not in VALID_GRANULARITIES:
+            raise ValueError(
+                f"Invalid granularity: '{granularity}'. "
+                f"Must be one of: {', '.join(VALID_GRANULARITIES)}"
+            )
+
+
 def validate_scheduler_config(config: dict[str, Any]) -> None:
     """
     Validate scheduler configuration schema and data types.
@@ -222,60 +279,16 @@ def validate_scheduler_config(config: dict[str, Any]) -> None:
         if field in config:
             _validate_percentage_range(config[field], field)
 
-    # Validate min_purchase_percent < max_purchase_percent
-    if (
-        "min_purchase_percent" in config
-        and "max_purchase_percent" in config
-        and config["min_purchase_percent"] >= config["max_purchase_percent"]
-    ):
-        raise ValueError(
-            f"Field 'min_purchase_percent' ({config['min_purchase_percent']}) "
-            f"must be less than 'max_purchase_percent' ({config['max_purchase_percent']})"
-        )
-
-    # Validate renewal_window_days is a positive integer
-    if "renewal_window_days" in config:
-        _validate_positive_number(config["renewal_window_days"], "renewal_window_days")
-        if not isinstance(config["renewal_window_days"], int):
-            raise ValueError(
-                f"Field 'renewal_window_days' must be an integer, "
-                f"got {type(config['renewal_window_days']).__name__}: "
-                f"{config['renewal_window_days']}"
-            )
-
-    # Validate lookback_days with granularity constraints
+    _validate_purchase_percent_constraints(config)
+    _validate_renewal_window_days(config)
     _validate_lookback_days_with_granularity(config)
 
-    # Validate min_commitment_per_plan is non-negative
     if "min_commitment_per_plan" in config:
         _validate_non_negative_number(config["min_commitment_per_plan"], "min_commitment_per_plan")
 
-    # Validate term values
-    _validate_term_value(config, "compute_sp_term")
-    _validate_term_value(config, "sagemaker_sp_term")
-
-    # Validate payment options
-    _validate_payment_option(config, "compute_sp_payment_option")
-    _validate_payment_option(config, "sagemaker_sp_payment_option")
-    _validate_payment_option(config, "database_sp_payment_option")
-
-    # Validate purchase strategy type
-    if "purchase_strategy_type" in config:
-        strategy_type = config["purchase_strategy_type"]
-        if strategy_type not in VALID_PURCHASE_STRATEGIES:
-            raise ValueError(
-                f"Invalid purchase_strategy_type: '{strategy_type}'. "
-                f"Must be one of: {', '.join(VALID_PURCHASE_STRATEGIES)}"
-            )
-
-    # Validate granularity
-    if "granularity" in config:
-        granularity = config["granularity"]
-        if granularity not in VALID_GRANULARITIES:
-            raise ValueError(
-                f"Invalid granularity: '{granularity}'. "
-                f"Must be one of: {', '.join(VALID_GRANULARITIES)}"
-            )
+    _validate_sp_terms(config)
+    _validate_sp_payment_options(config)
+    _validate_strategy_and_granularity(config)
 
 
 def validate_reporter_config(config: dict[str, Any]) -> None:

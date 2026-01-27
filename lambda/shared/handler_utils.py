@@ -62,6 +62,32 @@ def configure_logging() -> None:
 configure_logging()
 
 
+def _get_env_value(env_var: str, is_required: bool, default_value: Any) -> str | None:
+    """Retrieve value from environment variable."""
+    if is_required:
+        return os.environ[env_var]
+    if default_value is not None:
+        return os.environ.get(env_var, default_value)
+    return os.environ.get(env_var)
+
+
+def _convert_field_value(raw_value: str, field_type: str, field_name: str, env_var: str) -> Any:
+    """Convert raw string value to the specified type."""
+    if field_type == "str":
+        return raw_value
+    if field_type == "bool":
+        return raw_value.lower() == "true"
+    if field_type == "int":
+        return int(raw_value)
+    if field_type == "float":
+        return float(raw_value)
+    if field_type == "json":
+        return json.loads(raw_value)
+
+    logger.warning(f"Unknown type '{field_type}' for field '{field_name}', treating as string")
+    return raw_value
+
+
 def load_config_from_env(
     schema: dict[str, dict[str, Any]],
     validator: Callable[[dict[str, Any]], None] | None = None,
@@ -114,51 +140,18 @@ def load_config_from_env(
     config = {}
 
     for field_name, field_spec in schema.items():
-        # Get environment variable name (default to uppercase field name)
         env_var = field_spec.get("env_var", field_name.upper())
-
-        # Check if field is required
         is_required = field_spec.get("required", False)
-
-        # Get field type
         field_type = field_spec.get("type", "str")
-
-        # Get default value
         default_value = field_spec.get("default")
 
-        # Retrieve value from environment
-        if is_required:
-            # Required field - will raise KeyError if missing
-            raw_value = os.environ[env_var]
-        # Optional field - use default if missing
-        elif default_value is not None:
-            raw_value = os.environ.get(env_var, default_value)
-        else:
-            raw_value = os.environ.get(env_var)
+        raw_value = _get_env_value(env_var, is_required, default_value)
 
-        # Skip if value is None (optional field not provided, no default)
         if raw_value is None:
             continue
 
-        # Type conversion
         try:
-            if field_type == "str":
-                config[field_name] = raw_value
-            elif field_type == "bool":
-                # Boolean conversion: 'true' (case-insensitive) -> True, else False
-                config[field_name] = raw_value.lower() == "true"
-            elif field_type == "int":
-                config[field_name] = int(raw_value)
-            elif field_type == "float":
-                config[field_name] = float(raw_value)
-            elif field_type == "json":
-                config[field_name] = json.loads(raw_value)
-            else:
-                # Unknown type - treat as string and log warning
-                logger.warning(
-                    f"Unknown type '{field_type}' for field '{field_name}', treating as string"
-                )
-                config[field_name] = raw_value
+            config[field_name] = _convert_field_value(raw_value, field_type, field_name, env_var)
         except json.JSONDecodeError as e:
             raise json.JSONDecodeError(
                 f"Failed to parse JSON for field '{field_name}' (env var '{env_var}'): {e.msg}",

@@ -18,6 +18,99 @@ from shared.optimal_coverage import calculate_optimal_coverage
 logger = logging.getLogger(__name__)
 
 
+def _get_coverage_class(coverage: float) -> str:
+    """Return CSS class based on coverage percentage."""
+    if coverage >= 70:
+        return "green"
+    if coverage >= 30:
+        return "orange"
+    return "red"
+
+
+def _get_utilization_class(utilization: float) -> str:
+    """Return CSS class based on utilization percentage."""
+    if utilization >= 95:
+        return "green"
+    if utilization >= 80:
+        return "orange"
+    return "red"
+
+
+def _get_min_hourly_from_timeseries_data(sp_type_data: dict[str, Any]) -> float:
+    """Extract minimum hourly cost from timeseries data."""
+    timeseries = sp_type_data.get("timeseries", [])
+    total_costs = []
+    for item in timeseries:
+        total = item.get("total", 0.0)
+        if total > 0:
+            total_costs.append(total)
+    return min(total_costs) if total_costs else 0.0
+
+
+def _prepare_html_report_data(
+    coverage_data: dict[str, Any], savings_data: dict[str, Any], config: dict[str, Any]
+) -> dict[str, Any]:
+    """Prepare all data needed for HTML report generation."""
+    now = datetime.now(UTC)
+    lookback_days = config["lookback_days"]
+    data_end_date = now.date()
+    data_start_date = data_end_date - timedelta(days=lookback_days)
+
+    # Extract coverage summaries
+    compute_summary = coverage_data.get("compute", {}).get("summary", {})
+    database_summary = coverage_data.get("database", {}).get("summary", {})
+    sagemaker_summary = coverage_data.get("sagemaker", {}).get("summary", {})
+
+    compute_coverage = compute_summary.get("avg_coverage_total", 0.0)
+    database_coverage = database_summary.get("avg_coverage_total", 0.0)
+    sagemaker_coverage = sagemaker_summary.get("avg_coverage_total", 0.0)
+
+    # Calculate overall coverage
+    total_hourly_spend = (
+        compute_summary.get("avg_hourly_total", 0.0)
+        + database_summary.get("avg_hourly_total", 0.0)
+        + sagemaker_summary.get("avg_hourly_total", 0.0)
+    )
+    total_hourly_covered = (
+        compute_summary.get("avg_hourly_covered", 0.0)
+        + database_summary.get("avg_hourly_covered", 0.0)
+        + sagemaker_summary.get("avg_hourly_covered", 0.0)
+    )
+
+    compute_min = _get_min_hourly_from_timeseries_data(coverage_data.get("compute", {}))
+    database_min = _get_min_hourly_from_timeseries_data(coverage_data.get("database", {}))
+    sagemaker_min = _get_min_hourly_from_timeseries_data(coverage_data.get("sagemaker", {}))
+    total_min_hourly = compute_min + database_min + sagemaker_min
+
+    overall_coverage = (
+        (total_hourly_covered / total_min_hourly * 100) if total_min_hourly > 0 else 0.0
+    )
+
+    # Extract savings data
+    actual_savings = savings_data.get("actual_savings", {})
+
+    return {
+        "report_timestamp": now.strftime("%Y-%m-%d %H:%M:%S UTC"),
+        "data_period": f"{data_start_date.isoformat()} to {data_end_date.isoformat()}",
+        "lookback_days": lookback_days,
+        "compute_coverage": compute_coverage,
+        "database_coverage": database_coverage,
+        "sagemaker_coverage": sagemaker_coverage,
+        "overall_coverage": overall_coverage,
+        "overall_coverage_class": _get_coverage_class(overall_coverage),
+        "total_hourly_spend": total_hourly_spend,
+        "total_hourly_covered": total_hourly_covered,
+        "plans_count": savings_data.get("plans_count", 0),
+        "net_savings_hourly": actual_savings.get("net_savings_hourly", 0.0),
+        "savings_percentage": actual_savings.get("savings_percentage", 0.0),
+        "total_commitment": savings_data.get("total_commitment", 0.0),
+        "average_utilization": savings_data.get("average_utilization", 0.0),
+        "utilization_class": _get_utilization_class(savings_data.get("average_utilization", 0.0)),
+        "on_demand_equivalent_hourly": actual_savings.get("on_demand_equivalent_hourly", 0.0),
+        "breakdown_by_type": actual_savings.get("breakdown_by_type", {}),
+    }
+
+
 def generate_report(
     coverage_data: dict[str, Any],
     savings_data: dict[str, Any],
@@ -167,6 +260,32 @@ def _prepare_chart_data(
     return json.dumps(all_chart_data), optimal_results
 
 
+def _calculate_sp_type_optimal(
+    sp_type: str, type_data: dict[str, Any], savings_percentage: float
+) -> dict[str, Any]:
+    """Calculate optimal coverage for a single SP type."""
+    if not (type_data["covered"] and type_data["ondemand"]):
+        return {}
+
+    hourly_costs = [
+        covered + ondemand
+        for covered, ondemand in zip(type_data["covered"], type_data["ondemand"], strict=True)
+    ]
+
+    if not hourly_costs or max(hourly_costs) <= 0:
+        return {}
+
+    logger.info(
+        f"Calculating optimal coverage for {sp_type}: using {savings_percentage:.1f}% discount"
+    )
+
+    try:
+        return calculate_optimal_coverage(hourly_costs, savings_percentage)
+    except Exception as e:
+        logger.warning(f"Failed to calculate optimal coverage for {sp_type}: {e}")
+        return {}
+
+
 def _calculate_optimal_coverage(
     all_chart_data: dict[str, Any], savings_data: dict[str, Any]
 ) -> dict[str, Any]:
@@ -183,59 +302,24 @@ def _calculate_optimal_coverage(
     optimal_results = {}
 
     for sp_type in ["compute", "database", "sagemaker"]:
-        type_data = all_chart_data[sp_type]
-        if not (type_data["covered"] and type_data["ondemand"]):
-            continue
-
-        hourly_costs = [
-            covered + ondemand
-            for covered, ondemand in zip(type_data["covered"], type_data["ondemand"], strict=True)
-        ]
-
-        if not hourly_costs or max(hourly_costs) <= 0:
-            continue
-
         type_breakdown = breakdown_by_type.get(type_mapping.get(sp_type, ""), {})
         type_savings_pct = type_breakdown.get("savings_percentage", 0.0)
         savings_percentage = type_savings_pct if type_savings_pct > 0 else 20.0
 
-        logger.info(
-            f"Calculating optimal coverage for {sp_type}: using {savings_percentage:.1f}% discount"
-        )
-
-        try:
-            optimal_results[sp_type] = calculate_optimal_coverage(hourly_costs, savings_percentage)
-        except Exception as e:
-            logger.warning(f"Failed to calculate optimal coverage for {sp_type}: {e}")
-            optimal_results[sp_type] = {}
+        result = _calculate_sp_type_optimal(sp_type, all_chart_data[sp_type], savings_percentage)
+        if result:
+            optimal_results[sp_type] = result
 
     # Calculate global optimal coverage
-    if all_chart_data["global"]["covered"] and all_chart_data["global"]["ondemand"]:
-        hourly_costs = [
-            covered + ondemand
-            for covered, ondemand in zip(
-                all_chart_data["global"]["covered"],
-                all_chart_data["global"]["ondemand"],
-                strict=True,
-            )
-        ]
+    overall_savings_pct = actual_savings.get("savings_percentage", 0.0)
+    savings_percentage = overall_savings_pct if overall_savings_pct > 0 else 20.0
+    optimal_results["savings_percentage_used"] = savings_percentage
 
-        if hourly_costs and max(hourly_costs) > 0:
-            overall_savings_pct = actual_savings.get("savings_percentage", 0.0)
-            savings_percentage = overall_savings_pct if overall_savings_pct > 0 else 20.0
-
-            logger.info(
-                f"Calculating optimal coverage for global: using {savings_percentage:.1f}% discount"
-            )
-            optimal_results["savings_percentage_used"] = savings_percentage
-
-            try:
-                optimal_results["global"] = calculate_optimal_coverage(
-                    hourly_costs, savings_percentage
-                )
-            except Exception as e:
-                logger.warning(f"Failed to calculate optimal coverage for global: {e}")
-                optimal_results["global"] = {}
+    global_result = _calculate_sp_type_optimal(
+        "global", all_chart_data["global"], savings_percentage
+    )
+    if global_result:
+        optimal_results["global"] = global_result
 
     return optimal_results
 
@@ -431,97 +515,26 @@ def generate_html_report(
     logger.info("Generating HTML report")
     config = config or {}
 
-    now = datetime.now(UTC)
-    report_timestamp = now.strftime("%Y-%m-%d %H:%M:%S UTC")
+    # Prepare all data needed for the report
+    data = _prepare_html_report_data(coverage_data, savings_data, config)
 
-    # Calculate data period based on lookback days
-    lookback_days = config["lookback_days"]
-    data_end_date = now.date()
-    data_start_date = data_end_date - timedelta(days=lookback_days)
-    data_period = f"{data_start_date.isoformat()} to {data_end_date.isoformat()}"
-
-    # Extract coverage summary per type
-    compute_coverage = (
-        coverage_data.get("compute", {}).get("summary", {}).get("avg_coverage_total", 0.0)
-    )
-    database_coverage = (
-        coverage_data.get("database", {}).get("summary", {}).get("avg_coverage_total", 0.0)
-    )
-    sagemaker_coverage = (
-        coverage_data.get("sagemaker", {}).get("summary", {}).get("avg_coverage_total", 0.0)
-    )
-
-    # Helper function to get CSS class for coverage level
-    def get_coverage_class(coverage: float) -> str:
-        """Return CSS class based on coverage percentage."""
-        if coverage >= 70:
-            return "green"
-        if coverage >= 30:
-            return "orange"
-        return "red"
-
-    # Helper function to get CSS class for utilization level
-    def get_utilization_class(utilization: float) -> str:
-        """Return CSS class based on utilization percentage."""
-        if utilization >= 95:
-            return "green"
-        if utilization >= 80:
-            return "orange"
-        return "red"
-
-    # Calculate overall weighted coverage across all types
-    compute_summary = coverage_data.get("compute", {}).get("summary", {})
-    database_summary = coverage_data.get("database", {}).get("summary", {})
-    sagemaker_summary = coverage_data.get("sagemaker", {}).get("summary", {})
-
-    total_hourly_spend = (
-        compute_summary.get("avg_hourly_total", 0.0)
-        + database_summary.get("avg_hourly_total", 0.0)
-        + sagemaker_summary.get("avg_hourly_total", 0.0)
-    )
-    total_hourly_covered = (
-        compute_summary.get("avg_hourly_covered", 0.0)
-        + database_summary.get("avg_hourly_covered", 0.0)
-        + sagemaker_summary.get("avg_hourly_covered", 0.0)
-    )
-
-    # Calculate overall coverage percentage relative to min-hourly (first optimization target)
-    # Extract min-hourly from timeseries data for each SP type
-    def get_min_hourly_from_timeseries(sp_type_data):
-        """Extract minimum hourly cost from timeseries data."""
-        timeseries = sp_type_data.get("timeseries", [])
-        total_costs = []
-        for item in timeseries:
-            # timeseries is a list of dicts with keys: timestamp, covered, total
-            total = item.get("total", 0.0)
-            if total > 0:  # Only consider non-zero costs
-                total_costs.append(total)
-        return min(total_costs) if total_costs else 0.0
-
-    compute_min = get_min_hourly_from_timeseries(coverage_data.get("compute", {}))
-    database_min = get_min_hourly_from_timeseries(coverage_data.get("database", {}))
-    sagemaker_min = get_min_hourly_from_timeseries(coverage_data.get("sagemaker", {}))
-
-    total_min_hourly = compute_min + database_min + sagemaker_min
-
-    # Coverage as percentage of min-hourly (more meaningful than % of total)
-    overall_coverage = (
-        (total_hourly_covered / total_min_hourly * 100) if total_min_hourly > 0 else 0.0
-    )
-    overall_coverage_class = get_coverage_class(overall_coverage)
-
-    # Extract savings summary (all values are pre-calculated hourly averages)
-    plans_count = savings_data.get("plans_count", 0)
-    actual_savings = savings_data.get("actual_savings", {})
-    net_savings_hourly = actual_savings.get("net_savings_hourly", 0.0)
-    savings_percentage = actual_savings.get("savings_percentage", 0.0)
-    total_commitment = savings_data.get("total_commitment", 0.0)
-    average_utilization = savings_data.get("average_utilization", 0.0)
-    on_demand_equivalent_hourly = actual_savings.get("on_demand_equivalent_hourly", 0.0)
-    breakdown_by_type = actual_savings.get("breakdown_by_type", {})
-
-    # Get CSS class for overall utilization
-    utilization_class = get_utilization_class(average_utilization)
+    # Extract commonly used variables for template
+    report_timestamp = data["report_timestamp"]
+    data_period = data["data_period"]
+    lookback_days = data["lookback_days"]
+    compute_coverage = data["compute_coverage"]
+    database_coverage = data["database_coverage"]
+    sagemaker_coverage = data["sagemaker_coverage"]
+    overall_coverage = data["overall_coverage"]
+    overall_coverage_class = data["overall_coverage_class"]
+    plans_count = data["plans_count"]
+    net_savings_hourly = data["net_savings_hourly"]
+    savings_percentage = data["savings_percentage"]
+    total_commitment = data["total_commitment"]
+    average_utilization = data["average_utilization"]
+    utilization_class = data["utilization_class"]
+    on_demand_equivalent_hourly = data["on_demand_equivalent_hourly"]
+    breakdown_by_type = data["breakdown_by_type"]
 
     # Determine simulator base URL based on environment
     if is_local_mode():
