@@ -158,7 +158,7 @@ def test_calculate_scheduler_preview_configured_strategy_marked(
     config["dichotomy_initial_percent"] = 50.0
 
     result = scheduler_preview.calculate_scheduler_preview(
-        config, mock_clients, sample_coverage_data, sample_savings_data
+        config, mock_clients, sample_coverage_data
     )
 
     assert result["configured_strategy"] == "dichotomy"
@@ -193,7 +193,7 @@ def test_calculate_scheduler_preview_no_recommendations(
     }
 
     result = scheduler_preview.calculate_scheduler_preview(
-        sample_config, mock_clients, coverage_data, sample_savings_data
+        sample_config, mock_clients, coverage_data
     )
 
     assert result["configured_strategy"] == "fixed"
