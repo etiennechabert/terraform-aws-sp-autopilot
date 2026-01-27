@@ -42,6 +42,31 @@ resource "aws_s3_bucket_public_access_block" "reports" {
   restrict_public_buckets = true
 }
 
+resource "aws_s3_bucket_policy" "reports_https_only" {
+  bucket = aws_s3_bucket.reports.id
+
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Sid    = "DenyNonHTTPSRequests"
+        Effect = "Deny"
+        Principal = "*"
+        Action = "s3:*"
+        Resource = [
+          aws_s3_bucket.reports.arn,
+          "${aws_s3_bucket.reports.arn}/*"
+        ]
+        Condition = {
+          Bool = {
+            "aws:SecureTransport" = "false"
+          }
+        }
+      }
+    ]
+  })
+}
+
 resource "aws_s3_bucket_lifecycle_configuration" "reports" {
   bucket = aws_s3_bucket.reports.id
 
