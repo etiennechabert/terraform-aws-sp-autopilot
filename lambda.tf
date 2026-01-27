@@ -156,10 +156,6 @@ data "archive_file" "scheduler" {
     filename = "config.py"
   }
   source {
-    content  = file("${path.module}/lambda/scheduler/sp_coverage.py")
-    filename = "sp_coverage.py"
-  }
-  source {
     content  = file("${path.module}/lambda/scheduler/email_notifications.py")
     filename = "email_notifications.py"
   }
