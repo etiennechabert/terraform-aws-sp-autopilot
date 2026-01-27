@@ -100,9 +100,7 @@ def handler(event: dict[str, Any], context: Any) -> dict[str, Any]:
     notifications_module.check_and_alert_low_utilization(clients["sns"], config, savings_data)
 
     # Calculate scheduler preview (what would scheduler purchase + optimal analysis)
-    preview_data = scheduler_preview.calculate_scheduler_preview(
-        config, clients, coverage_data, savings_data
-    )
+    preview_data = scheduler_preview.calculate_scheduler_preview(config, clients, coverage_data)
 
     # Count total recommendations across all strategies
     total_recs = sum(
