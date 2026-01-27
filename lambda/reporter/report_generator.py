@@ -113,9 +113,7 @@ def _calculate_cost_statistics(total_costs: list[float]) -> dict[str, float]:
     }
 
 
-def _build_chart_data_for_type(
-    type_name: str, type_map: dict, sorted_timestamps: list[str]
-) -> dict[str, Any]:
+def _build_chart_data_for_type(type_map: dict, sorted_timestamps: list[str]) -> dict[str, Any]:
     """Build chart data for a specific SP type."""
     labels = []
     timestamps = []
@@ -161,9 +159,7 @@ def _prepare_chart_data(
     sorted_timestamps = sorted(all_timestamps)
 
     all_chart_data = {
-        type_name: _build_chart_data_for_type(
-            type_name, timeseries_maps[type_name], sorted_timestamps
-        )
+        type_name: _build_chart_data_for_type(timeseries_maps[type_name], sorted_timestamps)
         for type_name in ["global", "compute", "database", "sagemaker"]
     }
 

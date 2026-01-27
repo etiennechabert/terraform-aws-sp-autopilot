@@ -10,9 +10,6 @@ on:
       - main
   workflow_dispatch:
 
-permissions:
-  contents: read
-
 concurrency:
   group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
   cancel-in-progress: true
@@ -22,6 +19,8 @@ jobs:
   terraform-validation:
     name: Terraform Format and Validate
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
 
     steps:
       - name: Checkout code
@@ -136,6 +135,8 @@ jobs:
   lint:
     name: Python Linting
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
 
     steps:
       - name: Checkout code
@@ -187,6 +188,8 @@ jobs:
     needs: [terraform-validation, tfsec-scan, lint]
     name: Scheduler Lambda Tests
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
 
     steps:
       - name: Checkout code
@@ -254,6 +257,8 @@ jobs:
     needs: [terraform-validation, tfsec-scan, lint]
     name: Purchaser Lambda Tests
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
 
     steps:
       - name: Checkout code
@@ -321,6 +326,8 @@ jobs:
     needs: [terraform-validation, tfsec-scan, lint]
     name: Reporter Lambda Tests
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
 
     steps:
       - name: Checkout code
@@ -389,6 +396,8 @@ jobs:
     name: SonarCloud Analysis
     runs-on: ubuntu-latest
     needs: [terraform-validation, tfsec-scan, lint, scheduler-tests, purchaser-tests, reporter-tests]
+    permissions:
+      contents: read
 
     steps:
       - name: Checkout code
@@ -437,6 +446,8 @@ jobs:
     name: Terraform Unit Tests (${{ matrix.test_file }})
     runs-on: ubuntu-latest
     needs: [terraform-validation, tfsec-scan, lint, scheduler-tests, purchaser-tests, reporter-tests, sonarcloud]
+    permissions:
+      contents: read
 
     strategy:
       fail-fast: false
@@ -511,6 +522,8 @@ jobs:
     runs-on: ubuntu-latest
     needs: [terraform-validation, tfsec-scan, lint, terraform-unit-tests]
     timeout-minutes: 30
+    permissions:
+      contents: read
 
     env:
       AWS_DEFAULT_REGION: us-east-1
@@ -591,6 +604,8 @@ jobs:
     needs: terraform-integration-tests
     if: always()
     timeout-minutes: 15
+    permissions:
+      contents: read
 
     env:
       AWS_DEFAULT_REGION: us-east-1
