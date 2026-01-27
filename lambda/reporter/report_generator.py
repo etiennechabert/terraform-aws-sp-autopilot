@@ -636,6 +636,48 @@ def _build_raw_data_section_html(raw_data: dict[str, Any] | None, report_timesta
     return html
 
 
+def _parse_plan_dates(
+    start_date: str, end_date: str, now: datetime, three_months_from_now: datetime
+) -> tuple[str, str, str, bool, str]:
+    """Parse plan dates and calculate expiration info."""
+    start_date_display = start_date
+    end_date_display = end_date
+    days_remaining_display = "N/A"
+    expiring_soon = False
+    tooltip_text = ""
+
+    try:
+        if "T" in start_date:
+            start_date_display = start_date.split("T")[0]
+
+        if "T" in end_date:
+            end_date_parsed = datetime.fromisoformat(end_date.replace("Z", "+00:00"))
+            end_date_display = end_date.split("T")[0]
+        else:
+            end_date_parsed = datetime.strptime(end_date, "%Y-%m-%d").replace(tzinfo=UTC)
+            end_date_display = end_date
+
+        days_remaining = (end_date_parsed - now).days
+
+        if days_remaining < 0:
+            days_remaining_display = "Expired"
+        elif days_remaining == 0:
+            days_remaining_display = "Today"
+        elif days_remaining == 1:
+            days_remaining_display = "1 day"
+        else:
+            days_remaining_display = f"{days_remaining} days"
+
+        tooltip_text = f"Start: {start_date_display} | End: {end_date_display}"
+
+        if end_date_parsed <= three_months_from_now:
+            expiring_soon = True
+    except (ValueError, AttributeError, TypeError):
+        pass
+
+    return start_date_display, end_date_display, days_remaining_display, expiring_soon, tooltip_text
+
+
 def _build_active_plans_table_html(plans: list[dict[str, Any]]) -> str:
     """Build HTML for active plans table."""
     if not plans:
@@ -671,40 +713,13 @@ def _build_active_plans_table_html(plans: list[dict[str, Any]]) -> str:
         start_date = plan.get("start_date", "Unknown")
         end_date = plan.get("end_date", "Unknown")
 
-        start_date_display = start_date
-        end_date_display = end_date
-        days_remaining_display = "N/A"
-        expiring_soon = False
-        tooltip_text = ""
-
-        try:
-            if "T" in start_date:
-                start_date_display = start_date.split("T")[0]
-
-            if "T" in end_date:
-                end_date_parsed = datetime.fromisoformat(end_date.replace("Z", "+00:00"))
-                end_date_display = end_date.split("T")[0]
-            else:
-                end_date_parsed = datetime.strptime(end_date, "%Y-%m-%d").replace(tzinfo=UTC)
-                end_date_display = end_date
-
-            days_remaining = (end_date_parsed - now).days
-
-            if days_remaining < 0:
-                days_remaining_display = "Expired"
-            elif days_remaining == 0:
-                days_remaining_display = "Today"
-            elif days_remaining == 1:
-                days_remaining_display = "1 day"
-            else:
-                days_remaining_display = f"{days_remaining} days"
-
-            tooltip_text = f"Start: {start_date_display} | End: {end_date_display}"
-
-            if end_date_parsed <= three_months_from_now:
-                expiring_soon = True
-        except Exception:
-            pass
+        (
+            _start_date_display,
+            _end_date_display,
+            days_remaining_display,
+            expiring_soon,
+            tooltip_text,
+        ) = _parse_plan_dates(start_date, end_date, now, three_months_from_now)
 
         row_class = 'class="expiring-soon"' if expiring_soon else ""
 
@@ -1378,9 +1393,6 @@ def generate_html_report(
 
     # Extract savings breakdown by type
     breakdown_by_type = savings_data.get("actual_savings", {}).get("breakdown_by_type", {})
-
-    # Get actual savings percentage used for optimization
-    savings_percentage = optimal_coverage_results.get("savings_percentage_used", 30.0)
 
     compute_metrics = _get_type_metrics_for_report(compute_summary, "Compute", breakdown_by_type)
     database_metrics = _get_type_metrics_for_report(database_summary, "Database", breakdown_by_type)
