@@ -18,6 +18,37 @@ from shared.optimal_coverage import calculate_optimal_coverage
 logger = logging.getLogger(__name__)
 
 
+def _get_type_metrics_for_report(
+    summary: dict[str, Any], sp_type_name: str, breakdown_by_type: dict[str, Any]
+) -> dict[str, Any]:
+    """Calculate metrics for a specific SP type for HTML report."""
+    current_coverage = summary.get("avg_coverage_total", 0.0)
+    avg_total_cost = summary.get("avg_hourly_total", 0.0)
+    avg_covered_cost = summary.get("avg_hourly_covered", 0.0)
+    avg_uncovered_cost = avg_total_cost - avg_covered_cost
+
+    type_breakdown = breakdown_by_type.get(sp_type_name, {})
+    type_savings_pct = type_breakdown.get("savings_percentage", 0.0)
+    type_utilization = type_breakdown.get("average_utilization", 0.0)
+    net_savings_hourly = type_breakdown.get("net_savings_hourly", 0.0)
+
+    total_spend_hourly = avg_total_cost
+    sp_covered_hourly = avg_covered_cost
+    uncovered_spend_hourly = avg_uncovered_cost
+
+    discount_pct = type_savings_pct if current_coverage > 0 and type_savings_pct > 0 else 0.0
+
+    return {
+        "current_coverage": current_coverage,
+        "utilization": type_utilization,
+        "actual_savings_hourly": net_savings_hourly,
+        "savings_percentage": discount_pct,
+        "sp_covered_hourly": sp_covered_hourly,
+        "uncovered_spend_hourly": uncovered_spend_hourly,
+        "total_spend_hourly": total_spend_hourly,
+    }
+
+
 def _get_coverage_class(coverage: float) -> str:
     """Return CSS class based on coverage percentage."""
     if coverage >= 70:
@@ -522,9 +553,6 @@ def generate_html_report(
     report_timestamp = data["report_timestamp"]
     data_period = data["data_period"]
     lookback_days = data["lookback_days"]
-    compute_coverage = data["compute_coverage"]
-    database_coverage = data["database_coverage"]
-    sagemaker_coverage = data["sagemaker_coverage"]
     overall_coverage = data["overall_coverage"]
     overall_coverage_class = data["overall_coverage_class"]
     plans_count = data["plans_count"]
@@ -1337,42 +1365,11 @@ def generate_html_report(
     # Get actual savings percentage used for optimization
     savings_percentage = optimal_coverage_results.get("savings_percentage_used", 30.0)
 
-    def get_type_metrics(summary, sp_type_name):
-        """Calculate metrics for a specific SP type"""
-        current_coverage = summary.get("avg_coverage_total", 0.0)
-        avg_total_cost = summary.get("avg_hourly_total", 0.0)
-        avg_covered_cost = summary.get("avg_hourly_covered", 0.0)
-        avg_uncovered_cost = avg_total_cost - avg_covered_cost
-
-        # Get per-type savings data from breakdown (pre-calculated hourly values)
-        type_breakdown = breakdown_by_type.get(sp_type_name, {})
-        type_savings_pct = type_breakdown.get("savings_percentage", 0.0)
-        type_utilization = type_breakdown.get("average_utilization", 0.0)
-        net_savings_hourly = type_breakdown.get("net_savings_hourly", 0.0)
-
-        # Calculate hourly costs using on-demand equivalents for consistency
-        # This shows what usage would cost at on-demand prices (easier to understand coverage impact)
-        total_spend_hourly = avg_total_cost  # On-demand equivalent of all usage
-        sp_covered_hourly = avg_covered_cost  # On-demand equivalent of SP-covered usage
-        uncovered_spend_hourly = avg_uncovered_cost  # On-demand cost of uncovered usage
-
-        # Only use savings percentage if we have actual coverage/savings for this type
-        # Don't show discount % when coverage is 0 - it's misleading
-        discount_pct = type_savings_pct if current_coverage > 0 and type_savings_pct > 0 else 0.0
-
-        return {
-            "current_coverage": current_coverage,
-            "utilization": type_utilization,
-            "actual_savings_hourly": net_savings_hourly,
-            "savings_percentage": discount_pct,
-            "sp_covered_hourly": sp_covered_hourly,
-            "uncovered_spend_hourly": uncovered_spend_hourly,
-            "total_spend_hourly": total_spend_hourly,
-        }
-
-    compute_metrics = get_type_metrics(compute_summary, "Compute")
-    database_metrics = get_type_metrics(database_summary, "Database")
-    sagemaker_metrics = get_type_metrics(sagemaker_summary, "SageMaker")
+    compute_metrics = _get_type_metrics_for_report(compute_summary, "Compute", breakdown_by_type)
+    database_metrics = _get_type_metrics_for_report(database_summary, "Database", breakdown_by_type)
+    sagemaker_metrics = _get_type_metrics_for_report(
+        sagemaker_summary, "SageMaker", breakdown_by_type
+    )
 
     metrics_json = json.dumps(
         {"compute": compute_metrics, "database": database_metrics, "sagemaker": sagemaker_metrics}
