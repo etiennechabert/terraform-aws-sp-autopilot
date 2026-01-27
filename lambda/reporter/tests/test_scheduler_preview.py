@@ -104,7 +104,7 @@ def test_calculate_scheduler_preview_all_strategies(
     )
 
     result = scheduler_preview.calculate_scheduler_preview(
-        sample_config, mock_clients, sample_coverage_data, sample_savings_data
+        sample_config, mock_clients, sample_coverage_data
     )
 
     # Verify structure
@@ -213,7 +213,7 @@ def test_calculate_scheduler_preview_strategy_error_handling(
     """Test that individual strategy errors are handled gracefully."""
     # Don't setup AWS mock - follow_aws will fail but others should succeed
     result = scheduler_preview.calculate_scheduler_preview(
-        sample_config, mock_clients, sample_coverage_data, sample_savings_data
+        sample_config, mock_clients, sample_coverage_data
     )
 
     assert result["error"] is None

@@ -60,7 +60,6 @@ def calculate_scheduler_preview(
     config: dict[str, Any],
     clients: dict[str, Any],
     coverage_data: dict[str, Any],
-    savings_data: dict[str, Any],
 ) -> dict[str, Any]:
     """
     Calculate what each scheduler strategy would purchase right now.
@@ -74,7 +73,6 @@ def calculate_scheduler_preview(
         config: Reporter config (includes scheduler strategy params)
         clients: AWS clients dict (ce, savingsplans, s3, sns)
         coverage_data: Already-fetched coverage data from SpendingAnalyzer
-        savings_data: Already-fetched savings data from get_savings_plans_summary
 
     Returns:
         dict: Preview data with all three strategies' recommendations
