@@ -99,6 +99,13 @@ def test_handler_success_with_active_plans(mock_env_vars, mock_clients, aws_mock
         utilization_percentage=85.0
     )
 
+    # Mock scheduler_preview recommendations
+    mock_clients[
+        "ce"
+    ].get_savings_plans_purchase_recommendation.return_value = aws_mock_builder.recommendation(
+        sp_type="compute", hourly_commitment=5.0
+    )
+
     # Mock S3 upload
     mock_clients["s3"].put_object.return_value = {}
 
@@ -141,6 +148,11 @@ def test_handler_success_without_email(mock_env_vars, mock_clients, aws_mock_bui
     ].describe_savings_plans.return_value = aws_mock_builder.describe_savings_plans(plans_count=1)
     mock_clients["ce"].get_savings_plans_utilization.return_value = aws_mock_builder.utilization(
         utilization_percentage=80.0
+    )
+    mock_clients[
+        "ce"
+    ].get_savings_plans_purchase_recommendation.return_value = aws_mock_builder.recommendation(
+        sp_type="compute", hourly_commitment=5.0
     )
     mock_clients["s3"].put_object.return_value = {}
 
