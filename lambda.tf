@@ -218,10 +218,6 @@ data "archive_file" "scheduler" {
     filename = "shared/spending_analyzer.py"
   }
   source {
-    content  = file("${path.module}/lambda/shared/purchase_optimizer.py")
-    filename = "shared/purchase_optimizer.py"
-  }
-  source {
     content  = file("${path.module}/lambda/shared/aws_debug.py")
     filename = "shared/aws_debug.py"
   }
