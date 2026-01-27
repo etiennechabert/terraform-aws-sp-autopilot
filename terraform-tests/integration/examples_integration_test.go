@@ -62,7 +62,14 @@ func TestExampleSingleAccountCompute(t *testing.T) {
 		Logger:  getCleanLogger(),
 	})
 
-	defer terraform.Destroy(t, terraformOptions)
+	defer func() {
+		// Best-effort cleanup: log errors but don't fail the test
+		// AWS eventual consistency can cause destroy to fail intermittently
+		if err := terraform.DestroyE(t, terraformOptions); err != nil {
+			t.Logf("⚠ Warning: Destroy failed (non-fatal): %v", err)
+			t.Logf("  Resources may need manual cleanup. Run cleanup test if needed.")
+		}
+	}()
 	terraform.InitAndApply(t, terraformOptions)
 
 	// Validate compute SP is enabled with the expected term mix
@@ -104,7 +111,14 @@ func TestExampleDichotomyStrategy(t *testing.T) {
 		Logger:  getCleanLogger(),
 	})
 
-	defer terraform.Destroy(t, terraformOptions)
+	defer func() {
+		// Best-effort cleanup: log errors but don't fail the test
+		// AWS eventual consistency can cause destroy to fail intermittently
+		if err := terraform.DestroyE(t, terraformOptions); err != nil {
+			t.Logf("⚠ Warning: Destroy failed (non-fatal): %v", err)
+			t.Logf("  Resources may need manual cleanup. Run cleanup test if needed.")
+		}
+	}()
 	terraform.InitAndApply(t, terraformOptions)
 
 	schedulerLambdaName := terraform.Output(t, terraformOptions, "scheduler_lambda_name")
