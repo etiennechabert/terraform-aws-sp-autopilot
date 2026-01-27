@@ -46,7 +46,7 @@ def generate_report(
     if report_format == "json":
         return generate_json_report(coverage_data, savings_data, config)
     if report_format == "csv":
-        return generate_csv_report(coverage_data, savings_data, config)
+        return generate_csv_report(coverage_data, savings_data)
     if report_format == "html":
         return generate_html_report(coverage_data, savings_data, config, raw_data, preview_data)
     raise ValueError(f"Invalid report format: {report_format}")
@@ -113,9 +113,7 @@ def _calculate_cost_statistics(total_costs: list[float]) -> dict[str, float]:
     }
 
 
-def _build_chart_data_for_type(
-    type_name: str, type_map: dict, sorted_timestamps: list[str]
-) -> dict[str, Any]:
+def _build_chart_data_for_type(type_map: dict, sorted_timestamps: list[str]) -> dict[str, Any]:
     """Build chart data for a specific SP type."""
     labels = []
     timestamps = []
@@ -161,9 +159,7 @@ def _prepare_chart_data(
     sorted_timestamps = sorted(all_timestamps)
 
     all_chart_data = {
-        type_name: _build_chart_data_for_type(
-            type_name, timeseries_maps[type_name], sorted_timestamps
-        )
+        type_name: _build_chart_data_for_type(timeseries_maps[type_name], sorted_timestamps)
         for type_name in ["global", "compute", "database", "sagemaker"]
     }
 
@@ -473,10 +469,6 @@ def generate_html_report(
             return "orange"
         return "red"
 
-    compute_class = get_coverage_class(compute_coverage)
-    database_class = get_coverage_class(database_coverage)
-    sagemaker_class = get_coverage_class(sagemaker_coverage)
-
     # Calculate overall weighted coverage across all types
     compute_summary = coverage_data.get("compute", {}).get("summary", {})
     database_summary = coverage_data.get("database", {}).get("summary", {})
@@ -492,7 +484,6 @@ def generate_html_report(
         + database_summary.get("avg_hourly_covered", 0.0)
         + sagemaker_summary.get("avg_hourly_covered", 0.0)
     )
-    total_hourly_ondemand = total_hourly_spend - total_hourly_covered
 
     # Calculate overall coverage percentage relative to min-hourly (first optimization target)
     # Extract min-hourly from timeseries data for each SP type
@@ -527,7 +518,6 @@ def generate_html_report(
     total_commitment = savings_data.get("total_commitment", 0.0)
     average_utilization = savings_data.get("average_utilization", 0.0)
     on_demand_equivalent_hourly = actual_savings.get("on_demand_equivalent_hourly", 0.0)
-    actual_sp_cost_hourly = actual_savings.get("actual_sp_cost_hourly", 0.0)
     breakdown_by_type = actual_savings.get("breakdown_by_type", {})
 
     # Get CSS class for overall utilization
@@ -1139,7 +1129,6 @@ def generate_html_report(
             total_commitment_type = type_data.get("total_commitment", 0.0)
 
             # Get pre-calculated hourly values
-            actual_sp_cost_hourly = type_data.get("actual_sp_cost_hourly", 0.0)
             on_demand_equivalent_hourly = type_data.get("on_demand_equivalent_hourly", 0.0)
             net_savings_hourly = type_data.get("net_savings_hourly", 0.0)
             type_utilization = type_data.get("average_utilization", 0.0)
@@ -1329,15 +1318,13 @@ def generate_html_report(
     database_summary = coverage_data.get("database", {}).get("summary", {})
     sagemaker_summary = coverage_data.get("sagemaker", {}).get("summary", {})
 
-    target_coverage = config["coverage_target_percent"]
-
     # Extract savings breakdown by type
     breakdown_by_type = savings_data.get("actual_savings", {}).get("breakdown_by_type", {})
 
     # Get actual savings percentage used for optimization
     savings_percentage = optimal_coverage_results.get("savings_percentage_used", 30.0)
 
-    def get_type_metrics(sp_type_key, summary, sp_type_name):
+    def get_type_metrics(summary, sp_type_name):
         """Calculate metrics for a specific SP type"""
         current_coverage = summary.get("avg_coverage_total", 0.0)
         avg_total_cost = summary.get("avg_hourly_total", 0.0)
@@ -1370,9 +1357,9 @@ def generate_html_report(
             "total_spend_hourly": total_spend_hourly,
         }
 
-    compute_metrics = get_type_metrics("compute", compute_summary, "Compute")
-    database_metrics = get_type_metrics("database", database_summary, "Database")
-    sagemaker_metrics = get_type_metrics("sagemaker", sagemaker_summary, "SageMaker")
+    compute_metrics = get_type_metrics(compute_summary, "Compute")
+    database_metrics = get_type_metrics(database_summary, "Database")
+    sagemaker_metrics = get_type_metrics(sagemaker_summary, "SageMaker")
 
     metrics_json = json.dumps(
         {"compute": compute_metrics, "database": database_metrics, "sagemaker": sagemaker_metrics}
@@ -2031,7 +2018,6 @@ def generate_json_report(
 def generate_csv_report(
     coverage_data: dict[str, Any],
     savings_data: dict[str, Any],
-    config: dict[str, Any] | None = None,
 ) -> str:
     """
     Generate CSV report with coverage trends and savings metrics.

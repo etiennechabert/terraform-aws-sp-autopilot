@@ -159,15 +159,15 @@ def load_config_from_env(
                     f"Unknown type '{field_type}' for field '{field_name}', treating as string"
                 )
                 config[field_name] = raw_value
-        except (ValueError, TypeError) as e:
-            raise ValueError(
-                f"Failed to convert field '{field_name}' (env var '{env_var}') to type '{field_type}': {e}"
-            ) from e
         except json.JSONDecodeError as e:
             raise json.JSONDecodeError(
                 f"Failed to parse JSON for field '{field_name}' (env var '{env_var}'): {e.msg}",
                 e.doc,
                 e.pos,
+            ) from e
+        except (ValueError, TypeError) as e:
+            raise ValueError(
+                f"Failed to convert field '{field_name}' (env var '{env_var}') to type '{field_type}': {e}"
             ) from e
 
     if validator:
