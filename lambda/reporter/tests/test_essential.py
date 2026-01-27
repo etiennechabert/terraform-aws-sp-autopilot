@@ -484,6 +484,7 @@ def test_handler_local_mode_auto_open(monkeypatch, mock_clients, aws_mock_builde
     monkeypatch.setenv("LOCAL_MODE", "true")
     monkeypatch.setenv("REPORT_FORMAT", "html")
     monkeypatch.setenv("EMAIL_REPORTS", "false")
+    monkeypatch.setenv("AUTO_OPEN_REPORTS", "true")
 
     # Mock SpendingAnalyzer
     mock_clients["ce"].get_savings_plans_coverage.return_value = aws_mock_builder.coverage(

@@ -131,7 +131,8 @@ def test_handler_local_mode_json_report(mock_aws_clients, monkeypatch):
     report_data = json.loads(report_files[0].read_text())
     assert "report_metadata" in report_data
     assert "coverage_summary" in report_data
-    assert "coverage_history" in report_data
+    assert "savings_summary" in report_data
+    assert "active_savings_plans" in report_data
     assert report_data["report_metadata"]["generator"] == "sp-autopilot-reporter"
 
 

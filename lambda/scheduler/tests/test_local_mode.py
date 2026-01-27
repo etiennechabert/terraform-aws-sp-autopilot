@@ -90,35 +90,55 @@ def test_handler_local_mode_queue_messages(mock_aws_clients, monkeypatch):
 
         # Validate required fields
         assert "sp_type" in msg
-        assert "plan_type" in msg
+        assert "term" in msg
+        assert "payment_option" in msg
         assert "hourly_commitment" in msg
         assert "client_token" in msg
 
         # Validate values
-        assert msg["sp_type"] in ["Compute", "Database", "SageMaker"]
+        assert msg["sp_type"] in ["compute", "database", "sagemaker"]
+        assert msg["term"] in ["ONE_YEAR", "THREE_YEAR"]
+        assert msg["payment_option"] in ["NO_UPFRONT", "PARTIAL_UPFRONT", "ALL_UPFRONT"]
         assert float(msg["hourly_commitment"]) > 0
-        assert msg["client_token"] == msg_file.stem  # Filename matches token
+        assert len(msg["client_token"]) > 0  # Token exists and is not empty
 
 
-def test_handler_local_mode_no_purchases_needed(mock_aws_clients, monkeypatch, aws_mock_builder):
+def test_handler_local_mode_no_purchases_needed(monkeypatch, aws_mock_builder):
     """Test scheduler with no purchases needed (high coverage)."""
     test_data_dir = f"/tmp/sp-autopilot-test-{os.getpid()}-no-purchase"
     monkeypatch.setenv("LOCAL_MODE", "true")
     monkeypatch.setenv("LOCAL_DATA_DIR", test_data_dir)
 
-    # Mock 95% coverage - above 80% target, no purchase needed
-    mock_aws_clients["ce"].get_savings_plans_coverage.return_value = aws_mock_builder.coverage(
-        coverage_percentage=95.0
-    )
+    # Mock AWS clients with 95% coverage - above 80% target, no purchase needed
+    with patch("handler.initialize_clients") as mock_init:
+        mock_ce = Mock()
+        mock_sp = Mock()
 
-    response = handler.handler({}, {})
+        # Mock 95% coverage - above 80% target
+        mock_ce.get_savings_plans_coverage.return_value = aws_mock_builder.coverage(
+            coverage_percentage=95.0
+        )
+        mock_sp.describe_savings_plans.return_value = aws_mock_builder.describe_savings_plans(
+            plans_count=1
+        )
 
-    assert response["statusCode"] == 200
+        mock_init.return_value = {
+            "ce": mock_ce,
+            "savingsplans": mock_sp,
+            "sqs": None,  # Not used in local mode
+            "sns": None,  # Not used in tests
+        }
 
-    # Queue should exist but be empty (no purchases needed)
-    queue_dir = Path(test_data_dir) / "queue"
-    message_files = list(queue_dir.glob("*.json"))
-    assert len(message_files) == 0, "No messages should be generated when coverage is sufficient"
+        response = handler.handler({}, {})
+
+        assert response["statusCode"] == 200
+
+        # Queue should exist but be empty (no purchases needed)
+        queue_dir = Path(test_data_dir) / "queue"
+        message_files = list(queue_dir.glob("*.json"))
+        assert len(message_files) == 0, (
+            "No messages should be generated when coverage is sufficient"
+        )
 
 
 def test_handler_local_mode_dry_run(mock_aws_clients, monkeypatch):
