@@ -5,14 +5,7 @@ Tests purchase need calculation, purchase limits, and term splitting
 for Compute, Database, and SageMaker Savings Plans.
 """
 
-import os
-import sys
-
 import pytest
-
-
-# Add parent directory to path
-sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
 
 import purchase_calculator
 
