@@ -65,7 +65,8 @@ func TestExampleSingleAccountCompute(t *testing.T) {
 	defer func() {
 		// Best-effort cleanup: log errors but don't fail the test
 		// AWS eventual consistency can cause destroy to fail intermittently
-		if err := terraform.DestroyE(t, terraformOptions); err != nil {
+		_, err := terraform.DestroyE(t, terraformOptions)
+		if err != nil {
 			t.Logf("⚠ Warning: Destroy failed (non-fatal): %v", err)
 			t.Logf("  Resources may need manual cleanup. Run cleanup test if needed.")
 		}
@@ -114,7 +115,8 @@ func TestExampleDichotomyStrategy(t *testing.T) {
 	defer func() {
 		// Best-effort cleanup: log errors but don't fail the test
 		// AWS eventual consistency can cause destroy to fail intermittently
-		if err := terraform.DestroyE(t, terraformOptions); err != nil {
+		_, err := terraform.DestroyE(t, terraformOptions)
+		if err != nil {
 			t.Logf("⚠ Warning: Destroy failed (non-fatal): %v", err)
 			t.Logf("  Resources may need manual cleanup. Run cleanup test if needed.")
 		}
