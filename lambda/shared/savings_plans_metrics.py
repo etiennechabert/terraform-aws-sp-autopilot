@@ -26,6 +26,75 @@ if TYPE_CHECKING:
 logger = logging.getLogger(__name__)
 
 
+def _initialize_breakdown_by_type(plans: list[dict[str, Any]]) -> dict[str, Any]:
+    """Initialize breakdown_by_type structure from active plans."""
+    breakdown = {}
+    for plan in plans:
+        aws_plan_type = plan["plan_type"]
+        if aws_plan_type not in breakdown:
+            breakdown[aws_plan_type] = {
+                "plans_count": 0,
+                "total_commitment": 0.0,
+            }
+        breakdown[aws_plan_type]["plans_count"] += 1
+        breakdown[aws_plan_type]["total_commitment"] += plan["hourly_commitment"]
+    return breakdown
+
+
+def _aggregate_type_metrics(
+    ce_client: CostExplorerClient,
+    enabled_plan_types: list[str],
+    breakdown_by_type: dict[str, Any],
+    lookback_days: int,
+    granularity: str,
+) -> tuple[float, float, float]:
+    """Fetch and aggregate per-type metrics. Returns (net_savings, on_demand_equivalent, sp_cost)."""
+    total_net_savings = 0.0
+    total_on_demand_equivalent = 0.0
+    total_actual_sp_cost = 0.0
+
+    for plan_type in enabled_plan_types:
+        type_metrics = get_savings_plans_metrics(ce_client, plan_type, lookback_days, granularity)
+
+        if plan_type in breakdown_by_type:
+            breakdown_by_type[plan_type]["average_utilization"] = type_metrics[
+                "average_utilization"
+            ]
+            breakdown_by_type[plan_type]["net_savings_hourly"] = type_metrics["net_savings_hourly"]
+            breakdown_by_type[plan_type]["on_demand_equivalent_hourly"] = type_metrics[
+                "on_demand_equivalent_hourly"
+            ]
+            breakdown_by_type[plan_type]["actual_sp_cost_hourly"] = type_metrics[
+                "actual_sp_cost_hourly"
+            ]
+            breakdown_by_type[plan_type]["savings_percentage"] = type_metrics["savings_percentage"]
+
+            total_net_savings += type_metrics["net_savings_hourly"]
+            total_on_demand_equivalent += type_metrics["on_demand_equivalent_hourly"]
+            total_actual_sp_cost += type_metrics["actual_sp_cost_hourly"]
+
+    return total_net_savings, total_on_demand_equivalent, total_actual_sp_cost
+
+
+def _calculate_weighted_utilization(breakdown_by_type: dict[str, Any]) -> float:
+    """Calculate overall utilization as weighted average by commitment."""
+    weighted_utilization_sum = sum(
+        breakdown_by_type[t]["average_utilization"] * breakdown_by_type[t]["total_commitment"]
+        for t in breakdown_by_type
+        if "average_utilization" in breakdown_by_type[t]
+    )
+    commitment_with_utilization_data = sum(
+        breakdown_by_type[t]["total_commitment"]
+        for t in breakdown_by_type
+        if "average_utilization" in breakdown_by_type[t]
+    )
+    return (
+        weighted_utilization_sum / commitment_with_utilization_data
+        if commitment_with_utilization_data > 0
+        else 0.0
+    )
+
+
 def get_active_savings_plans(
     savingsplans_client: SavingsPlansClient,
 ) -> list[dict[str, Any]]:
@@ -352,73 +421,18 @@ def get_savings_plans_summary(
     """
     logger.info("Fetching comprehensive Savings Plans summary")
 
-    # Get active plans
     plans = get_active_savings_plans(savingsplans_client)
     total_commitment = sum(plan["hourly_commitment"] for plan in plans)
 
-    # Get per-type metrics for each enabled plan type
     logger.info(f"Fetching metrics for enabled plan types: {enabled_plan_types}")
 
-    # Initialize aggregated metrics
-    total_net_savings = 0.0
-    total_on_demand_equivalent = 0.0
-    total_actual_sp_cost = 0.0
-    overall_utilization = 0.0
+    breakdown_by_type = _initialize_breakdown_by_type(plans)
 
-    # Calculate breakdown by type with per-type metrics
-    breakdown_by_type = {}
-    for plan in plans:
-        aws_plan_type = plan["plan_type"]
-
-        if aws_plan_type not in breakdown_by_type:
-            breakdown_by_type[aws_plan_type] = {
-                "plans_count": 0,
-                "total_commitment": 0.0,
-            }
-        breakdown_by_type[aws_plan_type]["plans_count"] += 1
-        breakdown_by_type[aws_plan_type]["total_commitment"] += plan["hourly_commitment"]
-
-    # Fetch per-type metrics (single API call per type)
-    for plan_type in enabled_plan_types:
-        # Get combined metrics (utilization + savings) in single API call
-        type_metrics = get_savings_plans_metrics(ce_client, plan_type, lookback_days, granularity)
-
-        # Add per-type metrics to breakdown if this type has active plans
-        # plan_type is already using AWS naming (e.g., "Compute", "SageMaker")
-        if plan_type in breakdown_by_type:
-            breakdown_by_type[plan_type]["average_utilization"] = type_metrics[
-                "average_utilization"
-            ]
-            breakdown_by_type[plan_type]["net_savings_hourly"] = type_metrics["net_savings_hourly"]
-            breakdown_by_type[plan_type]["on_demand_equivalent_hourly"] = type_metrics[
-                "on_demand_equivalent_hourly"
-            ]
-            breakdown_by_type[plan_type]["actual_sp_cost_hourly"] = type_metrics[
-                "actual_sp_cost_hourly"
-            ]
-            breakdown_by_type[plan_type]["savings_percentage"] = type_metrics["savings_percentage"]
-
-            # Aggregate totals (hourly values)
-            total_net_savings += type_metrics["net_savings_hourly"]
-            total_on_demand_equivalent += type_metrics["on_demand_equivalent_hourly"]
-            total_actual_sp_cost += type_metrics["actual_sp_cost_hourly"]
-
-    # Calculate overall utilization as weighted average (only for types with utilization data)
-    weighted_utilization_sum = sum(
-        breakdown_by_type[t]["average_utilization"] * breakdown_by_type[t]["total_commitment"]
-        for t in breakdown_by_type
-        if "average_utilization" in breakdown_by_type[t]
+    total_net_savings, total_on_demand_equivalent, total_actual_sp_cost = _aggregate_type_metrics(
+        ce_client, enabled_plan_types, breakdown_by_type, lookback_days, granularity
     )
-    commitment_with_utilization_data = sum(
-        breakdown_by_type[t]["total_commitment"]
-        for t in breakdown_by_type
-        if "average_utilization" in breakdown_by_type[t]
-    )
-    overall_utilization = (
-        weighted_utilization_sum / commitment_with_utilization_data
-        if commitment_with_utilization_data > 0
-        else 0.0
-    )
+
+    overall_utilization = _calculate_weighted_utilization(breakdown_by_type)
 
     overall_savings_percentage = (
         (total_net_savings / total_on_demand_equivalent * 100.0)
