@@ -5,16 +5,8 @@ Tests purchase need calculation, purchase limits, and term splitting
 for Compute, Database, and SageMaker Savings Plans.
 """
 
-import os
-import sys
-
-import pytest
-
-
-# Add parent directory to path
-sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
-
 import purchase_calculator
+import pytest
 
 
 @pytest.fixture
@@ -276,116 +268,8 @@ def test_calculate_purchase_need_sp_disabled(mock_config):
 # ============================================================================
 # Apply Purchase Limits Tests
 # ============================================================================
-
-
-def test_apply_purchase_limits_with_limit(mock_config):
-    """Test applying max_purchase_percent limit."""
-    purchase_plans = [
-        {
-            "sp_type": "compute",
-            "hourly_commitment": 10.0,
-            "payment_option": "ALL_UPFRONT",
-        }
-    ]
-
-    result = purchase_calculator.apply_purchase_limits(mock_config, purchase_plans)
-
-    # 10% of 10.0 = 1.0
-    assert len(result) == 1
-    assert result[0]["hourly_commitment"] == pytest.approx(1.0)
-
-
-def test_apply_purchase_limits_multiple_plans(mock_config):
-    """Test applying limits to multiple plans."""
-    purchase_plans = [
-        {
-            "sp_type": "compute",
-            "hourly_commitment": 10.0,
-            "payment_option": "ALL_UPFRONT",
-        },
-        {
-            "sp_type": "database",
-            "hourly_commitment": 5.0,
-            "payment_option": "NO_UPFRONT",
-        },
-    ]
-
-    result = purchase_calculator.apply_purchase_limits(mock_config, purchase_plans)
-
-    # Both should be scaled to 10%
-    assert len(result) == 2
-    assert result[0]["hourly_commitment"] == pytest.approx(1.0)
-    assert result[1]["hourly_commitment"] == pytest.approx(0.5)
-
-
-def test_apply_purchase_limits_below_minimum(mock_config):
-    """Test that plans below minimum commitment are filtered out."""
-    purchase_plans = [
-        {
-            "sp_type": "compute",
-            "hourly_commitment": 0.005,  # Will be 0.0005 after 10% limit
-            "payment_option": "ALL_UPFRONT",
-        }
-    ]
-
-    result = purchase_calculator.apply_purchase_limits(mock_config, purchase_plans)
-
-    # Should be filtered out (0.0005 < 0.001 minimum)
-    assert len(result) == 0
-
-
-def test_apply_purchase_limits_no_plans():
-    """Test applying limits with no plans."""
-    config = {"max_purchase_percent": 10.0, "min_commitment_per_plan": 0.001}
-    purchase_plans = []
-
-    result = purchase_calculator.apply_purchase_limits(config, purchase_plans)
-
-    assert len(result) == 0
-
-
-def test_apply_purchase_limits_100_percent(mock_config):
-    """Test with 100% purchase limit (no scaling)."""
-    mock_config["max_purchase_percent"] = 100.0
-
-    purchase_plans = [
-        {
-            "sp_type": "compute",
-            "hourly_commitment": 5.50,
-            "payment_option": "ALL_UPFRONT",
-        }
-    ]
-
-    result = purchase_calculator.apply_purchase_limits(mock_config, purchase_plans)
-
-    # Should remain unchanged
-    assert len(result) == 1
-    assert result[0]["hourly_commitment"] == pytest.approx(5.50)
-
-
-def test_apply_purchase_limits_mixed_filtering(mock_config):
-    """Test with some plans above and some below minimum after scaling."""
-    purchase_plans = [
-        {
-            "sp_type": "compute",
-            "hourly_commitment": 1.0,  # Will be 0.1 after 10% limit (above min)
-            "payment_option": "ALL_UPFRONT",
-        },
-        {
-            "sp_type": "database",
-            "hourly_commitment": 0.005,  # Will be 0.0005 after 10% limit (below min)
-            "payment_option": "NO_UPFRONT",
-        },
-    ]
-
-    result = purchase_calculator.apply_purchase_limits(mock_config, purchase_plans)
-
-    # Only first plan should remain
-    assert len(result) == 1
-    assert result[0]["sp_type"] == "compute"
-    assert result[0]["hourly_commitment"] == pytest.approx(0.1)
-
-
+# apply_purchase_limits tests removed - function was deprecated and deleted
+# Strategies now handle their own limits internally
 # ============================================================================
 # Error Handling Tests
 # ============================================================================

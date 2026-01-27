@@ -14,6 +14,7 @@ from __future__ import annotations
 
 import json
 import logging
+import os
 import webbrowser
 from pathlib import Path
 from typing import Any
@@ -183,7 +184,9 @@ def handler(event: dict[str, Any], context: Any) -> dict[str, Any]:
         logger.info("Email notifications disabled - skipping email")
 
     # Auto-open report in browser if running locally (developer convenience)
-    if is_local_mode() and config["report_format"] == "html":
+    # Skip auto-open during tests (AUTO_OPEN_REPORTS=false)
+    auto_open = os.getenv("AUTO_OPEN_REPORTS", "true").lower() == "true"
+    if is_local_mode() and config["report_format"] == "html" and auto_open:
         file_path = Path(s3_object_key)
         if file_path.exists():
             logger.info(f"Opening report in browser: {file_path}")

@@ -384,3 +384,20 @@ variable "encryption" {
     }
   }
 }
+
+variable "s3_access_logging" {
+  description = "Enable S3 access logging for the reports bucket (for compliance/auditing)"
+  type = object({
+    enabled         = optional(bool, false)
+    target_prefix   = optional(string, "access-logs/")
+    expiration_days = optional(number, 90)
+  })
+  default = {
+    enabled = false
+  }
+
+  validation {
+    condition     = var.s3_access_logging.expiration_days >= 1
+    error_message = "expiration_days must be at least 1."
+  }
+}
