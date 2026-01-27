@@ -307,7 +307,7 @@ def _calculate_sp_type_optimal(
         return {}
 
     logger.info(
-        f"Calculating optimal coverage for {sp_type}: using {savings_percentage:.1f}% discount"
+        "Calculating optimal coverage for %s: using %.1f%% discount", sp_type, savings_percentage
     )
 
     try:
@@ -524,6 +524,208 @@ def _render_sp_type_scheduler_preview(
     return html
 
 
+def _build_breakdown_table_html(
+    breakdown_by_type: dict[str, Any],
+    plans_count: int,
+    average_utilization: float,
+    total_commitment: float,
+    on_demand_equivalent_hourly: float,
+    net_savings_hourly: float,
+) -> str:
+    """Build HTML for breakdown by type table."""
+    if not breakdown_by_type:
+        return ""
+
+    html = """
+            <table>
+                <thead>
+                    <tr>
+                        <th>Plan Type</th>
+                        <th>Active Plans</th>
+                        <th>Utilization</th>
+                        <th>Commitment/hr</th>
+                        <th>Would Pay On-Demand/hr</th>
+                        <th>Savings/hr</th>
+                    </tr>
+                </thead>
+                <tbody>
+"""
+
+    for plan_type, type_data in breakdown_by_type.items():
+        plans_count_type = type_data.get("plans_count", 0)
+        total_commitment_type = type_data.get("total_commitment", 0.0)
+        on_demand_equivalent_hourly_type = type_data.get("on_demand_equivalent_hourly", 0.0)
+        net_savings_hourly_type = type_data.get("net_savings_hourly", 0.0)
+        type_utilization = type_data.get("average_utilization", 0.0)
+
+        plan_type_display = plan_type
+        if "Compute" in plan_type:
+            plan_type_display = "Compute Savings Plans"
+        elif "SageMaker" in plan_type:
+            plan_type_display = "SageMaker Savings Plans"
+        elif "Database" in plan_type:
+            plan_type_display = "Database Savings Plans"
+        elif "EC2Instance" in plan_type:
+            plan_type_display = "EC2 Instance Savings Plans"
+
+        html += f"""
+                    <tr>
+                        <td><strong>{plan_type_display}</strong></td>
+                        <td>{plans_count_type}</td>
+                        <td class="metric">{type_utilization:.1f}%</td>
+                        <td class="metric">${total_commitment_type:.2f}/hr</td>
+                        <td class="metric">${on_demand_equivalent_hourly_type:.2f}/hr</td>
+                        <td class="metric" style="color: #28a745;">${net_savings_hourly_type:.2f}/hr</td>
+                    </tr>
+"""
+
+    if len(breakdown_by_type) > 1:
+        html += f"""
+                    <tr style="border-top: 2px solid #232f3e; font-weight: bold; background-color: #f8f9fa;">
+                        <td><strong>Total</strong></td>
+                        <td>{plans_count}</td>
+                        <td class="metric">{average_utilization:.1f}%</td>
+                        <td class="metric">${total_commitment:.2f}/hr</td>
+                        <td class="metric">${on_demand_equivalent_hourly:.2f}/hr</td>
+                        <td class="metric" style="color: #28a745;">${net_savings_hourly:.2f}/hr</td>
+                    </tr>
+"""
+
+    html += """
+                </tbody>
+            </table>
+"""
+    return html
+
+
+def _build_raw_data_section_html(raw_data: dict[str, Any] | None, report_timestamp: str) -> str:
+    """Build HTML for raw data section and footer."""
+    html = """
+        </div>
+"""
+
+    if raw_data:
+        html += """
+        <div class="section raw-data-section">
+            <details>
+                <summary>
+                    <span>View Raw AWS Data</span>
+                    <span style="font-size: 0.8em; color: #6c757d;">Click to expand • Toggle via <code>INCLUDE_DEBUG_DATA</code> env var</span>
+                </summary>
+                <div class="raw-data-controls">
+                    <button class="raw-data-button" onclick="copyRawData()">Copy to Clipboard</button>
+                    <button class="raw-data-button" onclick="expandAll()">Expand All</button>
+                    <button class="raw-data-button" onclick="collapseAll()">Collapse All</button>
+                </div>
+                <div id="jsonViewer" class="json-viewer"></div>
+            </details>
+        </div>
+"""
+
+    html += f"""
+        <div class="footer">
+            <p><strong>Savings Plans Autopilot</strong> - Automated Coverage & Savings Report</p>
+            <p>Generated: {report_timestamp}</p>
+            <p style="margin-top: 15px; font-size: 0.9em;">
+                Powered by <a href="https://github.com/etiennechabert/terraform-aws-sp-autopilot" target="_blank" style="color: #2196f3; text-decoration: none;">terraform-aws-sp-autopilot</a>
+                <span style="opacity: 0.6;">| Open source on GitHub | Apache License 2.0</span>
+            </p>
+        </div>
+    </div>
+"""
+    return html
+
+
+def _build_active_plans_table_html(plans: list[dict[str, Any]]) -> str:
+    """Build HTML for active plans table."""
+    if not plans:
+        return """
+            <div class="no-data">No active Savings Plans found</div>
+"""
+
+    sorted_plans = sorted(plans, key=lambda p: p.get("end_date", "9999-12-31"))
+    now = datetime.now(UTC)
+    three_months_from_now = now + timedelta(days=90)
+
+    html = """
+            <table>
+                <thead>
+                    <tr>
+                        <th style="width: 30%;">Plan ID</th>
+                        <th style="width: 12%;">Type</th>
+                        <th style="width: 16%;">Hourly Commitment</th>
+                        <th style="width: 10%;">Term</th>
+                        <th style="width: 16%;">Payment Option</th>
+                        <th style="width: 16%;">Days Remaining</th>
+                    </tr>
+                </thead>
+                <tbody>
+"""
+
+    for plan in sorted_plans:
+        plan_id = plan.get("plan_id", "Unknown")
+        plan_type = plan.get("plan_type", "Unknown")
+        hourly_commitment = plan.get("hourly_commitment", 0.0)
+        term_years = plan.get("term_years", 0)
+        payment_option = plan.get("payment_option", "Unknown")
+        start_date = plan.get("start_date", "Unknown")
+        end_date = plan.get("end_date", "Unknown")
+
+        start_date_display = start_date
+        end_date_display = end_date
+        days_remaining_display = "N/A"
+        expiring_soon = False
+        tooltip_text = ""
+
+        try:
+            if "T" in start_date:
+                start_date_display = start_date.split("T")[0]
+
+            if "T" in end_date:
+                end_date_parsed = datetime.fromisoformat(end_date.replace("Z", "+00:00"))
+                end_date_display = end_date.split("T")[0]
+            else:
+                end_date_parsed = datetime.strptime(end_date, "%Y-%m-%d").replace(tzinfo=UTC)
+                end_date_display = end_date
+
+            days_remaining = (end_date_parsed - now).days
+
+            if days_remaining < 0:
+                days_remaining_display = "Expired"
+            elif days_remaining == 0:
+                days_remaining_display = "Today"
+            elif days_remaining == 1:
+                days_remaining_display = "1 day"
+            else:
+                days_remaining_display = f"{days_remaining} days"
+
+            tooltip_text = f"Start: {start_date_display} | End: {end_date_display}"
+
+            if end_date_parsed <= three_months_from_now:
+                expiring_soon = True
+        except Exception:
+            pass
+
+        row_class = 'class="expiring-soon"' if expiring_soon else ""
+
+        html += f"""
+                    <tr {row_class}>
+                        <td style="font-family: monospace; font-size: 0.8em; word-break: break-all;">{plan_id}</td>
+                        <td>{plan_type}</td>
+                        <td class="metric">${hourly_commitment:.2f}/hr</td>
+                        <td>{term_years} year(s)</td>
+                        <td>{payment_option}</td>
+                        <td class="metric" title="{tooltip_text}" style="cursor: help;">{days_remaining_display}</td>
+                    </tr>
+"""
+
+    html += """
+                </tbody>
+            </table>
+"""
+    return html
+
+
 def generate_html_report(
     coverage_data: dict[str, Any],
     savings_data: dict[str, Any],
@@ -546,10 +748,8 @@ def generate_html_report(
     logger.info("Generating HTML report")
     config = config or {}
 
-    # Prepare all data needed for the report
     data = _prepare_html_report_data(coverage_data, savings_data, config)
 
-    # Extract commonly used variables for template
     report_timestamp = data["report_timestamp"]
     data_period = data["data_period"]
     lookback_days = data["lookback_days"]
@@ -1150,206 +1350,23 @@ def generate_html_report(
             <h3 style="color: #232f3e; margin-top: 25px; margin-bottom: 15px; font-size: 1.2em;">Breakdown by Type</h3>
 """
 
-    if breakdown_by_type:
-        html += """
-            <table>
-                <thead>
-                    <tr>
-                        <th>Plan Type</th>
-                        <th>Active Plans</th>
-                        <th>Utilization</th>
-                        <th>Commitment/hr</th>
-                        <th>Would Pay On-Demand/hr</th>
-                        <th>Savings/hr</th>
-                    </tr>
-                </thead>
-                <tbody>
-"""
-        for plan_type, type_data in breakdown_by_type.items():
-            plans_count_type = type_data.get("plans_count", 0)
-            total_commitment_type = type_data.get("total_commitment", 0.0)
-
-            # Get pre-calculated hourly values
-            on_demand_equivalent_hourly = type_data.get("on_demand_equivalent_hourly", 0.0)
-            net_savings_hourly = type_data.get("net_savings_hourly", 0.0)
-            type_utilization = type_data.get("average_utilization", 0.0)
-
-            plan_type_display = plan_type
-            if "Compute" in plan_type:
-                plan_type_display = "Compute Savings Plans"
-            elif "SageMaker" in plan_type:
-                plan_type_display = "SageMaker Savings Plans"
-            elif "Database" in plan_type:
-                plan_type_display = "Database Savings Plans"
-            elif "EC2Instance" in plan_type:
-                plan_type_display = "EC2 Instance Savings Plans"
-
-            html += f"""
-                    <tr>
-                        <td><strong>{plan_type_display}</strong></td>
-                        <td>{plans_count_type}</td>
-                        <td class="metric">{type_utilization:.1f}%</td>
-                        <td class="metric">${total_commitment_type:.2f}/hr</td>
-                        <td class="metric">${on_demand_equivalent_hourly:.2f}/hr</td>
-                        <td class="metric" style="color: #28a745;">${net_savings_hourly:.2f}/hr</td>
-                    </tr>
-"""
-
-        # Add total row if there are multiple plan types
-        if len(breakdown_by_type) > 1:
-            html += f"""
-                    <tr style="border-top: 2px solid #232f3e; font-weight: bold; background-color: #f8f9fa;">
-                        <td><strong>Total</strong></td>
-                        <td>{plans_count}</td>
-                        <td class="metric">{average_utilization:.1f}%</td>
-                        <td class="metric">${total_commitment:.2f}/hr</td>
-                        <td class="metric">${on_demand_equivalent_hourly:.2f}/hr</td>
-                        <td class="metric" style="color: #28a745;">${net_savings_hourly:.2f}/hr</td>
-                    </tr>
-"""
-
-        html += """
-                </tbody>
-            </table>
-"""
+    html += _build_breakdown_table_html(
+        breakdown_by_type,
+        plans_count,
+        average_utilization,
+        total_commitment,
+        on_demand_equivalent_hourly,
+        net_savings_hourly,
+    )
 
     html += """
             <h3 style="color: #232f3e; margin-top: 35px; margin-bottom: 15px; font-size: 1.2em;">Active Plans Details</h3>
 """
 
     plans = savings_data.get("plans", [])
-    if plans:
-        # Sort plans by end date (earliest expiration first)
-        sorted_plans = sorted(
-            plans,
-            key=lambda p: p.get("end_date", "9999-12-31"),
-        )
+    html += _build_active_plans_table_html(plans)
 
-        # Calculate current date and 3 months from now for expiration highlighting
-        now = datetime.now(UTC)
-        three_months_from_now = now + timedelta(days=90)
-
-        html += """
-            <table>
-                <thead>
-                    <tr>
-                        <th style="width: 30%;">Plan ID</th>
-                        <th style="width: 12%;">Type</th>
-                        <th style="width: 16%;">Hourly Commitment</th>
-                        <th style="width: 10%;">Term</th>
-                        <th style="width: 16%;">Payment Option</th>
-                        <th style="width: 16%;">Days Remaining</th>
-                    </tr>
-                </thead>
-                <tbody>
-"""
-        for plan in sorted_plans:
-            plan_id = plan.get("plan_id", "Unknown")
-            plan_type = plan.get("plan_type", "Unknown")
-            hourly_commitment = plan.get("hourly_commitment", 0.0)
-            term_years = plan.get("term_years", 0)
-            payment_option = plan.get("payment_option", "Unknown")
-            start_date = plan.get("start_date", "Unknown")
-            end_date = plan.get("end_date", "Unknown")
-
-            # Format dates and calculate days remaining
-            start_date_display = start_date
-            end_date_display = end_date
-            days_remaining_display = "N/A"
-            expiring_soon = False
-            tooltip_text = ""
-
-            try:
-                # Format start date
-                if "T" in start_date:
-                    start_date_display = start_date.split("T")[0]
-
-                # Format end date
-                if "T" in end_date:
-                    end_date_parsed = datetime.fromisoformat(end_date.replace("Z", "+00:00"))
-                    end_date_display = end_date.split("T")[0]
-                else:
-                    end_date_parsed = datetime.strptime(end_date, "%Y-%m-%d").replace(tzinfo=UTC)
-                    end_date_display = end_date
-
-                # Calculate days remaining
-                days_remaining = (end_date_parsed - now).days
-
-                # Format days remaining display
-                if days_remaining < 0:
-                    days_remaining_display = "Expired"
-                elif days_remaining == 0:
-                    days_remaining_display = "Today"
-                elif days_remaining == 1:
-                    days_remaining_display = "1 day"
-                else:
-                    days_remaining_display = f"{days_remaining} days"
-
-                # Create tooltip with start/end dates
-                tooltip_text = f"Start: {start_date_display} | End: {end_date_display}"
-
-                # Check if expiring within 3 months
-                if end_date_parsed <= three_months_from_now:
-                    expiring_soon = True
-            except Exception:
-                pass
-
-            row_class = 'class="expiring-soon"' if expiring_soon else ""
-
-            html += f"""
-                    <tr {row_class}>
-                        <td style="font-family: monospace; font-size: 0.8em; word-break: break-all;">{plan_id}</td>
-                        <td>{plan_type}</td>
-                        <td class="metric">${hourly_commitment:.2f}/hr</td>
-                        <td>{term_years} year(s)</td>
-                        <td>{payment_option}</td>
-                        <td class="metric" title="{tooltip_text}" style="cursor: help;">{days_remaining_display}</td>
-                    </tr>
-"""
-        html += """
-                </tbody>
-            </table>
-"""
-    else:
-        html += """
-            <div class="no-data">No active Savings Plans found</div>
-"""
-
-    html += """
-        </div>
-"""
-
-    # Add raw data section if provided
-    if raw_data:
-        raw_data_json = json.dumps(raw_data, indent=2, default=str)
-        html += """
-        <div class="section raw-data-section">
-            <details>
-                <summary>
-                    <span>View Raw AWS Data</span>
-                    <span style="font-size: 0.8em; color: #6c757d;">Click to expand • Toggle via <code>INCLUDE_DEBUG_DATA</code> env var</span>
-                </summary>
-                <div class="raw-data-controls">
-                    <button class="raw-data-button" onclick="copyRawData()">Copy to Clipboard</button>
-                    <button class="raw-data-button" onclick="expandAll()">Expand All</button>
-                    <button class="raw-data-button" onclick="collapseAll()">Collapse All</button>
-                </div>
-                <div id="jsonViewer" class="json-viewer"></div>
-            </details>
-        </div>
-"""
-
-    html += f"""
-        <div class="footer">
-            <p><strong>Savings Plans Autopilot</strong> - Automated Coverage & Savings Report</p>
-            <p>Generated: {report_timestamp}</p>
-            <p style="margin-top: 15px; font-size: 0.9em;">
-                Powered by <a href="https://github.com/etiennechabert/terraform-aws-sp-autopilot" target="_blank" style="color: #2196f3; text-decoration: none;">terraform-aws-sp-autopilot</a>
-                <span style="opacity: 0.6;">| Open source on GitHub | Apache License 2.0</span>
-            </p>
-        </div>
-    </div>
-"""
+    html += _build_raw_data_section_html(raw_data, report_timestamp)
 
     # Prepare chart data from coverage timeseries and calculate optimal coverage
     chart_data, optimal_coverage_results = _prepare_chart_data(coverage_data, savings_data, config)
