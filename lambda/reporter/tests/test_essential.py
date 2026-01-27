@@ -32,6 +32,7 @@ os.environ.setdefault("ENABLE_DATABASE_SP", "false")
 os.environ.setdefault("ENABLE_SAGEMAKER_SP", "false")
 os.environ.setdefault("LOW_UTILIZATION_THRESHOLD", "70")
 os.environ.setdefault("LOW_UTILIZATION_ALERT_ENABLED", "false")
+os.environ.setdefault("INCLUDE_DEBUG_DATA", "true")  # Enable debug mode for aws_debug.py coverage
 
 # Add lambda directory to path
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
