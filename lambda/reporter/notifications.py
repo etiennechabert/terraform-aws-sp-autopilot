@@ -126,7 +126,6 @@ def send_report_email(
     """
     logger.info("Sending report email notification")
 
-    execution_time = datetime.now(UTC).isoformat()
     bucket_name = config["reports_bucket"]
 
     # Generate pre-signed URL if storage_adapter is provided, otherwise use direct URL
