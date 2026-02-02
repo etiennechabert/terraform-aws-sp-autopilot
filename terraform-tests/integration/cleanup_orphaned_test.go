@@ -69,42 +69,51 @@ func cleanupAllCloudWatchAlarms(t *testing.T, sess *session.Session) {
 	t.Log("\n[CloudWatch Alarms]")
 	cwClient := cloudwatch.New(sess)
 
-	// List all CloudWatch alarms
-	output, err := cwClient.DescribeAlarms(&cloudwatch.DescribeAlarmsInput{
-		AlarmNamePrefix: aws.String("sp-autopilot-test"),
-	})
-	if err != nil {
-		t.Logf("  ⚠ Failed to list CloudWatch alarms: %v", err)
-		return
+	// Check multiple test prefix patterns
+	alarmPrefixes := []string{
+		"sp-autopilot-test",  // Current prefix
+		"sp-test-",           // Old prefix pattern
 	}
 
-	if len(output.MetricAlarms) == 0 && len(output.CompositeAlarms) == 0 {
+	deletedCount := 0
+	for _, prefix := range alarmPrefixes {
+		output, err := cwClient.DescribeAlarms(&cloudwatch.DescribeAlarmsInput{
+			AlarmNamePrefix: aws.String(prefix),
+		})
+		if err != nil {
+			t.Logf("  ⚠ Failed to list CloudWatch alarms with prefix %s: %v", prefix, err)
+			continue
+		}
+
+		// Delete metric alarms
+		for _, alarm := range output.MetricAlarms {
+			_, err := cwClient.DeleteAlarms(&cloudwatch.DeleteAlarmsInput{
+				AlarmNames: []*string{alarm.AlarmName},
+			})
+			if err != nil {
+				t.Logf("  ⚠ Failed to delete CloudWatch alarm %s: %v", *alarm.AlarmName, err)
+			} else {
+				t.Logf("  ✓ Deleted CloudWatch alarm: %s", *alarm.AlarmName)
+				deletedCount++
+			}
+		}
+
+		// Delete composite alarms
+		for _, alarm := range output.CompositeAlarms {
+			_, err := cwClient.DeleteAlarms(&cloudwatch.DeleteAlarmsInput{
+				AlarmNames: []*string{alarm.AlarmName},
+			})
+			if err != nil {
+				t.Logf("  ⚠ Failed to delete composite alarm %s: %v", *alarm.AlarmName, err)
+			} else {
+				t.Logf("  ✓ Deleted composite alarm: %s", *alarm.AlarmName)
+				deletedCount++
+			}
+		}
+	}
+
+	if deletedCount == 0 {
 		t.Log("  ✓ No orphaned CloudWatch alarms found")
-		return
-	}
-
-	// Delete metric alarms
-	for _, alarm := range output.MetricAlarms {
-		_, err := cwClient.DeleteAlarms(&cloudwatch.DeleteAlarmsInput{
-			AlarmNames: []*string{alarm.AlarmName},
-		})
-		if err != nil {
-			t.Logf("  ⚠ Failed to delete CloudWatch alarm %s: %v", *alarm.AlarmName, err)
-		} else {
-			t.Logf("  ✓ Deleted CloudWatch alarm: %s", *alarm.AlarmName)
-		}
-	}
-
-	// Delete composite alarms
-	for _, alarm := range output.CompositeAlarms {
-		_, err := cwClient.DeleteAlarms(&cloudwatch.DeleteAlarmsInput{
-			AlarmNames: []*string{alarm.AlarmName},
-		})
-		if err != nil {
-			t.Logf("  ⚠ Failed to delete composite alarm %s: %v", *alarm.AlarmName, err)
-		} else {
-			t.Logf("  ✓ Deleted composite alarm: %s", *alarm.AlarmName)
-		}
 	}
 }
 
@@ -112,29 +121,37 @@ func cleanupAllLogGroups(t *testing.T, sess *session.Session) {
 	t.Log("\n[CloudWatch Log Groups]")
 	cwlClient := cloudwatchlogs.New(sess)
 
-	// List all log groups matching test patterns
-	output, err := cwlClient.DescribeLogGroups(&cloudwatchlogs.DescribeLogGroupsInput{
-		LogGroupNamePrefix: aws.String("/aws/lambda/sp-autopilot-test"),
-	})
-	if err != nil {
-		t.Logf("  ⚠ Failed to list log groups: %v", err)
-		return
+	// Check multiple test prefix patterns
+	logGroupPrefixes := []string{
+		"/aws/lambda/sp-autopilot-test",  // Current prefix
+		"/aws/lambda/sp-test-",           // Old prefix pattern
 	}
 
-	if len(output.LogGroups) == 0 {
-		t.Log("  ✓ No orphaned log groups found")
-		return
-	}
-
-	for _, logGroup := range output.LogGroups {
-		_, err := cwlClient.DeleteLogGroup(&cloudwatchlogs.DeleteLogGroupInput{
-			LogGroupName: logGroup.LogGroupName,
+	deletedCount := 0
+	for _, prefix := range logGroupPrefixes {
+		output, err := cwlClient.DescribeLogGroups(&cloudwatchlogs.DescribeLogGroupsInput{
+			LogGroupNamePrefix: aws.String(prefix),
 		})
 		if err != nil {
-			t.Logf("  ⚠ Failed to delete log group %s: %v", *logGroup.LogGroupName, err)
-		} else {
-			t.Logf("  ✓ Deleted log group: %s", *logGroup.LogGroupName)
+			t.Logf("  ⚠ Failed to list log groups with prefix %s: %v", prefix, err)
+			continue
 		}
+
+		for _, logGroup := range output.LogGroups {
+			_, err := cwlClient.DeleteLogGroup(&cloudwatchlogs.DeleteLogGroupInput{
+				LogGroupName: logGroup.LogGroupName,
+			})
+			if err != nil {
+				t.Logf("  ⚠ Failed to delete log group %s: %v", *logGroup.LogGroupName, err)
+			} else {
+				t.Logf("  ✓ Deleted log group: %s", *logGroup.LogGroupName)
+				deletedCount++
+			}
+		}
+	}
+
+	if deletedCount == 0 {
+		t.Log("  ✓ No orphaned log groups found")
 	}
 }
 
@@ -150,9 +167,23 @@ func cleanupAllLambdaFunctions(t *testing.T, sess *session.Session) {
 	}
 
 	deleted := false
+	// Check multiple test prefix patterns
+	testPrefixes := []string{
+		"sp-autopilot-test-",  // Current prefix
+		"sp-test-",            // Old prefix pattern
+	}
+
 	for _, function := range output.Functions {
-		// Only delete functions matching test pattern
-		if strings.HasPrefix(*function.FunctionName, "sp-autopilot-test-") {
+		// Only delete functions matching test patterns
+		isTestFunction := false
+		for _, prefix := range testPrefixes {
+			if strings.HasPrefix(*function.FunctionName, prefix) {
+				isTestFunction = true
+				break
+			}
+		}
+
+		if isTestFunction {
 			_, err := lambdaClient.DeleteFunction(&lambda.DeleteFunctionInput{
 				FunctionName: function.FunctionName,
 			})
@@ -174,21 +205,23 @@ func cleanupAllEventBridgeRules(t *testing.T, sess *session.Session) {
 	t.Log("\n[EventBridge Rules]")
 	eventsClient := cloudwatchevents.New(sess)
 
-	// List all EventBridge rules
-	output, err := eventsClient.ListRules(&cloudwatchevents.ListRulesInput{
-		NamePrefix: aws.String("sp-autopilot-test"),
-	})
-	if err != nil {
-		t.Logf("  ⚠ Failed to list EventBridge rules: %v", err)
-		return
+	// Check multiple test prefix patterns
+	rulePrefixes := []string{
+		"sp-autopilot-test",  // Current prefix
+		"sp-test-",           // Old prefix pattern
 	}
 
-	if len(output.Rules) == 0 {
-		t.Log("  ✓ No orphaned EventBridge rules found")
-		return
-	}
+	deletedCount := 0
+	for _, prefix := range rulePrefixes {
+		output, err := eventsClient.ListRules(&cloudwatchevents.ListRulesInput{
+			NamePrefix: aws.String(prefix),
+		})
+		if err != nil {
+			t.Logf("  ⚠ Failed to list EventBridge rules with prefix %s: %v", prefix, err)
+			continue
+		}
 
-	for _, rule := range output.Rules {
+		for _, rule := range output.Rules {
 		// First, remove all targets from the rule
 		targetsOutput, err := eventsClient.ListTargetsByRule(&cloudwatchevents.ListTargetsByRuleInput{
 			Rule: rule.Name,
@@ -207,15 +240,21 @@ func cleanupAllEventBridgeRules(t *testing.T, sess *session.Session) {
 			}
 		}
 
-		// Now delete the rule
-		_, err = eventsClient.DeleteRule(&cloudwatchevents.DeleteRuleInput{
-			Name: rule.Name,
-		})
-		if err != nil {
-			t.Logf("  ⚠ Failed to delete EventBridge rule %s: %v", *rule.Name, err)
-		} else {
-			t.Logf("  ✓ Deleted EventBridge rule: %s", *rule.Name)
+			// Now delete the rule
+			_, err = eventsClient.DeleteRule(&cloudwatchevents.DeleteRuleInput{
+				Name: rule.Name,
+			})
+			if err != nil {
+				t.Logf("  ⚠ Failed to delete EventBridge rule %s: %v", *rule.Name, err)
+			} else {
+				t.Logf("  ✓ Deleted EventBridge rule: %s", *rule.Name)
+				deletedCount++
+			}
 		}
+	}
+
+	if deletedCount == 0 {
+		t.Log("  ✓ No orphaned EventBridge rules found")
 	}
 }
 
@@ -223,29 +262,37 @@ func cleanupAllSQSQueues(t *testing.T, sess *session.Session) {
 	t.Log("\n[SQS Queues]")
 	sqsClient := sqs.New(sess)
 
-	// List all SQS queues
-	output, err := sqsClient.ListQueues(&sqs.ListQueuesInput{
-		QueueNamePrefix: aws.String("sp-autopilot-test"),
-	})
-	if err != nil {
-		t.Logf("  ⚠ Failed to list SQS queues: %v", err)
-		return
+	// List all SQS queues with any test-related prefix
+	prefixes := []string{
+		"sp-autopilot-test",  // Current prefix
+		"sp-test-",           // Old prefix pattern
 	}
 
-	if len(output.QueueUrls) == 0 {
-		t.Log("  ✓ No orphaned SQS queues found")
-		return
-	}
-
-	for _, queueURL := range output.QueueUrls {
-		_, err := sqsClient.DeleteQueue(&sqs.DeleteQueueInput{
-			QueueUrl: queueURL,
+	deletedCount := 0
+	for _, prefix := range prefixes {
+		output, err := sqsClient.ListQueues(&sqs.ListQueuesInput{
+			QueueNamePrefix: aws.String(prefix),
 		})
 		if err != nil {
-			t.Logf("  ⚠ Failed to delete SQS queue %s: %v", *queueURL, err)
-		} else {
-			t.Logf("  ✓ Deleted SQS queue: %s", *queueURL)
+			t.Logf("  ⚠ Failed to list SQS queues with prefix %s: %v", prefix, err)
+			continue
 		}
+
+		for _, queueURL := range output.QueueUrls {
+			_, err := sqsClient.DeleteQueue(&sqs.DeleteQueueInput{
+				QueueUrl: queueURL,
+			})
+			if err != nil {
+				t.Logf("  ⚠ Failed to delete SQS queue %s: %v", *queueURL, err)
+			} else {
+				t.Logf("  ✓ Deleted SQS queue: %s", *queueURL)
+				deletedCount++
+			}
+		}
+	}
+
+	if deletedCount == 0 {
+		t.Log("  ✓ No orphaned SQS queues found")
 	}
 }
 
@@ -261,9 +308,23 @@ func cleanupAllSNSTopics(t *testing.T, sess *session.Session) {
 	}
 
 	deleted := false
+	// Check multiple test prefix patterns
+	testPrefixes := []string{
+		"sp-autopilot-test-",  // Current prefix
+		"sp-test-",            // Old prefix pattern
+	}
+
 	for _, topic := range output.Topics {
-		// Only delete topics matching test pattern
-		if strings.Contains(*topic.TopicArn, "sp-autopilot-test-") {
+		// Only delete topics matching test patterns
+		isTestTopic := false
+		for _, prefix := range testPrefixes {
+			if strings.Contains(*topic.TopicArn, prefix) {
+				isTestTopic = true
+				break
+			}
+		}
+
+		if isTestTopic {
 			// First, delete all subscriptions for this topic
 			subsOutput, err := snsClient.ListSubscriptionsByTopic(&sns.ListSubscriptionsByTopicInput{
 				TopicArn: topic.TopicArn,
@@ -309,9 +370,23 @@ func cleanupAllIAMRoles(t *testing.T, sess *session.Session) {
 	}
 
 	deleted := false
+	// Check multiple test prefix patterns
+	testPrefixes := []string{
+		"sp-autopilot-test-",  // Current prefix
+		"sp-test-",            // Old prefix pattern
+	}
+
 	for _, role := range output.Roles {
-		// Only delete roles matching test pattern
-		if strings.HasPrefix(*role.RoleName, "sp-autopilot-test-") {
+		// Only delete roles matching test patterns
+		isTestRole := false
+		for _, prefix := range testPrefixes {
+			if strings.HasPrefix(*role.RoleName, prefix) {
+				isTestRole = true
+				break
+			}
+		}
+
+		if isTestRole {
 			// First, detach all managed policies
 			policiesOutput, err := iamClient.ListAttachedRolePolicies(&iam.ListAttachedRolePoliciesInput{
 				RoleName: role.RoleName,
@@ -368,9 +443,23 @@ func cleanupAllS3Buckets(t *testing.T, sess *session.Session) {
 	}
 
 	deleted := false
+	// Check multiple test prefix patterns
+	testPrefixes := []string{
+		"sp-autopilot-test-",  // Current prefix
+		"sp-test-",            // Old prefix pattern
+	}
+
 	for _, bucket := range output.Buckets {
-		// Only delete buckets matching test pattern
-		if strings.HasPrefix(*bucket.Name, "sp-autopilot-test-") {
+		// Only delete buckets matching test patterns
+		isTestBucket := false
+		for _, prefix := range testPrefixes {
+			if strings.HasPrefix(*bucket.Name, prefix) {
+				isTestBucket = true
+				break
+			}
+		}
+
+		if isTestBucket {
 			// First, delete all objects in the bucket
 			listObjectsOutput, err := s3Client.ListObjectsV2(&s3.ListObjectsV2Input{
 				Bucket: bucket.Name,
