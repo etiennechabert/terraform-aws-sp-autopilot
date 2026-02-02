@@ -1,0 +1,53 @@
+name: Auto Assign PR
+
+on:
+  pull_request:
+    types: [opened, reopened, ready_for_review]
+
+jobs:
+  auto-assign:
+    name: Auto Assign Reviewer
+    runs-on: ubuntu-latest
+    permissions:
+      pull-requests: write
+
+    steps:
+      - name: Assign Reviewer
+        uses: actions/github-script@v8
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            const prAuthor = context.payload.pull_request.user.login;
+            const reviewer = 'etiennechabert';
+
+            // Only assign reviewer if PR author is not the same person
+            if (prAuthor !== reviewer) {
+              try {
+                await github.rest.pulls.requestReviewers({
+                  owner: context.repo.owner,
+                  repo: context.repo.repo,
+                  pull_number: context.issue.number,
+                  reviewers: [reviewer]
+                });
+                console.log(`Assigned ${reviewer} as reviewer`);
+              } catch (error) {
+                console.log(`Failed to assign reviewer: ${error.message}`);
+              }
+            } else {
+              console.log('Skipping reviewer assignment (PR author is the same as reviewer)');
+            }
+
+            // For Dependabot PRs, also assign as assignee
+            if (context.actor === 'dependabot[bot]') {
+              try {
+                await github.rest.issues.addAssignees({
+                  owner: context.repo.owner,
+                  repo: context.repo.repo,
+                  issue_number: context.issue.number,
+                  assignees: [reviewer]
+                });
+                console.log(`Assigned ${reviewer} as assignee for Dependabot PR`);
+              } catch (error) {
+                console.log(`Failed to assign assignee: ${error.message}`);
+              }
+            }
