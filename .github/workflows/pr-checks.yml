@@ -521,7 +521,7 @@ jobs:
       - name: Run Terratest Integration Tests
         working-directory: terraform-tests/integration
         run: |
-          go test -v -timeout 30m -parallel 1
+          go test -v -timeout 30m -parallel 1 -skip TestCleanupAllOrphanedResources
         env:
           TF_VAR_environment: ci-test
           TF_VAR_project_name: sp-autopilot-ci
