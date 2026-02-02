@@ -17,24 +17,37 @@ jobs:
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
           script: |
-            // Auto-assign etiennechabert as reviewer for all PRs
-            await github.rest.pulls.requestReviewers({
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              pull_number: context.issue.number,
-              reviewers: ['etiennechabert']
-            });
+            const prAuthor = context.payload.pull_request.user.login;
+            const reviewer = 'etiennechabert';
 
-            console.log('Assigned etiennechabert as reviewer');
+            // Only assign reviewer if PR author is not the same person
+            if (prAuthor !== reviewer) {
+              try {
+                await github.rest.pulls.requestReviewers({
+                  owner: context.repo.owner,
+                  repo: context.repo.repo,
+                  pull_number: context.issue.number,
+                  reviewers: [reviewer]
+                });
+                console.log(`Assigned ${reviewer} as reviewer`);
+              } catch (error) {
+                console.log(`Failed to assign reviewer: ${error.message}`);
+              }
+            } else {
+              console.log('Skipping reviewer assignment (PR author is the same as reviewer)');
+            }
 
-            // For Dependabot PRs, also assign as assignee (redundant with dependabot.yml but ensures it)
+            // For Dependabot PRs, also assign as assignee
             if (context.actor === 'dependabot[bot]') {
-              await github.rest.issues.addAssignees({
-                owner: context.repo.owner,
-                repo: context.repo.repo,
-                issue_number: context.issue.number,
-                assignees: ['etiennechabert']
-              });
-
-              console.log('Assigned etiennechabert as assignee for Dependabot PR');
+              try {
+                await github.rest.issues.addAssignees({
+                  owner: context.repo.owner,
+                  repo: context.repo.repo,
+                  issue_number: context.issue.number,
+                  assignees: [reviewer]
+                });
+                console.log(`Assigned ${reviewer} as assignee for Dependabot PR`);
+              } catch (error) {
+                console.log(`Failed to assign assignee: ${error.message}`);
+              }
             }
