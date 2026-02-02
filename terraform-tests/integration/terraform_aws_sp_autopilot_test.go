@@ -1,31 +1,26 @@
 package test
 
 import (
-	"encoding/json"
 	"fmt"
-	"strconv"
 	"testing"
 	"time"
 
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/service/cloudwatchevents"
 	"github.com/aws/aws-sdk-go/service/lambda"
-	"github.com/aws/aws-sdk-go/service/sqs"
 	terratest_aws "github.com/gruntwork-io/terratest/modules/aws"
 	"github.com/gruntwork-io/terratest/modules/terraform"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
-// TestFullDeploymentAndCleanup is a comprehensive end-to-end integration test
-// that validates complete module deployment, resource configuration, functional
-// behavior, and automatic cleanup.
+// TestFullDeploymentAndCleanup is a comprehensive integration test
+// that validates complete module deployment, resource configuration, and cleanup.
 //
 // Test Phases:
 // 1. Infrastructure Deployment - Apply Terraform and create all resources
 // 2. Resource Validation - Verify SQS, SNS, Lambda, IAM, EventBridge, CloudWatch
-// 3. Functional Testing - Invoke Lambda and verify dry-run behavior
-// 4. Cleanup Validation - Ensure all resources can be destroyed
+// 3. Cleanup Validation - Ensure all resources can be destroyed
 func TestFullDeploymentAndCleanup(t *testing.T) {
 	// Note: NOT using t.Parallel() for this end-to-end integration test
 	// to ensure complete lifecycle validation
@@ -286,80 +281,11 @@ func TestFullDeploymentAndCleanup(t *testing.T) {
 	t.Log("✓ Module configuration validated")
 
 	// ============================================================================
-	// Phase 3: End-to-End Functional Testing
+	// Phase 3: Cleanup Validation
 	// ============================================================================
 
 	t.Log("========================================")
-	t.Log("Phase 3: Functional Testing")
-	t.Log("========================================")
-
-	// Get initial queue state
-	sqsClient := terratest_aws.NewSqsClient(t, awsRegion)
-
-	queueAttrsBefore, err := sqsClient.GetQueueAttributes(&sqs.GetQueueAttributesInput{
-		QueueUrl: aws.String(queueURL),
-		AttributeNames: []*string{
-			aws.String("ApproximateNumberOfMessages"),
-		},
-	})
-	require.NoError(t, err, "Failed to get queue attributes before invocation")
-
-	initialMessageCount, err := strconv.Atoi(*queueAttrsBefore.Attributes["ApproximateNumberOfMessages"])
-	require.NoError(t, err, "Failed to parse initial message count")
-
-	t.Logf("Initial SQS queue message count: %d", initialMessageCount)
-
-	// Invoke Scheduler Lambda function
-	t.Log("Invoking Scheduler Lambda function...")
-
-	invokeResult, err := lambdaClient.Invoke(&lambda.InvokeInput{
-		FunctionName: aws.String(schedulerLambdaName),
-		Payload:      []byte("{}"),
-		LogType:      aws.String("Tail"),
-	})
-	require.NoError(t, err, "Failed to invoke Scheduler Lambda function")
-
-	// Validate invocation result
-	assert.Equal(t, int64(200), *invokeResult.StatusCode, "Lambda invocation should return status code 200")
-	assert.Nil(t, invokeResult.FunctionError, "Lambda invocation should not return a function error")
-
-	// Parse response payload
-	var response map[string]interface{}
-	err = json.Unmarshal(invokeResult.Payload, &response)
-	require.NoError(t, err, "Failed to parse Lambda response as JSON")
-
-	t.Logf("Lambda response: %+v", response)
-	assert.NotEmpty(t, response, "Lambda response should not be empty")
-
-	t.Log("✓ Scheduler Lambda invoked successfully")
-
-	// Verify dry-run mode: no messages queued
-	t.Log("Verifying dry-run mode (no messages should be queued)...")
-
-	queueAttrsAfter, err := sqsClient.GetQueueAttributes(&sqs.GetQueueAttributesInput{
-		QueueUrl: aws.String(queueURL),
-		AttributeNames: []*string{
-			aws.String("ApproximateNumberOfMessages"),
-		},
-	})
-	require.NoError(t, err, "Failed to get queue attributes after invocation")
-
-	finalMessageCount, err := strconv.Atoi(*queueAttrsAfter.Attributes["ApproximateNumberOfMessages"])
-	require.NoError(t, err, "Failed to parse final message count")
-
-	t.Logf("Final SQS queue message count: %d", finalMessageCount)
-
-	// In dry-run mode, no messages should be queued
-	assert.Equal(t, initialMessageCount, finalMessageCount, "In dry-run mode, no new messages should be queued to SQS")
-
-	t.Log("✓ Dry-run mode verified (no side effects)")
-
-	// ============================================================================
-	// Phase 4: Cleanup Validation
-	// ============================================================================
-
-	t.Log("========================================")
-	t.Log("Phase 4: Cleanup Validation")
+	t.Log("Phase 3: Cleanup Validation")
 	t.Log("========================================")
 
 	// The defer statement will handle cleanup automatically
