@@ -1,0 +1,40 @@
+name: Auto Assign PR
+
+on:
+  pull_request:
+    types: [opened, reopened, ready_for_review]
+
+jobs:
+  auto-assign:
+    name: Auto Assign Reviewer
+    runs-on: ubuntu-latest
+    permissions:
+      pull-requests: write
+
+    steps:
+      - name: Assign Reviewer
+        uses: actions/github-script@v8
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            // Auto-assign etiennechabert as reviewer for all PRs
+            await github.rest.pulls.requestReviewers({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              pull_number: context.issue.number,
+              reviewers: ['etiennechabert']
+            });
+
+            console.log('Assigned etiennechabert as reviewer');
+
+            // For Dependabot PRs, also assign as assignee (redundant with dependabot.yml but ensures it)
+            if (context.actor === 'dependabot[bot]') {
+              await github.rest.issues.addAssignees({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: context.issue.number,
+                assignees: ['etiennechabert']
+              });
+
+              console.log('Assigned etiennechabert as assignee for Dependabot PR');
+            }
