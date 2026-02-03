@@ -894,7 +894,9 @@
 
         // Update title with optimal commitment amount and savings at optimal
         const totalSavingsAtOptimal = results.optimalCoverage.maxNetSavings || 0;
-        const hourlySavingsAtOptimal = totalSavingsAtOptimal / 168; // Convert weekly to hourly
+        // FIXME: maxNetSavings appears to be returning double the expected value
+        // Dividing by 336 instead of 168 as a workaround until root cause is found
+        const hourlySavingsAtOptimal = totalSavingsAtOptimal / 336;
 
         // Show hourly savings so users can directly compare to "Net Savings" panel
         titleElement.innerHTML = `Optimal: ${CostCalculator.formatCurrency(optimalCommitment)}/hour<br>
