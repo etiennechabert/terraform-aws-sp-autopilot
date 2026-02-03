@@ -892,34 +892,15 @@
         suggestionElement.classList.remove('status-optimal', 'status-warning', 'status-danger');
         suggestionElement.classList.add(`status-${suggestion.status}`);
 
-        // Update title with optimal commitment amount and maximum savings
+        // Update title with optimal commitment amount and savings at optimal
         const totalSavingsAtOptimal = results.optimalCoverage.maxNetSavings || 0;
         const monthlySavingsAtOptimal = totalSavingsAtOptimal * 4.33; // Convert weekly to monthly (~30 days / 7 days)
 
-        // Get current weekly savings for comparison
-        const currentWeeklySavings = results.savings || 0;
-        const currentMonthlySavings = currentWeeklySavings * 4.33;
-
-        // Calculate the additional savings you could gain by moving to optimal
-        const additionalWeeklySavings = totalSavingsAtOptimal - currentWeeklySavings;
-        const additionalMonthlySavings = additionalWeeklySavings * 4.33;
-
-        // Show the additional savings you could gain, not the total
-        let savingsText = '';
-        if (suggestion.status === 'optimal') {
-            // Already at optimal, show current savings
-            savingsText = `Saving ${CostCalculator.formatCurrency(currentMonthlySavings)}/month vs on-demand`;
-        } else if (additionalMonthlySavings > 0) {
-            // Could save more by moving to optimal
-            savingsText = `Unlock ${CostCalculator.formatCurrency(additionalMonthlySavings)}/month more savings`;
-        } else {
-            // At or past optimal
-            savingsText = `Max savings: ${CostCalculator.formatCurrency(monthlySavingsAtOptimal)}/month vs on-demand`;
-        }
-
+        // Always show the total savings at optimal (vs on-demand baseline)
+        // This is clearer than trying to show "additional" which can be confusing
         titleElement.innerHTML = `Optimal: ${CostCalculator.formatCurrency(optimalCommitment)}/hour<br>
             <small style="font-weight: normal; opacity: 0.9;">
-                ${savingsText}
+                Saves ${CostCalculator.formatCurrency(monthlySavingsAtOptimal)}/month vs on-demand
             </small>`;
 
         // Message already has dollar values formatted correctly
