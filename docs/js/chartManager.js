@@ -749,17 +749,7 @@ const ChartManager = (function() {
         savingsCurveChart.$curveData = curveData; // Store full curve data for tooltip access
 
         // Set x-axis max to max commitment (get from curve data)
-        let maxCommitment = curveData.length > 0 ? curveData[curveData.length - 1].commitment : maxCost;
-
-        // Ensure x-axis extends to include current commitment if it's beyond the curve range
-        if (currentCoverage && savingsPercentage) {
-            const discountFactor = (1 - savingsPercentage / 100);
-            const currentCommitment = currentCoverage * discountFactor;
-            if (currentCommitment > maxCommitment) {
-                maxCommitment = currentCommitment * 1.05; // Add 5% padding
-            }
-        }
-
+        const maxCommitment = curveData.length > 0 ? curveData[curveData.length - 1].commitment : maxCost;
         savingsCurveChart.options.scales.x.max = maxCommitment;
 
         // Find indices for transitions
