@@ -871,15 +871,20 @@
 
         if (!suggestionElement || !textElement || !titleElement) return;
 
-        // Use dollar values directly (no percentage conversion needed)
-        const optimalCost = results.optimalCoverageUnits;
-        const currentCost = appState.coverageCost;
+        // Convert coverage to commitment values for display
+        const discountFactor = (1 - appState.savingsPercentage / 100);
+        const optimalCoverage = results.optimalCoverageUnits;
+        const currentCoverage = appState.coverageCost;
         const minCost = appState.minCost;
 
-        // Get suggestion with dollar values (avoids rounding issues)
+        // Calculate commitment values
+        const optimalCommitment = optimalCoverage * discountFactor;
+        const currentCommitment = currentCoverage * discountFactor;
+
+        // Get suggestion with commitment dollar values
         const suggestion = CostCalculator.getOptimizationSuggestionDollars(
-            currentCost,
-            optimalCost,
+            currentCommitment,
+            optimalCommitment,
             minCost
         );
 
@@ -887,11 +892,11 @@
         suggestionElement.classList.remove('status-optimal', 'status-warning', 'status-danger');
         suggestionElement.classList.add(`status-${suggestion.status}`);
 
-        // Update title with optimal dollar amount and potential savings
+        // Update title with optimal commitment amount and potential savings
         const totalSavings = results.optimalCoverage.maxNetSavings || 0;
         const monthlySavings = totalSavings * 4.33; // Convert weekly to monthly (~30 days / 7 days)
 
-        titleElement.innerHTML = `Optimal: ${CostCalculator.formatCurrency(optimalCost)}/hour<br>
+        titleElement.innerHTML = `Optimal: ${CostCalculator.formatCurrency(optimalCommitment)}/hour<br>
             <small style="font-weight: normal; opacity: 0.9;">
                 Potential savings: ${CostCalculator.formatCurrency(monthlySavings)}/month
             </small>`;

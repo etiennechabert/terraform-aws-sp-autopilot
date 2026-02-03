@@ -353,8 +353,8 @@ const CostCalculator = (function() {
 
     /**
      * Get optimization suggestion with dollar values (no percentage conversion needed)
-     * @param {number} currentCost - Current coverage in $/hour
-     * @param {number} optimalCost - Optimal coverage in $/hour
+     * @param {number} currentCost - Current commitment in $/hour
+     * @param {number} optimalCost - Optimal commitment in $/hour
      * @param {number} minCost - Minimum cost for percentage calculation
      * @returns {Object} Suggestion with status and message
      */
@@ -369,7 +369,7 @@ const CostCalculator = (function() {
         if (percentDiff <= 5) {
             status = 'optimal';
             icon = '✅';
-            message = `Coverage is optimal (within 5%). Current: ${formatCurrency(currentCost)}/hr`;
+            message = `Commitment is optimal (within 5%). Current: ${formatCurrency(currentCost)}/hr`;
         } else if (percentDiff <= 10) {
             status = 'warning';
             icon = '⚠️';
@@ -382,9 +382,9 @@ const CostCalculator = (function() {
             status = 'danger';
             icon = '🔴';
             if (currentCost < optimalCost) {
-                message = `Coverage significantly below optimal. Increase to ${formatCurrency(optimalCost)}/hr (current: ${formatCurrency(currentCost)}/hr) to unlock ${formatCurrency(difference)}/hr more savings potential.`;
+                message = `Commitment significantly below optimal. Increase to ${formatCurrency(optimalCost)}/hr (current: ${formatCurrency(currentCost)}/hr) to unlock ${formatCurrency(difference)}/hr more savings potential.`;
             } else {
-                message = `Coverage significantly above optimal. Decrease to ${formatCurrency(optimalCost)}/hr (current: ${formatCurrency(currentCost)}/hr) to reduce waste.`;
+                message = `Commitment significantly above optimal. Decrease to ${formatCurrency(optimalCost)}/hr (current: ${formatCurrency(currentCost)}/hr) to reduce waste.`;
             }
         }
 
