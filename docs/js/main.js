@@ -894,13 +894,12 @@
 
         // Update title with optimal commitment amount and savings at optimal
         const totalSavingsAtOptimal = results.optimalCoverage.maxNetSavings || 0;
-        const monthlySavingsAtOptimal = totalSavingsAtOptimal * 4.33; // Convert weekly to monthly (~30 days / 7 days)
+        const hourlySavingsAtOptimal = totalSavingsAtOptimal / 168; // Convert weekly to hourly
 
-        // Always show the total savings at optimal (vs on-demand baseline)
-        // This is clearer than trying to show "additional" which can be confusing
+        // Show hourly savings so users can directly compare to "Net Savings" panel
         titleElement.innerHTML = `Optimal: ${CostCalculator.formatCurrency(optimalCommitment)}/hour<br>
             <small style="font-weight: normal; opacity: 0.9;">
-                Saves ${CostCalculator.formatCurrency(monthlySavingsAtOptimal)}/month vs on-demand
+                Saves ${CostCalculator.formatCurrency(hourlySavingsAtOptimal)}/hr vs on-demand
             </small>`;
 
         // Message already has dollar values formatted correctly
