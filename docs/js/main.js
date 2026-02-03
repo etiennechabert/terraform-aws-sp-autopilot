@@ -719,7 +719,8 @@
             minCost,
             chartMaxCost,
             baselineCost,
-            currentCoverageFromData
+            currentCoverageFromData,
+            savingsPercentage
         );
     }
 

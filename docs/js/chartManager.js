@@ -737,8 +737,9 @@ const ChartManager = (function() {
      * @param {number} maxCost - Max-hourly cost
      * @param {number} baselineCost - Total baseline on-demand cost
      * @param {number} currentCoverage - Current actual coverage in $/hour (optional)
+     * @param {number} savingsPercentage - Savings percentage (0-99)
      */
-    function updateSavingsCurveChart(curveData, minHourlySavings, optimalCoverage, minCost, maxCost, baselineCost, currentCoverage) {
+    function updateSavingsCurveChart(curveData, minHourlySavings, optimalCoverage, minCost, maxCost, baselineCost, currentCoverage, savingsPercentage) {
         if (!savingsCurveChart) return;
 
         // Store values for tooltip access
@@ -748,7 +749,17 @@ const ChartManager = (function() {
         savingsCurveChart.$curveData = curveData; // Store full curve data for tooltip access
 
         // Set x-axis max to max commitment (get from curve data)
-        const maxCommitment = curveData.length > 0 ? curveData[curveData.length - 1].commitment : maxCost;
+        let maxCommitment = curveData.length > 0 ? curveData[curveData.length - 1].commitment : maxCost;
+
+        // Ensure x-axis extends to include current commitment if it's beyond the curve range
+        if (currentCoverage && savingsPercentage) {
+            const discountFactor = (1 - savingsPercentage / 100);
+            const currentCommitment = currentCoverage * discountFactor;
+            if (currentCommitment > maxCommitment) {
+                maxCommitment = currentCommitment * 1.05; // Add 5% padding
+            }
+        }
+
         savingsCurveChart.options.scales.x.max = maxCommitment;
 
         // Find indices for transitions
@@ -861,17 +872,12 @@ const ChartManager = (function() {
 
         // Add current coverage line if provided and within range
         if (currentCoverage && currentCoverage > 0 && currentCoverage <= maxCost) {
-            // Find the corresponding commitment value from curve data
-            let currentCommitment = currentCoverage;
-            for (let i = 0; i < curveData.length; i++) {
-                if (curveData[i].coverage >= currentCoverage) {
-                    currentCommitment = curveData[i].commitment;
-                    break;
-                }
-            }
+            // Calculate commitment directly using the discount factor for precision
+            const discountFactor = savingsPercentage ? (1 - savingsPercentage / 100) : 1;
+            const currentCommitment = currentCoverage * discountFactor;
 
             // Calculate percentage of min-hourly
-            const percentOfMin = minCost > 0 ? (currentCoverage / minCost * 100).toFixed(0) : 0;
+            const percentOfMin = minCost > 0 ? (currentCoverage / minCost * 100).toFixed(1) : '0.0';
 
             annotations.currentLine = {
                 type: 'line',
