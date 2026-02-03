@@ -31,9 +31,9 @@ def _get_type_metrics_for_report(
     type_savings_pct = type_breakdown.get("savings_percentage", 0.0)
     type_utilization = type_breakdown.get("average_utilization", 0.0)
     net_savings_hourly = type_breakdown.get("net_savings_hourly", 0.0)
+    total_commitment = type_breakdown.get("total_commitment", 0.0)
 
     total_spend_hourly = avg_total_cost
-    sp_covered_hourly = avg_covered_cost
     uncovered_spend_hourly = avg_uncovered_cost
 
     discount_pct = type_savings_pct if current_coverage > 0 and type_savings_pct > 0 else 0.0
@@ -43,9 +43,10 @@ def _get_type_metrics_for_report(
         "utilization": type_utilization,
         "actual_savings_hourly": net_savings_hourly,
         "savings_percentage": discount_pct,
-        "sp_covered_hourly": sp_covered_hourly,
+        "sp_commitment_hourly": total_commitment,
         "uncovered_spend_hourly": uncovered_spend_hourly,
         "total_spend_hourly": total_spend_hourly,
+        "total_commitment": total_commitment,
     }
 
 
@@ -648,11 +649,11 @@ def _parse_plan_dates(
 
     try:
         if "T" in start_date:
-            start_date_display = start_date.split("T")[0]
+            start_date_display = start_date.split("T", maxsplit=1)[0]
 
         if "T" in end_date:
             end_date_parsed = datetime.fromisoformat(end_date.replace("Z", "+00:00"))
-            end_date_display = end_date.split("T")[0]
+            end_date_display = end_date.split("T", maxsplit=1)[0]
         else:
             end_date_parsed = datetime.strptime(end_date, "%Y-%m-%d").replace(tzinfo=UTC)
             end_date_display = end_date
@@ -672,7 +673,7 @@ def _parse_plan_dates(
 
         if end_date_parsed <= three_months_from_now:
             expiring_soon = True
-    except (ValueError, AttributeError, TypeError):
+    except ValueError, AttributeError, TypeError:
         pass
 
     return start_date_display, end_date_display, days_remaining_display, expiring_soon, tooltip_text
@@ -1496,23 +1497,31 @@ def generate_html_report(
                 const metrics = metricsData[spType] || {{}};
                 const stats = chartData.stats || {{}};
                 const minHourly = stats.min || 0;
-                const spCoveredHourly = metrics.sp_covered_hourly || 0;
+                const spCommitmentHourly = metrics.sp_commitment_hourly || 0;
+
+                // Calculate commitment as on-demand equivalent coverage for chart positioning
+                // Commitment is what you pay; convert to on-demand equivalent for comparison
+                const savingsPct = metrics.savings_percentage || 0;
+                const discountRate = savingsPct / 100;
+                const onDemandEquivalent = spCommitmentHourly > 0 && discountRate < 1
+                    ? spCommitmentHourly / (1 - discountRate)
+                    : spCommitmentHourly;
 
                 // Calculate coverage as % of min-hourly
-                const coverageMinHourlyPct = minHourly > 0 ? (spCoveredHourly / minHourly) * 100 : 0;
+                const coverageMinHourlyPct = minHourly > 0 ? (onDemandEquivalent / minHourly) * 100 : 0;
 
                 // Only add current coverage line if we have coverage
-                if (spCoveredHourly > 0) {{
+                if (spCommitmentHourly > 0) {{
                     annotations.currentCoverage = {{
                         type: 'line',
-                        yMin: spCoveredHourly,
-                        yMax: spCoveredHourly,
+                        yMin: onDemandEquivalent,
+                        yMax: onDemandEquivalent,
                         borderColor: 'rgba(255, 255, 255, 0.9)',
                         borderWidth: 3,
                         borderDash: [8, 4],
                         label: {{
                             display: true,
-                            content: 'Current: $' + spCoveredHourly.toFixed(2) + '/hr (' + coverageMinHourlyPct.toFixed(1) + '% of min-hourly)',
+                            content: 'Current: $' + spCommitmentHourly.toFixed(2) + '/hr (' + coverageMinHourlyPct.toFixed(1) + '% of min-hourly)',
                             position: 'center',
                             backgroundColor: 'rgba(0, 0, 0, 0.85)',
                             color: 'white',
@@ -1678,18 +1687,22 @@ def generate_html_report(
                 // Include optimal coverage calculated by Python for validation (type-specific)
                 const typeOptimal = optimalCoverageFromPython[typeKey] || {{}};
 
-                // Convert current coverage from percentage to $/hour
-                // current_coverage is a % of average total cost
-                const avgHourlyCost = hourlyCosts.reduce((sum, c) => sum + c, 0) / hourlyCosts.length;
-                const currentCoverageDollars = avgHourlyCost * (metrics.current_coverage / 100);
-
                 // Use type-specific savings percentage if available, otherwise use conservative 20% default
                 const savingsPercentage = metrics.savings_percentage > 0 ? metrics.savings_percentage : 20;
+
+                // Convert SP commitment to on-demand equivalent coverage
+                // Commitment is what you pay, coverage is the on-demand equivalent it covers
+                // Formula: coverage = commitment / (1 - discount_rate)
+                const commitment = metrics.total_commitment || 0;
+                const discountRate = savingsPercentage / 100;
+                const currentCoverageDollars = commitment > 0 && discountRate < 1
+                    ? commitment / (1 - discountRate)
+                    : commitment;
 
                 const usageData = {{
                     hourly_costs: hourlyCosts,
                     stats: stats,
-                    current_coverage: currentCoverageDollars,  // Now in $/hour instead of %
+                    current_coverage: currentCoverageDollars,  // On-demand equivalent coverage in $/hour
                     optimal_from_python: typeOptimal,
                     sp_type: typeName,  // Indicate which SP type this data is for
                     savings_percentage: savingsPercentage  // Type-specific discount or 20% default
@@ -1723,8 +1736,8 @@ def generate_html_report(
                         <div class="metric-value">${{metrics.total_spend_hourly > 0 ? '$' + metrics.total_spend_hourly.toFixed(2) : '$0'}}</div>
                     </div>
                     <div class="metric-card blue">
-                        <h4>Avg SP Covered/hr</h4>
-                        <div class="metric-value">${{metrics.sp_covered_hourly > 0 ? '$' + metrics.sp_covered_hourly.toFixed(2) : 'N/A'}}</div>
+                        <h4>SP Commitment/hr</h4>
+                        <div class="metric-value">${{metrics.sp_commitment_hourly > 0 ? '$' + metrics.sp_commitment_hourly.toFixed(2) : 'N/A'}}</div>
                     </div>
                     <div class="metric-card">
                         <h4>Avg On-Demand/hr</h4>
@@ -1737,9 +1750,14 @@ def generate_html_report(
                                 if (metrics.current_coverage === 0) return 'N/A';
                                 const minHourly = stats?.min || 0;
                                 if (minHourly === 0) return 'N/A';
-                                // sp_covered_hourly is on-demand equivalent of covered usage
-                                // Calculate coverage as % of min-hourly instead of total
-                                const coverageMinHourlyPct = (metrics.sp_covered_hourly / minHourly) * 100;
+                                // Convert commitment to on-demand equivalent for comparison
+                                const commitment = metrics.sp_commitment_hourly || 0;
+                                const savingsPct = metrics.savings_percentage || 0;
+                                const discountRate = savingsPct / 100;
+                                const onDemandEquiv = commitment > 0 && discountRate < 1
+                                    ? commitment / (1 - discountRate)
+                                    : commitment;
+                                const coverageMinHourlyPct = (onDemandEquiv / minHourly) * 100;
                                 return coverageMinHourlyPct.toFixed(1) + '%';
                             }})()
                         }}</div>

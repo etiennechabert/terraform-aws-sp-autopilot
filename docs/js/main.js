@@ -728,18 +728,20 @@
         const minCost = appState.minCost || 1;
         const percentOfMin = (coverageCost / minCost) * 100;
 
+        // Calculate actual commitment cost with discount applied
+        const discountFactor = (1 - appState.savingsPercentage / 100);
+        const commitmentCost = coverageCost * discountFactor;
+
         const displayElement = document.getElementById('coverage-display');
         if (displayElement) {
-            displayElement.textContent = `$${coverageCost.toFixed(2)}/hour (${percentOfMin.toFixed(1)}%)`;
+            // Show commitment (what you pay) with min-hourly percentage on the main line
+            displayElement.textContent = `$${commitmentCost.toFixed(2)}/hour (${percentOfMin.toFixed(1)}% Min-Hourly)`;
         }
 
         const unitsElement = document.getElementById('coverage-units');
         if (unitsElement) {
-            // Calculate actual commitment cost with discount applied
-            const discountFactor = (1 - appState.savingsPercentage / 100);
-            const actualCost = coverageCost * discountFactor;
-
-            unitsElement.textContent = `Cost ${CostCalculator.formatCurrency(actualCost)}/hour vs ${CostCalculator.formatCurrency(coverageCost)}/hour On-Demand`;
+            // Show on-demand coverage below
+            unitsElement.textContent = `Covers ${CostCalculator.formatCurrency(coverageCost)}/hour on-demand`;
         }
 
         // Update savings rate hint to reflect coverage commitment
