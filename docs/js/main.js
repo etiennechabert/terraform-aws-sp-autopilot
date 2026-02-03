@@ -669,12 +669,15 @@
             const totalCost = commitmentCost + spilloverCost;
             const netSavings = baselineCost - totalCost;
             const savingsPercent = baselineCost > 0 ? (netSavings / baselineCost) * 100 : 0;
+            const hourlyCommitment = coverageCost * discountFactor;
 
             curveData.push({
                 coverage: coverageCost,
+                commitment: hourlyCommitment,
                 netSavings: netSavings,
                 savingsPercent: savingsPercent,
-                extraSavings: 0  // Will be calculated below
+                extraSavings: 0,  // Will be calculated below
+                percentOfMin: minCost > 0 ? (coverageCost / minCost) * 100 : 0
             });
         }
 

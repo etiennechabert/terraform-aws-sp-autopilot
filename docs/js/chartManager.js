@@ -677,7 +677,7 @@ const ChartManager = (function() {
                         min: 0,
                         title: {
                             display: true,
-                            text: 'Coverage Level ($/hour)',
+                            text: 'Commitment Level ($/hour)',
                             color: '#e0e6ed',
                             font: { size: 12, weight: 'bold' }
                         },
@@ -747,8 +747,9 @@ const ChartManager = (function() {
         savingsCurveChart.$maxCost = maxCost;
         savingsCurveChart.$curveData = curveData; // Store full curve data for tooltip access
 
-        // Set x-axis max to max-hourly cost
-        savingsCurveChart.options.scales.x.max = maxCost;
+        // Set x-axis max to max commitment (get from curve data)
+        const maxCommitment = curveData.length > 0 ? curveData[curveData.length - 1].commitment : maxCost;
+        savingsCurveChart.options.scales.x.max = maxCommitment;
 
         // Find indices for transitions
         let minCostIndex = -1;
@@ -804,32 +805,32 @@ const ChartManager = (function() {
             declineDetected: minHourlyReturnIndex !== -1
         });
 
-        // Split data into five datasets based on coverage ranges
+        // Split data into five datasets based on commitment ranges
         // Blue: 0 to min-hourly (building up)
-        const dataset1 = curveData.slice(0, minCostIndex + 1).map(d => ({ x: d.coverage, y: d.savingsPercent }));
+        const dataset1 = curveData.slice(0, minCostIndex + 1).map(d => ({ x: d.commitment, y: d.savingsPercent }));
 
         // Green: min-hourly to optimal (or to end if no decline detected)
         const greenEndIndex = minHourlyReturnIndex !== -1 ? minHourlyReturnIndex : curveData.length - 1;
-        const dataset2 = curveData.slice(minCostIndex, Math.min(optimalIndex + 1, greenEndIndex + 1)).map(d => ({ x: d.coverage, y: d.savingsPercent }));
+        const dataset2 = curveData.slice(minCostIndex, Math.min(optimalIndex + 1, greenEndIndex + 1)).map(d => ({ x: d.commitment, y: d.savingsPercent }));
 
         // If green extends beyond optimal (no decline), extend it all the way
         const dataset2Extended = minHourlyReturnIndex === -1 && optimalIndex < curveData.length - 1
-            ? curveData.slice(minCostIndex, curveData.length).map(d => ({ x: d.coverage, y: d.savingsPercent }))
+            ? curveData.slice(minCostIndex, curveData.length).map(d => ({ x: d.commitment, y: d.savingsPercent }))
             : dataset2;
 
         // Orange: optimal to min-hourly-return (only if decline detected)
         const dataset3 = minHourlyReturnIndex !== -1 && optimalIndex < minHourlyReturnIndex
-            ? curveData.slice(optimalIndex, minHourlyReturnIndex + 1).map(d => ({ x: d.coverage, y: d.savingsPercent }))
+            ? curveData.slice(optimalIndex, minHourlyReturnIndex + 1).map(d => ({ x: d.commitment, y: d.savingsPercent }))
             : [];
 
         // Purple: min-hourly-return to breakeven (only if we found min-hourly return point)
         const dataset4 = minHourlyReturnIndex !== -1 && minHourlyReturnIndex < breakevenIndex
-            ? curveData.slice(minHourlyReturnIndex, breakevenIndex + 1).map(d => ({ x: d.coverage, y: d.savingsPercent }))
+            ? curveData.slice(minHourlyReturnIndex, breakevenIndex + 1).map(d => ({ x: d.commitment, y: d.savingsPercent }))
             : [];
 
         // Red: beyond breakeven (negative savings, losing money)
         const dataset5 = breakevenIndex < curveData.length - 1 && curveData[breakevenIndex].savingsPercent <= 0
-            ? curveData.slice(breakevenIndex).map(d => ({ x: d.coverage, y: d.savingsPercent }))
+            ? curveData.slice(breakevenIndex).map(d => ({ x: d.commitment, y: d.savingsPercent }))
             : [];
 
         console.log('Dataset sizes:', {
@@ -860,19 +861,28 @@ const ChartManager = (function() {
 
         // Add current coverage line if provided and within range
         if (currentCoverage && currentCoverage > 0 && currentCoverage <= maxCost) {
+            // Find the corresponding commitment value from curve data
+            let currentCommitment = currentCoverage;
+            for (let i = 0; i < curveData.length; i++) {
+                if (curveData[i].coverage >= currentCoverage) {
+                    currentCommitment = curveData[i].commitment;
+                    break;
+                }
+            }
+
             // Calculate percentage of min-hourly
             const percentOfMin = minCost > 0 ? (currentCoverage / minCost * 100).toFixed(0) : 0;
 
             annotations.currentLine = {
                 type: 'line',
-                xMin: currentCoverage,
-                xMax: currentCoverage,
+                xMin: currentCommitment,
+                xMax: currentCommitment,
                 borderColor: 'rgba(0, 212, 255, 0.9)',
                 borderWidth: 3,
                 borderDash: [10, 5],
                 label: {
                     display: true,
-                    content: `📍 ${CostCalculator.formatCurrency(currentCoverage)}/hr (${percentOfMin}% of min)`,
+                    content: `📍 ${CostCalculator.formatCurrency(currentCommitment)}/hr (${percentOfMin}% of min)`,
                     position: 'start',
                     backgroundColor: 'rgba(0, 212, 255, 0.9)',
                     color: '#1a1f3a',

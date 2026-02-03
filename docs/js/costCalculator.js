@@ -157,8 +157,17 @@ const CostCalculator = (function() {
         const savingsCurve = [];
         const rangeToTest = maxCost - minCost;
         if (rangeToTest === 0) {
+            const baselineCost = hourlyCosts.reduce((sum, cost) => sum + cost, 0);
+            const savingsPercent = baselineCost > 0 ? (minHourlySavings / baselineCost) * 100 : 0;
             return {
-                curve: [{ coverage: minCost, netSavings: minHourlySavings, extraSavings: 0 }],
+                curve: [{
+                    coverage: minCost,
+                    commitment: minCost * discountFactor,
+                    netSavings: minHourlySavings,
+                    extraSavings: 0,
+                    savingsPercent: savingsPercent,
+                    percentOfMin: 100
+                }],
                 minHourly: minCost,
                 minHourlySavings: minHourlySavings
             };
@@ -179,11 +188,15 @@ const CostCalculator = (function() {
             const totalCost = commitmentCost + spilloverCost;
             const netSavings = baselineCost - totalCost;
             const extraSavings = netSavings - minHourlySavings; // Savings beyond min-hourly baseline
+            const savingsPercent = baselineCost > 0 ? (netSavings / baselineCost) * 100 : 0;
+            const hourlyCommitment = coverageCost * discountFactor;
 
             savingsCurve.push({
                 coverage: coverageCost,
+                commitment: hourlyCommitment,
                 netSavings: netSavings,
                 extraSavings: extraSavings,
+                savingsPercent: savingsPercent,
                 percentOfMin: (coverageCost / minCost) * 100
             });
         }
@@ -225,6 +238,7 @@ const CostCalculator = (function() {
             const totalCost = hourlyCosts.reduce((sum, cost) => sum + cost, 0);
             return {
                 coverageUnits: minCost,
+                commitmentUnits: minCost * discountFactor,
                 lastOptimalCoverage: minCost,
                 coveragePercentage: 100.0,
                 maxNetSavings: totalCost * (savingsPercentage / 100),
@@ -278,7 +292,8 @@ const CostCalculator = (function() {
         const p90 = sortedCosts[Math.floor(sortedCosts.length * 0.90)];
 
         return {
-            coverageUnits: bestCoverage,  // First point at maximum savings
+            coverageUnits: bestCoverage,  // On-demand equivalent coverage at maximum savings
+            commitmentUnits: bestCoverage * discountFactor,  // Actual commitment cost
             coveragePercentage: bestCoveragePercentage,
             maxNetSavings: bestNetSavings,
             minHourlySavings: minHourlySavings,  // Baseline savings at min-hourly
