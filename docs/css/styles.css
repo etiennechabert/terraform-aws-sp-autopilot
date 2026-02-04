@@ -743,8 +743,6 @@ h1, h2, h3, h4, h5, h6 {
     display: grid;
     grid-template-columns: repeat(5, 1fr);
     gap: var(--spacing-sm);
-    max-width: 1400px;
-    margin: 0 auto;
 }
 
 @media (max-width: 1400px) {
@@ -770,14 +768,14 @@ h1, h2, h3, h4, h5, h6 {
     display: flex;
     flex-direction: column;
     align-items: center;
-    gap: var(--spacing-md);
-    padding: var(--spacing-xl) var(--spacing-lg);
+    gap: var(--spacing-sm);
+    padding: var(--spacing-lg) var(--spacing-md);
     background: rgba(0, 0, 0, 0.3);
     border: 2px solid var(--card-border);
     border-radius: var(--radius-md);
     cursor: pointer;
     transition: all 0.2s ease;
-    min-height: 200px;
+    min-height: 140px;
     justify-content: center;
 }
 
@@ -810,17 +808,16 @@ h1, h2, h3, h4, h5, h6 {
 }
 
 .strategy-button.strategy-warning {
-    border-color: rgba(255, 87, 87, 0.5);
-    background: rgba(255, 87, 87, 0.05);
+    border-color: rgba(255, 180, 100, 0.6);
 }
 
 .strategy-button.strategy-warning:hover {
-    border-color: rgba(255, 87, 87, 0.8);
-    box-shadow: 0 4px 12px rgba(255, 87, 87, 0.2);
+    border-color: rgba(255, 180, 100, 0.9);
+    box-shadow: 0 4px 12px rgba(255, 180, 100, 0.2);
 }
 
 .strategy-icon {
-    font-size: 2.5rem;
+    font-size: 2rem;
     line-height: 1;
 }
 
@@ -833,7 +830,7 @@ h1, h2, h3, h4, h5, h6 {
 }
 
 .strategy-name {
-    font-size: 1.1rem;
+    font-size: 1rem;
     font-weight: 600;
     color: var(--text-primary);
 }
@@ -845,7 +842,7 @@ h1, h2, h3, h4, h5, h6 {
 }
 
 .strategy-value {
-    font-size: 1.4rem;
+    font-size: 1.2rem;
     font-weight: 700;
     font-family: Consolas, Monaco, 'Courier New', monospace;
     color: var(--accent-cyan);
@@ -861,15 +858,15 @@ h1, h2, h3, h4, h5, h6 {
     display: flex;
     flex-direction: column;
     align-items: center;
-    gap: 4px;
-    margin-top: 12px;
-    padding-top: 12px;
+    gap: 2px;
+    margin-top: 8px;
+    padding-top: 8px;
     border-top: 1px solid rgba(255, 255, 255, 0.15);
     width: 100%;
 }
 
 .strategy-savings-amount {
-    font-size: 1.2rem;
+    font-size: 1.1rem;
     font-weight: 700;
     color: var(--color-success);
     font-family: Consolas, Monaco, 'Courier New', monospace;
