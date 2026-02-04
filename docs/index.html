@@ -93,6 +93,15 @@
                                 </label>
                                 <input type="number" id="max-cost" class="number-input" value="100" min="1" max="10000" step="1">
                             </div>
+
+                            <div class="control-group">
+                                <label for="load-factor" class="control-label">
+                                    Load Factor
+                                    <span class="control-value" id="load-factor-display">100%</span>
+                                </label>
+                                <input type="range" id="load-factor" class="slider" min="50" max="200" value="100" step="1" aria-label="Load factor percentage">
+                                <div class="control-hint" id="load-factor-hint">Original usage level</div>
+                            </div>
                         </div>
                     </section>
                 </div>
@@ -123,6 +132,15 @@
                         </div>
 
                         <div class="control-group">
+                            <label for="load-factor" class="control-label">
+                                Load Factor
+                                <span class="control-value" id="load-factor-display">100%</span>
+                            </label>
+                            <input type="range" id="load-factor" class="slider" min="50" max="200" value="100" step="1" aria-label="Load factor percentage">
+                            <div class="control-hint" id="load-factor-hint">Scale usage up or down</div>
+                        </div>
+
+                        <div class="control-group">
                             <label for="savings-percentage" class="control-label">
                                 Savings Percentage
                                 <span class="control-value" id="savings-display">30%</span>
@@ -132,13 +150,54 @@
                         </div>
                     </div>
 
-                    <!-- Optimal Coverage Suggestion Row -->
+                    <!-- Commitment Strategy Buttons -->
                     <div class="sliders-row">
-                        <div class="optimal-suggestion clickable" id="optimal-suggestion">
-                            <div class="suggestion-icon">💡</div>
-                            <div class="suggestion-content">
-                                <div class="suggestion-title">Optimal Coverage Suggestion</div>
-                                <div class="suggestion-text" id="suggestion-text">Calculating...</div>
+                        <div class="strategy-container">
+                            <div class="strategy-header">
+                                <div class="strategy-title">⚡ Quick Apply Commitment Strategy</div>
+                                <div class="strategy-subtitle">Click to instantly set commitment level based on your risk tolerance</div>
+                            </div>
+                            <div class="strategy-buttons">
+                                <button class="strategy-button" data-strategy="min-hourly" id="strategy-min">
+                                    <div class="strategy-icon">🛡️</div>
+                                    <div class="strategy-content">
+                                        <div class="strategy-name">Min-Hourly</div>
+                                        <div class="strategy-desc">Baseline only</div>
+                                        <div class="strategy-value" id="strategy-min-value">$0.00/hr</div>
+                                        <div class="strategy-min-hourly-pct" id="strategy-min-min-hourly-pct">100.0% Min-Hourly</div>
+                                        <div class="strategy-savings">
+                                            <div class="strategy-savings-amount" id="strategy-min-savings">$0.00/hr</div>
+                                            <div class="strategy-savings-pct" id="strategy-min-savings-pct">0.0%</div>
+                                        </div>
+                                    </div>
+                                </button>
+                                <button class="strategy-button strategy-recommended" data-strategy="balanced" id="strategy-balanced">
+                                    <div class="strategy-icon">⚖️</div>
+                                    <div class="strategy-content">
+                                        <div class="strategy-name">Balanced</div>
+                                        <div class="strategy-desc">Knee point</div>
+                                        <div class="strategy-value" id="strategy-balanced-value">$0.00/hr</div>
+                                        <div class="strategy-min-hourly-pct" id="strategy-balanced-min-hourly-pct">100.0% Min-Hourly</div>
+                                        <div class="strategy-savings">
+                                            <div class="strategy-savings-amount" id="strategy-balanced-savings">$0.00/hr</div>
+                                            <div class="strategy-savings-pct" id="strategy-balanced-savings-pct">0.0%</div>
+                                        </div>
+                                    </div>
+                                    <div class="strategy-badge">RECOMMENDED</div>
+                                </button>
+                                <button class="strategy-button" data-strategy="aggressive" id="strategy-aggressive">
+                                    <div class="strategy-icon">🚀</div>
+                                    <div class="strategy-content">
+                                        <div class="strategy-name">Aggressive</div>
+                                        <div class="strategy-desc">Max savings</div>
+                                        <div class="strategy-value" id="strategy-aggressive-value">$0.00/hr</div>
+                                        <div class="strategy-min-hourly-pct" id="strategy-aggressive-min-hourly-pct">100.0% Min-Hourly</div>
+                                        <div class="strategy-savings">
+                                            <div class="strategy-savings-amount" id="strategy-aggressive-savings">$0.00/hr</div>
+                                            <div class="strategy-savings-pct" id="strategy-aggressive-savings-pct">0.0%</div>
+                                        </div>
+                                    </div>
+                                </button>
                             </div>
                         </div>
                     </div>

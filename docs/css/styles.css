@@ -304,20 +304,24 @@ h1, h2, h3, h4, h5, h6 {
 
 .control-label {
     font-weight: 500;
+    font-size: 0.95rem;
     color: var(--text-primary);
     display: flex;
     justify-content: space-between;
     align-items: center;
+    gap: var(--spacing-xs);
 }
 
 .control-value {
     font-family: Consolas, Monaco, 'Courier New', monospace;
     color: var(--accent-cyan);
     font-weight: 700;
+    font-size: 0.95rem;
+    white-space: nowrap;
 }
 
 .control-hint {
-    font-size: 0.85rem;
+    font-size: 0.8rem;
     color: var(--text-hint);
     margin-top: 2px;
 }
@@ -470,7 +474,7 @@ h1, h2, h3, h4, h5, h6 {
 /* ===== Sliders Row (below cost chart) ===== */
 .sliders-row {
     display: grid;
-    grid-template-columns: 1fr 1fr;
+    grid-template-columns: 1fr 1fr 1fr;
     gap: var(--spacing-md);
     margin-top: var(--spacing-md);
     padding-top: var(--spacing-md);
@@ -713,7 +717,165 @@ h1, h2, h3, h4, h5, h6 {
     text-align: right;
 }
 
-/* ===== Optimal Suggestion ===== */
+/* ===== Strategy Buttons Container ===== */
+.strategy-container {
+    width: 100%;
+}
+
+.strategy-header {
+    margin-bottom: var(--spacing-sm);
+    text-align: center;
+}
+
+.strategy-title {
+    font-size: 1rem;
+    font-weight: 600;
+    color: var(--text-primary);
+    margin-bottom: 4px;
+}
+
+.strategy-subtitle {
+    font-size: 0.8rem;
+    color: var(--text-muted);
+}
+
+.strategy-buttons {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: var(--spacing-sm);
+}
+
+@media (max-width: 1024px) {
+    .strategy-buttons {
+        grid-template-columns: repeat(2, 1fr);
+    }
+}
+
+@media (max-width: 640px) {
+    .strategy-buttons {
+        grid-template-columns: 1fr;
+    }
+}
+
+.strategy-button {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: var(--spacing-md);
+    padding: var(--spacing-xl) var(--spacing-lg);
+    background: rgba(0, 0, 0, 0.3);
+    border: 2px solid var(--card-border);
+    border-radius: var(--radius-md);
+    cursor: pointer;
+    transition: all 0.2s ease;
+    min-height: 200px;
+    justify-content: center;
+}
+
+.strategy-button:hover {
+    transform: translateY(-2px);
+    border-color: var(--accent-cyan);
+    box-shadow: 0 4px 12px rgba(0, 212, 255, 0.2);
+}
+
+.strategy-button:active {
+    transform: translateY(0);
+}
+
+.strategy-button.strategy-recommended {
+    /* Only show the badge, no special border */
+}
+
+.strategy-button.strategy-recommended:hover {
+    /* Use same hover as other buttons */
+}
+
+.strategy-button.active {
+    border-color: var(--color-success);
+    background: rgba(0, 255, 136, 0.05);
+}
+
+.strategy-button.active:hover {
+    border-color: var(--color-success);
+    box-shadow: 0 4px 12px rgba(0, 255, 136, 0.3);
+}
+
+.strategy-icon {
+    font-size: 2.5rem;
+    line-height: 1;
+}
+
+.strategy-content {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 4px;
+    width: 100%;
+}
+
+.strategy-name {
+    font-size: 1.1rem;
+    font-weight: 600;
+    color: var(--text-primary);
+}
+
+.strategy-desc {
+    font-size: 0.8rem;
+    color: var(--text-muted);
+    margin-bottom: 6px;
+}
+
+.strategy-value {
+    font-size: 1.4rem;
+    font-weight: 700;
+    font-family: Consolas, Monaco, 'Courier New', monospace;
+    color: var(--accent-cyan);
+}
+
+.strategy-min-hourly-pct {
+    font-size: 0.75rem;
+    color: var(--text-muted);
+    margin-top: 2px;
+}
+
+.strategy-savings {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 4px;
+    margin-top: 12px;
+    padding-top: 12px;
+    border-top: 1px solid rgba(255, 255, 255, 0.15);
+    width: 100%;
+}
+
+.strategy-savings-amount {
+    font-size: 1.2rem;
+    font-weight: 700;
+    color: var(--color-success);
+    font-family: Consolas, Monaco, 'Courier New', monospace;
+}
+
+.strategy-savings-pct {
+    font-size: 0.85rem;
+    font-weight: 500;
+    color: var(--text-muted);
+}
+
+.strategy-badge {
+    position: absolute;
+    top: 6px;
+    right: 6px;
+    font-size: 0.65rem;
+    font-weight: 700;
+    color: var(--bg-primary);
+    background: var(--color-success);
+    padding: 2px 6px;
+    border-radius: 3px;
+}
+
+/* ===== Legacy Optimal Suggestion (kept for reference) ===== */
 .optimal-suggestion {
     display: flex;
     gap: var(--spacing-sm);
