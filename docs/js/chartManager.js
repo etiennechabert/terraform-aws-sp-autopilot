@@ -863,6 +863,7 @@ const ChartManager = (function() {
         // Add current coverage line if provided and within range
         if (currentCoverage && currentCoverage > 0 && currentCoverage <= maxCost) {
             // Calculate commitment directly using the discount factor for precision
+            // NOTE: This is equivalent to commitmentFromCoverage() in spCalculations.js
             const discountFactor = savingsPercentage ? (1 - savingsPercentage / 100) : 1;
             const currentCommitment = currentCoverage * discountFactor;
 

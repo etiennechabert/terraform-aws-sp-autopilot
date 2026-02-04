@@ -11,6 +11,7 @@ import logging
 from datetime import UTC, datetime, timedelta
 from typing import Any
 
+from shared import sp_calculations
 from shared.local_mode import is_local_mode
 from shared.optimal_coverage import calculate_optimal_coverage
 
@@ -562,10 +563,8 @@ def _build_breakdown_table_html(
 
         # Calculate on-demand coverage capacity from commitment and discount rate
         # This shows what on-demand usage the commitment COVERS, not actual usage
-        on_demand_coverage_capacity = (
-            total_commitment_type / (1 - type_savings_pct / 100)
-            if type_savings_pct < 100
-            else total_commitment_type
+        on_demand_coverage_capacity = sp_calculations.coverage_from_commitment(
+            total_commitment_type, type_savings_pct
         )
 
         # Calculate potential savings: what you'd pay on-demand minus what you pay with SP
@@ -594,10 +593,8 @@ def _build_breakdown_table_html(
 
     if len(breakdown_by_type) > 1:
         # Calculate total on-demand coverage capacity
-        total_coverage_capacity = (
-            total_commitment / (1 - overall_savings_percentage / 100)
-            if overall_savings_percentage < 100
-            else total_commitment
+        total_coverage_capacity = sp_calculations.coverage_from_commitment(
+            total_commitment, overall_savings_percentage
         )
 
         # Calculate total potential savings
@@ -1525,6 +1522,8 @@ def generate_html_report(
 
                 // Calculate commitment as on-demand equivalent coverage for chart positioning
                 // Commitment is what you pay; convert to on-demand equivalent for comparison
+                // NOTE: This formula is duplicated from docs/js/spCalculations.js::coverageFromCommitment()
+                // Keep in sync with JavaScript module or pre-calculate in Python
                 const savingsPct = metrics.savings_percentage || 0;
                 const discountRate = savingsPct / 100;
                 const onDemandEquivalent = spCommitmentHourly > 0 && discountRate < 1
@@ -1717,6 +1716,8 @@ def generate_html_report(
                 // Convert SP commitment to on-demand equivalent coverage
                 // Commitment is what you pay, coverage is the on-demand equivalent it covers
                 // Formula: coverage = commitment / (1 - discount_rate)
+                // NOTE: This formula is duplicated from docs/js/spCalculations.js::coverageFromCommitment()
+                // Keep in sync with JavaScript module or pre-calculate in Python
                 const commitment = metrics.total_commitment || 0;
                 const discountRate = savingsPercentage / 100;
                 const currentCoverageDollars = commitment > 0 && discountRate < 1
@@ -1777,6 +1778,8 @@ def generate_html_report(
                                 // Convert commitment to on-demand equivalent for comparison
                                 const commitment = metrics.sp_commitment_hourly || 0;
                                 const savingsPct = metrics.savings_percentage || 0;
+                                // NOTE: This formula is duplicated from docs/js/spCalculations.js::coverageFromCommitment()
+                                // Keep in sync with JavaScript module or pre-calculate in Python
                                 const discountRate = savingsPct / 100;
                                 const onDemandEquiv = commitment > 0 && discountRate < 1
                                     ? commitment / (1 - discountRate)
