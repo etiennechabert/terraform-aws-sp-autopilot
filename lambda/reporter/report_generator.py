@@ -532,6 +532,7 @@ def _build_breakdown_table_html(
     total_commitment: float,
     on_demand_equivalent_hourly: float,
     net_savings_hourly: float,
+    overall_savings_percentage: float,
 ) -> str:
     """Build HTML for breakdown by type table."""
     if not breakdown_by_type:
@@ -555,9 +556,17 @@ def _build_breakdown_table_html(
     for plan_type, type_data in breakdown_by_type.items():
         plans_count_type = type_data.get("plans_count", 0)
         total_commitment_type = type_data.get("total_commitment", 0.0)
-        on_demand_equivalent_hourly_type = type_data.get("on_demand_equivalent_hourly", 0.0)
         net_savings_hourly_type = type_data.get("net_savings_hourly", 0.0)
         type_utilization = type_data.get("average_utilization", 0.0)
+        type_savings_pct = type_data.get("savings_percentage", 0.0)
+
+        # Calculate on-demand coverage capacity from commitment and discount rate
+        # This shows what on-demand usage the commitment COVERS, not actual usage
+        on_demand_coverage_capacity = (
+            total_commitment_type / (1 - type_savings_pct / 100)
+            if type_savings_pct < 100
+            else total_commitment_type
+        )
 
         plan_type_display = plan_type
         if "Compute" in plan_type:
@@ -575,19 +584,26 @@ def _build_breakdown_table_html(
                         <td>{plans_count_type}</td>
                         <td class="metric">{type_utilization:.1f}%</td>
                         <td class="metric">${total_commitment_type:.2f}/hr</td>
-                        <td class="metric">${on_demand_equivalent_hourly_type:.2f}/hr</td>
+                        <td class="metric">${on_demand_coverage_capacity:.2f}/hr</td>
                         <td class="metric" style="color: #28a745;">${net_savings_hourly_type:.2f}/hr</td>
                     </tr>
 """
 
     if len(breakdown_by_type) > 1:
+        # Calculate total on-demand coverage capacity
+        total_coverage_capacity = (
+            total_commitment / (1 - overall_savings_percentage / 100)
+            if overall_savings_percentage < 100
+            else total_commitment
+        )
+
         html += f"""
                     <tr style="border-top: 2px solid #232f3e; font-weight: bold; background-color: #f8f9fa;">
                         <td><strong>Total</strong></td>
                         <td>{plans_count}</td>
                         <td class="metric">{average_utilization:.1f}%</td>
                         <td class="metric">${total_commitment:.2f}/hr</td>
-                        <td class="metric">${on_demand_equivalent_hourly:.2f}/hr</td>
+                        <td class="metric">${total_coverage_capacity:.2f}/hr</td>
                         <td class="metric" style="color: #28a745;">${net_savings_hourly:.2f}/hr</td>
                     </tr>
 """
@@ -1374,6 +1390,7 @@ def generate_html_report(
         total_commitment,
         on_demand_equivalent_hourly,
         net_savings_hourly,
+        savings_percentage,
     )
 
     html += """
