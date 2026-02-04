@@ -366,39 +366,169 @@ const CostCalculator = (function() {
     }
 
     /**
-     * Get optimization suggestion with dollar values (no percentage conversion needed)
+     * Detect which savings curve zone the current coverage is in
+     * @param {number} currentCoverage - Current coverage in $/hour
+     * @param {Array<number>} hourlyCosts - Hourly costs
+     * @param {number} savingsPercentage - Savings percentage (0-99)
+     * @returns {Object} Zone information with name and thresholds
+     */
+    function detectCoverageZone(currentCoverage, hourlyCosts, savingsPercentage) {
+        if (!hourlyCosts || hourlyCosts.length === 0) {
+            return { zone: 'building', zoneName: 'Building to baseline' };
+        }
+
+        const minCost = Math.min(...hourlyCosts);
+        const baselineCost = hourlyCosts.reduce((sum, cost) => sum + cost, 0);
+        const discountFactor = (1 - savingsPercentage / 100);
+
+        // Calculate optimal coverage
+        const optimalResult = calculateOptimalCoverage(hourlyCosts, savingsPercentage);
+        const optimalCoverage = optimalResult.coverageUnits;
+
+        // Calculate min-hourly savings baseline
+        const minHourlySavings = minCost * hourlyCosts.length * (savingsPercentage / 100);
+
+        // Calculate net savings at current coverage
+        let commitmentCost = 0;
+        let spilloverCost = 0;
+        for (let i = 0; i < hourlyCosts.length; i++) {
+            commitmentCost += currentCoverage * discountFactor;
+            spilloverCost += Math.max(0, hourlyCosts[i] - currentCoverage);
+        }
+        const totalCost = commitmentCost + spilloverCost;
+        const currentNetSavings = baselineCost - totalCost;
+        const currentSavingsPercent = baselineCost > 0 ? (currentNetSavings / baselineCost) * 100 : 0;
+
+        // Determine zone based on coverage and savings
+        // Zone 5 (Red): Negative savings - losing money vs on-demand
+        if (currentSavingsPercent <= 0) {
+            return {
+                zone: 'losing-money',
+                zoneName: 'Worse than on-demand: Losing money',
+                netSavings: currentNetSavings,
+                savingsPercent: currentSavingsPercent
+            };
+        }
+
+        // Zone 1 (Blue): Below min-hourly - building to baseline
+        if (currentCoverage < minCost) {
+            return {
+                zone: 'building',
+                zoneName: '0-Min: Building to baseline',
+                netSavings: currentNetSavings,
+                savingsPercent: currentSavingsPercent
+            };
+        }
+
+        // Zone 2 (Green): Between min and optimal - gaining
+        if (currentCoverage <= optimalCoverage) {
+            return {
+                zone: 'gaining',
+                zoneName: 'Min → Optimal: Gaining',
+                netSavings: currentNetSavings,
+                savingsPercent: currentSavingsPercent
+            };
+        }
+
+        // For zones 3 and 4, we need to check if savings dropped below min-hourly level
+        // Zone 4 (Purple): Savings dropped below min-hourly baseline - very bad
+        if (currentNetSavings < minHourlySavings) {
+            return {
+                zone: 'very-bad',
+                zoneName: 'Below min-hourly: Very bad',
+                netSavings: currentNetSavings,
+                savingsPercent: currentSavingsPercent
+            };
+        }
+
+        // Zone 3 (Orange): Past optimal but still above min-hourly - wasting
+        return {
+            zone: 'wasting',
+            zoneName: 'Optimal → Min-hourly: Wasting',
+            netSavings: currentNetSavings,
+            savingsPercent: currentSavingsPercent
+        };
+    }
+
+    /**
+     * Get optimization suggestion with dollar values using zone-based logic
      * @param {number} currentCost - Current commitment in $/hour
      * @param {number} optimalCost - Optimal commitment in $/hour
      * @param {number} minCost - Minimum cost for percentage calculation
+     * @param {number} additionalSavings - Additional savings gained by reaching optimal ($/hour)
+     * @param {Object} zoneInfo - Zone information from detectCoverageZone (optional)
      * @returns {Object} Suggestion with status and message
      */
-    function getOptimizationSuggestionDollars(currentCost, optimalCost, minCost) {
+    function getOptimizationSuggestionDollars(currentCost, optimalCost, minCost, additionalSavings = 0, zoneInfo = null) {
         const difference = Math.abs(currentCost - optimalCost);
         const percentDiff = minCost > 0 ? (difference / minCost) * 100 : 0;
 
+        // Use zone-based status if zoneInfo provided
         let status = 'optimal';
         let message = '';
         let icon = '✅';
 
-        if (percentDiff <= 5) {
-            status = 'optimal';
-            icon = '✅';
-            message = `Commitment is optimal (within 5%). Current: ${formatCurrency(currentCost)}/hr`;
-        } else if (percentDiff <= 10) {
-            status = 'warning';
-            icon = '⚠️';
-            if (currentCost < optimalCost) {
-                message = `Increase to ${formatCurrency(optimalCost)}/hr (current: ${formatCurrency(currentCost)}/hr) to unlock ${formatCurrency(difference)}/hr more savings.`;
-            } else {
-                message = `Decrease to ${formatCurrency(optimalCost)}/hr (current: ${formatCurrency(currentCost)}/hr) to reduce waste.`;
+        if (zoneInfo && zoneInfo.zone) {
+            // Map zones to status for backward compatibility with CSS
+            const zoneToStatus = {
+                'building': 'building',
+                'gaining': 'gaining',
+                'wasting': 'wasting',
+                'very-bad': 'very-bad',
+                'losing-money': 'losing-money'
+            };
+            status = zoneToStatus[zoneInfo.zone] || 'optimal';
+
+            // Zone-specific messages and icons
+            switch (zoneInfo.zone) {
+                case 'building':
+                    icon = '🔵';
+                    message = `Building to baseline. Increase commitment by ${formatCurrency(difference)}/hr to reach optimal coverage and unlock ${formatCurrency(additionalSavings)}/hr more savings.`;
+                    break;
+                case 'gaining':
+                    if (percentDiff <= 5) {
+                        icon = '✅';
+                        message = `At optimal! Maximizing savings while minimizing waste.`;
+                    } else {
+                        icon = '🟢';
+                        message = `Gaining efficiency. Increase by ${formatCurrency(difference)}/hr to reach optimal and unlock ${formatCurrency(additionalSavings)}/hr more savings.`;
+                    }
+                    break;
+                case 'wasting':
+                    icon = '🟠';
+                    message = `Over-committed. Decrease by ${formatCurrency(difference)}/hr to optimal (${formatCurrency(optimalCost)}/hr) to reduce waste.`;
+                    break;
+                case 'very-bad':
+                    icon = '🟣';
+                    message = `Severely over-committed. Savings dropped below min-hourly baseline. Decrease to ${formatCurrency(optimalCost)}/hr immediately.`;
+                    break;
+                case 'losing-money':
+                    icon = '🔴';
+                    message = `LOSING MONEY vs on-demand! Commitment too high. Decrease to ${formatCurrency(optimalCost)}/hr to stop losses.`;
+                    break;
             }
         } else {
-            status = 'danger';
-            icon = '🔴';
-            if (currentCost < optimalCost) {
-                message = `Commitment significantly below optimal. Increase to ${formatCurrency(optimalCost)}/hr (current: ${formatCurrency(currentCost)}/hr) to unlock ${formatCurrency(difference)}/hr more savings potential.`;
+            // Fallback to old logic if no zone info
+            if (percentDiff <= 5) {
+                status = 'optimal';
+                icon = '✅';
+                message = `Commitment is optimal (within 5%). Current: ${formatCurrency(currentCost)}/hr`;
+            } else if (percentDiff <= 10) {
+                status = 'warning';
+                icon = '⚠️';
+                if (currentCost < optimalCost) {
+                    message = `Increase commitment by ${formatCurrency(difference)}/hr to reach optimal coverage and unlock ${formatCurrency(additionalSavings)}/hr more savings.`;
+                } else {
+                    message = `Decrease to ${formatCurrency(optimalCost)}/hr (current: ${formatCurrency(currentCost)}/hr) to reduce waste.`;
+                }
             } else {
-                message = `Commitment significantly above optimal. Decrease to ${formatCurrency(optimalCost)}/hr (current: ${formatCurrency(currentCost)}/hr) to reduce waste.`;
+                status = 'danger';
+                icon = '🔴';
+                if (currentCost < optimalCost) {
+                    message = `Increase commitment by ${formatCurrency(difference)}/hr to reach optimal coverage and unlock ${formatCurrency(additionalSavings)}/hr more savings.`;
+                } else {
+                    message = `Commitment significantly above optimal. Decrease to ${formatCurrency(optimalCost)}/hr (current: ${formatCurrency(currentCost)}/hr) to reduce waste.`;
+                }
             }
         }
 
@@ -407,7 +537,8 @@ const CostCalculator = (function() {
             icon,
             message,
             difference,
-            recommendation: optimalCost
+            recommendation: optimalCost,
+            zone: zoneInfo ? zoneInfo.zone : null
         };
     }
 
@@ -462,6 +593,7 @@ const CostCalculator = (function() {
         calculateSavingsCurve,
         getOptimizationSuggestion,
         getOptimizationSuggestionDollars,
+        detectCoverageZone,
         formatCurrency,
         formatPercentage,
         calculateCoverageImpact
