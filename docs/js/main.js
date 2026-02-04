@@ -885,6 +885,7 @@
         const currentCommitment = commitmentFromCoverage(currentCoverage, appState.savingsPercentage);
 
         // Calculate hourly savings for both current and optimal
+        const hoursPerWeek = 168;
         const totalSavingsAtOptimal = results.optimalCoverage.maxNetSavings || 0;
         const hourlySavingsAtOptimal = totalSavingsAtOptimal / 336;
         const currentHourlySavings = results.savings / hoursPerWeek;
