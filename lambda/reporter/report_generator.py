@@ -1514,6 +1514,8 @@ def generate_html_report(
             if (showCoverageLine && spType) {{
                 // Get metrics and stats for this SP type
                 const metrics = metricsData[spType] || {{}};
+                const stats = chartData.stats || {{}};
+                const minHourly = stats.min || 0;
                 const spCommitmentHourly = metrics.sp_commitment_hourly || 0;
 
                 // Get pre-calculated on-demand equivalent (calculated in Python to eliminate duplication)
