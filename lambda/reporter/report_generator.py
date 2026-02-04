@@ -1514,15 +1514,13 @@ def generate_html_report(
             if (showCoverageLine && spType) {{
                 // Get metrics and stats for this SP type
                 const metrics = metricsData[spType] || {{}};
-                const stats = chartData.stats || {{}};
-                const minHourly = stats.min || 0;
                 const spCommitmentHourly = metrics.sp_commitment_hourly || 0;
 
                 // Get pre-calculated on-demand equivalent (calculated in Python to eliminate duplication)
                 const onDemandEquivalent = metrics.on_demand_coverage_hourly || 0;
 
-                // Calculate coverage as % of min-hourly
-                const coverageMinHourlyPct = minHourly > 0 ? (onDemandEquivalent / minHourly) * 100 : 0;
+                // Use standard coverage metric (same as scheduler preview for consistency)
+                const currentCoveragePct = metrics.current_coverage || 0;
 
                 // Only add current coverage line if we have coverage
                 if (spCommitmentHourly > 0) {{
@@ -1535,7 +1533,7 @@ def generate_html_report(
                         borderDash: [8, 4],
                         label: {{
                             display: true,
-                            content: 'Current: $' + spCommitmentHourly.toFixed(2) + '/hr (' + coverageMinHourlyPct.toFixed(1) + '% of min-hourly)',
+                            content: 'Current: $' + spCommitmentHourly.toFixed(2) + '/hr (' + currentCoveragePct.toFixed(1) + '% coverage)',
                             position: 'center',
                             backgroundColor: 'rgba(0, 0, 0, 0.85)',
                             color: 'white',
