@@ -656,6 +656,32 @@ h1, h2, h3, h4, h5, h6 {
     background: rgba(255, 170, 0, 0.05);
 }
 
+/* Zone-based metric colors matching savings curve */
+.metric-item.building {
+    border-color: #4d9fff;
+    background: rgba(77, 159, 255, 0.05);
+}
+
+.metric-item.gaining {
+    border-color: #00ff88;
+    background: rgba(0, 255, 136, 0.05);
+}
+
+.metric-item.wasting {
+    border-color: #ffaa00;
+    background: rgba(255, 170, 0, 0.05);
+}
+
+.metric-item.very-bad {
+    border-color: #9400d3;
+    background: rgba(148, 0, 211, 0.05);
+}
+
+.metric-item.losing-money {
+    border-color: #ff4444;
+    background: rgba(255, 68, 68, 0.05);
+}
+
 .metric-header {
     display: flex;
     justify-content: space-between;
@@ -727,6 +753,32 @@ h1, h2, h3, h4, h5, h6 {
 .optimal-suggestion.status-danger {
     background: rgba(255, 68, 68, 0.1);
     border-color: var(--color-danger);
+}
+
+/* Zone-based statuses matching savings curve colors */
+.optimal-suggestion.status-building {
+    background: rgba(77, 159, 255, 0.15);
+    border-color: #4d9fff;
+}
+
+.optimal-suggestion.status-gaining {
+    background: rgba(0, 255, 136, 0.15);
+    border-color: #00ff88;
+}
+
+.optimal-suggestion.status-wasting {
+    background: rgba(255, 170, 0, 0.15);
+    border-color: #ffaa00;
+}
+
+.optimal-suggestion.status-very-bad {
+    background: rgba(148, 0, 211, 0.15);
+    border-color: #9400d3;
+}
+
+.optimal-suggestion.status-losing-money {
+    background: rgba(255, 68, 68, 0.15);
+    border-color: #ff4444;
 }
 
 .suggestion-icon {

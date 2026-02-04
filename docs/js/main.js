@@ -790,35 +790,46 @@
      * Update metrics display
      */
     function updateMetricsDisplay(results) {
-        // Convert weekly costs to hourly rates (divide by 168 hours)
-        const hoursPerWeek = 168;
+        // Convert total costs to hourly rates
+        // Use actual number of hours in the data
+        const numHours = appState.hourlyCosts?.length || 168;
 
         // Pure On-Demand cost (baseline)
         const onDemandElement = document.getElementById('metric-ondemand');
         if (onDemandElement) {
-            onDemandElement.textContent = CostCalculator.formatCurrency(results.onDemandCost / hoursPerWeek) + '/hr';
+            onDemandElement.textContent = CostCalculator.formatCurrency(results.onDemandCost / numHours) + '/hr';
         }
 
         // Total Cost with SP (commitment + spillover)
         const savingsPlanElement = document.getElementById('metric-savingsplan');
         if (savingsPlanElement) {
-            savingsPlanElement.textContent = CostCalculator.formatCurrency(results.savingsPlanCost / hoursPerWeek) + '/hr';
+            savingsPlanElement.textContent = CostCalculator.formatCurrency(results.savingsPlanCost / numHours) + '/hr';
         }
 
         // Net Savings
         const savingsElement = document.getElementById('metric-savings');
         if (savingsElement) {
-            savingsElement.textContent = CostCalculator.formatCurrency(results.savings / hoursPerWeek) + '/hr';
+            savingsElement.textContent = CostCalculator.formatCurrency(results.savings / numHours) + '/hr';
 
-            // Change color based on positive/negative savings
+            // Change color based on zone if available
             const savingsContainer = savingsElement.closest('.metric-item');
             if (savingsContainer) {
-                if (results.savings < 0) {
-                    savingsContainer.classList.remove('success');
-                    savingsContainer.classList.add('danger');
+                // Remove all zone and status classes
+                savingsContainer.classList.remove(
+                    'success', 'danger', 'warning',
+                    'building', 'gaining', 'wasting', 'very-bad', 'losing-money'
+                );
+
+                // Apply zone-based class if we have zone info
+                if (results.currentZone && results.currentZone.zone) {
+                    savingsContainer.classList.add(results.currentZone.zone);
                 } else {
-                    savingsContainer.classList.remove('danger');
-                    savingsContainer.classList.add('success');
+                    // Fallback to old logic
+                    if (results.savings < 0) {
+                        savingsContainer.classList.add('danger');
+                    } else {
+                        savingsContainer.classList.add('success');
+                    }
                 }
             }
         }
@@ -831,7 +842,7 @@
         // SP Commitment Cost
         const commitmentElement = document.getElementById('metric-commitment');
         if (commitmentElement) {
-            commitmentElement.textContent = CostCalculator.formatCurrency(results.commitmentCost / hoursPerWeek) + '/hr';
+            commitmentElement.textContent = CostCalculator.formatCurrency(results.commitmentCost / numHours) + '/hr';
         }
 
         const commitmentPctElement = document.getElementById('metric-commitment-pct');
@@ -845,7 +856,7 @@
         // Spillover Cost
         const spilloverElement = document.getElementById('metric-spillover');
         if (spilloverElement) {
-            spilloverElement.textContent = CostCalculator.formatCurrency(results.spilloverCost / hoursPerWeek) + '/hr';
+            spilloverElement.textContent = CostCalculator.formatCurrency(results.spilloverCost / numHours) + '/hr';
         }
 
         const spilloverPctElement = document.getElementById('metric-spillover-pct');
@@ -856,7 +867,7 @@
         // Wasted commitment
         const wasteElement = document.getElementById('metric-waste');
         if (wasteElement) {
-            wasteElement.textContent = CostCalculator.formatCurrency(results.wastedCommitment / hoursPerWeek) + '/hr';
+            wasteElement.textContent = CostCalculator.formatCurrency(results.wastedCommitment / numHours) + '/hr';
         }
 
         const wastePctElement = document.getElementById('metric-waste-pct');
@@ -884,31 +895,76 @@
         const optimalCommitment = commitmentFromCoverage(optimalCoverage, appState.savingsPercentage);
         const currentCommitment = commitmentFromCoverage(currentCoverage, appState.savingsPercentage);
 
-        // Get suggestion with commitment dollar values
+        // Calculate hourly savings
+        // Use actual number of hours in the data, not hardcoded 168
+        const numHours = appState.hourlyCosts?.length || 168;
+        const currentHourlySavings = results.savings / numHours;
+
+        // Check if we're at optimal commitment (within 1% tolerance)
+        const isAtOptimalCommitment = Math.abs(currentCommitment - optimalCommitment) < (optimalCommitment * 0.01);
+
+        // Calculate optimal savings
+        let hourlySavingsAtOptimal;
+        if (isAtOptimalCommitment) {
+            // At optimal: use current savings (they're the same)
+            hourlySavingsAtOptimal = currentHourlySavings;
+        } else {
+            // Not at optimal: use maxNetSavings from calculation
+            const totalSavingsAtOptimal = results.optimalCoverage.maxNetSavings || 0;
+            hourlySavingsAtOptimal = totalSavingsAtOptimal / numHours;
+
+            // Ensure optimal never shows less savings than current (sanity check)
+            // Optimal should always save at least as much as any other point
+            hourlySavingsAtOptimal = Math.max(hourlySavingsAtOptimal, currentHourlySavings);
+        }
+
+        const additionalSavings = hourlySavingsAtOptimal - currentHourlySavings;
+
+        // Detect which zone the current coverage is in
+        const zoneInfo = CostCalculator.detectCoverageZone(
+            currentCoverage,
+            appState.hourlyCosts || [],
+            appState.savingsPercentage
+        );
+
+        // Get suggestion with commitment dollar values, additional savings, and zone info
         const suggestion = CostCalculator.getOptimizationSuggestionDollars(
             currentCommitment,
             optimalCommitment,
-            minCost
+            minCost,
+            additionalSavings,
+            zoneInfo
         );
 
-        // Update status class
-        suggestionElement.classList.remove('status-optimal', 'status-warning', 'status-danger');
+        // Update status class - remove all old classes first
+        suggestionElement.classList.remove(
+            'status-optimal', 'status-warning', 'status-danger',
+            'status-building', 'status-gaining', 'status-wasting', 'status-very-bad', 'status-losing-money'
+        );
         suggestionElement.classList.add(`status-${suggestion.status}`);
 
-        // Update title with optimal commitment amount and savings at optimal
-        const totalSavingsAtOptimal = results.optimalCoverage.maxNetSavings || 0;
-        // FIXME: maxNetSavings appears to be returning double the expected value
-        // Dividing by 336 instead of 168 as a workaround until root cause is found
-        const hourlySavingsAtOptimal = totalSavingsAtOptimal / 336;
-
-        // Show hourly savings so users can directly compare to "Net Savings" panel
-        titleElement.innerHTML = `Optimal: ${CostCalculator.formatCurrency(optimalCommitment)}/hour<br>
-            <small style="font-weight: normal; opacity: 0.9;">
-                Saves ${CostCalculator.formatCurrency(hourlySavingsAtOptimal)}/hr vs on-demand
-            </small>`;
+        // Show optimal commitment with current in parentheses
+        // Different wording when at optimal vs when not at optimal
+        if (isAtOptimalCommitment) {
+            // Already at optimal - show what you're currently saving
+            const savingsPercent = ((currentHourlySavings / (results.onDemandCost / numHours)) * 100).toFixed(1);
+            titleElement.innerHTML = `Optimal Commitment: ${CostCalculator.formatCurrency(optimalCommitment)}/hour<br>
+                <small style="font-weight: normal; opacity: 0.9;">
+                    Saving ${CostCalculator.formatCurrency(currentHourlySavings)}/hr vs on-demand (${savingsPercent}% discount)
+                </small>`;
+        } else {
+            // Not at optimal - show what you could save at optimal vs what you're saving now
+            titleElement.innerHTML = `Optimal Commitment: ${CostCalculator.formatCurrency(optimalCommitment)}/hour (vs current ${CostCalculator.formatCurrency(currentCommitment)}/hr)<br>
+                <small style="font-weight: normal; opacity: 0.9;">
+                    Would save ${CostCalculator.formatCurrency(hourlySavingsAtOptimal)}/hr vs on-demand (current: ${CostCalculator.formatCurrency(currentHourlySavings)}/hr)
+                </small>`;
+        }
 
         // Message already has dollar values formatted correctly
         textElement.textContent = `${suggestion.icon} ${suggestion.message}`;
+
+        // Store zone info for use in metrics display
+        currentCostResults.currentZone = zoneInfo;
     }
 
     /**
