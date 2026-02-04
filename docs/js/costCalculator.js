@@ -157,8 +157,17 @@ const CostCalculator = (function() {
         const savingsCurve = [];
         const rangeToTest = maxCost - minCost;
         if (rangeToTest === 0) {
+            const baselineCost = hourlyCosts.reduce((sum, cost) => sum + cost, 0);
+            const savingsPercent = baselineCost > 0 ? (minHourlySavings / baselineCost) * 100 : 0;
             return {
-                curve: [{ coverage: minCost, netSavings: minHourlySavings, extraSavings: 0 }],
+                curve: [{
+                    coverage: minCost,
+                    commitment: minCost * discountFactor,
+                    netSavings: minHourlySavings,
+                    extraSavings: 0,
+                    savingsPercent: savingsPercent,
+                    percentOfMin: 100
+                }],
                 minHourly: minCost,
                 minHourlySavings: minHourlySavings
             };
@@ -179,11 +188,15 @@ const CostCalculator = (function() {
             const totalCost = commitmentCost + spilloverCost;
             const netSavings = baselineCost - totalCost;
             const extraSavings = netSavings - minHourlySavings; // Savings beyond min-hourly baseline
+            const savingsPercent = baselineCost > 0 ? (netSavings / baselineCost) * 100 : 0;
+            const hourlyCommitment = coverageCost * discountFactor;
 
             savingsCurve.push({
                 coverage: coverageCost,
+                commitment: hourlyCommitment,
                 netSavings: netSavings,
                 extraSavings: extraSavings,
+                savingsPercent: savingsPercent,
                 percentOfMin: (coverageCost / minCost) * 100
             });
         }
@@ -225,6 +238,7 @@ const CostCalculator = (function() {
             const totalCost = hourlyCosts.reduce((sum, cost) => sum + cost, 0);
             return {
                 coverageUnits: minCost,
+                commitmentUnits: minCost * discountFactor,
                 lastOptimalCoverage: minCost,
                 coveragePercentage: 100.0,
                 maxNetSavings: totalCost * (savingsPercentage / 100),
@@ -278,7 +292,8 @@ const CostCalculator = (function() {
         const p90 = sortedCosts[Math.floor(sortedCosts.length * 0.90)];
 
         return {
-            coverageUnits: bestCoverage,  // First point at maximum savings
+            coverageUnits: bestCoverage,  // On-demand equivalent coverage at maximum savings
+            commitmentUnits: bestCoverage * discountFactor,  // Actual commitment cost
             coveragePercentage: bestCoveragePercentage,
             maxNetSavings: bestNetSavings,
             minHourlySavings: minHourlySavings,  // Baseline savings at min-hourly
@@ -338,8 +353,8 @@ const CostCalculator = (function() {
 
     /**
      * Get optimization suggestion with dollar values (no percentage conversion needed)
-     * @param {number} currentCost - Current coverage in $/hour
-     * @param {number} optimalCost - Optimal coverage in $/hour
+     * @param {number} currentCost - Current commitment in $/hour
+     * @param {number} optimalCost - Optimal commitment in $/hour
      * @param {number} minCost - Minimum cost for percentage calculation
      * @returns {Object} Suggestion with status and message
      */
@@ -354,7 +369,7 @@ const CostCalculator = (function() {
         if (percentDiff <= 5) {
             status = 'optimal';
             icon = '✅';
-            message = `Coverage is optimal (within 5%). Current: ${formatCurrency(currentCost)}/hr`;
+            message = `Commitment is optimal (within 5%). Current: ${formatCurrency(currentCost)}/hr`;
         } else if (percentDiff <= 10) {
             status = 'warning';
             icon = '⚠️';
@@ -367,9 +382,9 @@ const CostCalculator = (function() {
             status = 'danger';
             icon = '🔴';
             if (currentCost < optimalCost) {
-                message = `Coverage significantly below optimal. Increase to ${formatCurrency(optimalCost)}/hr (current: ${formatCurrency(currentCost)}/hr) to unlock ${formatCurrency(difference)}/hr more savings potential.`;
+                message = `Commitment significantly below optimal. Increase to ${formatCurrency(optimalCost)}/hr (current: ${formatCurrency(currentCost)}/hr) to unlock ${formatCurrency(difference)}/hr more savings potential.`;
             } else {
-                message = `Coverage significantly above optimal. Decrease to ${formatCurrency(optimalCost)}/hr (current: ${formatCurrency(currentCost)}/hr) to reduce waste.`;
+                message = `Commitment significantly above optimal. Decrease to ${formatCurrency(optimalCost)}/hr (current: ${formatCurrency(currentCost)}/hr) to reduce waste.`;
             }
         }
 
