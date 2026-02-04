@@ -474,7 +474,7 @@ h1, h2, h3, h4, h5, h6 {
 /* ===== Sliders Row (below cost chart) ===== */
 .sliders-row {
     display: grid;
-    grid-template-columns: 1fr 1fr 1fr;
+    grid-template-columns: 1fr 1fr;
     gap: var(--spacing-md);
     margin-top: var(--spacing-md);
     padding-top: var(--spacing-md);
@@ -743,6 +743,8 @@ h1, h2, h3, h4, h5, h6 {
     display: grid;
     grid-template-columns: repeat(3, 1fr);
     gap: var(--spacing-sm);
+    max-width: 1000px;
+    margin: 0 auto;
 }
 
 @media (max-width: 1024px) {

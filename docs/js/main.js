@@ -516,9 +516,10 @@
         const baselineCost = hourlyCosts.reduce((sum, cost) => sum + cost, 0);
         const discountFactor = (1 - savingsPercentage / 100);
 
-        // Generate curve data from minCost to optimalCoverage
-        const numPoints = 100;
-        const step = (optimalCoverage - minCost) / numPoints;
+        // Generate curve data from minCost to 120% past optimal (to see the decline)
+        const maxCoverage = optimalCoverage * 1.2;
+        const numPoints = 200; // More points for accurate derivative calculation
+        const step = (maxCoverage - minCost) / numPoints;
         const curvePoints = [];
 
         for (let i = 0; i <= numPoints; i++) {
@@ -543,31 +544,41 @@
             });
         }
 
-        // Find knee using perpendicular distance method
-        // Draw line from first point to last point, find point with max distance
-        const firstPoint = curvePoints[0];
-        const lastPoint = curvePoints[curvePoints.length - 1];
+        // Find knee using second derivative (inflection point method)
+        // This finds where the slope changes most dramatically
+        const secondDerivatives = [];
 
-        const dx = lastPoint.coverage - firstPoint.coverage;
-        const dy = lastPoint.savingsPercent - firstPoint.savingsPercent;
-        const lineLength = Math.sqrt(dx * dx + dy * dy);
+        for (let i = 2; i < curvePoints.length - 2; i++) {
+            // Calculate first derivative (slope) using central difference
+            const slope1 = (curvePoints[i].savingsPercent - curvePoints[i - 2].savingsPercent) /
+                          (curvePoints[i].coverage - curvePoints[i - 2].coverage);
+            const slope2 = (curvePoints[i + 2].savingsPercent - curvePoints[i].savingsPercent) /
+                          (curvePoints[i + 2].coverage - curvePoints[i].coverage);
 
-        let maxDistance = 0;
+            // Second derivative is the change in slope
+            const secondDerivative = (slope2 - slope1) /
+                                    (curvePoints[i + 1].coverage - curvePoints[i - 1].coverage);
+
+            secondDerivatives.push({
+                index: i,
+                value: Math.abs(secondDerivative), // Use absolute value to find max change
+                coverage: curvePoints[i].coverage
+            });
+        }
+
+        // Find the point with maximum second derivative (most dramatic slope change)
+        // Only consider points between minCost and optimalCoverage
+        let maxSecondDerivative = 0;
         let kneeIndex = 0;
 
-        for (let i = 1; i < curvePoints.length - 1; i++) {
-            const point = curvePoints[i];
-
-            // Calculate perpendicular distance from point to line
-            const distance = Math.abs(
-                dy * point.coverage - dx * point.savingsPercent +
-                lastPoint.coverage * firstPoint.savingsPercent -
-                lastPoint.savingsPercent * firstPoint.coverage
-            ) / lineLength;
-
-            if (distance > maxDistance) {
-                maxDistance = distance;
-                kneeIndex = i;
+        for (let i = 0; i < secondDerivatives.length; i++) {
+            const point = secondDerivatives[i];
+            // Only consider points in the viable range (min to optimal)
+            if (point.coverage >= minCost && point.coverage <= optimalCoverage) {
+                if (point.value > maxSecondDerivative) {
+                    maxSecondDerivative = point.value;
+                    kneeIndex = point.index;
+                }
             }
         }
 
