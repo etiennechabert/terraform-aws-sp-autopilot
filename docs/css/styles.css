@@ -741,11 +741,11 @@ h1, h2, h3, h4, h5, h6 {
 
 .strategy-buttons {
     display: grid;
-    grid-template-columns: repeat(3, 1fr);
-    gap: var(--spacing-lg);
+    grid-template-columns: repeat(4, 1fr);
+    gap: var(--spacing-md);
 }
 
-@media (max-width: 1024px) {
+@media (max-width: 1200px) {
     .strategy-buttons {
         grid-template-columns: repeat(2, 1fr);
     }
@@ -799,6 +799,16 @@ h1, h2, h3, h4, h5, h6 {
 .strategy-button.active:hover {
     border-color: var(--color-success);
     box-shadow: 0 4px 12px rgba(0, 255, 136, 0.3);
+}
+
+.strategy-button.strategy-warning {
+    border-color: rgba(255, 87, 87, 0.5);
+    background: rgba(255, 87, 87, 0.05);
+}
+
+.strategy-button.strategy-warning:hover {
+    border-color: rgba(255, 87, 87, 0.8);
+    box-shadow: 0 4px 12px rgba(255, 87, 87, 0.2);
 }
 
 .strategy-icon {

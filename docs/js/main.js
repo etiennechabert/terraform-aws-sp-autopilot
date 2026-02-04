@@ -474,7 +474,8 @@
             return {
                 minHourly: 0,
                 balanced: 0,
-                aggressive: 0
+                aggressive: 0,
+                tooAggressive: 0
             };
         }
 
@@ -498,10 +499,14 @@
         // Aggressive: The exact optimal point (maximum savings)
         const aggressive = optimal;
 
+        // Too Aggressive: 125% of optimal (into the declining zone - for educational purposes)
+        const tooAggressive = optimal * 1.25;
+
         return {
             minHourly,
             balanced,
-            aggressive
+            aggressive,
+            tooAggressive
         };
     }
 
@@ -614,6 +619,9 @@
             case 'aggressive':
                 coverageCost = strategies.aggressive;
                 break;
+            case 'too-aggressive':
+                coverageCost = strategies.tooAggressive;
+                break;
             default:
                 showToast('Unknown strategy', 'error');
                 return;
@@ -641,7 +649,8 @@
         const strategyNames = {
             'min-hourly': 'Min-Hourly',
             'balanced': 'Balanced',
-            'aggressive': 'Aggressive'
+            'aggressive': 'Aggressive',
+            'too-aggressive': 'Too Aggressive 💀'
         };
         showToast(`${strategyNames[strategy]} strategy applied: ${CostCalculator.formatCurrency(coverageCost)}/hour`);
     }
@@ -743,6 +752,21 @@
             aggressiveMinHourlyPct.textContent = `${minHourlyPct.toFixed(1)}% Min-Hourly`;
         }
 
+        // Update Too Aggressive
+        const tooAggressiveValue = document.getElementById('strategy-too-aggressive-value');
+        const tooAggressiveSavings = document.getElementById('strategy-too-aggressive-savings');
+        const tooAggressiveSavingsPct = document.getElementById('strategy-too-aggressive-savings-pct');
+        const tooAggressiveMinHourlyPct = document.getElementById('strategy-too-aggressive-min-hourly-pct');
+        if (tooAggressiveValue && tooAggressiveSavings && tooAggressiveSavingsPct && tooAggressiveMinHourlyPct) {
+            const commitment = SPCalculations.commitmentFromCoverage(strategies.tooAggressive, savingsPercentage);
+            const savingsData = calculateStrategySavings(strategies.tooAggressive);
+            const minHourlyPct = minHourlyCommitment > 0 ? (commitment / minHourlyCommitment) * 100 : 100;
+            tooAggressiveValue.textContent = `${CostCalculator.formatCurrency(commitment)}/hr`;
+            tooAggressiveSavings.textContent = `${CostCalculator.formatCurrency(savingsData.hourly)}/hr`;
+            tooAggressiveSavingsPct.textContent = `${savingsData.percentage.toFixed(1)}%`;
+            tooAggressiveMinHourlyPct.textContent = `${minHourlyPct.toFixed(1)}% Min-Hourly`;
+        }
+
         // Detect and highlight active strategy
         const allButtons = document.querySelectorAll('.strategy-button');
         allButtons.forEach(btn => btn.classList.remove('active'));
@@ -754,9 +778,10 @@
         const minDiff = Math.abs(currentCoverage - strategies.minHourly);
         const balancedDiff = Math.abs(currentCoverage - strategies.balanced);
         const aggressiveDiff = Math.abs(currentCoverage - strategies.aggressive);
+        const tooAggressiveDiff = Math.abs(currentCoverage - strategies.tooAggressive);
 
         // Find closest match
-        const minDistance = Math.min(minDiff, balancedDiff, aggressiveDiff);
+        const minDistance = Math.min(minDiff, balancedDiff, aggressiveDiff, tooAggressiveDiff);
 
         if (minDistance / Math.max(currentCoverage, 0.01) < tolerance) {
             if (minDistance === minDiff) {
@@ -765,6 +790,8 @@
                 activeButton = document.getElementById('strategy-balanced');
             } else if (minDistance === aggressiveDiff) {
                 activeButton = document.getElementById('strategy-aggressive');
+            } else if (minDistance === tooAggressiveDiff) {
+                activeButton = document.getElementById('strategy-too-aggressive');
             }
         }
 
