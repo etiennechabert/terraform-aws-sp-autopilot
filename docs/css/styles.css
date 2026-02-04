@@ -742,9 +742,7 @@ h1, h2, h3, h4, h5, h6 {
 .strategy-buttons {
     display: grid;
     grid-template-columns: repeat(3, 1fr);
-    gap: var(--spacing-sm);
-    max-width: 1000px;
-    margin: 0 auto;
+    gap: var(--spacing-lg);
 }
 
 @media (max-width: 1024px) {
