@@ -12,7 +12,11 @@ os.environ.setdefault("SNS_TOPIC_ARN", "arn:aws:sns:us-east-1:123456789012:test-
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
 
-from report_generator import _get_type_metrics_for_report, _parse_plan_dates
+from report_generator import (
+    _build_breakdown_table_html,
+    _get_type_metrics_for_report,
+    _parse_plan_dates,
+)
 
 
 class TestParsePlanDates:
@@ -260,3 +264,76 @@ class TestGetTypeMetricsForReport:
         # Formula: commitment / (1 - discount_rate) = 1.0 / (1 - 0.35) = 1.0 / 0.65 = 1.538
         assert metrics["on_demand_coverage_hourly"] > 0
         assert abs(metrics["on_demand_coverage_hourly"] - 1.538) < 0.01
+
+
+class TestBuildBreakdownTableHtml:
+    """Test _build_breakdown_table_html function."""
+
+    def test_generates_html_with_single_plan_type(self):
+        """Test HTML generation with one plan type."""
+        breakdown_by_type = {
+            "Database": {
+                "plans_count": 2,
+                "total_commitment": 1.0,
+                "average_utilization": 95.5,
+                "savings_percentage": 35.0,
+            }
+        }
+
+        html = _build_breakdown_table_html(
+            breakdown_by_type=breakdown_by_type,
+            plans_count=2,
+            average_utilization=95.5,
+            total_commitment=1.0,
+            overall_savings_percentage=35.0,
+        )
+
+        assert "<table>" in html
+        assert "Database Savings Plans" in html
+        assert "2" in html
+        assert "95.5%" in html
+        assert "$1.00/hr" in html
+
+    def test_generates_html_with_multiple_plan_types(self):
+        """Test HTML generation with multiple plan types including totals row."""
+        breakdown_by_type = {
+            "Compute": {
+                "plans_count": 3,
+                "total_commitment": 10.0,
+                "average_utilization": 85.0,
+                "savings_percentage": 30.0,
+            },
+            "Database": {
+                "plans_count": 2,
+                "total_commitment": 1.0,
+                "average_utilization": 95.0,
+                "savings_percentage": 35.0,
+            },
+        }
+
+        html = _build_breakdown_table_html(
+            breakdown_by_type=breakdown_by_type,
+            plans_count=5,
+            average_utilization=87.0,
+            total_commitment=11.0,
+            overall_savings_percentage=31.0,
+        )
+
+        assert "<table>" in html
+        assert "Compute Savings Plans" in html
+        assert "Database Savings Plans" in html
+        assert "<strong>Total</strong>" in html
+        assert "5" in html
+        assert "$11.00/hr" in html
+
+    def test_returns_empty_string_for_empty_breakdown(self):
+        """Test that empty breakdown returns empty string."""
+        html = _build_breakdown_table_html(
+            breakdown_by_type={},
+            plans_count=0,
+            average_utilization=0.0,
+            total_commitment=0.0,
+            overall_savings_percentage=0.0,
+        )
+
+        assert html == ""
