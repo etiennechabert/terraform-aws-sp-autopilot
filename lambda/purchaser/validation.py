@@ -97,7 +97,8 @@ def _validate_field_types(purchase_intent: dict[str, Any]) -> None:
     commitment = purchase_intent.get("commitment")
     try:
         float(commitment)
-    except (TypeError, ValueError):
+    except Exception:
+        # Catches TypeError, ValueError from float conversion
         raise ValueError(
             f"Field 'commitment' must be numeric, got {type(commitment).__name__}: {commitment}"
         )
@@ -144,7 +145,8 @@ def _validate_field_types(purchase_intent: dict[str, Any]) -> None:
         if upfront_amount is not None:
             try:
                 float(upfront_amount)
-            except (TypeError, ValueError):
+            except Exception:
+                # Catches TypeError, ValueError from float conversion
                 raise ValueError(
                     f"Field 'upfront_amount' must be numeric or None, got {type(upfront_amount).__name__}: {upfront_amount}"
                 )
