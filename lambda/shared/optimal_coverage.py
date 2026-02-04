@@ -8,6 +8,22 @@ consistent results across Python lambdas and JavaScript GH-Page.
 The algorithm finds the optimal hourly commitment level that maximizes
 net savings by testing 100 different coverage levels and calculating
 total cost (commitment + spillover) for each.
+
+CRITICAL - CROSS-LANGUAGE SYNCHRONIZATION:
+===========================================
+WARNING: This algorithm is implemented in BOTH Python and JavaScript:
+    - Python: lambda/shared/optimal_coverage.py (this file)
+    - JavaScript: docs/js/costCalculator.js
+
+Changes to this algorithm MUST be synchronized across both languages!
+
+The cross-platform parity is verified by:
+    - lambda/tests/cross_platform/test_algorithm_parity.py
+
+If you modify the algorithm, you MUST:
+    1. Update both Python and JavaScript implementations
+    2. Run cross-platform tests to verify parity
+    3. Document any intentional differences in behavior
 """
 
 from typing import TypedDict
@@ -64,6 +80,8 @@ def calculate_optimal_coverage(
     min_cost = min(hourly_costs)
 
     # Discount factor: if 30% savings, you pay 70% of on-demand price
+    # NOTE: This is equivalent to shared.sp_calculations.commitment_from_coverage()
+    # Kept as a variable here for performance (reused in loop below)
     discount_factor = 1 - (savings_percentage / 100)
 
     best_net_savings = float("-inf")

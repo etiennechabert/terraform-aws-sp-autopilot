@@ -24,6 +24,8 @@ const CostCalculator = (function() {
         } = config;
 
         // Calculate the discounted rate (as a fraction of on-demand)
+        // NOTE: This is equivalent to commitmentFromCoverage() in spCalculations.js
+        // Kept as variables here for performance (reused throughout function)
         const discountFactor = (1 - savingsPercentage / 100);
 
         // Coverage commitment cost per hour (at discounted rate)
@@ -80,11 +82,12 @@ const CostCalculator = (function() {
             });
         }
 
-        // Calculate savings
+        // Calculate effective savings rate using centralized function
         const totalSavings = totalOnDemandCost - totalSavingsPlanCost;
-        const savingsPercentageActual = totalOnDemandCost > 0
-            ? (totalSavings / totalOnDemandCost) * 100
-            : 0;
+        const savingsPercentageActual = calculateEffectiveSavingsRate(
+            totalOnDemandCost,
+            totalSavingsPlanCost
+        );
 
         // Calculate optimal coverage
         const optimalCoverage = calculateOptimalCoverage(
@@ -211,10 +214,21 @@ const CostCalculator = (function() {
     /**
      * Calculate optimal coverage level to maximize net savings
      *
-     * IMPORTANT: This JavaScript implementation must stay in sync with
-     * lambda/shared/optimal_coverage.py::calculate_optimal_coverage()
-     * Any changes to the algorithm must be applied to both implementations.
-     * Cross-language unit tests verify consistency.
+     * CRITICAL - CROSS-LANGUAGE SYNCHRONIZATION:
+     * ===========================================
+     * WARNING: This algorithm is implemented in BOTH Python and JavaScript:
+     *     - Python: lambda/shared/optimal_coverage.py
+     *     - JavaScript: docs/js/costCalculator.js (this file)
+     *
+     * Changes to this algorithm MUST be synchronized across both languages!
+     *
+     * The cross-platform parity is verified by:
+     *     - lambda/tests/cross_platform/test_algorithm_parity.py
+     *
+     * If you modify the algorithm, you MUST:
+     *     1. Update both Python and JavaScript implementations
+     *     2. Run cross-platform tests to verify parity
+     *     3. Document any intentional differences in behavior
      *
      * @param {Array<number>} hourlyCosts - Actual hourly costs ($/hour)
      * @param {number} savingsPercentage - Savings percentage (0-99)

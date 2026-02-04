@@ -627,6 +627,8 @@
 
         // First pass: find breakeven point by testing coverage levels
         let breakevenCoverage = maxCost;
+        // NOTE: This is equivalent to commitmentFromCoverage() in spCalculations.js
+        // Kept as variable for performance (reused in loops)
         const discountFactor = (1 - savingsPercentage / 100);
         const testIncrement = maxCost / 500; // Fine granularity for finding breakeven
 
@@ -635,6 +637,7 @@
             let spilloverCost = 0;
 
             for (let i = 0; i < hourlyCosts.length; i++) {
+                // NOTE: commitmentCost calculation uses discountFactor (see above comment)
                 commitmentCost += coverageCost * discountFactor;
                 spilloverCost += Math.max(0, hourlyCosts[i] - coverageCost);
             }
@@ -662,6 +665,7 @@
             let spilloverCost = 0;
 
             for (let i = 0; i < hourlyCosts.length; i++) {
+                // NOTE: Uses discountFactor from commitmentFromCoverage() pattern (see spCalculations.js)
                 commitmentCost += coverageCost * discountFactor;
                 spilloverCost += Math.max(0, hourlyCosts[i] - coverageCost);
             }
@@ -871,15 +875,14 @@
 
         if (!suggestionElement || !textElement || !titleElement) return;
 
-        // Convert coverage to commitment values for display
-        const discountFactor = (1 - appState.savingsPercentage / 100);
+        // Convert coverage to commitment values for display using central calculation module
         const optimalCoverage = results.optimalCoverageUnits;
         const currentCoverage = appState.coverageCost;
         const minCost = appState.minCost;
 
-        // Calculate commitment values
-        const optimalCommitment = optimalCoverage * discountFactor;
-        const currentCommitment = currentCoverage * discountFactor;
+        // Calculate commitment values using centralized function
+        const optimalCommitment = commitmentFromCoverage(optimalCoverage, appState.savingsPercentage);
+        const currentCommitment = commitmentFromCoverage(currentCoverage, appState.savingsPercentage);
 
         // Get suggestion with commitment dollar values
         const suggestion = CostCalculator.getOptimizationSuggestionDollars(
