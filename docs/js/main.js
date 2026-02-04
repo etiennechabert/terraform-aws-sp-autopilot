@@ -472,6 +472,7 @@
         const baseHourlyCosts = appState.hourlyCosts || [];
         if (baseHourlyCosts.length === 0) {
             return {
+                tooPrudent: 0,
                 minHourly: 0,
                 balanced: 0,
                 aggressive: 0,
@@ -485,6 +486,9 @@
 
         // Min-Hourly: Baseline only (minimum cost with load factor)
         const minHourly = Math.min(...hourlyCosts);
+
+        // Too Prudent: 80% of min-hourly (under-committed - for educational purposes)
+        const tooPrudent = minHourly * 0.80;
 
         // Optimal: Maximum savings (the peak)
         const optimalResult = CostCalculator.calculateOptimalCoverage(
@@ -503,6 +507,7 @@
         const tooAggressive = optimal * 1.25;
 
         return {
+            tooPrudent,
             minHourly,
             balanced,
             aggressive,
@@ -610,6 +615,9 @@
         let coverageCost;
 
         switch (strategy) {
+            case 'too-prudent':
+                coverageCost = strategies.tooPrudent;
+                break;
             case 'min-hourly':
                 coverageCost = strategies.minHourly;
                 break;
@@ -647,6 +655,7 @@
 
         // Show success message
         const strategyNames = {
+            'too-prudent': 'Too Prudent 🐔',
             'min-hourly': 'Min-Hourly',
             'balanced': 'Balanced',
             'aggressive': 'Aggressive',
@@ -706,6 +715,21 @@
 
         // Calculate min-hourly commitment for percentage calculations
         const minHourlyCommitment = SPCalculations.commitmentFromCoverage(strategies.minHourly, savingsPercentage);
+
+        // Update Too Prudent
+        const tooPrudentValue = document.getElementById('strategy-too-prudent-value');
+        const tooPrudentSavings = document.getElementById('strategy-too-prudent-savings');
+        const tooPrudentSavingsPct = document.getElementById('strategy-too-prudent-savings-pct');
+        const tooPrudentMinHourlyPct = document.getElementById('strategy-too-prudent-min-hourly-pct');
+        if (tooPrudentValue && tooPrudentSavings && tooPrudentSavingsPct && tooPrudentMinHourlyPct) {
+            const commitment = SPCalculations.commitmentFromCoverage(strategies.tooPrudent, savingsPercentage);
+            const savingsData = calculateStrategySavings(strategies.tooPrudent);
+            const minHourlyPct = minHourlyCommitment > 0 ? (commitment / minHourlyCommitment) * 100 : 100;
+            tooPrudentValue.textContent = `${CostCalculator.formatCurrency(commitment)}/hr`;
+            tooPrudentSavings.textContent = `${CostCalculator.formatCurrency(savingsData.hourly)}/hr`;
+            tooPrudentSavingsPct.textContent = `${savingsData.percentage.toFixed(1)}%`;
+            tooPrudentMinHourlyPct.textContent = `${minHourlyPct.toFixed(1)}% Min-Hourly`;
+        }
 
         // Update Min-Hourly
         const minValue = document.getElementById('strategy-min-value');
@@ -775,16 +799,19 @@
         const tolerance = 0.02;
         let activeButton = null;
 
+        const tooPrudentDiff = Math.abs(currentCoverage - strategies.tooPrudent);
         const minDiff = Math.abs(currentCoverage - strategies.minHourly);
         const balancedDiff = Math.abs(currentCoverage - strategies.balanced);
         const aggressiveDiff = Math.abs(currentCoverage - strategies.aggressive);
         const tooAggressiveDiff = Math.abs(currentCoverage - strategies.tooAggressive);
 
         // Find closest match
-        const minDistance = Math.min(minDiff, balancedDiff, aggressiveDiff, tooAggressiveDiff);
+        const minDistance = Math.min(tooPrudentDiff, minDiff, balancedDiff, aggressiveDiff, tooAggressiveDiff);
 
         if (minDistance / Math.max(currentCoverage, 0.01) < tolerance) {
-            if (minDistance === minDiff) {
+            if (minDistance === tooPrudentDiff) {
+                activeButton = document.getElementById('strategy-too-prudent');
+            } else if (minDistance === minDiff) {
                 activeButton = document.getElementById('strategy-min');
             } else if (minDistance === balancedDiff) {
                 activeButton = document.getElementById('strategy-balanced');
