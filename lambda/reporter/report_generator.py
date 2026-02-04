@@ -11,6 +11,7 @@ import logging
 from datetime import UTC, datetime, timedelta
 from typing import Any
 
+from shared import sp_calculations
 from shared.local_mode import is_local_mode
 from shared.optimal_coverage import calculate_optimal_coverage
 
@@ -38,12 +39,16 @@ def _get_type_metrics_for_report(
 
     discount_pct = type_savings_pct if current_coverage > 0 and type_savings_pct > 0 else 0.0
 
+    # Pre-calculate on-demand equivalent coverage to avoid formula duplication in JavaScript
+    on_demand_coverage = sp_calculations.coverage_from_commitment(total_commitment, discount_pct)
+
     return {
         "current_coverage": current_coverage,
         "utilization": type_utilization,
         "actual_savings_hourly": net_savings_hourly,
         "savings_percentage": discount_pct,
         "sp_commitment_hourly": total_commitment,
+        "on_demand_coverage_hourly": on_demand_coverage,  # Pre-calculated to eliminate JS duplication
         "uncovered_spend_hourly": uncovered_spend_hourly,
         "total_spend_hourly": total_spend_hourly,
         "total_commitment": total_commitment,
@@ -530,8 +535,6 @@ def _build_breakdown_table_html(
     plans_count: int,
     average_utilization: float,
     total_commitment: float,
-    on_demand_equivalent_hourly: float,
-    net_savings_hourly: float,
     overall_savings_percentage: float,
 ) -> str:
     """Build HTML for breakdown by type table."""
@@ -556,16 +559,13 @@ def _build_breakdown_table_html(
     for plan_type, type_data in breakdown_by_type.items():
         plans_count_type = type_data.get("plans_count", 0)
         total_commitment_type = type_data.get("total_commitment", 0.0)
-        net_savings_hourly_type = type_data.get("net_savings_hourly", 0.0)
         type_utilization = type_data.get("average_utilization", 0.0)
         type_savings_pct = type_data.get("savings_percentage", 0.0)
 
         # Calculate on-demand coverage capacity from commitment and discount rate
         # This shows what on-demand usage the commitment COVERS, not actual usage
-        on_demand_coverage_capacity = (
-            total_commitment_type / (1 - type_savings_pct / 100)
-            if type_savings_pct < 100
-            else total_commitment_type
+        on_demand_coverage_capacity = sp_calculations.coverage_from_commitment(
+            total_commitment_type, type_savings_pct
         )
 
         # Calculate potential savings: what you'd pay on-demand minus what you pay with SP
@@ -594,10 +594,8 @@ def _build_breakdown_table_html(
 
     if len(breakdown_by_type) > 1:
         # Calculate total on-demand coverage capacity
-        total_coverage_capacity = (
-            total_commitment / (1 - overall_savings_percentage / 100)
-            if overall_savings_percentage < 100
-            else total_commitment
+        total_coverage_capacity = sp_calculations.coverage_from_commitment(
+            total_commitment, overall_savings_percentage
         )
 
         # Calculate total potential savings
@@ -800,7 +798,6 @@ def generate_html_report(
     total_commitment = data["total_commitment"]
     average_utilization = data["average_utilization"]
     utilization_class = data["utilization_class"]
-    on_demand_equivalent_hourly = data["on_demand_equivalent_hourly"]
     breakdown_by_type = data["breakdown_by_type"]
 
     # Determine simulator base URL based on environment
@@ -1394,8 +1391,6 @@ def generate_html_report(
         plans_count,
         average_utilization,
         total_commitment,
-        on_demand_equivalent_hourly,
-        net_savings_hourly,
         savings_percentage,
     )
 
@@ -1523,16 +1518,11 @@ def generate_html_report(
                 const minHourly = stats.min || 0;
                 const spCommitmentHourly = metrics.sp_commitment_hourly || 0;
 
-                // Calculate commitment as on-demand equivalent coverage for chart positioning
-                // Commitment is what you pay; convert to on-demand equivalent for comparison
-                const savingsPct = metrics.savings_percentage || 0;
-                const discountRate = savingsPct / 100;
-                const onDemandEquivalent = spCommitmentHourly > 0 && discountRate < 1
-                    ? spCommitmentHourly / (1 - discountRate)
-                    : spCommitmentHourly;
+                // Get pre-calculated on-demand equivalent (calculated in Python to eliminate duplication)
+                const onDemandEquivalent = metrics.on_demand_coverage_hourly || 0;
 
-                // Calculate coverage as % of min-hourly
-                const coverageMinHourlyPct = minHourly > 0 ? (onDemandEquivalent / minHourly) * 100 : 0;
+                // Use standard coverage metric (same as scheduler preview for consistency)
+                const currentCoveragePct = metrics.current_coverage || 0;
 
                 // Only add current coverage line if we have coverage
                 if (spCommitmentHourly > 0) {{
@@ -1545,7 +1535,7 @@ def generate_html_report(
                         borderDash: [8, 4],
                         label: {{
                             display: true,
-                            content: 'Current: $' + spCommitmentHourly.toFixed(2) + '/hr (' + coverageMinHourlyPct.toFixed(1) + '% of min-hourly)',
+                            content: 'Current: $' + spCommitmentHourly.toFixed(2) + '/hr (' + currentCoveragePct.toFixed(1) + '% coverage)',
                             position: 'center',
                             backgroundColor: 'rgba(0, 0, 0, 0.85)',
                             color: 'white',
@@ -1714,14 +1704,8 @@ def generate_html_report(
                 // Use type-specific savings percentage if available, otherwise use conservative 20% default
                 const savingsPercentage = metrics.savings_percentage > 0 ? metrics.savings_percentage : 20;
 
-                // Convert SP commitment to on-demand equivalent coverage
-                // Commitment is what you pay, coverage is the on-demand equivalent it covers
-                // Formula: coverage = commitment / (1 - discount_rate)
-                const commitment = metrics.total_commitment || 0;
-                const discountRate = savingsPercentage / 100;
-                const currentCoverageDollars = commitment > 0 && discountRate < 1
-                    ? commitment / (1 - discountRate)
-                    : commitment;
+                // Get pre-calculated on-demand equivalent (calculated in Python to eliminate duplication)
+                const currentCoverageDollars = metrics.on_demand_coverage_hourly || 0;
 
                 const usageData = {{
                     hourly_costs: hourlyCosts,
@@ -1774,13 +1758,8 @@ def generate_html_report(
                                 if (metrics.current_coverage === 0) return 'N/A';
                                 const minHourly = stats?.min || 0;
                                 if (minHourly === 0) return 'N/A';
-                                // Convert commitment to on-demand equivalent for comparison
-                                const commitment = metrics.sp_commitment_hourly || 0;
-                                const savingsPct = metrics.savings_percentage || 0;
-                                const discountRate = savingsPct / 100;
-                                const onDemandEquiv = commitment > 0 && discountRate < 1
-                                    ? commitment / (1 - discountRate)
-                                    : commitment;
+                                // Get pre-calculated on-demand equivalent (calculated in Python to eliminate duplication)
+                                const onDemandEquiv = metrics.on_demand_coverage_hourly || 0;
                                 const coverageMinHourlyPct = (onDemandEquiv / minHourly) * 100;
                                 return coverageMinHourlyPct.toFixed(1) + '%';
                             }})()

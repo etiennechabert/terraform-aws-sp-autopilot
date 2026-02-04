@@ -14,6 +14,7 @@ from typing import TYPE_CHECKING, Any
 
 from botocore.exceptions import ClientError
 
+from shared import sp_calculations
 from shared.aws_debug import add_response
 from shared.constants import DIMENSION_SAVINGS_PLANS_TYPE, PLAN_TYPE_TO_API_FILTER
 
@@ -352,27 +353,23 @@ def get_savings_plans_metrics(
         # This gives the inherent discount rate of the SP plan
         # Formula: (OnDemandCost - UsedCommitment) / OnDemandCost
         # vs old formula that included waste: NetSavings / OnDemandCost
-        savings_percentage = (
-            (
-                (total_on_demand_equivalent - total_used_commitment)
-                / total_on_demand_equivalent
-                * 100.0
-            )
-            if total_on_demand_equivalent > 0
-            else 0.0
+        savings_percentage = sp_calculations.calculate_savings_percentage(
+            total_on_demand_equivalent, total_used_commitment
         )
 
         # Convert totals to hourly averages using actual number of periods returned by AWS
         # (AWS may return fewer hours than requested due to data lag)
         actual_hours = len(utilizations)
-        actual_sp_cost_hourly = (
-            total_amortized_commitment / actual_hours if actual_hours > 0 else 0.0
+        actual_sp_cost_hourly = sp_calculations.average_to_hourly(
+            total_amortized_commitment, actual_hours
         )
-        on_demand_equivalent_hourly = (
-            total_on_demand_equivalent / actual_hours if actual_hours > 0 else 0.0
+        on_demand_equivalent_hourly = sp_calculations.average_to_hourly(
+            total_on_demand_equivalent, actual_hours
         )
-        net_savings_hourly = total_net_savings / actual_hours if actual_hours > 0 else 0.0
-        used_commitment_hourly = total_used_commitment / actual_hours if actual_hours > 0 else 0.0
+        net_savings_hourly = sp_calculations.average_to_hourly(total_net_savings, actual_hours)
+        used_commitment_hourly = sp_calculations.average_to_hourly(
+            total_used_commitment, actual_hours
+        )
 
         logger.info(
             f"Metrics for {plan_type}: {actual_hours} hours of data (requested {lookback_days * 24}), "
@@ -484,10 +481,8 @@ def get_savings_plans_summary(
 
     # Calculate overall SP discount rate using used commitment (excludes waste from underutilization)
     # This gives the true discount rate across all SP types
-    overall_savings_percentage = (
-        ((total_on_demand_equivalent - total_used_commitment) / total_on_demand_equivalent * 100.0)
-        if total_on_demand_equivalent > 0
-        else 0.0
+    overall_savings_percentage = sp_calculations.calculate_savings_percentage(
+        total_on_demand_equivalent, total_used_commitment
     )
 
     actual_savings = {
