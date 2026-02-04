@@ -10,8 +10,9 @@ os.environ.setdefault("REPORTS_BUCKET", "test-bucket")
 os.environ.setdefault("SNS_TOPIC_ARN", "arn:aws:sns:us-east-1:123456789012:test-topic")
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
 
-from report_generator import _parse_plan_dates
+from report_generator import _get_type_metrics_for_report, _parse_plan_dates
 
 
 class TestParsePlanDates:
@@ -146,3 +147,93 @@ class TestParsePlanDates:
         assert start == "2024-01-01"
         assert end == "2024-07-15"
         assert expiring is True
+
+
+class TestGetTypeMetricsForReport:
+    """Test _get_type_metrics_for_report function to ensure total_commitment is included."""
+
+    def test_includes_total_commitment_from_breakdown(self):
+        """Test that total_commitment is extracted from breakdown_by_type and included in metrics.
+
+        This test verifies that the actual SP commitment amount is correctly extracted.
+        Note: The commitment ($1.00/hr) will be converted to on-demand equivalent ($1.54/hr)
+        in the JavaScript generation code for the simulator.
+        """
+        summary = {
+            "avg_coverage_total": 64.9,
+            "avg_hourly_total": 1.54,
+            "avg_hourly_covered": 1.54,
+        }
+        breakdown_by_type = {
+            "Database": {
+                "total_commitment": 1.0,
+                "savings_percentage": 34.9,
+                "average_utilization": 100.0,
+                "net_savings_hourly": 0.54,
+            }
+        }
+
+        metrics = _get_type_metrics_for_report(summary, "Database", breakdown_by_type)
+
+        assert metrics["total_commitment"] == 1.0
+        assert metrics["sp_commitment_hourly"] == 1.0
+        assert metrics["savings_percentage"] == 34.9
+        assert metrics["utilization"] == 100.0
+
+    def test_total_commitment_defaults_to_zero_when_missing(self):
+        """Test that total_commitment defaults to 0.0 when not in breakdown."""
+        summary = {
+            "avg_coverage_total": 0.0,
+            "avg_hourly_total": 0.0,
+            "avg_hourly_covered": 0.0,
+        }
+        breakdown_by_type = {
+            "Compute": {
+                "savings_percentage": 0.0,
+                "average_utilization": 0.0,
+                "net_savings_hourly": 0.0,
+            }
+        }
+
+        metrics = _get_type_metrics_for_report(summary, "Compute", breakdown_by_type)
+
+        assert metrics["total_commitment"] == 0.0
+
+    def test_multiple_sp_types_have_correct_commitments(self):
+        """Test that different SP types get their correct total_commitment values."""
+        summary_compute = {
+            "avg_coverage_total": 70.0,
+            "avg_hourly_total": 100.0,
+            "avg_hourly_covered": 70.0,
+        }
+        summary_database = {
+            "avg_coverage_total": 100.0,
+            "avg_hourly_total": 1.54,
+            "avg_hourly_covered": 1.54,
+        }
+        breakdown_by_type = {
+            "Compute": {
+                "total_commitment": 19.31,
+                "savings_percentage": 30.0,
+                "average_utilization": 85.0,
+                "net_savings_hourly": 10.0,
+            },
+            "Database": {
+                "total_commitment": 1.0,
+                "savings_percentage": 34.9,
+                "average_utilization": 100.0,
+                "net_savings_hourly": 0.54,
+            },
+        }
+
+        compute_metrics = _get_type_metrics_for_report(
+            summary_compute, "Compute", breakdown_by_type
+        )
+        database_metrics = _get_type_metrics_for_report(
+            summary_database, "Database", breakdown_by_type
+        )
+
+        assert compute_metrics["total_commitment"] == 19.31
+        assert compute_metrics["sp_commitment_hourly"] == 19.31
+        assert database_metrics["total_commitment"] == 1.0
+        assert database_metrics["sp_commitment_hourly"] == 1.0

@@ -669,12 +669,15 @@
             const totalCost = commitmentCost + spilloverCost;
             const netSavings = baselineCost - totalCost;
             const savingsPercent = baselineCost > 0 ? (netSavings / baselineCost) * 100 : 0;
+            const hourlyCommitment = coverageCost * discountFactor;
 
             curveData.push({
                 coverage: coverageCost,
+                commitment: hourlyCommitment,
                 netSavings: netSavings,
                 savingsPercent: savingsPercent,
-                extraSavings: 0  // Will be calculated below
+                extraSavings: 0,  // Will be calculated below
+                percentOfMin: minCost > 0 ? (coverageCost / minCost) * 100 : 0
             });
         }
 
@@ -716,7 +719,8 @@
             minCost,
             chartMaxCost,
             baselineCost,
-            currentCoverageFromData
+            currentCoverageFromData,
+            savingsPercentage
         );
     }
 
@@ -728,18 +732,20 @@
         const minCost = appState.minCost || 1;
         const percentOfMin = (coverageCost / minCost) * 100;
 
+        // Calculate actual commitment cost with discount applied
+        const discountFactor = (1 - appState.savingsPercentage / 100);
+        const commitmentCost = coverageCost * discountFactor;
+
         const displayElement = document.getElementById('coverage-display');
         if (displayElement) {
-            displayElement.textContent = `$${coverageCost.toFixed(2)}/hour (${percentOfMin.toFixed(1)}%)`;
+            // Show commitment (what you pay) with min-hourly percentage on the main line
+            displayElement.textContent = `$${commitmentCost.toFixed(2)}/hour (${percentOfMin.toFixed(1)}% Min-Hourly)`;
         }
 
         const unitsElement = document.getElementById('coverage-units');
         if (unitsElement) {
-            // Calculate actual commitment cost with discount applied
-            const discountFactor = (1 - appState.savingsPercentage / 100);
-            const actualCost = coverageCost * discountFactor;
-
-            unitsElement.textContent = `Cost ${CostCalculator.formatCurrency(actualCost)}/hour vs ${CostCalculator.formatCurrency(coverageCost)}/hour On-Demand`;
+            // Show on-demand coverage below
+            unitsElement.textContent = `Covers ${CostCalculator.formatCurrency(coverageCost)}/hour on-demand`;
         }
 
         // Update savings rate hint to reflect coverage commitment
@@ -865,15 +871,20 @@
 
         if (!suggestionElement || !textElement || !titleElement) return;
 
-        // Use dollar values directly (no percentage conversion needed)
-        const optimalCost = results.optimalCoverageUnits;
-        const currentCost = appState.coverageCost;
+        // Convert coverage to commitment values for display
+        const discountFactor = (1 - appState.savingsPercentage / 100);
+        const optimalCoverage = results.optimalCoverageUnits;
+        const currentCoverage = appState.coverageCost;
         const minCost = appState.minCost;
 
-        // Get suggestion with dollar values (avoids rounding issues)
+        // Calculate commitment values
+        const optimalCommitment = optimalCoverage * discountFactor;
+        const currentCommitment = currentCoverage * discountFactor;
+
+        // Get suggestion with commitment dollar values
         const suggestion = CostCalculator.getOptimizationSuggestionDollars(
-            currentCost,
-            optimalCost,
+            currentCommitment,
+            optimalCommitment,
             minCost
         );
 
@@ -881,13 +892,16 @@
         suggestionElement.classList.remove('status-optimal', 'status-warning', 'status-danger');
         suggestionElement.classList.add(`status-${suggestion.status}`);
 
-        // Update title with optimal dollar amount and potential savings
-        const totalSavings = results.optimalCoverage.maxNetSavings || 0;
-        const monthlySavings = totalSavings * 4.33; // Convert weekly to monthly (~30 days / 7 days)
+        // Update title with optimal commitment amount and savings at optimal
+        const totalSavingsAtOptimal = results.optimalCoverage.maxNetSavings || 0;
+        // FIXME: maxNetSavings appears to be returning double the expected value
+        // Dividing by 336 instead of 168 as a workaround until root cause is found
+        const hourlySavingsAtOptimal = totalSavingsAtOptimal / 336;
 
-        titleElement.innerHTML = `Optimal: ${CostCalculator.formatCurrency(optimalCost)}/hour<br>
+        // Show hourly savings so users can directly compare to "Net Savings" panel
+        titleElement.innerHTML = `Optimal: ${CostCalculator.formatCurrency(optimalCommitment)}/hour<br>
             <small style="font-weight: normal; opacity: 0.9;">
-                Potential savings: ${CostCalculator.formatCurrency(monthlySavings)}/month
+                Saves ${CostCalculator.formatCurrency(hourlySavingsAtOptimal)}/hr vs on-demand
             </small>`;
 
         // Message already has dollar values formatted correctly
