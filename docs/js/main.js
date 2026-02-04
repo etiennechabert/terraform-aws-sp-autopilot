@@ -884,27 +884,30 @@
         const optimalCommitment = commitmentFromCoverage(optimalCoverage, appState.savingsPercentage);
         const currentCommitment = commitmentFromCoverage(currentCoverage, appState.savingsPercentage);
 
-        // Get suggestion with commitment dollar values
+        // Calculate hourly savings for both current and optimal
+        const totalSavingsAtOptimal = results.optimalCoverage.maxNetSavings || 0;
+        const hourlySavingsAtOptimal = totalSavingsAtOptimal / 336;
+        const currentHourlySavings = results.savings / hoursPerWeek;
+        const additionalSavings = hourlySavingsAtOptimal - currentHourlySavings;
+
+        // Get suggestion with commitment dollar values and additional savings
         const suggestion = CostCalculator.getOptimizationSuggestionDollars(
             currentCommitment,
             optimalCommitment,
-            minCost
+            minCost,
+            additionalSavings
         );
 
         // Update status class
         suggestionElement.classList.remove('status-optimal', 'status-warning', 'status-danger');
         suggestionElement.classList.add(`status-${suggestion.status}`);
 
-        // Update title with optimal commitment amount and savings at optimal
-        const totalSavingsAtOptimal = results.optimalCoverage.maxNetSavings || 0;
-        // FIXME: maxNetSavings appears to be returning double the expected value
+        // Show optimal commitment with current in parentheses, and both optimal and current savings
+        // Note: FIXME comment above - maxNetSavings appears to be returning double the expected value
         // Dividing by 336 instead of 168 as a workaround until root cause is found
-        const hourlySavingsAtOptimal = totalSavingsAtOptimal / 336;
-
-        // Show hourly savings so users can directly compare to "Net Savings" panel
-        titleElement.innerHTML = `Optimal: ${CostCalculator.formatCurrency(optimalCommitment)}/hour<br>
+        titleElement.innerHTML = `Optimal Commitment: ${CostCalculator.formatCurrency(optimalCommitment)}/hour (${CostCalculator.formatCurrency(currentCommitment)}/hr)<br>
             <small style="font-weight: normal; opacity: 0.9;">
-                Saves ${CostCalculator.formatCurrency(hourlySavingsAtOptimal)}/hr vs on-demand
+                Would save ${CostCalculator.formatCurrency(hourlySavingsAtOptimal)}/hr vs on-demand (current commitment savings: ${CostCalculator.formatCurrency(currentHourlySavings)}/hr)
             </small>`;
 
         // Message already has dollar values formatted correctly

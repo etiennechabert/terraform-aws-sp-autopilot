@@ -370,9 +370,10 @@ const CostCalculator = (function() {
      * @param {number} currentCost - Current commitment in $/hour
      * @param {number} optimalCost - Optimal commitment in $/hour
      * @param {number} minCost - Minimum cost for percentage calculation
+     * @param {number} additionalSavings - Additional savings gained by reaching optimal ($/hour)
      * @returns {Object} Suggestion with status and message
      */
-    function getOptimizationSuggestionDollars(currentCost, optimalCost, minCost) {
+    function getOptimizationSuggestionDollars(currentCost, optimalCost, minCost, additionalSavings = 0) {
         const difference = Math.abs(currentCost - optimalCost);
         const percentDiff = minCost > 0 ? (difference / minCost) * 100 : 0;
 
@@ -388,7 +389,7 @@ const CostCalculator = (function() {
             status = 'warning';
             icon = '⚠️';
             if (currentCost < optimalCost) {
-                message = `Increase to ${formatCurrency(optimalCost)}/hr (current: ${formatCurrency(currentCost)}/hr) to unlock ${formatCurrency(difference)}/hr more savings.`;
+                message = `Increase commitment by ${formatCurrency(difference)}/hr to reach optimal and unlock ${formatCurrency(additionalSavings)}/hr more savings.`;
             } else {
                 message = `Decrease to ${formatCurrency(optimalCost)}/hr (current: ${formatCurrency(currentCost)}/hr) to reduce waste.`;
             }
@@ -396,7 +397,7 @@ const CostCalculator = (function() {
             status = 'danger';
             icon = '🔴';
             if (currentCost < optimalCost) {
-                message = `Commitment significantly below optimal. Increase to ${formatCurrency(optimalCost)}/hr (current: ${formatCurrency(currentCost)}/hr) to unlock ${formatCurrency(difference)}/hr more savings potential.`;
+                message = `Increase commitment by ${formatCurrency(difference)}/hr to reach optimal and unlock ${formatCurrency(additionalSavings)}/hr more savings.`;
             } else {
                 message = `Commitment significantly above optimal. Decrease to ${formatCurrency(optimalCost)}/hr (current: ${formatCurrency(currentCost)}/hr) to reduce waste.`;
             }
