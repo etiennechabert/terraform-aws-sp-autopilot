@@ -810,15 +810,25 @@
         if (savingsElement) {
             savingsElement.textContent = CostCalculator.formatCurrency(results.savings / hoursPerWeek) + '/hr';
 
-            // Change color based on positive/negative savings
+            // Change color based on zone if available
             const savingsContainer = savingsElement.closest('.metric-item');
             if (savingsContainer) {
-                if (results.savings < 0) {
-                    savingsContainer.classList.remove('success');
-                    savingsContainer.classList.add('danger');
+                // Remove all zone and status classes
+                savingsContainer.classList.remove(
+                    'success', 'danger', 'warning',
+                    'building', 'gaining', 'wasting', 'very-bad', 'losing-money'
+                );
+
+                // Apply zone-based class if we have zone info
+                if (results.currentZone && results.currentZone.zone) {
+                    savingsContainer.classList.add(results.currentZone.zone);
                 } else {
-                    savingsContainer.classList.remove('danger');
-                    savingsContainer.classList.add('success');
+                    // Fallback to old logic
+                    if (results.savings < 0) {
+                        savingsContainer.classList.add('danger');
+                    } else {
+                        savingsContainer.classList.add('success');
+                    }
                 }
             }
         }
@@ -891,16 +901,27 @@
         const currentHourlySavings = results.savings / hoursPerWeek;
         const additionalSavings = hourlySavingsAtOptimal - currentHourlySavings;
 
-        // Get suggestion with commitment dollar values and additional savings
+        // Detect which zone the current coverage is in
+        const zoneInfo = CostCalculator.detectCoverageZone(
+            currentCoverage,
+            appState.hourlyCosts || [],
+            appState.savingsPercentage
+        );
+
+        // Get suggestion with commitment dollar values, additional savings, and zone info
         const suggestion = CostCalculator.getOptimizationSuggestionDollars(
             currentCommitment,
             optimalCommitment,
             minCost,
-            additionalSavings
+            additionalSavings,
+            zoneInfo
         );
 
-        // Update status class
-        suggestionElement.classList.remove('status-optimal', 'status-warning', 'status-danger');
+        // Update status class - remove all old classes first
+        suggestionElement.classList.remove(
+            'status-optimal', 'status-warning', 'status-danger',
+            'status-building', 'status-gaining', 'status-wasting', 'status-very-bad', 'status-losing-money'
+        );
         suggestionElement.classList.add(`status-${suggestion.status}`);
 
         // Show optimal commitment with current in parentheses, and both optimal and current savings
@@ -913,6 +934,9 @@
 
         // Message already has dollar values formatted correctly
         textElement.textContent = `${suggestion.icon} ${suggestion.message}`;
+
+        // Store zone info for use in metrics display
+        currentCostResults.currentZone = zoneInfo;
     }
 
     /**
