@@ -798,7 +798,6 @@ def generate_html_report(
     total_commitment = data["total_commitment"]
     average_utilization = data["average_utilization"]
     utilization_class = data["utilization_class"]
-    on_demand_equivalent_hourly = data["on_demand_equivalent_hourly"]
     breakdown_by_type = data["breakdown_by_type"]
 
     # Determine simulator base URL based on environment
