@@ -111,13 +111,13 @@ function calculateSavingsPercentage(onDemandCost, usedCommitment) {
  *
  * @param {number} onDemandCost - What the workload would have cost at on-demand rates
  * @param {number} totalCommitment - Total commitment amount (includes unused portion)
- * @param {number} utilizationPercentage - What % of commitment was actually used (0-100)
  * @returns {number} Effective savings percentage including waste (0-100, can be negative)
  *
  * @example
  * // 50% discount but only 80% utilization
- * calculateEffectiveSavingsRate(100.0, 50.0, 80.0); // Returns 40.0
- * // You saved $40 net: paid $50, would have paid $100, but $10 was waste
+ * // On-demand: $100, Paid: $50 total (includes $10 waste)
+ * calculateEffectiveSavingsRate(100.0, 50.0); // Returns 50.0
+ * // You saved $50 net (on-demand - total paid)
  *
  * Formula: effective_savings = ((on_demand - total_commitment) / on_demand) * 100
  *
@@ -125,8 +125,9 @@ function calculateSavingsPercentage(onDemandCost, usedCommitment) {
  * - Can return negative values if you paid more than on-demand (over-committed)
  * - Returns 0 if on_demand_cost <= 0
  * - This is your "actual" savings rate after accounting for waste
+ * - The waste is already included in totalCommitment (used + unused)
  */
-function calculateEffectiveSavingsRate(onDemandCost, totalCommitment, utilizationPercentage) {
+function calculateEffectiveSavingsRate(onDemandCost, totalCommitment) {
     if (onDemandCost <= 0) {
         return 0;
     }

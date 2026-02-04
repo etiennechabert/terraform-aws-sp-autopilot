@@ -146,7 +146,6 @@ def average_to_hourly(total: float, num_hours: int) -> float:
 def calculate_effective_savings_rate(
     on_demand_cost: float,
     total_commitment: float,
-    utilization_percentage: float,
 ) -> float:
     """
     Calculate effective savings rate including waste from unused commitment.
@@ -159,15 +158,15 @@ def calculate_effective_savings_rate(
     Args:
         on_demand_cost: What the workload would have cost at on-demand rates
         total_commitment: Total commitment amount (includes unused portion)
-        utilization_percentage: What % of commitment was actually used (0-100)
 
     Returns:
         Effective savings percentage including waste (0-100, can be negative)
 
     Example:
-        >>> # 50% off but only 80% utilization
-        >>> calculate_effective_savings_rate(100.0, 50.0, 80.0)
-        40.0  # You saved $40 net: paid $50, would have paid $100, but $10 was waste
+        >>> # 50% discount but only 80% utilization
+        >>> # On-demand: $100, Paid: $50 total (includes $10 waste)
+        >>> calculate_effective_savings_rate(100.0, 50.0)
+        50.0  # You saved $50 net (on-demand - total paid)
 
     Formula:
         effective_savings = ((on_demand - total_commitment) / on_demand) * 100
@@ -176,6 +175,7 @@ def calculate_effective_savings_rate(
         - Can return negative values if you paid more than on-demand (over-committed)
         - Returns 0.0 if on_demand_cost <= 0
         - This is your "actual" savings rate after accounting for waste
+        - The waste is already included in total_commitment (used + unused)
     """
     if on_demand_cost <= 0:
         return 0.0

@@ -86,8 +86,7 @@ const CostCalculator = (function() {
         const totalSavings = totalOnDemandCost - totalSavingsPlanCost;
         const savingsPercentageActual = calculateEffectiveSavingsRate(
             totalOnDemandCost,
-            totalSavingsPlanCost,
-            0  // utilization not needed for this calculation
+            totalSavingsPlanCost
         );
 
         // Calculate optimal coverage

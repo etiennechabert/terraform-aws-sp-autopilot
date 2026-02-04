@@ -168,32 +168,32 @@ class TestCalculateEffectiveSavingsRate:
 
     def test_full_utilization(self):
         """Test with 100% utilization (no waste)."""
-        # $100 on-demand, $65 commitment, 100% used = 35% savings
-        result = sp_calculations.calculate_effective_savings_rate(100.0, 65.0, 100.0)
+        # $100 on-demand, $65 total commitment (all used) = 35% savings
+        result = sp_calculations.calculate_effective_savings_rate(100.0, 65.0)
         assert result == 35.0
 
     def test_partial_utilization(self):
         """Test with partial utilization (has waste)."""
-        # $100 on-demand, $70 commitment, 70% used = 30% effective savings
-        result = sp_calculations.calculate_effective_savings_rate(100.0, 70.0, 70.0)
+        # $100 on-demand, $70 total commitment (includes waste) = 30% effective savings
+        result = sp_calculations.calculate_effective_savings_rate(100.0, 70.0)
         assert result == 30.0
 
     def test_over_commitment(self):
         """Test when commitment exceeds on-demand (negative savings)."""
         # Paid more for SP than on-demand would cost
-        result = sp_calculations.calculate_effective_savings_rate(100.0, 120.0, 50.0)
+        result = sp_calculations.calculate_effective_savings_rate(100.0, 120.0)
         assert result == -20.0
 
     def test_zero_on_demand(self):
         """Test with zero on-demand cost."""
-        result = sp_calculations.calculate_effective_savings_rate(0.0, 50.0, 0.0)
+        result = sp_calculations.calculate_effective_savings_rate(0.0, 50.0)
         assert result == 0.0
 
     def test_realistic_scenario(self):
         """Test with realistic values."""
-        # On-demand would be $10k, committed $7k, used 85% = 15% waste
+        # On-demand would be $10k, total commitment $7k (includes any waste)
         # Effective savings: (10000 - 7000) / 10000 = 30%
-        result = sp_calculations.calculate_effective_savings_rate(10000.0, 7000.0, 85.0)
+        result = sp_calculations.calculate_effective_savings_rate(10000.0, 7000.0)
         assert result == 30.0
 
 
