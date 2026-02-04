@@ -875,16 +875,14 @@
 
         if (!suggestionElement || !textElement || !titleElement) return;
 
-        // Convert coverage to commitment values for display
-        // NOTE: This is equivalent to commitmentFromCoverage() in spCalculations.js
-        const discountFactor = (1 - appState.savingsPercentage / 100);
+        // Convert coverage to commitment values for display using central calculation module
         const optimalCoverage = results.optimalCoverageUnits;
         const currentCoverage = appState.coverageCost;
         const minCost = appState.minCost;
 
-        // Calculate commitment values
-        const optimalCommitment = optimalCoverage * discountFactor;
-        const currentCommitment = currentCoverage * discountFactor;
+        // Calculate commitment values using centralized function
+        const optimalCommitment = commitmentFromCoverage(optimalCoverage, appState.savingsPercentage);
+        const currentCommitment = commitmentFromCoverage(currentCoverage, appState.savingsPercentage);
 
         // Get suggestion with commitment dollar values
         const suggestion = CostCalculator.getOptimizationSuggestionDollars(

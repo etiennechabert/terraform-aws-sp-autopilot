@@ -39,12 +39,16 @@ def _get_type_metrics_for_report(
 
     discount_pct = type_savings_pct if current_coverage > 0 and type_savings_pct > 0 else 0.0
 
+    # Pre-calculate on-demand equivalent coverage to avoid formula duplication in JavaScript
+    on_demand_coverage = sp_calculations.coverage_from_commitment(total_commitment, discount_pct)
+
     return {
         "current_coverage": current_coverage,
         "utilization": type_utilization,
         "actual_savings_hourly": net_savings_hourly,
         "savings_percentage": discount_pct,
         "sp_commitment_hourly": total_commitment,
+        "on_demand_coverage_hourly": on_demand_coverage,  # Pre-calculated to eliminate JS duplication
         "uncovered_spend_hourly": uncovered_spend_hourly,
         "total_spend_hourly": total_spend_hourly,
         "total_commitment": total_commitment,
@@ -1520,15 +1524,8 @@ def generate_html_report(
                 const minHourly = stats.min || 0;
                 const spCommitmentHourly = metrics.sp_commitment_hourly || 0;
 
-                // Calculate commitment as on-demand equivalent coverage for chart positioning
-                // Commitment is what you pay; convert to on-demand equivalent for comparison
-                // NOTE: This formula is duplicated from docs/js/spCalculations.js::coverageFromCommitment()
-                // Keep in sync with JavaScript module or pre-calculate in Python
-                const savingsPct = metrics.savings_percentage || 0;
-                const discountRate = savingsPct / 100;
-                const onDemandEquivalent = spCommitmentHourly > 0 && discountRate < 1
-                    ? spCommitmentHourly / (1 - discountRate)
-                    : spCommitmentHourly;
+                // Get pre-calculated on-demand equivalent (calculated in Python to eliminate duplication)
+                const onDemandEquivalent = metrics.on_demand_coverage_hourly || 0;
 
                 // Calculate coverage as % of min-hourly
                 const coverageMinHourlyPct = minHourly > 0 ? (onDemandEquivalent / minHourly) * 100 : 0;
@@ -1713,16 +1710,8 @@ def generate_html_report(
                 // Use type-specific savings percentage if available, otherwise use conservative 20% default
                 const savingsPercentage = metrics.savings_percentage > 0 ? metrics.savings_percentage : 20;
 
-                // Convert SP commitment to on-demand equivalent coverage
-                // Commitment is what you pay, coverage is the on-demand equivalent it covers
-                // Formula: coverage = commitment / (1 - discount_rate)
-                // NOTE: This formula is duplicated from docs/js/spCalculations.js::coverageFromCommitment()
-                // Keep in sync with JavaScript module or pre-calculate in Python
-                const commitment = metrics.total_commitment || 0;
-                const discountRate = savingsPercentage / 100;
-                const currentCoverageDollars = commitment > 0 && discountRate < 1
-                    ? commitment / (1 - discountRate)
-                    : commitment;
+                // Get pre-calculated on-demand equivalent (calculated in Python to eliminate duplication)
+                const currentCoverageDollars = metrics.on_demand_coverage_hourly || 0;
 
                 const usageData = {{
                     hourly_costs: hourlyCosts,
@@ -1775,15 +1764,8 @@ def generate_html_report(
                                 if (metrics.current_coverage === 0) return 'N/A';
                                 const minHourly = stats?.min || 0;
                                 if (minHourly === 0) return 'N/A';
-                                // Convert commitment to on-demand equivalent for comparison
-                                const commitment = metrics.sp_commitment_hourly || 0;
-                                const savingsPct = metrics.savings_percentage || 0;
-                                // NOTE: This formula is duplicated from docs/js/spCalculations.js::coverageFromCommitment()
-                                // Keep in sync with JavaScript module or pre-calculate in Python
-                                const discountRate = savingsPct / 100;
-                                const onDemandEquiv = commitment > 0 && discountRate < 1
-                                    ? commitment / (1 - discountRate)
-                                    : commitment;
+                                // Get pre-calculated on-demand equivalent (calculated in Python to eliminate duplication)
+                                const onDemandEquiv = metrics.on_demand_coverage_hourly || 0;
                                 const coverageMinHourlyPct = (onDemandEquiv / minHourly) * 100;
                                 return coverageMinHourlyPct.toFixed(1) + '%';
                             }})()

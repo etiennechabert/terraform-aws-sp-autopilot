@@ -862,10 +862,8 @@ const ChartManager = (function() {
 
         // Add current coverage line if provided and within range
         if (currentCoverage && currentCoverage > 0 && currentCoverage <= maxCost) {
-            // Calculate commitment directly using the discount factor for precision
-            // NOTE: This is equivalent to commitmentFromCoverage() in spCalculations.js
-            const discountFactor = savingsPercentage ? (1 - savingsPercentage / 100) : 1;
-            const currentCommitment = currentCoverage * discountFactor;
+            // Calculate commitment using centralized function
+            const currentCommitment = commitmentFromCoverage(currentCoverage, savingsPercentage || 0);
 
             // Calculate percentage of min-hourly
             const percentOfMin = minCost > 0 ? (currentCoverage / minCost * 100).toFixed(1) : '0.0';

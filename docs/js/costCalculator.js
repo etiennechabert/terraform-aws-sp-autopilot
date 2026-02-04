@@ -82,12 +82,13 @@ const CostCalculator = (function() {
             });
         }
 
-        // Calculate savings
-        // NOTE: This is equivalent to calculateEffectiveSavingsRate() in spCalculations.js
+        // Calculate effective savings rate using centralized function
         const totalSavings = totalOnDemandCost - totalSavingsPlanCost;
-        const savingsPercentageActual = totalOnDemandCost > 0
-            ? (totalSavings / totalOnDemandCost) * 100
-            : 0;
+        const savingsPercentageActual = calculateEffectiveSavingsRate(
+            totalOnDemandCost,
+            totalSavingsPlanCost,
+            0  // utilization not needed for this calculation
+        );
 
         // Calculate optimal coverage
         const optimalCoverage = calculateOptimalCoverage(
