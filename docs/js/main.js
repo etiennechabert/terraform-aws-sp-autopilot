@@ -897,8 +897,11 @@
         // Calculate hourly savings for both current and optimal
         const hoursPerWeek = 168;
         const totalSavingsAtOptimal = results.optimalCoverage.maxNetSavings || 0;
-        const hourlySavingsAtOptimal = totalSavingsAtOptimal / 336;
-        const currentHourlySavings = results.savings / hoursPerWeek;
+        const totalSavingsCurrent = results.savings || 0;
+
+        // Both are weekly totals, so divide by same value to get hourly
+        const hourlySavingsAtOptimal = totalSavingsAtOptimal / hoursPerWeek;
+        const currentHourlySavings = totalSavingsCurrent / hoursPerWeek;
         const additionalSavings = hourlySavingsAtOptimal - currentHourlySavings;
 
         // Detect which zone the current coverage is in
@@ -925,8 +928,6 @@
         suggestionElement.classList.add(`status-${suggestion.status}`);
 
         // Show optimal commitment with current in parentheses, and both optimal and current savings
-        // Note: FIXME comment above - maxNetSavings appears to be returning double the expected value
-        // Dividing by 336 instead of 168 as a workaround until root cause is found
         titleElement.innerHTML = `Optimal Commitment: ${CostCalculator.formatCurrency(optimalCommitment)}/hour (vs current ${CostCalculator.formatCurrency(currentCommitment)}/hr)<br>
             <small style="font-weight: normal; opacity: 0.9;">
                 Would save ${CostCalculator.formatCurrency(hourlySavingsAtOptimal)}/hr vs on-demand (current commitment savings: ${CostCalculator.formatCurrency(currentHourlySavings)}/hr)
