@@ -193,12 +193,14 @@ def _process_utilization_data(utilizations: list[dict[str, Any]]) -> dict[str, A
     total_net_savings = 0.0
     total_on_demand_equivalent = 0.0
     total_amortized_commitment = 0.0
+    total_used_commitment = 0.0
 
     for util_item in utilizations:
         time_period = util_item.get("TimePeriod", {})
 
         utilization = util_item.get("Utilization", {})
         utilization_percentage = utilization.get("UtilizationPercentage")
+        used_commitment = utilization.get("UsedCommitment", "0")
 
         if utilization_percentage:
             util_pct = float(utilization_percentage)
@@ -222,6 +224,7 @@ def _process_utilization_data(utilizations: list[dict[str, Any]]) -> dict[str, A
         total_net_savings += float(net_savings)
         total_on_demand_equivalent += float(on_demand_equivalent)
         total_amortized_commitment += float(amortized_commitment)
+        total_used_commitment += float(used_commitment)
 
     return {
         "total_utilization": total_utilization,
@@ -230,6 +233,7 @@ def _process_utilization_data(utilizations: list[dict[str, Any]]) -> dict[str, A
         "total_net_savings": total_net_savings,
         "total_on_demand_equivalent": total_on_demand_equivalent,
         "total_amortized_commitment": total_amortized_commitment,
+        "total_used_commitment": total_used_commitment,
     }
 
 
@@ -331,11 +335,21 @@ def get_savings_plans_metrics(
         total_net_savings = processed["total_net_savings"]
         total_on_demand_equivalent = processed["total_on_demand_equivalent"]
         total_amortized_commitment = processed["total_amortized_commitment"]
+        total_used_commitment = processed["total_used_commitment"]
 
         # Calculate averages
         average_utilization = total_utilization / count if count > 0 else 0.0
+
+        # Calculate SP discount rate using used commitment (excludes waste from underutilization)
+        # This gives the inherent discount rate of the SP plan
+        # Formula: (OnDemandCost - UsedCommitment) / OnDemandCost
+        # vs old formula that included waste: NetSavings / OnDemandCost
         savings_percentage = (
-            (total_net_savings / total_on_demand_equivalent * 100.0)
+            (
+                (total_on_demand_equivalent - total_used_commitment)
+                / total_on_demand_equivalent
+                * 100.0
+            )
             if total_on_demand_equivalent > 0
             else 0.0
         )
