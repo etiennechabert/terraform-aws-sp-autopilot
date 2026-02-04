@@ -47,11 +47,12 @@ def _aggregate_type_metrics(
     breakdown_by_type: dict[str, Any],
     lookback_days: int,
     granularity: str,
-) -> tuple[float, float, float]:
-    """Fetch and aggregate per-type metrics. Returns (net_savings, on_demand_equivalent, sp_cost)."""
+) -> tuple[float, float, float, float]:
+    """Fetch and aggregate per-type metrics. Returns (net_savings, on_demand_equivalent, sp_cost, used_commitment)."""
     total_net_savings = 0.0
     total_on_demand_equivalent = 0.0
     total_actual_sp_cost = 0.0
+    total_used_commitment = 0.0
 
     for plan_type in enabled_plan_types:
         type_metrics = get_savings_plans_metrics(ce_client, plan_type, lookback_days, granularity)
@@ -72,8 +73,14 @@ def _aggregate_type_metrics(
             total_net_savings += type_metrics["net_savings_hourly"]
             total_on_demand_equivalent += type_metrics["on_demand_equivalent_hourly"]
             total_actual_sp_cost += type_metrics["actual_sp_cost_hourly"]
+            total_used_commitment += type_metrics["used_commitment_hourly"]
 
-    return total_net_savings, total_on_demand_equivalent, total_actual_sp_cost
+    return (
+        total_net_savings,
+        total_on_demand_equivalent,
+        total_actual_sp_cost,
+        total_used_commitment,
+    )
 
 
 def _calculate_weighted_utilization(breakdown_by_type: dict[str, Any]) -> float:
@@ -193,12 +200,14 @@ def _process_utilization_data(utilizations: list[dict[str, Any]]) -> dict[str, A
     total_net_savings = 0.0
     total_on_demand_equivalent = 0.0
     total_amortized_commitment = 0.0
+    total_used_commitment = 0.0
 
     for util_item in utilizations:
         time_period = util_item.get("TimePeriod", {})
 
         utilization = util_item.get("Utilization", {})
         utilization_percentage = utilization.get("UtilizationPercentage")
+        used_commitment = utilization.get("UsedCommitment", "0")
 
         if utilization_percentage:
             util_pct = float(utilization_percentage)
@@ -222,6 +231,7 @@ def _process_utilization_data(utilizations: list[dict[str, Any]]) -> dict[str, A
         total_net_savings += float(net_savings)
         total_on_demand_equivalent += float(on_demand_equivalent)
         total_amortized_commitment += float(amortized_commitment)
+        total_used_commitment += float(used_commitment)
 
     return {
         "total_utilization": total_utilization,
@@ -230,6 +240,7 @@ def _process_utilization_data(utilizations: list[dict[str, Any]]) -> dict[str, A
         "total_net_savings": total_net_savings,
         "total_on_demand_equivalent": total_on_demand_equivalent,
         "total_amortized_commitment": total_amortized_commitment,
+        "total_used_commitment": total_used_commitment,
     }
 
 
@@ -322,6 +333,7 @@ def get_savings_plans_metrics(
                 "on_demand_equivalent_hourly": 0.0,
                 "net_savings_hourly": 0.0,
                 "savings_percentage": 0.0,
+                "used_commitment_hourly": 0.0,
             }
 
         processed = _process_utilization_data(utilizations)
@@ -331,11 +343,21 @@ def get_savings_plans_metrics(
         total_net_savings = processed["total_net_savings"]
         total_on_demand_equivalent = processed["total_on_demand_equivalent"]
         total_amortized_commitment = processed["total_amortized_commitment"]
+        total_used_commitment = processed["total_used_commitment"]
 
         # Calculate averages
         average_utilization = total_utilization / count if count > 0 else 0.0
+
+        # Calculate SP discount rate using used commitment (excludes waste from underutilization)
+        # This gives the inherent discount rate of the SP plan
+        # Formula: (OnDemandCost - UsedCommitment) / OnDemandCost
+        # vs old formula that included waste: NetSavings / OnDemandCost
         savings_percentage = (
-            (total_net_savings / total_on_demand_equivalent * 100.0)
+            (
+                (total_on_demand_equivalent - total_used_commitment)
+                / total_on_demand_equivalent
+                * 100.0
+            )
             if total_on_demand_equivalent > 0
             else 0.0
         )
@@ -350,6 +372,7 @@ def get_savings_plans_metrics(
             total_on_demand_equivalent / actual_hours if actual_hours > 0 else 0.0
         )
         net_savings_hourly = total_net_savings / actual_hours if actual_hours > 0 else 0.0
+        used_commitment_hourly = total_used_commitment / actual_hours if actual_hours > 0 else 0.0
 
         logger.info(
             f"Metrics for {plan_type}: {actual_hours} hours of data (requested {lookback_days * 24}), "
@@ -363,6 +386,7 @@ def get_savings_plans_metrics(
             "on_demand_equivalent_hourly": on_demand_equivalent_hourly,
             "net_savings_hourly": net_savings_hourly,
             "savings_percentage": savings_percentage,
+            "used_commitment_hourly": used_commitment_hourly,
         }
 
     except ClientError as e:
@@ -382,6 +406,7 @@ def get_savings_plans_metrics(
                 "on_demand_equivalent_hourly": 0.0,
                 "net_savings_hourly": 0.0,
                 "savings_percentage": 0.0,
+                "used_commitment_hourly": 0.0,
             }
 
         logger.error(
@@ -446,14 +471,21 @@ def get_savings_plans_summary(
 
     breakdown_by_type = _initialize_breakdown_by_type(plans)
 
-    total_net_savings, total_on_demand_equivalent, total_actual_sp_cost = _aggregate_type_metrics(
+    (
+        total_net_savings,
+        total_on_demand_equivalent,
+        total_actual_sp_cost,
+        total_used_commitment,
+    ) = _aggregate_type_metrics(
         ce_client, enabled_plan_types, breakdown_by_type, lookback_days, granularity
     )
 
     overall_utilization = _calculate_weighted_utilization(breakdown_by_type)
 
+    # Calculate overall SP discount rate using used commitment (excludes waste from underutilization)
+    # This gives the true discount rate across all SP types
     overall_savings_percentage = (
-        (total_net_savings / total_on_demand_equivalent * 100.0)
+        ((total_on_demand_equivalent - total_used_commitment) / total_on_demand_equivalent * 100.0)
         if total_on_demand_equivalent > 0
         else 0.0
     )
