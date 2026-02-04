@@ -901,27 +901,19 @@
         // Check if we're at optimal commitment (within 1% tolerance)
         const isAtOptimalCommitment = Math.abs(currentCommitment - optimalCommitment) < (optimalCommitment * 0.01);
 
-        // If at optimal, use current savings as the optimal savings (they're the same)
-        // Otherwise, calculate what optimal would save
+        // Calculate optimal savings
         let hourlySavingsAtOptimal;
         if (isAtOptimalCommitment) {
+            // At optimal: use current savings (they're the same)
             hourlySavingsAtOptimal = currentHourlySavings;
         } else {
-            // Calculate what we'd save at optimal coverage
-            const onDemandHourly = results.onDemandCost / hoursPerWeek;
-            const optimalCommitmentHourly = optimalCommitment;
-            const discountFactor = (1 - appState.savingsPercentage / 100);
+            // Not at optimal: use maxNetSavings from calculation
+            const totalSavingsAtOptimal = results.optimalCoverage.maxNetSavings || 0;
+            hourlySavingsAtOptimal = totalSavingsAtOptimal / hoursPerWeek;
 
-            // Estimate spillover at optimal
-            const hourlyCosts = appState.hourlyCosts || [];
-            let spilloverAtOptimal = 0;
-            for (let i = 0; i < hourlyCosts.length; i++) {
-                spilloverAtOptimal += Math.max(0, hourlyCosts[i] - optimalCoverage);
-            }
-            const spilloverHourlyAtOptimal = spilloverAtOptimal / hoursPerWeek;
-
-            const totalCostAtOptimal = optimalCommitmentHourly + spilloverHourlyAtOptimal;
-            hourlySavingsAtOptimal = onDemandHourly - totalCostAtOptimal;
+            // Ensure optimal never shows less savings than current (sanity check)
+            // Optimal should always save at least as much as any other point
+            hourlySavingsAtOptimal = Math.max(hourlySavingsAtOptimal, currentHourlySavings);
         }
 
         const additionalSavings = hourlySavingsAtOptimal - currentHourlySavings;
