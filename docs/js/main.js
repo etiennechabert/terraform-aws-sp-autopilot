@@ -790,25 +790,26 @@
      * Update metrics display
      */
     function updateMetricsDisplay(results) {
-        // Convert weekly costs to hourly rates (divide by 168 hours)
-        const hoursPerWeek = 168;
+        // Convert total costs to hourly rates
+        // Use actual number of hours in the data
+        const numHours = appState.hourlyCosts?.length || 168;
 
         // Pure On-Demand cost (baseline)
         const onDemandElement = document.getElementById('metric-ondemand');
         if (onDemandElement) {
-            onDemandElement.textContent = CostCalculator.formatCurrency(results.onDemandCost / hoursPerWeek) + '/hr';
+            onDemandElement.textContent = CostCalculator.formatCurrency(results.onDemandCost / numHours) + '/hr';
         }
 
         // Total Cost with SP (commitment + spillover)
         const savingsPlanElement = document.getElementById('metric-savingsplan');
         if (savingsPlanElement) {
-            savingsPlanElement.textContent = CostCalculator.formatCurrency(results.savingsPlanCost / hoursPerWeek) + '/hr';
+            savingsPlanElement.textContent = CostCalculator.formatCurrency(results.savingsPlanCost / numHours) + '/hr';
         }
 
         // Net Savings
         const savingsElement = document.getElementById('metric-savings');
         if (savingsElement) {
-            savingsElement.textContent = CostCalculator.formatCurrency(results.savings / hoursPerWeek) + '/hr';
+            savingsElement.textContent = CostCalculator.formatCurrency(results.savings / numHours) + '/hr';
 
             // Change color based on zone if available
             const savingsContainer = savingsElement.closest('.metric-item');
@@ -841,7 +842,7 @@
         // SP Commitment Cost
         const commitmentElement = document.getElementById('metric-commitment');
         if (commitmentElement) {
-            commitmentElement.textContent = CostCalculator.formatCurrency(results.commitmentCost / hoursPerWeek) + '/hr';
+            commitmentElement.textContent = CostCalculator.formatCurrency(results.commitmentCost / numHours) + '/hr';
         }
 
         const commitmentPctElement = document.getElementById('metric-commitment-pct');
@@ -855,7 +856,7 @@
         // Spillover Cost
         const spilloverElement = document.getElementById('metric-spillover');
         if (spilloverElement) {
-            spilloverElement.textContent = CostCalculator.formatCurrency(results.spilloverCost / hoursPerWeek) + '/hr';
+            spilloverElement.textContent = CostCalculator.formatCurrency(results.spilloverCost / numHours) + '/hr';
         }
 
         const spilloverPctElement = document.getElementById('metric-spillover-pct');
@@ -866,7 +867,7 @@
         // Wasted commitment
         const wasteElement = document.getElementById('metric-waste');
         if (wasteElement) {
-            wasteElement.textContent = CostCalculator.formatCurrency(results.wastedCommitment / hoursPerWeek) + '/hr';
+            wasteElement.textContent = CostCalculator.formatCurrency(results.wastedCommitment / numHours) + '/hr';
         }
 
         const wastePctElement = document.getElementById('metric-waste-pct');
@@ -895,8 +896,9 @@
         const currentCommitment = commitmentFromCoverage(currentCoverage, appState.savingsPercentage);
 
         // Calculate hourly savings
-        const hoursPerWeek = 168;
-        const currentHourlySavings = results.savings / hoursPerWeek;
+        // Use actual number of hours in the data, not hardcoded 168
+        const numHours = appState.hourlyCosts?.length || 168;
+        const currentHourlySavings = results.savings / numHours;
 
         // Check if we're at optimal commitment (within 1% tolerance)
         const isAtOptimalCommitment = Math.abs(currentCommitment - optimalCommitment) < (optimalCommitment * 0.01);
@@ -909,7 +911,7 @@
         } else {
             // Not at optimal: use maxNetSavings from calculation
             const totalSavingsAtOptimal = results.optimalCoverage.maxNetSavings || 0;
-            hourlySavingsAtOptimal = totalSavingsAtOptimal / hoursPerWeek;
+            hourlySavingsAtOptimal = totalSavingsAtOptimal / numHours;
 
             // Ensure optimal never shows less savings than current (sanity check)
             // Optimal should always save at least as much as any other point
@@ -945,7 +947,7 @@
         // Different wording when at optimal vs when not at optimal
         if (isAtOptimalCommitment) {
             // Already at optimal - show what you're currently saving
-            const savingsPercent = ((currentHourlySavings / (results.onDemandCost / hoursPerWeek)) * 100).toFixed(1);
+            const savingsPercent = ((currentHourlySavings / (results.onDemandCost / numHours)) * 100).toFixed(1);
             titleElement.innerHTML = `Optimal Commitment: ${CostCalculator.formatCurrency(optimalCommitment)}/hour<br>
                 <small style="font-weight: normal; opacity: 0.9;">
                     Saving ${CostCalculator.formatCurrency(currentHourlySavings)}/hr vs on-demand (${savingsPercent}% discount)
