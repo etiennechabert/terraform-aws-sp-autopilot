@@ -237,3 +237,26 @@ class TestGetTypeMetricsForReport:
         assert compute_metrics["sp_commitment_hourly"] == 19.31
         assert database_metrics["total_commitment"] == 1.0
         assert database_metrics["sp_commitment_hourly"] == 1.0
+
+    def test_on_demand_coverage_hourly_calculated_correctly(self):
+        """Test that on_demand_coverage_hourly is pre-calculated from commitment and savings percentage."""
+        summary = {
+            "avg_coverage_total": 100.0,
+            "avg_hourly_total": 1.54,
+            "avg_hourly_covered": 1.54,
+        }
+        breakdown_by_type = {
+            "Database": {
+                "total_commitment": 1.0,
+                "savings_percentage": 35.0,  # 35% discount
+                "average_utilization": 100.0,
+                "net_savings_hourly": 0.54,
+            }
+        }
+
+        metrics = _get_type_metrics_for_report(summary, "Database", breakdown_by_type)
+
+        # With 35% savings, $1.00 commitment covers $1.54 on-demand
+        # Formula: commitment / (1 - discount_rate) = 1.0 / (1 - 0.35) = 1.0 / 0.65 = 1.538
+        assert metrics["on_demand_coverage_hourly"] > 0
+        assert abs(metrics["on_demand_coverage_hourly"] - 1.538) < 0.01
