@@ -568,6 +568,9 @@ def _build_breakdown_table_html(
             else total_commitment_type
         )
 
+        # Calculate potential savings: what you'd pay on-demand minus what you pay with SP
+        potential_savings = on_demand_coverage_capacity - total_commitment_type
+
         plan_type_display = plan_type
         if "Compute" in plan_type:
             plan_type_display = "Compute Savings Plans"
@@ -585,7 +588,7 @@ def _build_breakdown_table_html(
                         <td class="metric">{type_utilization:.1f}%</td>
                         <td class="metric">${total_commitment_type:.2f}/hr</td>
                         <td class="metric">${on_demand_coverage_capacity:.2f}/hr</td>
-                        <td class="metric" style="color: #28a745;">${net_savings_hourly_type:.2f}/hr</td>
+                        <td class="metric" style="color: #28a745;">${potential_savings:.2f}/hr</td>
                     </tr>
 """
 
@@ -597,6 +600,9 @@ def _build_breakdown_table_html(
             else total_commitment
         )
 
+        # Calculate total potential savings
+        total_potential_savings = total_coverage_capacity - total_commitment
+
         html += f"""
                     <tr style="border-top: 2px solid #232f3e; font-weight: bold; background-color: #f8f9fa;">
                         <td><strong>Total</strong></td>
@@ -604,7 +610,7 @@ def _build_breakdown_table_html(
                         <td class="metric">{average_utilization:.1f}%</td>
                         <td class="metric">${total_commitment:.2f}/hr</td>
                         <td class="metric">${total_coverage_capacity:.2f}/hr</td>
-                        <td class="metric" style="color: #28a745;">${net_savings_hourly:.2f}/hr</td>
+                        <td class="metric" style="color: #28a745;">${total_potential_savings:.2f}/hr</td>
                     </tr>
 """
 
