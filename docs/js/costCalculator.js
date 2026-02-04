@@ -389,7 +389,7 @@ const CostCalculator = (function() {
             status = 'warning';
             icon = '⚠️';
             if (currentCost < optimalCost) {
-                message = `Increase commitment by ${formatCurrency(difference)}/hr to reach optimal and unlock ${formatCurrency(additionalSavings)}/hr more savings.`;
+                message = `Increase commitment by ${formatCurrency(difference)}/hr to reach optimal coverage and unlock ${formatCurrency(additionalSavings)}/hr more savings.`;
             } else {
                 message = `Decrease to ${formatCurrency(optimalCost)}/hr (current: ${formatCurrency(currentCost)}/hr) to reduce waste.`;
             }
@@ -397,7 +397,7 @@ const CostCalculator = (function() {
             status = 'danger';
             icon = '🔴';
             if (currentCost < optimalCost) {
-                message = `Increase commitment by ${formatCurrency(difference)}/hr to reach optimal and unlock ${formatCurrency(additionalSavings)}/hr more savings.`;
+                message = `Increase commitment by ${formatCurrency(difference)}/hr to reach optimal coverage and unlock ${formatCurrency(additionalSavings)}/hr more savings.`;
             } else {
                 message = `Commitment significantly above optimal. Decrease to ${formatCurrency(optimalCost)}/hr (current: ${formatCurrency(currentCost)}/hr) to reduce waste.`;
             }

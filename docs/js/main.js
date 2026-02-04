@@ -906,7 +906,7 @@
         // Show optimal commitment with current in parentheses, and both optimal and current savings
         // Note: FIXME comment above - maxNetSavings appears to be returning double the expected value
         // Dividing by 336 instead of 168 as a workaround until root cause is found
-        titleElement.innerHTML = `Optimal Commitment: ${CostCalculator.formatCurrency(optimalCommitment)}/hour (${CostCalculator.formatCurrency(currentCommitment)}/hr)<br>
+        titleElement.innerHTML = `Optimal Commitment: ${CostCalculator.formatCurrency(optimalCommitment)}/hour (vs current ${CostCalculator.formatCurrency(currentCommitment)}/hr)<br>
             <small style="font-weight: normal; opacity: 0.9;">
                 Would save ${CostCalculator.formatCurrency(hourlySavingsAtOptimal)}/hr vs on-demand (current commitment savings: ${CostCalculator.formatCurrency(currentHourlySavings)}/hr)
             </small>`;
