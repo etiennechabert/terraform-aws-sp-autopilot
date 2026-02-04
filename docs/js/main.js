@@ -894,14 +894,36 @@
         const optimalCommitment = commitmentFromCoverage(optimalCoverage, appState.savingsPercentage);
         const currentCommitment = commitmentFromCoverage(currentCoverage, appState.savingsPercentage);
 
-        // Calculate hourly savings for both current and optimal
+        // Calculate hourly savings
         const hoursPerWeek = 168;
-        const totalSavingsAtOptimal = results.optimalCoverage.maxNetSavings || 0;
-        const totalSavingsCurrent = results.savings || 0;
+        const currentHourlySavings = results.savings / hoursPerWeek;
 
-        // Both are weekly totals, so divide by same value to get hourly
-        const hourlySavingsAtOptimal = totalSavingsAtOptimal / hoursPerWeek;
-        const currentHourlySavings = totalSavingsCurrent / hoursPerWeek;
+        // Check if we're at optimal commitment (within 1% tolerance)
+        const isAtOptimalCommitment = Math.abs(currentCommitment - optimalCommitment) < (optimalCommitment * 0.01);
+
+        // If at optimal, use current savings as the optimal savings (they're the same)
+        // Otherwise, calculate what optimal would save
+        let hourlySavingsAtOptimal;
+        if (isAtOptimalCommitment) {
+            hourlySavingsAtOptimal = currentHourlySavings;
+        } else {
+            // Calculate what we'd save at optimal coverage
+            const onDemandHourly = results.onDemandCost / hoursPerWeek;
+            const optimalCommitmentHourly = optimalCommitment;
+            const discountFactor = (1 - appState.savingsPercentage / 100);
+
+            // Estimate spillover at optimal
+            const hourlyCosts = appState.hourlyCosts || [];
+            let spilloverAtOptimal = 0;
+            for (let i = 0; i < hourlyCosts.length; i++) {
+                spilloverAtOptimal += Math.max(0, hourlyCosts[i] - optimalCoverage);
+            }
+            const spilloverHourlyAtOptimal = spilloverAtOptimal / hoursPerWeek;
+
+            const totalCostAtOptimal = optimalCommitmentHourly + spilloverHourlyAtOptimal;
+            hourlySavingsAtOptimal = onDemandHourly - totalCostAtOptimal;
+        }
+
         const additionalSavings = hourlySavingsAtOptimal - currentHourlySavings;
 
         // Detect which zone the current coverage is in
@@ -929,16 +951,15 @@
 
         // Show optimal commitment with current in parentheses
         // Different wording when at optimal vs when not at optimal
-        const isAtOptimal = zoneInfo && zoneInfo.zone === 'gaining' && Math.abs(additionalSavings) < 0.10;
-
-        if (isAtOptimal) {
+        if (isAtOptimalCommitment) {
             // Already at optimal - show what you're currently saving
+            const savingsPercent = ((currentHourlySavings / (results.onDemandCost / hoursPerWeek)) * 100).toFixed(1);
             titleElement.innerHTML = `Optimal Commitment: ${CostCalculator.formatCurrency(optimalCommitment)}/hour<br>
                 <small style="font-weight: normal; opacity: 0.9;">
-                    Saving ${CostCalculator.formatCurrency(currentHourlySavings)}/hr vs on-demand (${((currentHourlySavings / (results.onDemandCost / hoursPerWeek)) * 100).toFixed(1)}% discount)
+                    Saving ${CostCalculator.formatCurrency(currentHourlySavings)}/hr vs on-demand (${savingsPercent}% discount)
                 </small>`;
         } else {
-            // Not at optimal - show what you could save at optimal
+            // Not at optimal - show what you could save at optimal vs what you're saving now
             titleElement.innerHTML = `Optimal Commitment: ${CostCalculator.formatCurrency(optimalCommitment)}/hour (vs current ${CostCalculator.formatCurrency(currentCommitment)}/hr)<br>
                 <small style="font-weight: normal; opacity: 0.9;">
                     Would save ${CostCalculator.formatCurrency(hourlySavingsAtOptimal)}/hr vs on-demand (current: ${CostCalculator.formatCurrency(currentHourlySavings)}/hr)
