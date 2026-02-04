@@ -927,11 +927,23 @@
         );
         suggestionElement.classList.add(`status-${suggestion.status}`);
 
-        // Show optimal commitment with current in parentheses, and both optimal and current savings
-        titleElement.innerHTML = `Optimal Commitment: ${CostCalculator.formatCurrency(optimalCommitment)}/hour (vs current ${CostCalculator.formatCurrency(currentCommitment)}/hr)<br>
-            <small style="font-weight: normal; opacity: 0.9;">
-                Would save ${CostCalculator.formatCurrency(hourlySavingsAtOptimal)}/hr vs on-demand (current commitment savings: ${CostCalculator.formatCurrency(currentHourlySavings)}/hr)
-            </small>`;
+        // Show optimal commitment with current in parentheses
+        // Different wording when at optimal vs when not at optimal
+        const isAtOptimal = zoneInfo && zoneInfo.zone === 'gaining' && Math.abs(additionalSavings) < 0.10;
+
+        if (isAtOptimal) {
+            // Already at optimal - show what you're currently saving
+            titleElement.innerHTML = `Optimal Commitment: ${CostCalculator.formatCurrency(optimalCommitment)}/hour<br>
+                <small style="font-weight: normal; opacity: 0.9;">
+                    Saving ${CostCalculator.formatCurrency(currentHourlySavings)}/hr vs on-demand (${((currentHourlySavings / (results.onDemandCost / hoursPerWeek)) * 100).toFixed(1)}% discount)
+                </small>`;
+        } else {
+            // Not at optimal - show what you could save at optimal
+            titleElement.innerHTML = `Optimal Commitment: ${CostCalculator.formatCurrency(optimalCommitment)}/hour (vs current ${CostCalculator.formatCurrency(currentCommitment)}/hr)<br>
+                <small style="font-weight: normal; opacity: 0.9;">
+                    Would save ${CostCalculator.formatCurrency(hourlySavingsAtOptimal)}/hr vs on-demand (current: ${CostCalculator.formatCurrency(currentHourlySavings)}/hr)
+                </small>`;
+        }
 
         // Message already has dollar values formatted correctly
         textElement.textContent = `${suggestion.icon} ${suggestion.message}`;
