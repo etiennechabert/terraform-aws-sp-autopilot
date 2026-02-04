@@ -535,8 +535,6 @@ def _build_breakdown_table_html(
     plans_count: int,
     average_utilization: float,
     total_commitment: float,
-    on_demand_equivalent_hourly: float,
-    net_savings_hourly: float,
     overall_savings_percentage: float,
 ) -> str:
     """Build HTML for breakdown by type table."""
@@ -561,7 +559,6 @@ def _build_breakdown_table_html(
     for plan_type, type_data in breakdown_by_type.items():
         plans_count_type = type_data.get("plans_count", 0)
         total_commitment_type = type_data.get("total_commitment", 0.0)
-        net_savings_hourly_type = type_data.get("net_savings_hourly", 0.0)
         type_utilization = type_data.get("average_utilization", 0.0)
         type_savings_pct = type_data.get("savings_percentage", 0.0)
 
@@ -1395,8 +1392,6 @@ def generate_html_report(
         plans_count,
         average_utilization,
         total_commitment,
-        on_demand_equivalent_hourly,
-        net_savings_hourly,
         savings_percentage,
     )
 
