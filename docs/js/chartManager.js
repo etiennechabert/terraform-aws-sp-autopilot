@@ -888,7 +888,8 @@ const ChartManager = (function() {
 
         savingsCurveChart.options.plugins.annotation.annotations = annotations;
 
-        savingsCurveChart.update();
+        // Use 'none' mode for instant updates without animation lag
+        savingsCurveChart.update('none');
     }
 
     // Public API
