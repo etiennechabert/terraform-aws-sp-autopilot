@@ -13,6 +13,7 @@ from typing import TYPE_CHECKING, Any
 
 from botocore.exceptions import ClientError
 
+from shared import sp_calculations
 from shared.aws_debug import add_response
 
 
@@ -120,8 +121,8 @@ def _calculate_sp_type_summary(
     """Calculate summary statistics for a single SP type."""
     num_hours = len(timeseries)
     avg_coverage_total = (total_covered / total_spend * 100) if total_spend > 0 else 0.0
-    avg_hourly_covered = total_covered / num_hours if num_hours > 0 else 0.0
-    avg_hourly_total = total_spend / num_hours if num_hours > 0 else 0.0
+    avg_hourly_covered = sp_calculations.average_to_hourly(total_covered, num_hours)
+    avg_hourly_total = sp_calculations.average_to_hourly(total_spend, num_hours)
 
     return {
         "avg_coverage_total": avg_coverage_total,
