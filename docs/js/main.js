@@ -544,42 +544,51 @@
             });
         }
 
-        // Find knee using second derivative (inflection point method)
-        // This finds where the slope changes most dramatically
-        const secondDerivatives = [];
+        // Find knee by analyzing marginal efficiency: where additional commitment
+        // stops providing good returns (diminishing returns threshold)
 
-        for (let i = 2; i < curvePoints.length - 2; i++) {
-            // Calculate first derivative (slope) using central difference
-            const slope1 = (curvePoints[i].savingsPercent - curvePoints[i - 2].savingsPercent) /
-                          (curvePoints[i].coverage - curvePoints[i - 2].coverage);
-            const slope2 = (curvePoints[i + 2].savingsPercent - curvePoints[i].savingsPercent) /
-                          (curvePoints[i + 2].coverage - curvePoints[i].coverage);
+        // Calculate marginal savings rate for each point (change in savings / change in coverage)
+        const marginalRates = [];
 
-            // Second derivative is the change in slope
-            const secondDerivative = (slope2 - slope1) /
-                                    (curvePoints[i + 1].coverage - curvePoints[i - 1].coverage);
+        for (let i = 1; i < curvePoints.length; i++) {
+            if (curvePoints[i].coverage > minCost && curvePoints[i].coverage <= optimalCoverage) {
+                const coverageDelta = curvePoints[i].coverage - curvePoints[i - 1].coverage;
+                const savingsDelta = curvePoints[i].savingsPercent - curvePoints[i - 1].savingsPercent;
+                const marginalRate = coverageDelta > 0 ? savingsDelta / coverageDelta : 0;
 
-            secondDerivatives.push({
-                index: i,
-                value: Math.abs(secondDerivative), // Use absolute value to find max change
-                coverage: curvePoints[i].coverage
-            });
+                marginalRates.push({
+                    index: i,
+                    coverage: curvePoints[i].coverage,
+                    marginalRate: marginalRate,
+                    savingsPercent: curvePoints[i].savingsPercent
+                });
+            }
         }
 
-        // Find the point with maximum second derivative (most dramatic slope change)
-        // Only consider points between minCost and optimalCoverage
-        let maxSecondDerivative = 0;
-        let kneeIndex = 0;
+        if (marginalRates.length === 0) {
+            return minCost;
+        }
 
-        for (let i = 0; i < secondDerivatives.length; i++) {
-            const point = secondDerivatives[i];
-            // Only consider points in the viable range (min to optimal)
-            if (point.coverage >= minCost && point.coverage <= optimalCoverage) {
-                if (point.value > maxSecondDerivative) {
-                    maxSecondDerivative = point.value;
-                    kneeIndex = point.index;
-                }
+        // Find the peak marginal rate (usually early in the curve)
+        const maxMarginalRate = Math.max(...marginalRates.map(r => r.marginalRate));
+
+        // Find where marginal rate drops to 30% of its peak
+        // This is the "knee" - still good returns but not peak efficiency
+        const threshold = maxMarginalRate * 0.30;
+
+        let kneeIndex = 0;
+        for (let i = 0; i < marginalRates.length; i++) {
+            if (marginalRates[i].marginalRate < threshold) {
+                // Found where efficiency drops below threshold
+                // Use the previous point (last point above threshold)
+                kneeIndex = i > 0 ? marginalRates[i - 1].index : marginalRates[0].index;
+                break;
             }
+        }
+
+        // If we never dropped below threshold, use a point 60% of the way to optimal
+        if (kneeIndex === 0) {
+            return minCost + (optimalCoverage - minCost) * 0.60;
         }
 
         return curvePoints[kneeIndex].coverage;
