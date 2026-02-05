@@ -722,8 +722,9 @@ const ChartManager = (function() {
      * @param {number} baselineCost - Total baseline on-demand cost
      * @param {number} currentCoverage - Current actual coverage in $/h (optional)
      * @param {number} savingsPercentage - Savings percentage (0-99)
+     * @param {number} numHours - Actual number of hours in the data series
      */
-    function updateSavingsCurveChart(curveData, minHourlySavings, optimalCoverage, minCost, maxCost, baselineCost, currentCoverage, savingsPercentage) {
+    function updateSavingsCurveChart(curveData, minHourlySavings, optimalCoverage, minCost, maxCost, baselineCost, currentCoverage, savingsPercentage, numHours) {
         if (!savingsCurveChart) return;
 
         // Store values for tooltip access
@@ -738,7 +739,6 @@ const ChartManager = (function() {
 
         // Calculate right y-axis (absolute $/h savings) to match left y-axis (percentage) range
         // Convert percentage range to dollar range using baseline hourly cost
-        const numHours = 168;
         const baselineHourly = baselineCost / numHours;
 
         // Get the percentage range from the curve data

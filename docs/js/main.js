@@ -1209,7 +1209,8 @@
             chartMaxCost,
             baselineCost,
             currentCoverageFromData,
-            savingsPercentage
+            savingsPercentage,
+            hourlyCosts.length
         );
     }
 
