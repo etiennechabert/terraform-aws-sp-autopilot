@@ -1315,7 +1315,7 @@ h1, h2, h3, h4, h5, h6 {
 .curve-legend {
     display: flex;
     flex-wrap: wrap;
-    gap: var(--spacing-md);
+    gap: var(--spacing-sm);
     margin-top: var(--spacing-md);
     padding: var(--spacing-sm);
     background: var(--bg-secondary);
@@ -1325,19 +1325,20 @@ h1, h2, h3, h4, h5, h6 {
 .legend-item {
     display: flex;
     align-items: center;
-    gap: var(--spacing-xs);
+    gap: 6px;
 }
 
 .legend-color {
-    width: 30px;
-    height: 16px;
+    width: 24px;
+    height: 12px;
     border-radius: 3px;
     border: 1px solid var(--border-color);
 }
 
 .legend-text {
-    font-size: 0.85rem;
+    font-size: 0.8rem;
     color: var(--text-secondary);
+    white-space: nowrap;
 }
 
 /* ===== Usage Data Banner ===== */
