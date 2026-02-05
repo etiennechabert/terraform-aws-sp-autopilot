@@ -39,9 +39,9 @@
         <!-- Main Content -->
         <main class="main-content">
 
-            <!-- Section 1: Load Pattern Editor -->
-            <div class="section-header-with-toggle">
-                <div class="section-header-row">
+            <!-- Section 1: Workload Pattern & Cost Range -->
+            <section class="card section-load-pattern">
+                <div class="card-header-with-toggle">
                     <div>
                         <h2 class="section-title">Workload Pattern & Cost Range</h2>
                         <p class="section-description">Define your usage pattern and hourly cost range (min-max $/h)</p>
@@ -50,64 +50,83 @@
                         <span class="toggle-icon">▼</span>
                     </button>
                 </div>
-            </div>
 
-            <div id="load-pattern-content" class="collapsible-content">
-                <div class="cost-metrics-grid">
-                    <!-- Load Pattern Chart (3/4 width) -->
-                    <section class="card section-load-chart">
-                        <div class="chart-container">
-                            <canvas id="load-chart" aria-label="Weekly load pattern chart"></canvas>
-                        </div>
-                    </section>
-
-                    <!-- Load Pattern Controls (1/4 width) -->
-                    <section class="card section-load-controls">
-                        <div class="card-header">
-                            <h2 class="section-title">Pattern Settings</h2>
+                <div id="load-pattern-content" class="collapsible-content">
+                    <div class="pattern-controls-row">
+                        <div class="control-group">
+                            <label for="pattern-select" class="control-label">Pattern Type</label>
+                            <select id="pattern-select" class="select-input">
+                                <option value="ecommerce">E-commerce (Weekday peaks)</option>
+                                <option value="global247">Global 24/7 (Consistent load)</option>
+                                <option value="batch">Batch Processing (Scheduled spikes)</option>
+                                <option value="custom">Custom (Real Usage Data)</option>
+                            </select>
                         </div>
 
-                        <div class="controls-column">
-                            <div class="control-group">
-                                <label for="pattern-select" class="control-label">Pattern Type</label>
-                                <select id="pattern-select" class="select-input">
-                                    <option value="ecommerce">E-commerce (Weekday peaks)</option>
-                                    <option value="global247">Global 24/7 (Consistent load)</option>
-                                    <option value="batch">Batch Processing (Scheduled spikes)</option>
-                                    <option value="custom">Custom (Real Usage Data)</option>
-                                </select>
-                            </div>
-
-                            <div class="control-group">
-                                <label for="min-cost" class="control-label">
-                                    Min Cost ($/h)
-                                    <span class="control-hint">Baseline hourly cost</span>
-                                </label>
-                                <input type="number" id="min-cost" class="number-input" value="15" min="0" max="10000" step="1">
-                            </div>
-
-                            <div class="control-group">
-                                <label for="max-cost" class="control-label">
-                                    Max Cost ($/h)
-                                    <span class="control-hint">Peak hourly cost</span>
-                                </label>
-                                <input type="number" id="max-cost" class="number-input" value="100" min="1" max="10000" step="1">
-                            </div>
+                        <div class="control-group">
+                            <label for="min-cost" class="control-label">
+                                Min Cost ($/h)
+                                <span class="control-hint">Baseline hourly cost</span>
+                            </label>
+                            <input type="number" id="min-cost" class="number-input" value="15" min="0" max="10000" step="1">
                         </div>
-                    </section>
-                </div>
-            </div>
 
-            <!-- Section 2: Cost Comparison Chart & Metrics Grid -->
-            <div class="cost-metrics-grid">
-                <!-- Cost Comparison Chart (3/4 width) -->
-                <section class="card section-cost-comparison">
-                    <div class="card-header">
-                        <h2 class="section-title">Cost Breakdown: Coverage vs Actual Usage</h2>
-                        <p class="section-description">Move the sliders below to see how coverage and savings affect costs</p>
+                        <div class="control-group">
+                            <label for="max-cost" class="control-label">
+                                Max Cost ($/h)
+                                <span class="control-hint">Peak hourly cost</span>
+                            </label>
+                            <input type="number" id="max-cost" class="number-input" value="100" min="1" max="10000" step="1">
+                        </div>
                     </div>
 
                     <div class="chart-container">
+                        <canvas id="load-chart" aria-label="Weekly load pattern chart"></canvas>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Section 2: Cost Comparison Chart (Full Width) -->
+            <section class="card section-cost-comparison">
+                <div class="card-header">
+                    <h2 class="section-title">Cost Breakdown: Coverage vs Actual Usage</h2>
+                    <p class="section-description">Move the sliders below to see how coverage and savings affect costs</p>
+                </div>
+
+                <!-- Horizontal Metrics Row -->
+                <div class="metrics-row">
+                    <div class="metric-card">
+                        <div class="metric-value" id="metric-ondemand">$0.00/h</div>
+                        <div class="metric-label">Pure On-Demand Cost</div>
+                    </div>
+                    <div class="metric-card highlight">
+                        <div class="metric-value" id="metric-savingsplan">$0.00/h</div>
+                        <div class="metric-label">Total Cost with SP</div>
+                        <div class="metric-subvalue" id="metric-breakdown">(Commitment + Spillover)</div>
+                    </div>
+                    <div class="metric-card">
+                        <div class="metric-value" id="metric-commitment">$0.00/h</div>
+                        <div class="metric-label">SP Commitment</div>
+                        <div class="metric-subvalue" id="metric-commitment-pct">0.0% of total cost</div>
+                    </div>
+                    <div class="metric-card">
+                        <div class="metric-value" id="metric-waste">$0.00/h</div>
+                        <div class="metric-label">Wasted Commitment</div>
+                        <div class="metric-subvalue" id="metric-waste-pct">0.0% of commitment</div>
+                    </div>
+                    <div class="metric-card">
+                        <div class="metric-value" id="metric-spillover">$0.00/h</div>
+                        <div class="metric-label">Spillover Cost</div>
+                        <div class="metric-subvalue" id="metric-spillover-pct">0.0% of total</div>
+                    </div>
+                    <div class="metric-card" id="metric-savings-container">
+                        <div class="metric-value" id="metric-savings">$0.00/h</div>
+                        <div class="metric-label">Net Savings</div>
+                        <div class="metric-subvalue" id="metric-savings-pct">0.0%</div>
+                    </div>
+                </div>
+
+                <div class="chart-container">
                         <canvas id="cost-chart" aria-label="Cost comparison chart"></canvas>
                     </div>
 
@@ -139,7 +158,7 @@
                                 <button class="strategy-button strategy-warning" data-strategy="too-prudent" id="strategy-too-prudent">
                                     <div class="strategy-icon">🐔</div>
                                     <div class="strategy-content">
-                                        <div class="strategy-name">Too Prudent</div>
+                                        <div class="strategy-name">Prudent</div>
                                         <div class="strategy-desc">Under-committed</div>
                                         <div class="strategy-metrics">
                                             <div class="strategy-metric-col">
@@ -216,7 +235,7 @@
                                 <button class="strategy-button strategy-warning" data-strategy="too-aggressive" id="strategy-too-aggressive">
                                     <div class="strategy-icon">💀</div>
                                     <div class="strategy-content">
-                                        <div class="strategy-name">Too Aggressive</div>
+                                        <div class="strategy-name">Aggressive</div>
                                         <div class="strategy-desc">Over-committed</div>
                                         <div class="strategy-metrics">
                                             <div class="strategy-metric-col">
@@ -236,68 +255,6 @@
                         </div>
                     </div>
                 </section>
-
-                <!-- Hourly Cost Summary (1/4 width) -->
-                <section class="card section-metrics">
-                    <div class="card-header">
-                        <h2 class="section-title">Hourly Cost Summary</h2>
-                    </div>
-
-                    <div class="metrics-column">
-                        <div class="metric-item">
-                            <div class="metric-header">
-                                <div class="metric-value" id="metric-ondemand">$0.00</div>
-                                <div class="metric-label">Pure On-Demand Cost</div>
-                            </div>
-                        </div>
-
-                        <div class="metric-item">
-                            <div class="metric-header">
-                                <div class="metric-value" id="metric-commitment">$0.00</div>
-                                <div class="metric-label">SP Commitment Cost</div>
-                            </div>
-                            <div class="metric-subvalue" id="metric-commitment-pct">0.0% of total</div>
-                        </div>
-
-                        <div class="metric-item highlight">
-                            <div class="metric-header">
-                                <div class="metric-value" id="metric-savingsplan">$0.00</div>
-                                <div class="metric-label">Total Cost with SP</div>
-                            </div>
-                            <div class="metric-subvalue" id="metric-breakdown">(Commitment + Spillover)</div>
-                        </div>
-
-                        <div class="metric-item" id="metric-savings-container">
-                            <div class="metric-header">
-                                <div class="metric-value" id="metric-savings">$0.00</div>
-                                <div class="metric-label">Net Savings</div>
-                            </div>
-                            <div class="metric-subvalue" id="metric-savings-pct">0.0%</div>
-                        </div>
-
-                        <div class="metric-item warning">
-                            <div class="metric-header">
-                                <div class="metric-value" id="metric-spillover">$0.00</div>
-                                <div class="metric-label">Spillover Cost</div>
-                            </div>
-                            <div class="metric-subvalue" id="metric-spillover-pct">0.0% of total</div>
-                        </div>
-
-                        <div class="metric-item warning">
-                            <div class="metric-header">
-                                <div class="metric-value" id="metric-waste">$0.00</div>
-                                <div class="metric-label">Wasted Commitment</div>
-                            </div>
-                            <div class="metric-subvalue" id="metric-waste-pct">0.0% of commitment</div>
-                        </div>
-                    </div>
-
-                    <button id="share-button" class="button button-primary">
-                        <span class="button-icon">🔗</span>
-                        Share Configuration
-                    </button>
-                </section>
-            </div>
 
             <!-- Section 3: Savings Optimization Chart -->
             <section class="card section-savings-curve">
