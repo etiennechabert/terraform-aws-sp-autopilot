@@ -809,14 +809,7 @@ h1, h2, h3, h4, h5, h6 {
     box-shadow: 0 4px 12px rgba(0, 255, 136, 0.3);
 }
 
-.strategy-button.strategy-warning {
-    border-color: rgba(255, 180, 100, 0.6);
-}
-
-.strategy-button.strategy-warning:hover {
-    border-color: rgba(255, 180, 100, 0.9);
-    box-shadow: 0 4px 12px rgba(255, 180, 100, 0.2);
-}
+/* Removed orange styling for warning strategies - they use default styling now */
 
 .strategy-icon {
     font-size: 2rem;
@@ -838,9 +831,7 @@ h1, h2, h3, h4, h5, h6 {
 }
 
 .strategy-desc {
-    font-size: 0.8rem;
-    color: var(--text-muted);
-    margin-bottom: 6px;
+    display: none; /* Hide subtitles - titles are self-explanatory */
 }
 
 .strategy-value {
@@ -880,10 +871,9 @@ h1, h2, h3, h4, h5, h6 {
 }
 
 .strategy-metric-label {
-    font-size: 0.65rem;
-    color: rgba(255, 255, 255, 0.35);
-    text-transform: uppercase;
-    letter-spacing: 0.5px;
+    font-size: 0.7rem;
+    color: rgba(255, 255, 255, 0.5);
+    letter-spacing: 0.3px;
     margin-bottom: 2px;
 }
 
@@ -902,7 +892,7 @@ h1, h2, h3, h4, h5, h6 {
 
 .strategy-badge {
     position: absolute;
-    top: 6px;
+    bottom: 6px;
     right: 6px;
     font-size: 0.65rem;
     font-weight: 700;

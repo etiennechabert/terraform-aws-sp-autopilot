@@ -9,8 +9,8 @@ const CostCalculator = (function() {
     /**
      * Calculate comprehensive cost comparison
      * @param {Object} config - Configuration object
-     * @param {Array<number>} config.hourlyCosts - 168-hour actual costs ($/hour)
-     * @param {number} config.coverageCost - Coverage commitment ($/hour)
+     * @param {Array<number>} config.hourlyCosts - 168-hour actual costs ($/h)
+     * @param {number} config.coverageCost - Coverage commitment ($/h)
      * @param {number} config.savingsPercentage - Savings percentage (0-99)
      * @param {number} config.onDemandRate - On-Demand rate per unit-hour (for reference)
      * @returns {Object} Detailed cost breakdown
@@ -144,7 +144,7 @@ const CostCalculator = (function() {
 
     /**
      * Calculate net savings at different coverage levels for graphing
-     * @param {Array<number>} hourlyCosts - Actual hourly costs ($/hour)
+     * @param {Array<number>} hourlyCosts - Actual hourly costs ($/h)
      * @param {number} savingsPercentage - Savings percentage (0-99)
      * @returns {Object} Savings curve data with coverage levels and corresponding savings
      */
@@ -230,7 +230,7 @@ const CostCalculator = (function() {
      *     2. Run cross-platform tests to verify parity
      *     3. Document any intentional differences in behavior
      *
-     * @param {Array<number>} hourlyCosts - Actual hourly costs ($/hour)
+     * @param {Array<number>} hourlyCosts - Actual hourly costs ($/h)
      * @param {number} savingsPercentage - Savings percentage (0-99)
      * @returns {Object} Optimal coverage recommendation
      */
@@ -367,7 +367,7 @@ const CostCalculator = (function() {
 
     /**
      * Detect which savings curve zone the current coverage is in
-     * @param {number} currentCoverage - Current coverage in $/hour
+     * @param {number} currentCoverage - Current coverage in $/h
      * @param {Array<number>} hourlyCosts - Hourly costs
      * @param {number} savingsPercentage - Savings percentage (0-99)
      * @returns {Object} Zone information with name and thresholds
@@ -452,10 +452,10 @@ const CostCalculator = (function() {
 
     /**
      * Get optimization suggestion with dollar values using zone-based logic
-     * @param {number} currentCost - Current commitment in $/hour
-     * @param {number} optimalCost - Optimal commitment in $/hour
+     * @param {number} currentCost - Current commitment in $/h
+     * @param {number} optimalCost - Optimal commitment in $/h
      * @param {number} minCost - Minimum cost for percentage calculation
-     * @param {number} additionalSavings - Additional savings gained by reaching optimal ($/hour)
+     * @param {number} additionalSavings - Additional savings gained by reaching optimal ($/h)
      * @param {Object} zoneInfo - Zone information from detectCoverageZone (optional)
      * @returns {Object} Suggestion with status and message
      */
@@ -483,7 +483,7 @@ const CostCalculator = (function() {
             switch (zoneInfo.zone) {
                 case 'building':
                     icon = '🔵';
-                    message = `Building to baseline. Increase commitment by ${formatCurrency(difference)}/hr to reach optimal coverage and unlock ${formatCurrency(additionalSavings)}/hr more savings.`;
+                    message = `Building to baseline. Increase commitment by ${formatCurrency(difference)}/h to reach optimal coverage and unlock ${formatCurrency(additionalSavings)}/h more savings.`;
                     break;
                 case 'gaining':
                     if (percentDiff <= 5) {
@@ -491,20 +491,20 @@ const CostCalculator = (function() {
                         message = `At optimal! Maximizing savings while minimizing waste.`;
                     } else {
                         icon = '🟢';
-                        message = `Gaining efficiency. Increase by ${formatCurrency(difference)}/hr to reach optimal and unlock ${formatCurrency(additionalSavings)}/hr more savings.`;
+                        message = `Gaining efficiency. Increase by ${formatCurrency(difference)}/h to reach optimal and unlock ${formatCurrency(additionalSavings)}/h more savings.`;
                     }
                     break;
                 case 'wasting':
                     icon = '🟠';
-                    message = `Over-committed. Decrease by ${formatCurrency(difference)}/hr to optimal (${formatCurrency(optimalCost)}/hr) to reduce waste.`;
+                    message = `Over-committed. Decrease by ${formatCurrency(difference)}/h to optimal (${formatCurrency(optimalCost)}/h) to reduce waste.`;
                     break;
                 case 'very-bad':
                     icon = '🟣';
-                    message = `Severely over-committed. Savings dropped below min-hourly baseline. Decrease to ${formatCurrency(optimalCost)}/hr immediately.`;
+                    message = `Severely over-committed. Savings dropped below min-hourly baseline. Decrease to ${formatCurrency(optimalCost)}/h immediately.`;
                     break;
                 case 'losing-money':
                     icon = '🔴';
-                    message = `LOSING MONEY vs on-demand! Commitment too high. Decrease to ${formatCurrency(optimalCost)}/hr to stop losses.`;
+                    message = `LOSING MONEY vs on-demand! Commitment too high. Decrease to ${formatCurrency(optimalCost)}/h to stop losses.`;
                     break;
             }
         } else {
@@ -512,22 +512,22 @@ const CostCalculator = (function() {
             if (percentDiff <= 5) {
                 status = 'optimal';
                 icon = '✅';
-                message = `Commitment is optimal (within 5%). Current: ${formatCurrency(currentCost)}/hr`;
+                message = `Commitment is optimal (within 5%). Current: ${formatCurrency(currentCost)}/h`;
             } else if (percentDiff <= 10) {
                 status = 'warning';
                 icon = '⚠️';
                 if (currentCost < optimalCost) {
-                    message = `Increase commitment by ${formatCurrency(difference)}/hr to reach optimal coverage and unlock ${formatCurrency(additionalSavings)}/hr more savings.`;
+                    message = `Increase commitment by ${formatCurrency(difference)}/h to reach optimal coverage and unlock ${formatCurrency(additionalSavings)}/h more savings.`;
                 } else {
-                    message = `Decrease to ${formatCurrency(optimalCost)}/hr (current: ${formatCurrency(currentCost)}/hr) to reduce waste.`;
+                    message = `Decrease to ${formatCurrency(optimalCost)}/h (current: ${formatCurrency(currentCost)}/h) to reduce waste.`;
                 }
             } else {
                 status = 'danger';
                 icon = '🔴';
                 if (currentCost < optimalCost) {
-                    message = `Increase commitment by ${formatCurrency(difference)}/hr to reach optimal coverage and unlock ${formatCurrency(additionalSavings)}/hr more savings.`;
+                    message = `Increase commitment by ${formatCurrency(difference)}/h to reach optimal coverage and unlock ${formatCurrency(additionalSavings)}/h more savings.`;
                 } else {
-                    message = `Commitment significantly above optimal. Decrease to ${formatCurrency(optimalCost)}/hr (current: ${formatCurrency(currentCost)}/hr) to reduce waste.`;
+                    message = `Commitment significantly above optimal. Decrease to ${formatCurrency(optimalCost)}/h (current: ${formatCurrency(currentCost)}/h) to reduce waste.`;
                 }
             }
         }

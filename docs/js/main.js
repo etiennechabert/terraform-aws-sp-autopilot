@@ -9,9 +9,9 @@
     // Application state
     let appState = {
         pattern: 'ecommerce',
-        minCost: 15,          // Min $/hour
-        maxCost: 100,         // Max $/hour (peak)
-        coverageCost: 50,     // Coverage commitment in $/hour
+        minCost: 15,          // Min $/h
+        maxCost: 100,         // Max $/h (peak)
+        coverageCost: 50,     // Coverage commitment in $/h
         savingsPercentage: 30,
         loadFactor: 100,      // Load factor percentage (50-200%)
         onDemandRate: 0.10,
@@ -131,14 +131,14 @@
 
         if (difference > tolerance) {
             console.warn('⚠️ Mismatch detected between Python and JavaScript optimal coverage calculations!');
-            console.warn(`Python: $${pythonCoverage.toFixed(2)}/hr`);
-            console.warn(`JavaScript: $${jsCoverage.toFixed(2)}/hr`);
-            console.warn(`Difference: $${difference.toFixed(2)}/hr`);
+            console.warn(`Python: $${pythonCoverage.toFixed(2)}/h`);
+            console.warn(`JavaScript: $${jsCoverage.toFixed(2)}/h`);
+            console.warn(`Difference: $${difference.toFixed(2)}/h`);
 
             showMismatchWarning(pythonCoverage, jsCoverage);
         } else {
             console.log('✓ Python and JavaScript optimal coverage calculations match');
-            console.log(`Optimal: $${jsCoverage.toFixed(2)}/hr`);
+            console.log(`Optimal: $${jsCoverage.toFixed(2)}/h`);
         }
     }
 
@@ -158,7 +158,7 @@
                 <span class="warning-icon">⚠️</span>
                 <span class="warning-text">
                     <strong>Algorithm Mismatch Detected</strong><br>
-                    Python calculated: $${pythonValue.toFixed(2)}/hr | JavaScript calculated: $${jsValue.toFixed(2)}/hr<br>
+                    Python calculated: $${pythonValue.toFixed(2)}/h | JavaScript calculated: $${jsValue.toFixed(2)}/h<br>
                     <small>The Python and JavaScript implementations may be out of sync. Please report this issue.</small>
                 </span>
             </div>
@@ -661,7 +661,7 @@
             'aggressive': 'Aggressive',
             'too-aggressive': 'Too Aggressive 💀'
         };
-        showToast(`${strategyNames[strategy]} strategy applied: ${CostCalculator.formatCurrency(coverageCost)}/hour`);
+        showToast(`${strategyNames[strategy]} strategy applied: ${CostCalculator.formatCurrency(coverageCost)}/h`);
     }
 
     /**
@@ -725,8 +725,8 @@
             const commitment = SPCalculations.commitmentFromCoverage(strategies.tooPrudent, savingsPercentage);
             const savingsData = calculateStrategySavings(strategies.tooPrudent);
             const minHourlyPct = minHourlyCommitment > 0 ? (commitment / minHourlyCommitment) * 100 : 100;
-            tooPrudentValue.textContent = `${CostCalculator.formatCurrency(commitment)}/hr`;
-            tooPrudentSavings.textContent = `${CostCalculator.formatCurrency(savingsData.hourly)}/hr`;
+            tooPrudentValue.textContent = `${CostCalculator.formatCurrency(commitment)}`;
+            tooPrudentSavings.textContent = `${CostCalculator.formatCurrency(savingsData.hourly)}`;
             tooPrudentSavingsPct.textContent = `${savingsData.percentage.toFixed(1)}%`;
             tooPrudentMinHourlyPct.textContent = `${minHourlyPct.toFixed(1)}% Min-Hourly`;
         }
@@ -740,8 +740,8 @@
             const commitment = SPCalculations.commitmentFromCoverage(strategies.minHourly, savingsPercentage);
             const savingsData = calculateStrategySavings(strategies.minHourly);
             const minHourlyPct = minHourlyCommitment > 0 ? (commitment / minHourlyCommitment) * 100 : 100;
-            minValue.textContent = `${CostCalculator.formatCurrency(commitment)}/hr`;
-            minSavings.textContent = `${CostCalculator.formatCurrency(savingsData.hourly)}/hr`;
+            minValue.textContent = `${CostCalculator.formatCurrency(commitment)}`;
+            minSavings.textContent = `${CostCalculator.formatCurrency(savingsData.hourly)}`;
             minSavingsPct.textContent = `${savingsData.percentage.toFixed(1)}%`;
             minMinHourlyPct.textContent = `${minHourlyPct.toFixed(1)}% Min-Hourly`;
         }
@@ -755,8 +755,8 @@
             const commitment = SPCalculations.commitmentFromCoverage(strategies.balanced, savingsPercentage);
             const savingsData = calculateStrategySavings(strategies.balanced);
             const minHourlyPct = minHourlyCommitment > 0 ? (commitment / minHourlyCommitment) * 100 : 100;
-            balancedValue.textContent = `${CostCalculator.formatCurrency(commitment)}/hr`;
-            balancedSavings.textContent = `${CostCalculator.formatCurrency(savingsData.hourly)}/hr`;
+            balancedValue.textContent = `${CostCalculator.formatCurrency(commitment)}`;
+            balancedSavings.textContent = `${CostCalculator.formatCurrency(savingsData.hourly)}`;
             balancedSavingsPct.textContent = `${savingsData.percentage.toFixed(1)}%`;
             balancedMinHourlyPct.textContent = `${minHourlyPct.toFixed(1)}% Min-Hourly`;
         }
@@ -770,8 +770,8 @@
             const commitment = SPCalculations.commitmentFromCoverage(strategies.aggressive, savingsPercentage);
             const savingsData = calculateStrategySavings(strategies.aggressive);
             const minHourlyPct = minHourlyCommitment > 0 ? (commitment / minHourlyCommitment) * 100 : 100;
-            aggressiveValue.textContent = `${CostCalculator.formatCurrency(commitment)}/hr`;
-            aggressiveSavings.textContent = `${CostCalculator.formatCurrency(savingsData.hourly)}/hr`;
+            aggressiveValue.textContent = `${CostCalculator.formatCurrency(commitment)}`;
+            aggressiveSavings.textContent = `${CostCalculator.formatCurrency(savingsData.hourly)}`;
             aggressiveSavingsPct.textContent = `${savingsData.percentage.toFixed(1)}%`;
             aggressiveMinHourlyPct.textContent = `${minHourlyPct.toFixed(1)}% Min-Hourly`;
         }
@@ -785,8 +785,8 @@
             const commitment = SPCalculations.commitmentFromCoverage(strategies.tooAggressive, savingsPercentage);
             const savingsData = calculateStrategySavings(strategies.tooAggressive);
             const minHourlyPct = minHourlyCommitment > 0 ? (commitment / minHourlyCommitment) * 100 : 100;
-            tooAggressiveValue.textContent = `${CostCalculator.formatCurrency(commitment)}/hr`;
-            tooAggressiveSavings.textContent = `${CostCalculator.formatCurrency(savingsData.hourly)}/hr`;
+            tooAggressiveValue.textContent = `${CostCalculator.formatCurrency(commitment)}`;
+            tooAggressiveSavings.textContent = `${CostCalculator.formatCurrency(savingsData.hourly)}`;
             tooAggressiveSavingsPct.textContent = `${savingsData.percentage.toFixed(1)}%`;
             tooAggressiveMinHourlyPct.textContent = `${minHourlyPct.toFixed(1)}% Min-Hourly`;
         }
@@ -951,8 +951,8 @@
 
         // Prepare configuration with scaled costs
         const config = {
-            hourlyCosts: scaledHourlyCosts,  // Scaled $/hour for each hour
-            coverageCost: appState.coverageCost,  // Coverage commitment in $/hour (static)
+            hourlyCosts: scaledHourlyCosts,  // Scaled $/h for each hour
+            coverageCost: appState.coverageCost,  // Coverage commitment in $/h (static)
             savingsPercentage: appState.savingsPercentage,
             onDemandRate: appState.onDemandRate
         };
@@ -1109,13 +1109,13 @@
         const displayElement = document.getElementById('coverage-display');
         if (displayElement) {
             // Show commitment (what you pay) with min-hourly percentage on the main line
-            displayElement.textContent = `$${commitmentCost.toFixed(2)}/hour (${percentOfMin.toFixed(1)}% Min-Hourly)`;
+            displayElement.textContent = `$${commitmentCost.toFixed(2)}/h (${percentOfMin.toFixed(1)}% Min-Hourly)`;
         }
 
         const unitsElement = document.getElementById('coverage-units');
         if (unitsElement) {
             // Show on-demand coverage below
-            unitsElement.textContent = `Covers ${CostCalculator.formatCurrency(coverageCost)}/hour on-demand`;
+            unitsElement.textContent = `Covers ${CostCalculator.formatCurrency(coverageCost)}/h on-demand`;
         }
 
         // Update savings rate hint to reflect coverage commitment
@@ -1135,7 +1135,7 @@
                 : 0;
 
             const coverageCommitment = appState.coverageCost || 0;
-            rateElement.textContent = `Coverage $${coverageCommitment.toFixed(3)}/hr vs $${avgUsage.toFixed(3)}/hr Avg Usage`;
+            rateElement.textContent = `Coverage $${coverageCommitment.toFixed(3)}/h vs $${avgUsage.toFixed(3)}/h Avg Usage`;
         }
     }
 
@@ -1184,19 +1184,19 @@
         // Pure On-Demand cost (baseline)
         const onDemandElement = document.getElementById('metric-ondemand');
         if (onDemandElement) {
-            onDemandElement.textContent = CostCalculator.formatCurrency(results.onDemandCost / numHours) + '/hr';
+            onDemandElement.textContent = CostCalculator.formatCurrency(results.onDemandCost / numHours) + '/h';
         }
 
         // Total Cost with SP (commitment + spillover)
         const savingsPlanElement = document.getElementById('metric-savingsplan');
         if (savingsPlanElement) {
-            savingsPlanElement.textContent = CostCalculator.formatCurrency(results.savingsPlanCost / numHours) + '/hr';
+            savingsPlanElement.textContent = CostCalculator.formatCurrency(results.savingsPlanCost / numHours) + '/h';
         }
 
         // Net Savings
         const savingsElement = document.getElementById('metric-savings');
         if (savingsElement) {
-            savingsElement.textContent = CostCalculator.formatCurrency(results.savings / numHours) + '/hr';
+            savingsElement.textContent = CostCalculator.formatCurrency(results.savings / numHours) + '/h';
 
             // Change color based on zone if available
             const savingsContainer = savingsElement.closest('.metric-item');
@@ -1229,7 +1229,7 @@
         // SP Commitment Cost
         const commitmentElement = document.getElementById('metric-commitment');
         if (commitmentElement) {
-            commitmentElement.textContent = CostCalculator.formatCurrency(results.commitmentCost / numHours) + '/hr';
+            commitmentElement.textContent = CostCalculator.formatCurrency(results.commitmentCost / numHours) + '/h';
         }
 
         const commitmentPctElement = document.getElementById('metric-commitment-pct');
@@ -1243,7 +1243,7 @@
         // Spillover Cost
         const spilloverElement = document.getElementById('metric-spillover');
         if (spilloverElement) {
-            spilloverElement.textContent = CostCalculator.formatCurrency(results.spilloverCost / numHours) + '/hr';
+            spilloverElement.textContent = CostCalculator.formatCurrency(results.spilloverCost / numHours) + '/h';
         }
 
         const spilloverPctElement = document.getElementById('metric-spillover-pct');
@@ -1254,7 +1254,7 @@
         // Wasted commitment
         const wasteElement = document.getElementById('metric-waste');
         if (wasteElement) {
-            wasteElement.textContent = CostCalculator.formatCurrency(results.wastedCommitment / numHours) + '/hr';
+            wasteElement.textContent = CostCalculator.formatCurrency(results.wastedCommitment / numHours) + '/h';
         }
 
         const wastePctElement = document.getElementById('metric-waste-pct');
@@ -1335,15 +1335,15 @@
         if (isAtOptimalCommitment) {
             // Already at optimal - show what you're currently saving
             const savingsPercent = ((currentHourlySavings / (results.onDemandCost / numHours)) * 100).toFixed(1);
-            titleElement.innerHTML = `Optimal Commitment: ${CostCalculator.formatCurrency(optimalCommitment)}/hour<br>
+            titleElement.innerHTML = `Optimal Commitment: ${CostCalculator.formatCurrency(optimalCommitment)}/h<br>
                 <small style="font-weight: normal; opacity: 0.9;">
-                    Saving ${CostCalculator.formatCurrency(currentHourlySavings)}/hr vs on-demand (${savingsPercent}% discount)
+                    Saving ${CostCalculator.formatCurrency(currentHourlySavings)}/h vs on-demand (${savingsPercent}% discount)
                 </small>`;
         } else {
             // Not at optimal - show what you could save at optimal vs what you're saving now
-            titleElement.innerHTML = `Optimal Commitment: ${CostCalculator.formatCurrency(optimalCommitment)}/hour (vs current ${CostCalculator.formatCurrency(currentCommitment)}/hr)<br>
+            titleElement.innerHTML = `Optimal Commitment: ${CostCalculator.formatCurrency(optimalCommitment)}/h (vs current ${CostCalculator.formatCurrency(currentCommitment)}/h)<br>
                 <small style="font-weight: normal; opacity: 0.9;">
-                    Would save ${CostCalculator.formatCurrency(hourlySavingsAtOptimal)}/hr vs on-demand (current: ${CostCalculator.formatCurrency(currentHourlySavings)}/hr)
+                    Would save ${CostCalculator.formatCurrency(hourlySavingsAtOptimal)}/h vs on-demand (current: ${CostCalculator.formatCurrency(currentHourlySavings)}/h)
                 </small>`;
         }
 
