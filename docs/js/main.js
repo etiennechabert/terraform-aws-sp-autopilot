@@ -1251,10 +1251,12 @@
             savingsPctElement.textContent = CostCalculator.formatPercentage(results.savingsPercentageActual);
         }
 
-        // SP Commitment Cost
+        // SP Commitment
         const commitmentElement = document.getElementById('metric-commitment');
         if (commitmentElement) {
-            commitmentElement.textContent = CostCalculator.formatCurrency(results.commitmentCost / numHours) + '/h';
+            const discountFactor = (1 - appState.savingsPercentage / 100);
+            const commitmentPerHour = appState.coverageCost * discountFactor;
+            commitmentElement.textContent = CostCalculator.formatCurrency(commitmentPerHour) + '/h';
         }
 
         const commitmentPctElement = document.getElementById('metric-commitment-pct');
@@ -1262,7 +1264,7 @@
             const commitmentPct = results.savingsPlanCost > 0
                 ? (results.commitmentCost / results.savingsPlanCost) * 100
                 : 0;
-            commitmentPctElement.textContent = `${commitmentPct.toFixed(1)}% of total`;
+            commitmentPctElement.textContent = `${commitmentPct.toFixed(1)}% of total cost`;
         }
 
         // Spillover Cost
