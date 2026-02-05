@@ -15,8 +15,8 @@
  * Convert SP commitment to on-demand coverage capacity.
  *
  * This calculates how much on-demand workload a given commitment can cover,
- * based on the discount rate. For example, a $1.00/hr commitment with 34.8%
- * savings can cover $1.53/hr of on-demand usage.
+ * based on the discount rate. For example, a $1.00/h commitment with 34.8%
+ * savings can cover $1.53/h of on-demand usage.
  *
  * @param {number} commitment - Hourly commitment amount (what you pay)
  * @param {number} savingsPercentage - Discount rate (0-100, e.g., 34.8 for 34.8% discount)
@@ -46,10 +46,10 @@ function coverageFromCommitment(commitment, savingsPercentage) {
  * Convert on-demand coverage to SP commitment cost.
  *
  * This calculates how much you need to commit to cover a given amount of
- * on-demand workload. For example, to cover $1.53/hr of on-demand with 34.8%
- * savings requires a $1.00/hr commitment.
+ * on-demand workload. For example, to cover $1.53/h of on-demand with 34.8%
+ * savings requires a $1.00/h commitment.
  *
- * @param {number} coverage - On-demand workload to cover ($/hour)
+ * @param {number} coverage - On-demand workload to cover ($/h)
  * @param {number} savingsPercentage - Discount rate (0-100)
  * @returns {number} Required hourly commitment (what you'll pay)
  *
