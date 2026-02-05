@@ -746,11 +746,9 @@
         const tooPrudentSavingsPct = document.getElementById('strategy-too-prudent-savings-pct');
         const tooPrudentMinHourlyPct = document.getElementById('strategy-too-prudent-min-hourly-pct');
         if (tooPrudentValue && tooPrudentSavings && tooPrudentSavingsPct && tooPrudentMinHourlyPct) {
-            const commitment = SPCalculations.commitmentFromCoverage(
-                isTooPrudentActive ? currentCoverage : strategies.tooPrudent,
-                savingsPercentage
-            );
-            // If active, use current results to match top metrics; otherwise calculate
+            // Always use the strategy's value for cost/commitment (never currentCoverage)
+            const commitment = SPCalculations.commitmentFromCoverage(strategies.tooPrudent, savingsPercentage);
+            // If active, use current results for savings to match top metrics; otherwise calculate
             const savingsData = isTooPrudentActive && currentCostResults ? {
                 hourly: currentCostResults.savings / numHours,
                 percentage: currentCostResults.savingsPercentageActual
@@ -769,10 +767,7 @@
         const minSavingsPct = document.getElementById('strategy-min-savings-pct');
         const minMinHourlyPct = document.getElementById('strategy-min-min-hourly-pct');
         if (minValue && minSavings && minSavingsPct && minMinHourlyPct) {
-            const commitment = SPCalculations.commitmentFromCoverage(
-                isMinHourlyActive ? currentCoverage : strategies.minHourly,
-                savingsPercentage
-            );
+            const commitment = SPCalculations.commitmentFromCoverage(strategies.minHourly, savingsPercentage);
             const savingsData = isMinHourlyActive && currentCostResults ? {
                 hourly: currentCostResults.savings / numHours,
                 percentage: currentCostResults.savingsPercentageActual
@@ -791,10 +786,7 @@
         const balancedSavingsPct = document.getElementById('strategy-balanced-savings-pct');
         const balancedMinHourlyPct = document.getElementById('strategy-balanced-min-hourly-pct');
         if (balancedValue && balancedSavings && balancedSavingsPct && balancedMinHourlyPct) {
-            const commitment = SPCalculations.commitmentFromCoverage(
-                isBalancedActive ? currentCoverage : strategies.balanced,
-                savingsPercentage
-            );
+            const commitment = SPCalculations.commitmentFromCoverage(strategies.balanced, savingsPercentage);
             const savingsData = isBalancedActive && currentCostResults ? {
                 hourly: currentCostResults.savings / numHours,
                 percentage: currentCostResults.savingsPercentageActual
@@ -813,10 +805,7 @@
         const aggressiveSavingsPct = document.getElementById('strategy-aggressive-savings-pct');
         const aggressiveMinHourlyPct = document.getElementById('strategy-aggressive-min-hourly-pct');
         if (aggressiveValue && aggressiveSavings && aggressiveSavingsPct && aggressiveMinHourlyPct) {
-            const commitment = SPCalculations.commitmentFromCoverage(
-                isAggressiveActive ? currentCoverage : strategies.aggressive,
-                savingsPercentage
-            );
+            const commitment = SPCalculations.commitmentFromCoverage(strategies.aggressive, savingsPercentage);
             const savingsData = isAggressiveActive && currentCostResults ? {
                 hourly: currentCostResults.savings / numHours,
                 percentage: currentCostResults.savingsPercentageActual
@@ -835,10 +824,7 @@
         const tooAggressiveSavingsPct = document.getElementById('strategy-too-aggressive-savings-pct');
         const tooAggressiveMinHourlyPct = document.getElementById('strategy-too-aggressive-min-hourly-pct');
         if (tooAggressiveValue && tooAggressiveSavings && tooAggressiveSavingsPct && tooAggressiveMinHourlyPct) {
-            const commitment = SPCalculations.commitmentFromCoverage(
-                isTooAggressiveActive ? currentCoverage : strategies.tooAggressive,
-                savingsPercentage
-            );
+            const commitment = SPCalculations.commitmentFromCoverage(strategies.tooAggressive, savingsPercentage);
             const savingsData = isTooAggressiveActive && currentCostResults ? {
                 hourly: currentCostResults.savings / numHours,
                 percentage: currentCostResults.savingsPercentageActual
