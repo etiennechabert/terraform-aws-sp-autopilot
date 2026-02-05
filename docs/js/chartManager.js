@@ -608,73 +608,7 @@ const ChartManager = (function() {
                         display: false
                     },
                     tooltip: {
-                        backgroundColor: 'rgba(26, 31, 58, 0.95)',
-                        titleColor: '#00d4ff',
-                        bodyColor: '#e0e6ed',
-                        borderColor: '#4d9fff',
-                        borderWidth: 1,
-                        padding: 12,
-                        mode: 'nearest',
-                        intersect: false,
-                        callbacks: {
-                            title: function(context) {
-                                const commitment = context[0].parsed.x;
-                                const curveData = context[0].chart.$curveData || [];
-
-                                // Find the data point for this commitment to get the coverage
-                                const point = curveData.reduce((prev, curr) => {
-                                    return Math.abs(curr.commitment - commitment) < Math.abs(prev.commitment - commitment) ? curr : prev;
-                                });
-
-                                const coverage = point?.coverage || commitment;
-                                const minCost = context[0].chart.$minCost || 0;
-                                const percentOfMin = minCost > 0 ? (coverage / minCost * 100).toFixed(0) : 0;
-                                return `Coverage: ${CostCalculator.formatCurrency(coverage)}/h (${percentOfMin}% of min)`;
-                            },
-                            label: function(context) {
-                                const savingsPercent = context.parsed.y;
-                                const coverage = context.parsed.x;
-                                const curveData = context.chart.$curveData || [];
-
-                                // Find the data point closest to this coverage
-                                const point = curveData.reduce((prev, curr) => {
-                                    return Math.abs(curr.coverage - coverage) < Math.abs(prev.coverage - coverage) ? curr : prev;
-                                });
-
-                                const netSavingsDollars = point?.netSavings || 0;
-                                const netSavingsHourly = netSavingsDollars / 168; // Convert weekly to hourly
-                                return `Savings: ${savingsPercent.toFixed(1)}% (${CostCalculator.formatCurrency(netSavingsHourly)}/h)`;
-                            },
-                            afterLabel: function(context) {
-                                const coverage = context.parsed.x;
-                                const curveData = context.chart.$curveData || [];
-
-                                // Find the data point closest to this coverage
-                                const point = curveData.reduce((prev, curr) => {
-                                    return Math.abs(curr.coverage - coverage) < Math.abs(prev.coverage - coverage) ? curr : prev;
-                                });
-
-                                if (!point) return null;
-
-                                const extraSavings = point.extraSavings || 0;
-                                const extraSavingsHourly = extraSavings / 168; // Convert weekly to hourly
-
-                                // Use hourly threshold of $0.01/h (equivalent to $1.68/week)
-                                if (extraSavingsHourly > 0.01) {
-                                    return `vs Optimal: +${CostCalculator.formatCurrency(extraSavingsHourly)}/h`;
-                                } else if (extraSavingsHourly < -0.01) {
-                                    return `vs Optimal: ${CostCalculator.formatCurrency(extraSavingsHourly)}/h`;
-                                }
-                                return 'At optimal';
-                            },
-                            footer: function(context) {
-                                const savingsPercent = context[0].parsed.y;
-                                if (savingsPercent < 0) {
-                                    return '\n⚠️ Over-committed: Losing money vs on-demand';
-                                }
-                                return null;
-                            }
-                        }
+                        enabled: false
                     },
                     annotation: {
                         annotations: {}
