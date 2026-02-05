@@ -237,6 +237,27 @@ h1, h2, h3, h4, h5, h6 {
     gap: var(--spacing-md);
 }
 
+.card-header-with-toggle {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: var(--spacing-md);
+    margin-bottom: var(--spacing-md);
+}
+
+.pattern-controls-row {
+    display: grid;
+    grid-template-columns: 2fr 1fr 1fr;
+    gap: var(--spacing-md);
+    margin-bottom: var(--spacing-md);
+}
+
+@media (max-width: 768px) {
+    .pattern-controls-row {
+        grid-template-columns: 1fr;
+    }
+}
+
 /* ===== Toggle Button ===== */
 .button-toggle {
     background: transparent;
@@ -544,21 +565,9 @@ h1, h2, h3, h4, h5, h6 {
 }
 
 /* ===== Cost Chart & Metrics Grid (3/4 + 1/4) ===== */
-.cost-metrics-grid {
-    display: grid;
-    grid-template-columns: 3fr 1fr;
-    gap: var(--spacing-md);
-    margin-bottom: var(--spacing-md);
-}
-
-.cost-metrics-grid > * {
-    min-width: 0; /* Allow grid children to shrink below content size */
-}
-
-@media (max-width: 1024px) {
-    .cost-metrics-grid {
-        grid-template-columns: 1fr;
-    }
+/* Cost comparison section now full width (metrics moved above chart) */
+.section-cost-comparison {
+    width: 100%;
 }
 
 /* ===== Metrics & Actions Grid ===== */
@@ -622,6 +631,67 @@ h1, h2, h3, h4, h5, h6 {
     flex-direction: column;
     gap: var(--spacing-xs);
     margin-bottom: var(--spacing-sm);
+}
+
+/* Horizontal Metrics Row */
+.metrics-row {
+    display: grid;
+    grid-template-columns: repeat(6, 1fr);
+    gap: var(--spacing-sm);
+    margin-bottom: var(--spacing-md);
+    padding: var(--spacing-sm);
+    background: rgba(0, 0, 0, 0.2);
+    border-radius: var(--radius-md);
+}
+
+.metric-card {
+    padding: var(--spacing-sm);
+    background: rgba(0, 0, 0, 0.3);
+    border-radius: var(--radius-sm);
+    border: 1px solid transparent;
+    transition: all 0.3s ease;
+    text-align: center;
+}
+
+.metric-card:hover {
+    border-color: var(--accent-cyan);
+    transform: translateY(-2px);
+}
+
+.metric-card.highlight {
+    border-color: var(--accent-cyan);
+    background: rgba(0, 212, 255, 0.05);
+}
+
+.metric-card .metric-value {
+    font-size: 1.5rem;
+    font-weight: 700;
+    color: var(--accent-cyan);
+    margin-bottom: 4px;
+}
+
+.metric-card .metric-label {
+    font-size: 0.75rem;
+    color: var(--text-muted);
+    line-height: 1.3;
+}
+
+.metric-card .metric-subvalue {
+    font-size: 0.7rem;
+    color: var(--text-secondary);
+    margin-top: 2px;
+}
+
+@media (max-width: 1200px) {
+    .metrics-row {
+        grid-template-columns: repeat(3, 1fr);
+    }
+}
+
+@media (max-width: 768px) {
+    .metrics-row {
+        grid-template-columns: repeat(2, 1fr);
+    }
 }
 
 .metric-item {

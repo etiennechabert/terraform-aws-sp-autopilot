@@ -666,11 +666,11 @@
 
         // Show success message
         const strategyNames = {
-            'too-prudent': 'Too Prudent 🐔',
+            'too-prudent': 'Prudent 🐔',
             'min-hourly': 'Min-Hourly',
             'balanced': 'Balanced',
-            'aggressive': 'Aggressive',
-            'too-aggressive': 'Too Aggressive 💀'
+            'aggressive': 'Risky',
+            'too-aggressive': 'Aggressive 💀'
         };
         showToast(`${strategyNames[strategy]} strategy applied: ${CostCalculator.formatCurrency(coverageCost)}/h`);
     }
@@ -691,10 +691,15 @@
         const baseHourlyCosts = appState.hourlyCosts || [];
         const loadFactor = appState.loadFactor / 100;
         const scaledHourlyCosts = baseHourlyCosts.map(cost => cost * loadFactor);
-        const numHours = scaledHourlyCosts.length || 168;
 
-        // Calculate baseline on-demand cost
-        const baselineCost = scaledHourlyCosts.reduce((sum, cost) => sum + cost, 0);
+        // Use actual array length for division, same as updateMetricsDisplay
+        const numHours = appState.hourlyCosts?.length || 168;
+
+        // Calculate baseline on-demand cost for all 168 hours
+        let baselineCost = 0;
+        for (let hour = 0; hour < numHours; hour++) {
+            baselineCost += scaledHourlyCosts[hour] || 0;
+        }
         const hourlyOnDemand = baselineCost / numHours;
 
         // Helper function to calculate savings for a strategy
@@ -703,9 +708,11 @@
             let commitmentCost = 0;
             let spilloverCost = 0;
 
-            for (let i = 0; i < scaledHourlyCosts.length; i++) {
+            // Always loop 168 hours like CostCalculator.calculateCosts
+            for (let hour = 0; hour < numHours; hour++) {
+                const onDemandCost = scaledHourlyCosts[hour] || 0;
                 commitmentCost += coverageUnits * discountFactor;
-                spilloverCost += Math.max(0, scaledHourlyCosts[i] - coverageUnits);
+                spilloverCost += Math.max(0, onDemandCost - coverageUnits);
             }
 
             const totalCost = commitmentCost + spilloverCost;
@@ -1199,6 +1206,34 @@
     }
 
     /**
+     * Get color for percentage value based on metric type
+     * @param {number} percentage - The percentage value
+     * @param {string} type - The metric type: 'commitment', 'waste', 'spillover'
+     * @returns {string} Color code
+     */
+    function getPercentageColor(percentage, type) {
+        switch (type) {
+            case 'commitment': // Higher is better
+                if (percentage >= 60) return '#00ff88'; // Green
+                if (percentage >= 30) return '#ffb84d'; // Orange
+                return '#ff4d4d'; // Red
+
+            case 'waste': // Lower is better
+                if (percentage <= 10) return '#00ff88'; // Green
+                if (percentage <= 25) return '#ffb84d'; // Orange
+                return '#ff4d4d'; // Red
+
+            case 'spillover': // Lower is better
+                if (percentage <= 20) return '#00ff88'; // Green
+                if (percentage <= 40) return '#ffb84d'; // Orange
+                return '#ff4d4d'; // Red
+
+            default:
+                return 'inherit';
+        }
+    }
+
+    /**
      * Update metrics display
      */
     function updateMetricsDisplay(results) {
@@ -1251,10 +1286,12 @@
             savingsPctElement.textContent = CostCalculator.formatPercentage(results.savingsPercentageActual);
         }
 
-        // SP Commitment Cost
+        // SP Commitment
         const commitmentElement = document.getElementById('metric-commitment');
         if (commitmentElement) {
-            commitmentElement.textContent = CostCalculator.formatCurrency(results.commitmentCost / numHours) + '/h';
+            const discountFactor = (1 - appState.savingsPercentage / 100);
+            const commitmentPerHour = appState.coverageCost * discountFactor;
+            commitmentElement.textContent = CostCalculator.formatCurrency(commitmentPerHour) + '/h';
         }
 
         const commitmentPctElement = document.getElementById('metric-commitment-pct');
@@ -1262,7 +1299,8 @@
             const commitmentPct = results.savingsPlanCost > 0
                 ? (results.commitmentCost / results.savingsPlanCost) * 100
                 : 0;
-            commitmentPctElement.textContent = `${commitmentPct.toFixed(1)}% of total`;
+            commitmentPctElement.textContent = `${commitmentPct.toFixed(1)}% of total cost`;
+            commitmentPctElement.style.color = getPercentageColor(commitmentPct, 'commitment');
         }
 
         // Spillover Cost
@@ -1274,6 +1312,7 @@
         const spilloverPctElement = document.getElementById('metric-spillover-pct');
         if (spilloverPctElement) {
             spilloverPctElement.textContent = `${CostCalculator.formatPercentage(results.spilloverPercentage)} of total`;
+            spilloverPctElement.style.color = getPercentageColor(results.spilloverPercentage, 'spillover');
         }
 
         // Wasted commitment
@@ -1285,6 +1324,7 @@
         const wastePctElement = document.getElementById('metric-waste-pct');
         if (wastePctElement) {
             wastePctElement.textContent = `${CostCalculator.formatPercentage(results.wastePercentage)} of commitment`;
+            wastePctElement.style.color = getPercentageColor(results.wastePercentage, 'waste');
         }
     }
 
