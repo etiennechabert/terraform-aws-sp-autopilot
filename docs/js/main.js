@@ -758,6 +758,25 @@
             tooPrudentSavings.textContent = `${CostCalculator.formatCurrency(results.savings / numHours)}/h`;
             tooPrudentSavingsPct.textContent = `${results.savingsPercentageActual.toFixed(1)}%`;
             tooPrudentMinHourlyPct.textContent = `${minHourlyPct.toFixed(1)}% Min-Hourly`;
+
+            const pureOnDemand = hourlyOnDemand;
+            const commitmentCost = results.commitmentCost / numHours;
+            const spilloverCost = results.spilloverCost / numHours;
+            const savingsValue = results.savings / numHours;
+            const tooltip = document.getElementById('strategy-too-prudent-savings-tooltip');
+            if (tooltip) {
+                tooltip.innerHTML = `
+                    <div class="tooltip-line"><span class="tooltip-label">Pure On-Demand:</span><span class="tooltip-value-ondemand">${CostCalculator.formatCurrency(pureOnDemand)}/h</span></div>
+                    <div class="tooltip-line"><span class="tooltip-label">Commitment:</span><span class="tooltip-value-commitment">${CostCalculator.formatCurrency(commitmentCost)}/h</span></div>
+                    <div class="tooltip-line"><span class="tooltip-label">Spillover:</span><span class="tooltip-value-spillover">${CostCalculator.formatCurrency(spilloverCost)}/h</span></div>
+                    <div class="tooltip-calculation">
+                        <span class="tooltip-value-ondemand">${CostCalculator.formatCurrency(pureOnDemand)}/h</span> -
+                        (<span class="tooltip-value-commitment">${CostCalculator.formatCurrency(commitmentCost)}/h</span> +
+                        <span class="tooltip-value-spillover">${CostCalculator.formatCurrency(spilloverCost)}/h</span>) =
+                        <span class="tooltip-value-savings">${CostCalculator.formatCurrency(savingsValue)}/h</span>
+                    </div>
+                `;
+            }
         }
 
         // Update Min-Hourly
@@ -773,6 +792,25 @@
             minSavings.textContent = `${CostCalculator.formatCurrency(results.savings / numHours)}/h`;
             minSavingsPct.textContent = `${results.savingsPercentageActual.toFixed(1)}%`;
             minMinHourlyPct.textContent = `${minHourlyPct.toFixed(1)}% Min-Hourly`;
+
+            const pureOnDemand = hourlyOnDemand;
+            const commitmentCost = results.commitmentCost / numHours;
+            const spilloverCost = results.spilloverCost / numHours;
+            const savingsValue = results.savings / numHours;
+            const tooltip = document.getElementById('strategy-min-savings-tooltip');
+            if (tooltip) {
+                tooltip.innerHTML = `
+                    <div class="tooltip-line"><span class="tooltip-label">Pure On-Demand:</span><span class="tooltip-value-ondemand">${CostCalculator.formatCurrency(pureOnDemand)}/h</span></div>
+                    <div class="tooltip-line"><span class="tooltip-label">Commitment:</span><span class="tooltip-value-commitment">${CostCalculator.formatCurrency(commitmentCost)}/h</span></div>
+                    <div class="tooltip-line"><span class="tooltip-label">Spillover:</span><span class="tooltip-value-spillover">${CostCalculator.formatCurrency(spilloverCost)}/h</span></div>
+                    <div class="tooltip-calculation">
+                        <span class="tooltip-value-ondemand">${CostCalculator.formatCurrency(pureOnDemand)}/h</span> -
+                        (<span class="tooltip-value-commitment">${CostCalculator.formatCurrency(commitmentCost)}/h</span> +
+                        <span class="tooltip-value-spillover">${CostCalculator.formatCurrency(spilloverCost)}/h</span>) =
+                        <span class="tooltip-value-savings">${CostCalculator.formatCurrency(savingsValue)}/h</span>
+                    </div>
+                `;
+            }
         }
 
         // Update Balanced
@@ -788,6 +826,25 @@
             balancedSavings.textContent = `${CostCalculator.formatCurrency(results.savings / numHours)}/h`;
             balancedSavingsPct.textContent = `${results.savingsPercentageActual.toFixed(1)}%`;
             balancedMinHourlyPct.textContent = `${minHourlyPct.toFixed(1)}% Min-Hourly`;
+
+            const pureOnDemand = hourlyOnDemand;
+            const commitmentCost = results.commitmentCost / numHours;
+            const spilloverCost = results.spilloverCost / numHours;
+            const savingsValue = results.savings / numHours;
+            const tooltip = document.getElementById('strategy-balanced-savings-tooltip');
+            if (tooltip) {
+                tooltip.innerHTML = `
+                    <div class="tooltip-line"><span class="tooltip-label">Pure On-Demand:</span><span class="tooltip-value-ondemand">${CostCalculator.formatCurrency(pureOnDemand)}/h</span></div>
+                    <div class="tooltip-line"><span class="tooltip-label">Commitment:</span><span class="tooltip-value-commitment">${CostCalculator.formatCurrency(commitmentCost)}/h</span></div>
+                    <div class="tooltip-line"><span class="tooltip-label">Spillover:</span><span class="tooltip-value-spillover">${CostCalculator.formatCurrency(spilloverCost)}/h</span></div>
+                    <div class="tooltip-calculation">
+                        <span class="tooltip-value-ondemand">${CostCalculator.formatCurrency(pureOnDemand)}/h</span> -
+                        (<span class="tooltip-value-commitment">${CostCalculator.formatCurrency(commitmentCost)}/h</span> +
+                        <span class="tooltip-value-spillover">${CostCalculator.formatCurrency(spilloverCost)}/h</span>) =
+                        <span class="tooltip-value-savings">${CostCalculator.formatCurrency(savingsValue)}/h</span>
+                    </div>
+                `;
+            }
         }
 
         // Update Aggressive (Risky)
@@ -803,6 +860,25 @@
             aggressiveSavings.textContent = `${CostCalculator.formatCurrency(results.savings / numHours)}/h`;
             aggressiveSavingsPct.textContent = `${results.savingsPercentageActual.toFixed(1)}%`;
             aggressiveMinHourlyPct.textContent = `${minHourlyPct.toFixed(1)}% Min-Hourly`;
+
+            const pureOnDemand = hourlyOnDemand;
+            const commitmentCost = results.commitmentCost / numHours;
+            const spilloverCost = results.spilloverCost / numHours;
+            const savingsValue = results.savings / numHours;
+            const tooltip = document.getElementById('strategy-aggressive-savings-tooltip');
+            if (tooltip) {
+                tooltip.innerHTML = `
+                    <div class="tooltip-line"><span class="tooltip-label">Pure On-Demand:</span><span class="tooltip-value-ondemand">${CostCalculator.formatCurrency(pureOnDemand)}/h</span></div>
+                    <div class="tooltip-line"><span class="tooltip-label">Commitment:</span><span class="tooltip-value-commitment">${CostCalculator.formatCurrency(commitmentCost)}/h</span></div>
+                    <div class="tooltip-line"><span class="tooltip-label">Spillover:</span><span class="tooltip-value-spillover">${CostCalculator.formatCurrency(spilloverCost)}/h</span></div>
+                    <div class="tooltip-calculation">
+                        <span class="tooltip-value-ondemand">${CostCalculator.formatCurrency(pureOnDemand)}/h</span> -
+                        (<span class="tooltip-value-commitment">${CostCalculator.formatCurrency(commitmentCost)}/h</span> +
+                        <span class="tooltip-value-spillover">${CostCalculator.formatCurrency(spilloverCost)}/h</span>) =
+                        <span class="tooltip-value-savings">${CostCalculator.formatCurrency(savingsValue)}/h</span>
+                    </div>
+                `;
+            }
         }
 
         // Update Too Aggressive
@@ -818,6 +894,25 @@
             tooAggressiveSavings.textContent = `${CostCalculator.formatCurrency(results.savings / numHours)}/h`;
             tooAggressiveSavingsPct.textContent = `${results.savingsPercentageActual.toFixed(1)}%`;
             tooAggressiveMinHourlyPct.textContent = `${minHourlyPct.toFixed(1)}% Min-Hourly`;
+
+            const pureOnDemand = hourlyOnDemand;
+            const commitmentCost = results.commitmentCost / numHours;
+            const spilloverCost = results.spilloverCost / numHours;
+            const savingsValue = results.savings / numHours;
+            const tooltip = document.getElementById('strategy-too-aggressive-savings-tooltip');
+            if (tooltip) {
+                tooltip.innerHTML = `
+                    <div class="tooltip-line"><span class="tooltip-label">Pure On-Demand:</span><span class="tooltip-value-ondemand">${CostCalculator.formatCurrency(pureOnDemand)}/h</span></div>
+                    <div class="tooltip-line"><span class="tooltip-label">Commitment:</span><span class="tooltip-value-commitment">${CostCalculator.formatCurrency(commitmentCost)}/h</span></div>
+                    <div class="tooltip-line"><span class="tooltip-label">Spillover:</span><span class="tooltip-value-spillover">${CostCalculator.formatCurrency(spilloverCost)}/h</span></div>
+                    <div class="tooltip-calculation">
+                        <span class="tooltip-value-ondemand">${CostCalculator.formatCurrency(pureOnDemand)}/h</span> -
+                        (<span class="tooltip-value-commitment">${CostCalculator.formatCurrency(commitmentCost)}/h</span> +
+                        <span class="tooltip-value-spillover">${CostCalculator.formatCurrency(spilloverCost)}/h</span>) =
+                        <span class="tooltip-value-savings">${CostCalculator.formatCurrency(savingsValue)}/h</span>
+                    </div>
+                `;
+            }
         }
 
         // Detect and highlight active strategy
