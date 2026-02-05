@@ -1307,11 +1307,13 @@
 
         const commitmentPctElement = document.getElementById('metric-commitment-pct');
         if (commitmentPctElement) {
-            const commitmentPct = results.savingsPlanCost > 0
-                ? (results.commitmentCost / results.savingsPlanCost) * 100
+            // Calculate how much of on-demand usage is covered by the commitment
+            const avgOnDemandPerHour = results.baselineCost / (appState.hourlyCosts?.length || 168);
+            const coveragePct = avgOnDemandPerHour > 0
+                ? (appState.coverageCost / avgOnDemandPerHour) * 100
                 : 0;
-            commitmentPctElement.textContent = `${commitmentPct.toFixed(1)}% of total cost`;
-            commitmentPctElement.style.color = getPercentageColor(commitmentPct, 'commitment');
+            commitmentPctElement.textContent = `${coveragePct.toFixed(1)}% of on-demand`;
+            commitmentPctElement.style.color = getPercentageColor(coveragePct, 'commitment');
         }
 
         // Spillover Cost
