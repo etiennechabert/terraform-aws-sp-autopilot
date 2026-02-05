@@ -806,13 +806,16 @@ const ChartManager = (function() {
         let optimalIndex = -1;
         let breakevenIndex = -1;
 
+        // Find the actual optimal point (maximum netSavings)
+        let maxSavings = -Infinity;
         for (let i = 0; i < curveData.length; i++) {
             // Find min-hourly crossing
             if (curveData[i].coverage >= minCost && minCostIndex === -1) {
                 minCostIndex = i;
             }
-            // Find optimal crossing
-            if (curveData[i].coverage >= optimalCoverage && optimalIndex === -1) {
+            // Find optimal point (max savings)
+            if (curveData[i].netSavings > maxSavings) {
+                maxSavings = curveData[i].netSavings;
                 optimalIndex = i;
             }
         }

@@ -1192,14 +1192,9 @@
         const optimalResult = CostCalculator.calculateOptimalCoverage(hourlyCosts, savingsPercentage);
 
         // Calculate extra savings for each point
-        // - Below optimal: extra savings vs min-hourly (positive gain)
-        // - Past optimal: waste vs optimal (negative)
+        // All points compare to optimal (positive if better, negative if worse, 0 at optimal)
         curveData.forEach(point => {
-            if (point.coverage <= optimalCoverage) {
-                point.extraSavings = point.netSavings - minHourlySavings;
-            } else {
-                point.extraSavings = point.netSavings - optimalNetSavings;
-            }
+            point.extraSavings = point.netSavings - optimalNetSavings;
         });
 
         // Always use the current slider position for the vertical line
