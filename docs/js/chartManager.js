@@ -259,7 +259,7 @@ const ChartManager = (function() {
 
                                 const lines = [
                                     '',
-                                    `Usage: ${CostCalculator.formatCurrency(breakdown.onDemandCost)}/hour`,
+                                    `Usage: ${CostCalculator.formatCurrency(breakdown.onDemandCost)}/h`,
                                     `Total with SP: ${CostCalculator.formatCurrency(breakdown.savingsPlanCost)}`,
                                     `Savings: ${CostCalculator.formatCurrency(breakdown.onDemandCost - breakdown.savingsPlanCost)}`
                                 ];
@@ -361,7 +361,7 @@ const ChartManager = (function() {
         // Dataset 2: Total on-demand baseline (dashed line)
         const onDemandCosts = hourlyBreakdown.map(h => h.onDemandCost);
 
-        // Dataset 3: Commitment level (horizontal line showing coverage in $/hr)
+        // Dataset 3: Commitment level (horizontal line showing coverage in $/h)
         // This represents the on-demand cost equivalent you're committing to cover
         const commitmentLine = new Array(168).fill(coverageUnits);
 
@@ -621,7 +621,7 @@ const ChartManager = (function() {
                                 const coverage = context[0].parsed.x;
                                 const minCost = context[0].chart.$minCost || 0;
                                 const percentOfMin = minCost > 0 ? (coverage / minCost * 100).toFixed(0) : 0;
-                                return `Coverage: ${CostCalculator.formatCurrency(coverage)}/hour (${percentOfMin}% of min)`;
+                                return `Coverage: ${CostCalculator.formatCurrency(coverage)}/h (${percentOfMin}% of min)`;
                             },
                             label: function(context) {
                                 const savingsPercent = context.parsed.y;
@@ -677,7 +677,7 @@ const ChartManager = (function() {
                         min: 0,
                         title: {
                             display: true,
-                            text: 'Commitment Level ($/hour)',
+                            text: 'Commitment Level ($/h)',
                             color: '#e0e6ed',
                             font: { size: 12, weight: 'bold' }
                         },
@@ -732,11 +732,11 @@ const ChartManager = (function() {
      * Update savings curve chart with new data
      * @param {Array} curveData - Savings curve data points
      * @param {number} minHourlySavings - Baseline savings at min-hourly (dollars)
-     * @param {number} optimalCoverage - Optimal coverage in $/hour
+     * @param {number} optimalCoverage - Optimal coverage in $/h
      * @param {number} minCost - Min-hourly cost
      * @param {number} maxCost - Max-hourly cost
      * @param {number} baselineCost - Total baseline on-demand cost
-     * @param {number} currentCoverage - Current actual coverage in $/hour (optional)
+     * @param {number} currentCoverage - Current actual coverage in $/h (optional)
      * @param {number} savingsPercentage - Savings percentage (0-99)
      */
     function updateSavingsCurveChart(curveData, minHourlySavings, optimalCoverage, minCost, maxCost, baselineCost, currentCoverage, savingsPercentage) {
@@ -877,7 +877,7 @@ const ChartManager = (function() {
                 borderDash: [10, 5],
                 label: {
                     display: true,
-                    content: `📍 ${CostCalculator.formatCurrency(currentCommitment)}/hr (${percentOfMin}% of min)`,
+                    content: `📍 ${CostCalculator.formatCurrency(currentCommitment)}/h (${percentOfMin}% of min)`,
                     position: 'start',
                     backgroundColor: 'rgba(0, 212, 255, 0.9)',
                     color: '#1a1f3a',

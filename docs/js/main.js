@@ -9,10 +9,11 @@
     // Application state
     let appState = {
         pattern: 'ecommerce',
-        minCost: 15,          // Min $/hour
-        maxCost: 100,         // Max $/hour (peak)
-        coverageCost: 50,     // Coverage commitment in $/hour
+        minCost: 15,          // Min $/h
+        maxCost: 100,         // Max $/h (peak)
+        coverageCost: 50,     // Coverage commitment in $/h
         savingsPercentage: 30,
+        loadFactor: 100,      // Load factor percentage (50-200%)
         onDemandRate: 0.10,
         currentLoadPattern: [],
         customCurve: null
@@ -130,14 +131,14 @@
 
         if (difference > tolerance) {
             console.warn('⚠️ Mismatch detected between Python and JavaScript optimal coverage calculations!');
-            console.warn(`Python: $${pythonCoverage.toFixed(2)}/hr`);
-            console.warn(`JavaScript: $${jsCoverage.toFixed(2)}/hr`);
-            console.warn(`Difference: $${difference.toFixed(2)}/hr`);
+            console.warn(`Python: $${pythonCoverage.toFixed(2)}/h`);
+            console.warn(`JavaScript: $${jsCoverage.toFixed(2)}/h`);
+            console.warn(`Difference: $${difference.toFixed(2)}/h`);
 
             showMismatchWarning(pythonCoverage, jsCoverage);
         } else {
             console.log('✓ Python and JavaScript optimal coverage calculations match');
-            console.log(`Optimal: $${jsCoverage.toFixed(2)}/hr`);
+            console.log(`Optimal: $${jsCoverage.toFixed(2)}/h`);
         }
     }
 
@@ -157,7 +158,7 @@
                 <span class="warning-icon">⚠️</span>
                 <span class="warning-text">
                     <strong>Algorithm Mismatch Detected</strong><br>
-                    Python calculated: $${pythonValue.toFixed(2)}/hr | JavaScript calculated: $${jsValue.toFixed(2)}/hr<br>
+                    Python calculated: $${pythonValue.toFixed(2)}/h | JavaScript calculated: $${jsValue.toFixed(2)}/h<br>
                     <small>The Python and JavaScript implementations may be out of sync. Please report this issue.</small>
                 </span>
             </div>
@@ -237,6 +238,13 @@
             savingsSlider.addEventListener('input', handleSavingsChange);
         }
 
+        // Load factor slider
+        const loadFactorSlider = document.getElementById('load-factor');
+        if (loadFactorSlider) {
+            loadFactorSlider.value = appState.loadFactor;
+            loadFactorSlider.addEventListener('input', handleLoadFactorChange);
+        }
+
         // On-demand rate input (advanced)
         const onDemandRateInput = document.getElementById('on-demand-rate');
         if (onDemandRateInput) {
@@ -262,11 +270,11 @@
             colorThemeSelect.addEventListener('change', handleColorThemeChange);
         }
 
-        // Clickable optimal suggestion (applies optimal coverage when clicked)
-        const optimalSuggestion = document.getElementById('optimal-suggestion');
-        if (optimalSuggestion) {
-            optimalSuggestion.addEventListener('click', handleApplyOptimal);
-        }
+        // Strategy button click handlers
+        const strategyButtons = document.querySelectorAll('.strategy-button');
+        strategyButtons.forEach(button => {
+            button.addEventListener('click', handleStrategyClick);
+        });
     }
 
     /**
@@ -306,6 +314,13 @@
             savingsSlider.value = appState.savingsPercentage;
         }
         updateSavingsDisplay(appState.savingsPercentage);
+
+        // Load factor slider
+        const loadFactorSlider = document.getElementById('load-factor');
+        if (loadFactorSlider) {
+            loadFactorSlider.value = appState.loadFactor;
+        }
+        updateLoadFactorDisplay(appState.loadFactor);
 
         // On-demand rate
         const onDemandRateInput = document.getElementById('on-demand-rate');
@@ -407,6 +422,19 @@
     }
 
     /**
+     * Handle load factor change
+     */
+    function handleLoadFactorChange(event) {
+        const value = parseInt(event.target.value, 10);
+        if (!isNaN(value) && value >= 50 && value <= 200) {
+            appState.loadFactor = value;
+            updateLoadFactorDisplay(value);
+            calculateAndUpdateCosts();
+            URLState.debouncedUpdateURL(appState);
+        }
+    }
+
+    /**
      * Handle on-demand rate change
      */
     function handleOnDemandRateChange(event) {
@@ -436,28 +464,188 @@
     }
 
     /**
-     * Handle apply optimal coverage button click
+     * Calculate all strategy coverage values
+     * All strategies based on the knee point algorithm
+     * @returns {Object} Strategy values with coverage amounts
      */
-    function handleApplyOptimal() {
-        if (!currentCostResults || !currentCostResults.optimalCoverage) {
-            showToast('Unable to apply optimal coverage. Please try again.', 'error');
-            return;
+    function calculateStrategies() {
+        const baseHourlyCosts = appState.hourlyCosts || [];
+        if (baseHourlyCosts.length === 0) {
+            return {
+                tooPrudent: 0,
+                minHourly: 0,
+                balanced: 0,
+                aggressive: 0,
+                tooAggressive: 0
+            };
         }
 
-        // Get optimal coverage in $/hour
-        const optimalCoverageCost = currentCostResults.optimalCoverage.coverageUnits;
+        // Apply load factor to scale usage
+        const loadFactor = appState.loadFactor / 100;
+        const hourlyCosts = baseHourlyCosts.map(cost => cost * loadFactor);
+
+        // Min-Hourly: Baseline only (minimum cost with load factor)
+        const minHourly = Math.min(...hourlyCosts);
+
+        // Too Prudent: 80% of min-hourly (under-committed - for educational purposes)
+        const tooPrudent = minHourly * 0.80;
+
+        // Optimal: Maximum savings (the peak)
+        const optimalResult = CostCalculator.calculateOptimalCoverage(
+            hourlyCosts,
+            appState.savingsPercentage
+        );
+        const optimal = optimalResult.coverageUnits;
+
+        // Balanced: The knee point (sweet spot)
+        const balanced = calculateKneePoint(hourlyCosts, appState.savingsPercentage, minHourly, optimal);
+
+        // Aggressive: The exact optimal point (maximum savings)
+        const aggressive = optimal;
+
+        // Too Aggressive: 125% of optimal (into the declining zone - for educational purposes)
+        const tooAggressive = optimal * 1.25;
+
+        return {
+            tooPrudent,
+            minHourly,
+            balanced,
+            aggressive,
+            tooAggressive
+        };
+    }
+
+    /**
+     * Calculate the knee point on the savings curve
+     * This is the "balanced" strategy - where you get most of the savings
+     * without committing all the way to optimal
+     *
+     * Uses perpendicular distance method to find the elbow of the curve
+     */
+    function calculateKneePoint(hourlyCosts, savingsPercentage, minCost, optimalCoverage) {
+        const baselineCost = hourlyCosts.reduce((sum, cost) => sum + cost, 0);
+        const discountFactor = (1 - savingsPercentage / 100);
+
+        // Generate curve data from minCost to 120% past optimal (to see the decline)
+        const maxCoverage = optimalCoverage * 1.2;
+        const numPoints = 200; // More points for accurate derivative calculation
+        const step = (maxCoverage - minCost) / numPoints;
+        const curvePoints = [];
+
+        for (let i = 0; i <= numPoints; i++) {
+            const coverage = minCost + (i * step);
+
+            let commitmentCost = 0;
+            let spilloverCost = 0;
+
+            for (let j = 0; j < hourlyCosts.length; j++) {
+                commitmentCost += coverage * discountFactor;
+                spilloverCost += Math.max(0, hourlyCosts[j] - coverage);
+            }
+
+            const totalCost = commitmentCost + spilloverCost;
+            const netSavings = baselineCost - totalCost;
+            const savingsPercent = baselineCost > 0 ? (netSavings / baselineCost) * 100 : 0;
+
+            curvePoints.push({
+                coverage: coverage,
+                savingsPercent: savingsPercent,
+                netSavings: netSavings
+            });
+        }
+
+        // Find knee by analyzing marginal efficiency: where additional commitment
+        // stops providing good returns (diminishing returns threshold)
+
+        // Calculate marginal savings rate for each point (change in savings / change in coverage)
+        const marginalRates = [];
+
+        for (let i = 1; i < curvePoints.length; i++) {
+            if (curvePoints[i].coverage > minCost && curvePoints[i].coverage <= optimalCoverage) {
+                const coverageDelta = curvePoints[i].coverage - curvePoints[i - 1].coverage;
+                const savingsDelta = curvePoints[i].savingsPercent - curvePoints[i - 1].savingsPercent;
+                const marginalRate = coverageDelta > 0 ? savingsDelta / coverageDelta : 0;
+
+                marginalRates.push({
+                    index: i,
+                    coverage: curvePoints[i].coverage,
+                    marginalRate: marginalRate,
+                    savingsPercent: curvePoints[i].savingsPercent
+                });
+            }
+        }
+
+        if (marginalRates.length === 0) {
+            return minCost;
+        }
+
+        // Find the peak marginal rate (usually early in the curve)
+        const maxMarginalRate = Math.max(...marginalRates.map(r => r.marginalRate));
+
+        // Find where marginal rate drops to 30% of its peak
+        // This is the "knee" - still good returns but not peak efficiency
+        const threshold = maxMarginalRate * 0.30;
+
+        let kneeIndex = 0;
+        for (let i = 0; i < marginalRates.length; i++) {
+            if (marginalRates[i].marginalRate < threshold) {
+                // Found where efficiency drops below threshold
+                // Use the previous point (last point above threshold)
+                kneeIndex = i > 0 ? marginalRates[i - 1].index : marginalRates[0].index;
+                break;
+            }
+        }
+
+        // If we never dropped below threshold, use a point 60% of the way to optimal
+        if (kneeIndex === 0) {
+            return minCost + (optimalCoverage - minCost) * 0.60;
+        }
+
+        return curvePoints[kneeIndex].coverage;
+    }
+
+    /**
+     * Handle strategy button click
+     */
+    function handleStrategyClick(event) {
+        const button = event.currentTarget;
+        const strategy = button.dataset.strategy;
+
+        const strategies = calculateStrategies();
+        let coverageCost;
+
+        switch (strategy) {
+            case 'too-prudent':
+                coverageCost = strategies.tooPrudent;
+                break;
+            case 'min-hourly':
+                coverageCost = strategies.minHourly;
+                break;
+            case 'balanced':
+                coverageCost = strategies.balanced;
+                break;
+            case 'aggressive':
+                coverageCost = strategies.aggressive;
+                break;
+            case 'too-aggressive':
+                coverageCost = strategies.tooAggressive;
+                break;
+            default:
+                showToast('Unknown strategy', 'error');
+                return;
+        }
 
         // Update state
-        appState.coverageCost = optimalCoverageCost;
+        appState.coverageCost = coverageCost;
 
         // Update slider
         const coverageSlider = document.getElementById('coverage-slider');
         if (coverageSlider) {
-            coverageSlider.value = optimalCoverageCost;
+            coverageSlider.value = coverageCost;
         }
 
         // Update display
-        updateCoverageDisplay(optimalCoverageCost);
+        updateCoverageDisplay(coverageCost);
 
         // Recalculate
         calculateAndUpdateCosts();
@@ -466,7 +654,178 @@
         URLState.debouncedUpdateURL(appState);
 
         // Show success message
-        showToast(`Optimal coverage applied: ${CostCalculator.formatCurrency(optimalCoverageCost)}/hour`);
+        const strategyNames = {
+            'too-prudent': 'Too Prudent 🐔',
+            'min-hourly': 'Min-Hourly',
+            'balanced': 'Balanced',
+            'aggressive': 'Aggressive',
+            'too-aggressive': 'Too Aggressive 💀'
+        };
+        showToast(`${strategyNames[strategy]} strategy applied: ${CostCalculator.formatCurrency(coverageCost)}/h`);
+    }
+
+    /**
+     * Update strategy button displays with calculated values
+     */
+    function updateStrategyButtons() {
+        const strategies = calculateStrategies();
+
+        // Get current coverage to detect which strategy is active
+        const currentCoverage = appState.coverageCost;
+
+        // Convert coverage to commitment for display
+        const savingsPercentage = appState.savingsPercentage;
+
+        // Get scaled hourly costs for savings calculation
+        const baseHourlyCosts = appState.hourlyCosts || [];
+        const loadFactor = appState.loadFactor / 100;
+        const scaledHourlyCosts = baseHourlyCosts.map(cost => cost * loadFactor);
+        const numHours = scaledHourlyCosts.length || 168;
+
+        // Calculate baseline on-demand cost
+        const baselineCost = scaledHourlyCosts.reduce((sum, cost) => sum + cost, 0);
+        const hourlyOnDemand = baselineCost / numHours;
+
+        // Helper function to calculate savings for a strategy
+        const calculateStrategySavings = (coverageUnits) => {
+            const discountFactor = (1 - savingsPercentage / 100);
+            let commitmentCost = 0;
+            let spilloverCost = 0;
+
+            for (let i = 0; i < scaledHourlyCosts.length; i++) {
+                commitmentCost += coverageUnits * discountFactor;
+                spilloverCost += Math.max(0, scaledHourlyCosts[i] - coverageUnits);
+            }
+
+            const totalCost = commitmentCost + spilloverCost;
+            const netSavings = baselineCost - totalCost;
+            const netSavingsHourly = netSavings / numHours;
+
+            // Calculate effective savings rate (same as in cost calculator)
+            const savingsPercentageActual = SPCalculations.calculateEffectiveSavingsRate(
+                baselineCost,
+                totalCost
+            );
+
+            return {
+                hourly: netSavingsHourly,
+                percentage: savingsPercentageActual
+            };
+        };
+
+        // Calculate min-hourly commitment for percentage calculations
+        const minHourlyCommitment = SPCalculations.commitmentFromCoverage(strategies.minHourly, savingsPercentage);
+
+        // Update Too Prudent
+        const tooPrudentValue = document.getElementById('strategy-too-prudent-value');
+        const tooPrudentSavings = document.getElementById('strategy-too-prudent-savings');
+        const tooPrudentSavingsPct = document.getElementById('strategy-too-prudent-savings-pct');
+        const tooPrudentMinHourlyPct = document.getElementById('strategy-too-prudent-min-hourly-pct');
+        if (tooPrudentValue && tooPrudentSavings && tooPrudentSavingsPct && tooPrudentMinHourlyPct) {
+            const commitment = SPCalculations.commitmentFromCoverage(strategies.tooPrudent, savingsPercentage);
+            const savingsData = calculateStrategySavings(strategies.tooPrudent);
+            const minHourlyPct = minHourlyCommitment > 0 ? (commitment / minHourlyCommitment) * 100 : 100;
+            tooPrudentValue.textContent = `${CostCalculator.formatCurrency(commitment)}`;
+            tooPrudentSavings.textContent = `${CostCalculator.formatCurrency(savingsData.hourly)}`;
+            tooPrudentSavingsPct.textContent = `${savingsData.percentage.toFixed(1)}%`;
+            tooPrudentMinHourlyPct.textContent = `${minHourlyPct.toFixed(1)}% Min-Hourly`;
+        }
+
+        // Update Min-Hourly
+        const minValue = document.getElementById('strategy-min-value');
+        const minSavings = document.getElementById('strategy-min-savings');
+        const minSavingsPct = document.getElementById('strategy-min-savings-pct');
+        const minMinHourlyPct = document.getElementById('strategy-min-min-hourly-pct');
+        if (minValue && minSavings && minSavingsPct && minMinHourlyPct) {
+            const commitment = SPCalculations.commitmentFromCoverage(strategies.minHourly, savingsPercentage);
+            const savingsData = calculateStrategySavings(strategies.minHourly);
+            const minHourlyPct = minHourlyCommitment > 0 ? (commitment / minHourlyCommitment) * 100 : 100;
+            minValue.textContent = `${CostCalculator.formatCurrency(commitment)}`;
+            minSavings.textContent = `${CostCalculator.formatCurrency(savingsData.hourly)}`;
+            minSavingsPct.textContent = `${savingsData.percentage.toFixed(1)}%`;
+            minMinHourlyPct.textContent = `${minHourlyPct.toFixed(1)}% Min-Hourly`;
+        }
+
+        // Update Balanced
+        const balancedValue = document.getElementById('strategy-balanced-value');
+        const balancedSavings = document.getElementById('strategy-balanced-savings');
+        const balancedSavingsPct = document.getElementById('strategy-balanced-savings-pct');
+        const balancedMinHourlyPct = document.getElementById('strategy-balanced-min-hourly-pct');
+        if (balancedValue && balancedSavings && balancedSavingsPct && balancedMinHourlyPct) {
+            const commitment = SPCalculations.commitmentFromCoverage(strategies.balanced, savingsPercentage);
+            const savingsData = calculateStrategySavings(strategies.balanced);
+            const minHourlyPct = minHourlyCommitment > 0 ? (commitment / minHourlyCommitment) * 100 : 100;
+            balancedValue.textContent = `${CostCalculator.formatCurrency(commitment)}`;
+            balancedSavings.textContent = `${CostCalculator.formatCurrency(savingsData.hourly)}`;
+            balancedSavingsPct.textContent = `${savingsData.percentage.toFixed(1)}%`;
+            balancedMinHourlyPct.textContent = `${minHourlyPct.toFixed(1)}% Min-Hourly`;
+        }
+
+        // Update Aggressive
+        const aggressiveValue = document.getElementById('strategy-aggressive-value');
+        const aggressiveSavings = document.getElementById('strategy-aggressive-savings');
+        const aggressiveSavingsPct = document.getElementById('strategy-aggressive-savings-pct');
+        const aggressiveMinHourlyPct = document.getElementById('strategy-aggressive-min-hourly-pct');
+        if (aggressiveValue && aggressiveSavings && aggressiveSavingsPct && aggressiveMinHourlyPct) {
+            const commitment = SPCalculations.commitmentFromCoverage(strategies.aggressive, savingsPercentage);
+            const savingsData = calculateStrategySavings(strategies.aggressive);
+            const minHourlyPct = minHourlyCommitment > 0 ? (commitment / minHourlyCommitment) * 100 : 100;
+            aggressiveValue.textContent = `${CostCalculator.formatCurrency(commitment)}`;
+            aggressiveSavings.textContent = `${CostCalculator.formatCurrency(savingsData.hourly)}`;
+            aggressiveSavingsPct.textContent = `${savingsData.percentage.toFixed(1)}%`;
+            aggressiveMinHourlyPct.textContent = `${minHourlyPct.toFixed(1)}% Min-Hourly`;
+        }
+
+        // Update Too Aggressive
+        const tooAggressiveValue = document.getElementById('strategy-too-aggressive-value');
+        const tooAggressiveSavings = document.getElementById('strategy-too-aggressive-savings');
+        const tooAggressiveSavingsPct = document.getElementById('strategy-too-aggressive-savings-pct');
+        const tooAggressiveMinHourlyPct = document.getElementById('strategy-too-aggressive-min-hourly-pct');
+        if (tooAggressiveValue && tooAggressiveSavings && tooAggressiveSavingsPct && tooAggressiveMinHourlyPct) {
+            const commitment = SPCalculations.commitmentFromCoverage(strategies.tooAggressive, savingsPercentage);
+            const savingsData = calculateStrategySavings(strategies.tooAggressive);
+            const minHourlyPct = minHourlyCommitment > 0 ? (commitment / minHourlyCommitment) * 100 : 100;
+            tooAggressiveValue.textContent = `${CostCalculator.formatCurrency(commitment)}`;
+            tooAggressiveSavings.textContent = `${CostCalculator.formatCurrency(savingsData.hourly)}`;
+            tooAggressiveSavingsPct.textContent = `${savingsData.percentage.toFixed(1)}%`;
+            tooAggressiveMinHourlyPct.textContent = `${minHourlyPct.toFixed(1)}% Min-Hourly`;
+        }
+
+        // Detect and highlight active strategy
+        const allButtons = document.querySelectorAll('.strategy-button');
+        allButtons.forEach(btn => btn.classList.remove('active'));
+
+        // Compare with tolerance for floating point comparison (2%)
+        const tolerance = 0.02;
+        let activeButton = null;
+
+        const tooPrudentDiff = Math.abs(currentCoverage - strategies.tooPrudent);
+        const minDiff = Math.abs(currentCoverage - strategies.minHourly);
+        const balancedDiff = Math.abs(currentCoverage - strategies.balanced);
+        const aggressiveDiff = Math.abs(currentCoverage - strategies.aggressive);
+        const tooAggressiveDiff = Math.abs(currentCoverage - strategies.tooAggressive);
+
+        // Find closest match
+        const minDistance = Math.min(tooPrudentDiff, minDiff, balancedDiff, aggressiveDiff, tooAggressiveDiff);
+
+        if (minDistance / Math.max(currentCoverage, 0.01) < tolerance) {
+            if (minDistance === tooPrudentDiff) {
+                activeButton = document.getElementById('strategy-too-prudent');
+            } else if (minDistance === minDiff) {
+                activeButton = document.getElementById('strategy-min');
+            } else if (minDistance === balancedDiff) {
+                activeButton = document.getElementById('strategy-balanced');
+            } else if (minDistance === aggressiveDiff) {
+                activeButton = document.getElementById('strategy-aggressive');
+            } else if (minDistance === tooAggressiveDiff) {
+                activeButton = document.getElementById('strategy-too-aggressive');
+            }
+        }
+
+        // Apply active class to matching button
+        if (activeButton) {
+            activeButton.classList.add('active');
+        }
     }
 
     /**
@@ -584,12 +943,16 @@
      */
     function calculateAndUpdateCosts() {
         // Use the actual hourly costs we're displaying in the load chart
-        const hourlyCosts = appState.hourlyCosts || [];
+        const baseHourlyCosts = appState.hourlyCosts || [];
 
-        // Prepare configuration with actual costs
+        // Apply load factor to scale usage up or down
+        const loadFactor = appState.loadFactor / 100;
+        const scaledHourlyCosts = baseHourlyCosts.map(cost => cost * loadFactor);
+
+        // Prepare configuration with scaled costs
         const config = {
-            hourlyCosts: hourlyCosts,  // Actual $/hour for each hour
-            coverageCost: appState.coverageCost,  // Coverage commitment in $/hour
+            hourlyCosts: scaledHourlyCosts,  // Scaled $/h for each hour
+            coverageCost: appState.coverageCost,  // Coverage commitment in $/h (static)
             savingsPercentage: appState.savingsPercentage,
             onDemandRate: appState.onDemandRate
         };
@@ -600,17 +963,20 @@
         // Store results for chart tooltips
         ChartManager.setCurrentCostResults(currentCostResults);
 
-        // Update cost chart
+        // Update cost chart with scaled costs
         ChartManager.updateCostChart(currentCostResults);
 
         // Update metrics display
         updateMetricsDisplay(currentCostResults);
 
         // Update optimal suggestion
-        updateOptimalSuggestion(currentCostResults);
+        updateOptimalSuggestion(currentCostResults, scaledHourlyCosts);
 
-        // Calculate and update savings curve (0-200% of min-hourly)
-        updateSavingsCurveDisplay(hourlyCosts);
+        // Update strategy button values
+        updateStrategyButtons();
+
+        // Calculate and update savings curve with scaled costs
+        updateSavingsCurveDisplay(scaledHourlyCosts);
     }
 
     /**
@@ -743,13 +1109,13 @@
         const displayElement = document.getElementById('coverage-display');
         if (displayElement) {
             // Show commitment (what you pay) with min-hourly percentage on the main line
-            displayElement.textContent = `$${commitmentCost.toFixed(2)}/hour (${percentOfMin.toFixed(1)}% Min-Hourly)`;
+            displayElement.textContent = `$${commitmentCost.toFixed(2)}/h (${percentOfMin.toFixed(1)}% Min-Hourly)`;
         }
 
         const unitsElement = document.getElementById('coverage-units');
         if (unitsElement) {
             // Show on-demand coverage below
-            unitsElement.textContent = `Covers ${CostCalculator.formatCurrency(coverageCost)}/hour on-demand`;
+            unitsElement.textContent = `Covers ${CostCalculator.formatCurrency(coverageCost)}/h on-demand`;
         }
 
         // Update savings rate hint to reflect coverage commitment
@@ -769,7 +1135,7 @@
                 : 0;
 
             const coverageCommitment = appState.coverageCost || 0;
-            rateElement.textContent = `Coverage $${coverageCommitment.toFixed(3)}/hr vs $${avgUsage.toFixed(3)}/hr Avg Usage`;
+            rateElement.textContent = `Coverage $${coverageCommitment.toFixed(3)}/h vs $${avgUsage.toFixed(3)}/h Avg Usage`;
         }
     }
 
@@ -787,6 +1153,27 @@
     }
 
     /**
+     * Update load factor display
+     */
+    function updateLoadFactorDisplay(value) {
+        const displayElement = document.getElementById('load-factor-display');
+        if (displayElement) {
+            displayElement.textContent = `${value}%`;
+        }
+
+        const hintElement = document.getElementById('load-factor-hint');
+        if (hintElement) {
+            if (value === 100) {
+                hintElement.textContent = 'Original usage level';
+            } else if (value < 100) {
+                hintElement.textContent = `${value}% of original usage`;
+            } else {
+                hintElement.textContent = `${value}% of original usage`;
+            }
+        }
+    }
+
+    /**
      * Update metrics display
      */
     function updateMetricsDisplay(results) {
@@ -797,19 +1184,19 @@
         // Pure On-Demand cost (baseline)
         const onDemandElement = document.getElementById('metric-ondemand');
         if (onDemandElement) {
-            onDemandElement.textContent = CostCalculator.formatCurrency(results.onDemandCost / numHours) + '/hr';
+            onDemandElement.textContent = CostCalculator.formatCurrency(results.onDemandCost / numHours) + '/h';
         }
 
         // Total Cost with SP (commitment + spillover)
         const savingsPlanElement = document.getElementById('metric-savingsplan');
         if (savingsPlanElement) {
-            savingsPlanElement.textContent = CostCalculator.formatCurrency(results.savingsPlanCost / numHours) + '/hr';
+            savingsPlanElement.textContent = CostCalculator.formatCurrency(results.savingsPlanCost / numHours) + '/h';
         }
 
         // Net Savings
         const savingsElement = document.getElementById('metric-savings');
         if (savingsElement) {
-            savingsElement.textContent = CostCalculator.formatCurrency(results.savings / numHours) + '/hr';
+            savingsElement.textContent = CostCalculator.formatCurrency(results.savings / numHours) + '/h';
 
             // Change color based on zone if available
             const savingsContainer = savingsElement.closest('.metric-item');
@@ -842,7 +1229,7 @@
         // SP Commitment Cost
         const commitmentElement = document.getElementById('metric-commitment');
         if (commitmentElement) {
-            commitmentElement.textContent = CostCalculator.formatCurrency(results.commitmentCost / numHours) + '/hr';
+            commitmentElement.textContent = CostCalculator.formatCurrency(results.commitmentCost / numHours) + '/h';
         }
 
         const commitmentPctElement = document.getElementById('metric-commitment-pct');
@@ -856,7 +1243,7 @@
         // Spillover Cost
         const spilloverElement = document.getElementById('metric-spillover');
         if (spilloverElement) {
-            spilloverElement.textContent = CostCalculator.formatCurrency(results.spilloverCost / numHours) + '/hr';
+            spilloverElement.textContent = CostCalculator.formatCurrency(results.spilloverCost / numHours) + '/h';
         }
 
         const spilloverPctElement = document.getElementById('metric-spillover-pct');
@@ -867,7 +1254,7 @@
         // Wasted commitment
         const wasteElement = document.getElementById('metric-waste');
         if (wasteElement) {
-            wasteElement.textContent = CostCalculator.formatCurrency(results.wastedCommitment / numHours) + '/hr';
+            wasteElement.textContent = CostCalculator.formatCurrency(results.wastedCommitment / numHours) + '/h';
         }
 
         const wastePctElement = document.getElementById('metric-waste-pct');
@@ -879,7 +1266,7 @@
     /**
      * Update optimal suggestion display
      */
-    function updateOptimalSuggestion(results) {
+    function updateOptimalSuggestion(results, scaledHourlyCosts) {
         const suggestionElement = document.getElementById('optimal-suggestion');
         const textElement = document.getElementById('suggestion-text');
         const titleElement = suggestionElement?.querySelector('.suggestion-title');
@@ -889,15 +1276,15 @@
         // Convert coverage to commitment values for display using central calculation module
         const optimalCoverage = results.optimalCoverageUnits;
         const currentCoverage = appState.coverageCost;
-        const minCost = appState.minCost;
+        const minCost = appState.minCost * (appState.loadFactor / 100); // Scale min cost by load factor
 
         // Calculate commitment values using centralized function
-        const optimalCommitment = commitmentFromCoverage(optimalCoverage, appState.savingsPercentage);
-        const currentCommitment = commitmentFromCoverage(currentCoverage, appState.savingsPercentage);
+        const optimalCommitment = SPCalculations.commitmentFromCoverage(optimalCoverage, appState.savingsPercentage);
+        const currentCommitment = SPCalculations.commitmentFromCoverage(currentCoverage, appState.savingsPercentage);
 
         // Calculate hourly savings
-        // Use actual number of hours in the data, not hardcoded 168
-        const numHours = appState.hourlyCosts?.length || 168;
+        // Use actual number of hours in the scaled data
+        const numHours = scaledHourlyCosts?.length || 168;
         const currentHourlySavings = results.savings / numHours;
 
         // Check if we're at optimal commitment (within 1% tolerance)
@@ -920,10 +1307,10 @@
 
         const additionalSavings = hourlySavingsAtOptimal - currentHourlySavings;
 
-        // Detect which zone the current coverage is in
+        // Detect which zone the current coverage is in (use scaled costs)
         const zoneInfo = CostCalculator.detectCoverageZone(
             currentCoverage,
-            appState.hourlyCosts || [],
+            scaledHourlyCosts || [],
             appState.savingsPercentage
         );
 
@@ -948,15 +1335,15 @@
         if (isAtOptimalCommitment) {
             // Already at optimal - show what you're currently saving
             const savingsPercent = ((currentHourlySavings / (results.onDemandCost / numHours)) * 100).toFixed(1);
-            titleElement.innerHTML = `Optimal Commitment: ${CostCalculator.formatCurrency(optimalCommitment)}/hour<br>
+            titleElement.innerHTML = `Optimal Commitment: ${CostCalculator.formatCurrency(optimalCommitment)}/h<br>
                 <small style="font-weight: normal; opacity: 0.9;">
-                    Saving ${CostCalculator.formatCurrency(currentHourlySavings)}/hr vs on-demand (${savingsPercent}% discount)
+                    Saving ${CostCalculator.formatCurrency(currentHourlySavings)}/h vs on-demand (${savingsPercent}% discount)
                 </small>`;
         } else {
             // Not at optimal - show what you could save at optimal vs what you're saving now
-            titleElement.innerHTML = `Optimal Commitment: ${CostCalculator.formatCurrency(optimalCommitment)}/hour (vs current ${CostCalculator.formatCurrency(currentCommitment)}/hr)<br>
+            titleElement.innerHTML = `Optimal Commitment: ${CostCalculator.formatCurrency(optimalCommitment)}/h (vs current ${CostCalculator.formatCurrency(currentCommitment)}/h)<br>
                 <small style="font-weight: normal; opacity: 0.9;">
-                    Would save ${CostCalculator.formatCurrency(hourlySavingsAtOptimal)}/hr vs on-demand (current: ${CostCalculator.formatCurrency(currentHourlySavings)}/hr)
+                    Would save ${CostCalculator.formatCurrency(hourlySavingsAtOptimal)}/h vs on-demand (current: ${CostCalculator.formatCurrency(currentHourlySavings)}/h)
                 </small>`;
         }
 
