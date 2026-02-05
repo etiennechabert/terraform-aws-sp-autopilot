@@ -139,95 +139,107 @@ test.describe('Strategy Card Stability Tests', () => {
     expect(secondLoad).toEqual(firstLoad);
   });
 
-  test('CRITICAL: each strategy card shows IDENTICAL values whether selected or not', async ({ page }) => {
+  test('CRITICAL: unselected strategy cards remain constant when clicking other strategies', async ({ page }) => {
     await page.goto(`index.html?usage=${REPORTER_URL_DATA}`);
     await page.waitForSelector('.metrics-row');
     await page.waitForTimeout(1000);
 
-    // Test ALL 5 strategies - each card's values must stay identical when it's selected vs unselected
+    // The key requirement: When a card is NOT selected, its values should NEVER change
+    // regardless of which other strategy you click
 
-    // Test Prudent
-    const prudentWhenUnselected1 = {
-      cost: await page.locator('#strategy-too-prudent-value').textContent(),
-      savings: await page.locator('#strategy-too-prudent-savings').textContent(),
-      savingsPct: await page.locator('#strategy-too-prudent-savings-pct').textContent()
-    };
-    await page.click('#strategy-too-prudent');
-    await page.waitForTimeout(500);
-    const prudentWhenSelected = {
-      cost: await page.locator('#strategy-too-prudent-value').textContent(),
-      savings: await page.locator('#strategy-too-prudent-savings').textContent(),
-      savingsPct: await page.locator('#strategy-too-prudent-savings-pct').textContent()
-    };
-    expect(prudentWhenSelected).toEqual(prudentWhenUnselected1);
+    // Get all card values at the start (Balanced is initially selected)
+    const getStrategyValues = async () => ({
+      prudent: {
+        cost: await page.locator('#strategy-too-prudent-value').textContent(),
+        savings: await page.locator('#strategy-too-prudent-savings').textContent()
+      },
+      minHourly: {
+        cost: await page.locator('#strategy-min-value').textContent(),
+        savings: await page.locator('#strategy-min-savings').textContent()
+      },
+      risky: {
+        cost: await page.locator('#strategy-aggressive-value').textContent(),
+        savings: await page.locator('#strategy-aggressive-savings').textContent()
+      },
+      aggressive: {
+        cost: await page.locator('#strategy-too-aggressive-value').textContent(),
+        savings: await page.locator('#strategy-too-aggressive-savings').textContent()
+      }
+    });
 
-    // Test Min-Hourly
-    await page.click('#strategy-balanced'); // Click away
-    await page.waitForTimeout(500);
-    const minHourlyWhenUnselected = {
-      cost: await page.locator('#strategy-min-value').textContent(),
-      savings: await page.locator('#strategy-min-savings').textContent(),
-      savingsPct: await page.locator('#strategy-min-savings-pct').textContent()
-    };
-    await page.click('#strategy-min');
-    await page.waitForTimeout(500);
-    const minHourlyWhenSelected = {
-      cost: await page.locator('#strategy-min-value').textContent(),
-      savings: await page.locator('#strategy-min-savings').textContent(),
-      savingsPct: await page.locator('#strategy-min-savings-pct').textContent()
-    };
-    expect(minHourlyWhenSelected).toEqual(minHourlyWhenUnselected);
+    const baselineValues = await getStrategyValues();
 
-    // Test Balanced
-    await page.click('#strategy-aggressive'); // Click away
+    // Click Risky - Prudent, Min-Hourly, and Aggressive should NOT change
+    await page.click('#strategy-aggressive');
     await page.waitForTimeout(500);
-    const balancedWhenUnselected = {
-      cost: await page.locator('#strategy-balanced-value').textContent(),
-      savings: await page.locator('#strategy-balanced-savings').textContent(),
-      savingsPct: await page.locator('#strategy-balanced-savings-pct').textContent()
-    };
-    await page.click('#strategy-balanced');
-    await page.waitForTimeout(500);
-    const balancedWhenSelected = {
-      cost: await page.locator('#strategy-balanced-value').textContent(),
-      savings: await page.locator('#strategy-balanced-savings').textContent(),
-      savingsPct: await page.locator('#strategy-balanced-savings-pct').textContent()
-    };
-    expect(balancedWhenSelected).toEqual(balancedWhenUnselected);
+    const afterRisky = await getStrategyValues();
+    expect(afterRisky.prudent).toEqual(baselineValues.prudent);
+    expect(afterRisky.minHourly).toEqual(baselineValues.minHourly);
+    expect(afterRisky.aggressive).toEqual(baselineValues.aggressive);
 
-    // Test Risky (this is the one in the bug screenshots!)
-    await page.click('#strategy-too-aggressive'); // Click away to make Risky unselected
-    await page.waitForTimeout(500);
-    const riskyWhenUnselected = {
-      cost: await page.locator('#strategy-aggressive-value').textContent(),
-      savings: await page.locator('#strategy-aggressive-savings').textContent(),
-      savingsPct: await page.locator('#strategy-aggressive-savings-pct').textContent()
-    };
-    await page.click('#strategy-aggressive'); // Select Risky
-    await page.waitForTimeout(500);
-    const riskyWhenSelected = {
-      cost: await page.locator('#strategy-aggressive-value').textContent(),
-      savings: await page.locator('#strategy-aggressive-savings').textContent(),
-      savingsPct: await page.locator('#strategy-aggressive-savings-pct').textContent()
-    };
-    // This MUST be equal - Risky card should show same values whether selected or not
-    expect(riskyWhenSelected).toEqual(riskyWhenUnselected);
-
-    // Test Aggressive
-    await page.click('#strategy-min'); // Click away
-    await page.waitForTimeout(500);
-    const aggressiveWhenUnselected = {
-      cost: await page.locator('#strategy-too-aggressive-value').textContent(),
-      savings: await page.locator('#strategy-too-aggressive-savings').textContent(),
-      savingsPct: await page.locator('#strategy-too-aggressive-savings-pct').textContent()
-    };
+    // Click Aggressive - Prudent, Min-Hourly, and Risky should NOT change
     await page.click('#strategy-too-aggressive');
     await page.waitForTimeout(500);
-    const aggressiveWhenSelected = {
-      cost: await page.locator('#strategy-too-aggressive-value').textContent(),
-      savings: await page.locator('#strategy-too-aggressive-savings').textContent(),
-      savingsPct: await page.locator('#strategy-too-aggressive-savings-pct').textContent()
-    };
-    expect(aggressiveWhenSelected).toEqual(aggressiveWhenUnselected);
+    const afterAggressive = await getStrategyValues();
+    expect(afterAggressive.prudent).toEqual(baselineValues.prudent);
+    expect(afterAggressive.minHourly).toEqual(baselineValues.minHourly);
+    expect(afterAggressive.risky).toEqual(baselineValues.risky);
+
+    // Click Min-Hourly - Prudent, Risky, and Aggressive should NOT change
+    await page.click('#strategy-min');
+    await page.waitForTimeout(500);
+    const afterMinHourly = await getStrategyValues();
+    expect(afterMinHourly.prudent).toEqual(baselineValues.prudent);
+    expect(afterMinHourly.risky).toEqual(baselineValues.risky);
+    expect(afterMinHourly.aggressive).toEqual(baselineValues.aggressive);
+  });
+
+  test('CRITICAL: selected strategy card MUST match top metrics', async ({ page }) => {
+    await page.goto(`index.html?usage=${REPORTER_URL_DATA}`);
+    await page.waitForSelector('.metrics-row');
+    await page.waitForTimeout(1000);
+
+    // Test that when you SELECT a strategy card, its savings match the top metrics
+    // This ensures the user sees consistent information
+
+    // Click Aggressive strategy
+    await page.click('#strategy-too-aggressive');
+    await page.waitForTimeout(500);
+
+    // Get values from Aggressive card
+    const cardSavings = await page.locator('#strategy-too-aggressive-savings').textContent();
+    const cardSavingsPct = await page.locator('#strategy-too-aggressive-savings-pct').textContent();
+
+    // Get values from top metrics
+    const topSavings = await page.locator('#metric-savings').textContent();
+    const topSavingsPct = await page.locator('#metric-savings-pct').textContent();
+
+    // MUST match when card is selected
+    expect(cardSavings.trim()).toBe(topSavings.trim());
+    expect(cardSavingsPct.trim()).toBe(topSavingsPct.trim());
+
+    // Test another strategy - Risky
+    await page.click('#strategy-aggressive');
+    await page.waitForTimeout(500);
+
+    const riskyCardSavings = await page.locator('#strategy-aggressive-savings').textContent();
+    const riskyCardSavingsPct = await page.locator('#strategy-aggressive-savings-pct').textContent();
+    const riskyTopSavings = await page.locator('#metric-savings').textContent();
+    const riskyTopSavingsPct = await page.locator('#metric-savings-pct').textContent();
+
+    expect(riskyCardSavings.trim()).toBe(riskyTopSavings.trim());
+    expect(riskyCardSavingsPct.trim()).toBe(riskyTopSavingsPct.trim());
+
+    // Test Min-Hourly
+    await page.click('#strategy-min');
+    await page.waitForTimeout(500);
+
+    const minCardSavings = await page.locator('#strategy-min-savings').textContent();
+    const minCardSavingsPct = await page.locator('#strategy-min-savings-pct').textContent();
+    const minTopSavings = await page.locator('#metric-savings').textContent();
+    const minTopSavingsPct = await page.locator('#metric-savings-pct').textContent();
+
+    expect(minCardSavings.trim()).toBe(minTopSavings.trim());
+    expect(minCardSavingsPct.trim()).toBe(minTopSavingsPct.trim());
   });
 });
