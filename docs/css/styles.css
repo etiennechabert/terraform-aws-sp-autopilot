@@ -670,6 +670,14 @@ h1, h2, h3, h4, h5, h6 {
     margin-bottom: 4px;
 }
 
+.metric-value.positive {
+    color: #10b981;
+}
+
+.metric-value.negative {
+    color: #ef4444;
+}
+
 .metric-card .metric-label {
     font-size: 0.75rem;
     color: var(--text-muted);

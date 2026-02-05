@@ -1352,7 +1352,16 @@
         // Net Savings
         const savingsElement = document.getElementById('metric-savings');
         if (savingsElement) {
-            savingsElement.textContent = CostCalculator.formatCurrency(results.savings / numHours) + '/h';
+            const savingsValue = results.savings / numHours;
+            savingsElement.textContent = CostCalculator.formatCurrency(savingsValue) + '/h';
+
+            // Apply color based on positive/negative
+            savingsElement.classList.remove('positive', 'negative');
+            if (savingsValue > 0) {
+                savingsElement.classList.add('positive');
+            } else if (savingsValue < 0) {
+                savingsElement.classList.add('negative');
+            }
 
             // Populate tooltip with calculation breakdown
             const tooltip = document.getElementById('metric-savings-tooltip');
