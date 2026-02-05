@@ -1201,7 +1201,7 @@
     /**
      * Get color for percentage value based on metric type
      * @param {number} percentage - The percentage value
-     * @param {string} type - The metric type: 'commitment', 'waste', 'spillover', 'savings'
+     * @param {string} type - The metric type: 'commitment', 'waste', 'spillover'
      * @returns {string} Color code
      */
     function getPercentageColor(percentage, type) {
@@ -1219,11 +1219,6 @@
             case 'spillover': // Lower is better
                 if (percentage <= 20) return '#00ff88'; // Green
                 if (percentage <= 40) return '#ffb84d'; // Orange
-                return '#ff4d4d'; // Red
-
-            case 'savings': // Higher is better
-                if (percentage >= 10) return '#00ff88'; // Green
-                if (percentage >= 5) return '#ffb84d'; // Orange
                 return '#ff4d4d'; // Red
 
             default:
@@ -1282,7 +1277,6 @@
         const savingsPctElement = document.getElementById('metric-savings-pct');
         if (savingsPctElement) {
             savingsPctElement.textContent = CostCalculator.formatPercentage(results.savingsPercentageActual);
-            savingsPctElement.style.color = getPercentageColor(results.savingsPercentageActual, 'savings');
         }
 
         // SP Commitment
