@@ -691,10 +691,15 @@
         const baseHourlyCosts = appState.hourlyCosts || [];
         const loadFactor = appState.loadFactor / 100;
         const scaledHourlyCosts = baseHourlyCosts.map(cost => cost * loadFactor);
-        const numHours = scaledHourlyCosts.length || 168;
 
-        // Calculate baseline on-demand cost
-        const baselineCost = scaledHourlyCosts.reduce((sum, cost) => sum + cost, 0);
+        // Always use 168 hours to match CostCalculator behavior
+        const numHours = 168;
+
+        // Calculate baseline on-demand cost for all 168 hours
+        let baselineCost = 0;
+        for (let hour = 0; hour < numHours; hour++) {
+            baselineCost += scaledHourlyCosts[hour] || 0;
+        }
         const hourlyOnDemand = baselineCost / numHours;
 
         // Helper function to calculate savings for a strategy
@@ -703,9 +708,11 @@
             let commitmentCost = 0;
             let spilloverCost = 0;
 
-            for (let i = 0; i < scaledHourlyCosts.length; i++) {
+            // Always loop 168 hours like CostCalculator.calculateCosts
+            for (let hour = 0; hour < numHours; hour++) {
+                const onDemandCost = scaledHourlyCosts[hour] || 0;
                 commitmentCost += coverageUnits * discountFactor;
-                spilloverCost += Math.max(0, scaledHourlyCosts[i] - coverageUnits);
+                spilloverCost += Math.max(0, onDemandCost - coverageUnits);
             }
 
             const totalCost = commitmentCost + spilloverCost;
