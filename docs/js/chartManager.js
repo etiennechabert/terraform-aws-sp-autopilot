@@ -695,10 +695,7 @@ const ChartManager = (function() {
                         type: 'linear',
                         position: 'left',
                         title: {
-                            display: true,
-                            text: 'Net Savings (% of baseline on-demand cost)',
-                            color: '#e0e6ed',
-                            font: { size: 12, weight: 'bold' }
+                            display: false
                         },
                         ticks: {
                             color: '#8b95a8',
@@ -726,10 +723,7 @@ const ChartManager = (function() {
                         type: 'linear',
                         position: 'right',
                         title: {
-                            display: true,
-                            text: 'Absolute Savings ($/h)',
-                            color: '#e0e6ed',
-                            font: { size: 12, weight: 'bold' }
+                            display: false
                         },
                         ticks: {
                             color: '#8b95a8',
