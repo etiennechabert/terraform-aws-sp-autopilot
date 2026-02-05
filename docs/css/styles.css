@@ -680,6 +680,7 @@ h1, h2, h3, h4, h5, h6 {
     font-size: 0.7rem;
     color: var(--text-secondary);
     margin-top: 2px;
+    white-space: nowrap;
 }
 
 @media (max-width: 1200px) {
@@ -858,6 +859,58 @@ h1, h2, h3, h4, h5, h6 {
 }
 
 .strategy-button:has(.strategy-savings-amount:hover) {
+    z-index: 10001;
+}
+
+/* Metric card tooltip styles */
+.metric-value-wrapper {
+    position: relative;
+    display: inline-block;
+}
+
+.metric-value-wrapper .metric-value {
+    cursor: help;
+    text-decoration: underline dotted;
+    text-underline-offset: 3px;
+}
+
+.metric-savings-tooltip {
+    visibility: hidden;
+    position: absolute;
+    z-index: 10000;
+    bottom: 125%;
+    left: 50%;
+    transform: translateX(-50%);
+    background-color: rgba(10, 10, 15, 0.98);
+    color: var(--text-primary);
+    padding: 12px;
+    border-radius: 6px;
+    font-size: 0.85rem;
+    font-weight: 400;
+    white-space: nowrap;
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.8);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    pointer-events: none;
+    opacity: 0;
+    transition: opacity 0.2s, visibility 0.2s;
+}
+
+.metric-value-wrapper:hover .metric-savings-tooltip {
+    visibility: visible;
+    opacity: 1;
+}
+
+.metric-savings-tooltip::after {
+    content: "";
+    position: absolute;
+    top: 100%;
+    left: 50%;
+    transform: translateX(-50%);
+    border: 6px solid transparent;
+    border-top-color: rgba(10, 10, 15, 0.98);
+}
+
+.metric-card:has(.metric-value-wrapper:hover) {
     z-index: 10001;
 }
 

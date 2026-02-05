@@ -1364,6 +1364,26 @@
         if (savingsElement) {
             savingsElement.textContent = CostCalculator.formatCurrency(results.savings / numHours) + '/h';
 
+            // Populate tooltip with calculation breakdown
+            const tooltip = document.getElementById('metric-savings-tooltip');
+            if (tooltip) {
+                const pureOnDemand = results.onDemandCost / numHours;
+                const commitmentCost = results.commitmentCost / numHours;
+                const spilloverCost = results.spilloverCost / numHours;
+                const savingsValue = results.savings / numHours;
+                tooltip.innerHTML = `
+                    <div class="tooltip-line"><span class="tooltip-label">Pure On-Demand:</span><span class="tooltip-value-ondemand">${CostCalculator.formatCurrency(pureOnDemand)}/h</span></div>
+                    <div class="tooltip-line"><span class="tooltip-label">Commitment:</span><span class="tooltip-value-commitment">${CostCalculator.formatCurrency(commitmentCost)}/h</span></div>
+                    <div class="tooltip-line"><span class="tooltip-label">Spillover:</span><span class="tooltip-value-spillover">${CostCalculator.formatCurrency(spilloverCost)}/h</span></div>
+                    <div class="tooltip-calculation">
+                        <span class="tooltip-value-ondemand">${CostCalculator.formatCurrency(pureOnDemand)}/h</span> -
+                        (<span class="tooltip-value-commitment">${CostCalculator.formatCurrency(commitmentCost)}/h</span> +
+                        <span class="tooltip-value-spillover">${CostCalculator.formatCurrency(spilloverCost)}/h</span>) =
+                        <span class="tooltip-value-savings">${CostCalculator.formatCurrency(savingsValue)}/h</span>
+                    </div>
+                `;
+            }
+
             // Change color based on zone if available
             const savingsContainer = savingsElement.closest('.metric-item');
             if (savingsContainer) {
@@ -1392,11 +1412,12 @@
             savingsPctElement.textContent = CostCalculator.formatPercentage(results.savingsPercentageActual);
         }
 
-        // SP Commitment - show coverage amount (on-demand equivalent)
+        // SP Commitment - show actual commitment cost (what user needs to pay)
         const commitmentElement = document.getElementById('metric-commitment');
         if (commitmentElement) {
-            // Show the coverage in on-demand terms (matches slider display)
-            commitmentElement.textContent = CostCalculator.formatCurrency(appState.coverageCost) + '/h';
+            // Show the actual commitment cost
+            const commitmentCost = SPCalculations.commitmentFromCoverage(appState.coverageCost, appState.savingsPercentage);
+            commitmentElement.textContent = CostCalculator.formatCurrency(commitmentCost) + '/h';
         }
 
         const commitmentPctElement = document.getElementById('metric-commitment-pct');
@@ -1406,7 +1427,7 @@
             const coveragePct = avgOnDemandPerHour > 0
                 ? (appState.coverageCost / avgOnDemandPerHour) * 100
                 : 0;
-            commitmentPctElement.textContent = `${coveragePct.toFixed(1)}% of on-demand`;
+            commitmentPctElement.textContent = `Covering ${CostCalculator.formatCurrency(appState.coverageCost)}/h - ${coveragePct.toFixed(1)}% of on-demand`;
             commitmentPctElement.style.color = getPercentageColor(coveragePct, 'commitment');
         }
 

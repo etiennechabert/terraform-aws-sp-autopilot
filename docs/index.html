@@ -97,8 +97,8 @@
                 <div class="metrics-row">
                     <div class="metric-card highlight">
                         <div class="metric-value" id="metric-commitment">$0.00/h</div>
-                        <div class="metric-label">SP Coverage</div>
-                        <div class="metric-subvalue" id="metric-commitment-pct">0.0% of total cost</div>
+                        <div class="metric-label">Target Commitment</div>
+                        <div class="metric-subvalue" id="metric-commitment-pct">0.0% of on-demand</div>
                     </div>
                     <div class="metric-card">
                         <div class="metric-value" id="metric-ondemand">$0.00/h</div>
@@ -120,7 +120,10 @@
                         <div class="metric-subvalue" id="metric-spillover-pct">0.0% of total</div>
                     </div>
                     <div class="metric-card" id="metric-savings-container">
-                        <div class="metric-value" id="metric-savings">$0.00/h</div>
+                        <div class="metric-value-wrapper">
+                            <span class="metric-value" id="metric-savings">$0.00/h</span>
+                            <div class="metric-savings-tooltip" id="metric-savings-tooltip"></div>
+                        </div>
                         <div class="metric-label">Net Savings</div>
                         <div class="metric-subvalue" id="metric-savings-pct">0.0%</div>
                     </div>
