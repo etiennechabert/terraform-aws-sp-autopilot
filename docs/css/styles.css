@@ -1178,10 +1178,144 @@ h1, h2, h3, h4, h5, h6 {
     margin-top: var(--spacing-lg);
 }
 
+/* Chart with Vertical Load Factor Control */
+.curve-with-control {
+    display: grid;
+    grid-template-columns: 1fr 80px;
+    gap: var(--spacing-sm);
+    margin-top: var(--spacing-sm);
+    align-items: start;
+}
+
+.curve-control-column {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+}
+
+.curve-vertical-control {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: var(--spacing-sm) var(--spacing-xs);
+    background: rgba(0, 0, 0, 0.2);
+    border-radius: var(--radius-md);
+    min-height: 240px;
+    margin-top: var(--spacing-sm);
+}
+
+.curve-vertical-control .control-group {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: var(--spacing-xs);
+    height: 100%;
+}
+
+.curve-vertical-control .control-label {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 2px;
+    font-size: 0.75rem;
+    text-align: center;
+    color: var(--text-muted);
+}
+
+.curve-vertical-control .control-value {
+    font-size: 1.2rem;
+    font-weight: 700;
+    color: var(--accent-cyan);
+    transition: color 0.2s ease;
+}
+
+.curve-vertical-control .control-value.positive {
+    color: #ff6b6b; /* Red for increase (higher costs) */
+}
+
+.curve-vertical-control .control-value.negative {
+    color: #00ff88; /* Green for reduction (savings) */
+}
+
+.curve-vertical-control .control-value.neutral {
+    color: var(--text-muted); /* Gray for baseline */
+}
+
+.curve-vertical-control .control-hint {
+    display: none; /* Hide the hint text */
+}
+
+.reset-load-factor {
+    background: transparent;
+    border: none;
+    padding: 0;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--text-muted);
+    transition: all 0.2s ease;
+    position: absolute;
+    top: -20px;
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 10;
+    opacity: 0.5;
+    width: 20px;
+    height: 20px;
+}
+
+.reset-load-factor svg {
+    width: 16px;
+    height: 16px;
+}
+
+.reset-load-factor:hover {
+    opacity: 1;
+    color: var(--text-primary);
+    transform: translateX(-50%) scale(1.1);
+}
+
+.reset-load-factor:active {
+    transform: translateX(-50%) scale(0.95);
+}
+
+/* Vertical Slider */
+.slider-vertical {
+    writing-mode: bt-lr;
+    -webkit-appearance: slider-vertical;
+    appearance: slider-vertical;
+    width: 6px;
+    height: 180px;
+    flex: 1;
+    margin: var(--spacing-sm) 0;
+}
+
+.slider-vertical::-webkit-slider-thumb {
+    width: 20px;
+    height: 20px;
+}
+
+.slider-vertical::-webkit-slider-thumb:hover {
+    width: 24px;
+    height: 24px;
+}
+
+.slider-vertical::-moz-range-thumb {
+    width: 20px;
+    height: 20px;
+}
+
+.slider-vertical::-moz-range-thumb:hover {
+    width: 24px;
+    height: 24px;
+}
+
+
 .curve-legend {
     display: flex;
     flex-wrap: wrap;
-    gap: var(--spacing-md);
+    gap: var(--spacing-sm);
     margin-top: var(--spacing-md);
     padding: var(--spacing-sm);
     background: var(--bg-secondary);
@@ -1191,19 +1325,20 @@ h1, h2, h3, h4, h5, h6 {
 .legend-item {
     display: flex;
     align-items: center;
-    gap: var(--spacing-xs);
+    gap: 6px;
 }
 
 .legend-color {
-    width: 30px;
-    height: 16px;
+    width: 24px;
+    height: 12px;
     border-radius: 3px;
     border: 1px solid var(--border-color);
 }
 
 .legend-text {
-    font-size: 0.85rem;
+    font-size: 0.8rem;
     color: var(--text-secondary);
+    white-space: nowrap;
 }
 
 /* ===== Usage Data Banner ===== */
