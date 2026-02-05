@@ -773,8 +773,16 @@ const ChartManager = (function() {
 
         // Get the percentage range from the curve data
         const savingsPercentages = curveData.map(d => d.savingsPercent);
-        const minSavingsPercent = Math.min(...savingsPercentages);
-        const maxSavingsPercent = Math.max(...savingsPercentages);
+        let minSavingsPercent = Math.min(...savingsPercentages);
+        let maxSavingsPercent = Math.max(...savingsPercentages);
+
+        // Ensure there's a minimum range to prevent chart rendering issues
+        // This handles edge case where savingsPercentage is 0% (no discount)
+        if (maxSavingsPercent - minSavingsPercent < 0.1) {
+            const midpoint = (minSavingsPercent + maxSavingsPercent) / 2;
+            minSavingsPercent = midpoint - 0.05;
+            maxSavingsPercent = midpoint + 0.05;
+        }
 
         // Convert to absolute dollar savings per hour
         const minAbsoluteSavings = baselineHourly * (minSavingsPercent / 100);
