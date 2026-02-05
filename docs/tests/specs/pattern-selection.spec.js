@@ -221,15 +221,15 @@ test.describe('Pattern Selection Tests', () => {
     await page.locator('#max-cost').fill('5000');
     await page.waitForTimeout(500);
 
-    // Should calculate without overflow
+    // Should calculate without overflow (allow comma separators for large numbers)
     const onDemand = await page.locator('#metric-ondemand').textContent();
-    expect(onDemand).toMatch(/\$\d+\.\d{2}\/h/);
+    expect(onDemand).toMatch(/\$[\d,]+\.\d{2}\/h/);
 
     // Commitment slider should still work
     await page.locator('#coverage-slider').fill('50');
     await page.waitForTimeout(500);
 
     const commitment = await page.locator('#metric-commitment').textContent();
-    expect(commitment).toMatch(/\$\d+\.\d{2}\/h/);
+    expect(commitment).toMatch(/\$[\d,]+\.\d{2}\/h/);
   });
 });

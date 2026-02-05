@@ -12,13 +12,13 @@ test.describe('Slider Interaction Tests', () => {
     await page.locator('#coverage-slider').fill('35');
     await page.waitForTimeout(500);
 
-    // Verify commitment display matches slider value
-    const commitmentDisplay = await page.locator('#coverage-display').textContent();
-    expect(commitmentDisplay).toContain('35');
+    // Verify coverage units shows the slider value (on-demand coverage)
+    const coverageUnits = await page.locator('#coverage-units').textContent();
+    expect(coverageUnits).toContain('$35.00/h');
 
-    // Verify SP Commitment metric updated
+    // Verify SP Commitment metric shows the discounted cost (35 * 0.7 = 24.50 with 30% savings)
     const commitment = await page.locator('#metric-commitment').textContent();
-    expect(commitment).toContain('35');
+    expect(commitment).toContain('24.50');
 
     // Verify metrics recalculated (not zero)
     const savings = await page.locator('#metric-savings').textContent();
@@ -60,8 +60,13 @@ test.describe('Slider Interaction Tests', () => {
     await page.locator('#coverage-slider').fill('100');
     await page.waitForTimeout(500);
 
+    // Verify coverage units shows the slider value
+    const coverageUnits = await page.locator('#coverage-units').textContent();
+    expect(coverageUnits).toContain('$100.00/h');
+
+    // Verify commitment metric shows the discounted cost (100 * 0.7 = 70 with 30% savings)
     const commitment = await page.locator('#metric-commitment').textContent();
-    expect(commitment).toContain('100');
+    expect(commitment).toContain('70.00');
 
     // At max commitment, there should be some waste
     const waste = await page.locator('#metric-waste').textContent();
@@ -146,13 +151,13 @@ test.describe('Slider Interaction Tests', () => {
     await page.locator('#load-factor').fill('150');
     await page.waitForTimeout(500);
 
-    // Verify display updated
+    // Verify display shows delta from 100% (150 - 100 = +50%)
     const loadFactorDisplay = await page.locator('#load-factor-display').textContent();
-    expect(loadFactorDisplay).toBe('150%');
+    expect(loadFactorDisplay).toBe('+50%');
 
     // Verify hint text updated
     const loadFactorHint = await page.locator('#load-factor-hint').textContent();
-    expect(loadFactorHint).toContain('1.5x');
+    expect(loadFactorHint).toContain('150%');
 
     // Verify costs increased
     const newCost = await page.locator('#metric-ondemand').textContent();
@@ -216,14 +221,14 @@ test.describe('Slider Interaction Tests', () => {
     await page.waitForTimeout(500);
 
     // Verify all displays match
-    const commitmentDisplay = await page.locator('#coverage-display').textContent();
-    expect(commitmentDisplay).toContain('40');
+    const coverageUnits = await page.locator('#coverage-units').textContent();
+    expect(coverageUnits).toContain('$40.00/h');
 
     const savingsDisplay = await page.locator('#savings-display').textContent();
     expect(savingsDisplay).toBe('35%');
 
     const loadFactorDisplay = await page.locator('#load-factor-display').textContent();
-    expect(loadFactorDisplay).toBe('120%');
+    expect(loadFactorDisplay).toBe('+20%'); // 120 - 100 = +20%
 
     // Verify metrics are calculated (non-zero)
     const commitment = await page.locator('#metric-commitment').textContent();
