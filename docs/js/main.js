@@ -1232,12 +1232,6 @@
             displayElement.textContent = `$${commitmentCost.toFixed(2)}/h (${percentOfMin.toFixed(1)}% Min-Hourly)`;
         }
 
-        const unitsElement = document.getElementById('coverage-units');
-        if (unitsElement) {
-            // Show on-demand coverage below
-            unitsElement.textContent = `Covers ${CostCalculator.formatCurrency(coverageCost)}/h on-demand`;
-        }
-
         // Update savings rate hint to reflect coverage commitment
         updateSavingsRateHint();
     }
@@ -1255,7 +1249,7 @@
                 : 0;
 
             const coverageCommitment = appState.coverageCost || 0;
-            rateElement.textContent = `Coverage $${coverageCommitment.toFixed(3)}/h vs $${avgUsage.toFixed(3)}/h Avg Usage`;
+            rateElement.textContent = `Coverage $${coverageCommitment.toFixed(2)}/h vs $${avgUsage.toFixed(2)}/h Avg Usage`;
         }
     }
 
