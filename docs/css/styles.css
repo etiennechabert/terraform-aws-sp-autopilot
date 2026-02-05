@@ -1246,35 +1246,38 @@ h1, h2, h3, h4, h5, h6 {
 }
 
 .reset-load-factor {
-    background: linear-gradient(135deg, rgba(0, 255, 136, 0.1), rgba(0, 200, 255, 0.1));
-    border: 2px solid rgba(0, 200, 255, 0.3);
-    border-radius: 50%;
-    width: 36px;
-    height: 36px;
+    background: transparent;
+    border: none;
     padding: 0;
     cursor: pointer;
     display: flex;
     align-items: center;
     justify-content: center;
-    color: var(--accent-cyan);
-    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    color: var(--text-muted);
+    transition: all 0.2s ease;
     position: absolute;
-    top: calc(-1 * var(--spacing-sm) - 38px);
+    top: calc(-1 * var(--spacing-sm) - 24px);
     left: 50%;
     transform: translateX(-50%);
     z-index: 10;
-    box-shadow: 0 2px 8px rgba(0, 200, 255, 0.2);
+    opacity: 0.5;
+    width: 20px;
+    height: 20px;
+}
+
+.reset-load-factor svg {
+    width: 16px;
+    height: 16px;
 }
 
 .reset-load-factor:hover {
-    background: linear-gradient(135deg, rgba(0, 255, 136, 0.2), rgba(0, 200, 255, 0.2));
-    border-color: rgba(0, 200, 255, 0.6);
-    box-shadow: 0 4px 16px rgba(0, 200, 255, 0.4);
-    transform: translateX(-50%) rotate(180deg);
+    opacity: 1;
+    color: var(--text-primary);
+    transform: translateX(-50%) scale(1.1);
 }
 
 .reset-load-factor:active {
-    transform: translateX(-50%) rotate(180deg) scale(0.9);
+    transform: translateX(-50%) scale(0.95);
 }
 
 /* Vertical Slider */
