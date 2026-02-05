@@ -1307,7 +1307,7 @@
         const commitmentPctElement = document.getElementById('metric-commitment-pct');
         if (commitmentPctElement) {
             // Calculate how much of on-demand usage is covered by the commitment
-            const avgOnDemandPerHour = results.baselineCost / (appState.hourlyCosts?.length || 168);
+            const avgOnDemandPerHour = results.onDemandCost / numHours;
             const coveragePct = avgOnDemandPerHour > 0
                 ? (appState.coverageCost / avgOnDemandPerHour) * 100
                 : 0;
