@@ -693,6 +693,7 @@ const ChartManager = (function() {
                     },
                     y: {
                         type: 'linear',
+                        position: 'left',
                         title: {
                             display: true,
                             text: 'Net Savings (% of baseline on-demand cost)',
@@ -719,6 +720,25 @@ const ChartManager = (function() {
                                 }
                                 return 1;
                             }
+                        }
+                    },
+                    y1: {
+                        type: 'linear',
+                        position: 'right',
+                        title: {
+                            display: true,
+                            text: 'Absolute Savings ($/h)',
+                            color: '#e0e6ed',
+                            font: { size: 12, weight: 'bold' }
+                        },
+                        ticks: {
+                            color: '#8b95a8',
+                            callback: function(value) {
+                                return '$' + value.toFixed(2);
+                            }
+                        },
+                        grid: {
+                            drawOnChartArea: false
                         }
                     }
                 }
@@ -751,6 +771,22 @@ const ChartManager = (function() {
         // Set x-axis max to max commitment (get from curve data)
         const maxCommitment = curveData.length > 0 ? curveData[curveData.length - 1].commitment : maxCost;
         savingsCurveChart.options.scales.x.max = maxCommitment;
+
+        // Calculate right y-axis (absolute $/h savings) range to match left y-axis (percentage)
+        // Find min and max savings percentages to determine y-axis range
+        const savingsPercentages = curveData.map(d => d.savingsPercent);
+        const minSavingsPercent = Math.min(...savingsPercentages);
+        const maxSavingsPercent = Math.max(...savingsPercentages);
+
+        // Convert percentage range to absolute $/h range
+        // netSavings is weekly, so divide by 168 to get hourly
+        const numHours = 168;
+        const minAbsoluteSavings = baselineCost > 0 ? (minSavingsPercent / 100) * (baselineCost / numHours) : 0;
+        const maxAbsoluteSavings = baselineCost > 0 ? (maxSavingsPercent / 100) * (baselineCost / numHours) : 0;
+
+        // Set right y-axis range
+        savingsCurveChart.options.scales.y1.min = minAbsoluteSavings;
+        savingsCurveChart.options.scales.y1.max = maxAbsoluteSavings;
 
         // Find indices for transitions
         let minCostIndex = -1;
