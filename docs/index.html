@@ -93,15 +93,6 @@
                                 </label>
                                 <input type="number" id="max-cost" class="number-input" value="100" min="1" max="10000" step="1">
                             </div>
-
-                            <div class="control-group">
-                                <label for="load-factor" class="control-label">
-                                    Load Factor
-                                    <span class="control-value" id="load-factor-display">100%</span>
-                                </label>
-                                <input type="range" id="load-factor" class="slider" min="50" max="200" value="100" step="1" aria-label="Load factor percentage">
-                                <div class="control-hint" id="load-factor-hint">Original usage level</div>
-                            </div>
                         </div>
                     </section>
                 </div>
@@ -315,8 +306,22 @@
                     <p class="section-description">Net savings (% of baseline cost) at different commitment levels - zoomed to viable range</p>
                 </div>
 
-                <div class="chart-container">
-                    <canvas id="savings-curve-chart" aria-label="Savings curve optimization chart"></canvas>
+                <!-- Chart and Load Factor Control -->
+                <div class="curve-with-control">
+                    <div class="chart-container">
+                        <canvas id="savings-curve-chart" aria-label="Savings curve optimization chart"></canvas>
+                    </div>
+
+                    <div class="curve-vertical-control">
+                        <div class="control-group">
+                            <label for="load-factor" class="control-label">
+                                Load Factor
+                                <span class="control-value" id="load-factor-display">100%</span>
+                            </label>
+                            <input type="range" id="load-factor" class="slider slider-vertical" min="50" max="200" value="100" step="1" aria-label="Load factor percentage" orient="vertical">
+                            <div class="control-hint" id="load-factor-hint">Original usage level</div>
+                        </div>
+                    </div>
                 </div>
 
                 <div class="curve-legend">

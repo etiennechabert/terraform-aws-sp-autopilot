@@ -1178,6 +1178,126 @@ h1, h2, h3, h4, h5, h6 {
     margin-top: var(--spacing-lg);
 }
 
+/* Chart with Vertical Load Factor Control */
+.curve-with-control {
+    display: grid;
+    grid-template-columns: 1fr 80px;
+    gap: var(--spacing-sm);
+    margin-top: var(--spacing-sm);
+}
+
+.curve-vertical-control {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: var(--spacing-sm) var(--spacing-xs);
+    background: rgba(0, 0, 0, 0.1);
+    border: 1px solid rgba(255, 255, 255, 0.05);
+    border-radius: var(--radius-sm);
+}
+
+.curve-vertical-control .control-group {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: var(--spacing-xs);
+    height: 100%;
+}
+
+.curve-vertical-control .control-label {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 2px;
+    font-size: 0.75rem;
+    text-align: center;
+    color: var(--text-muted);
+}
+
+.curve-vertical-control .control-value {
+    font-size: 1.2rem;
+    font-weight: 700;
+    color: var(--accent-cyan);
+}
+
+.curve-vertical-control .control-hint {
+    display: none; /* Hide the hint text */
+}
+
+/* Vertical Slider */
+.slider-vertical {
+    writing-mode: bt-lr;
+    -webkit-appearance: slider-vertical;
+    appearance: slider-vertical;
+    width: 6px;
+    height: 180px;
+    flex: 1;
+    margin: var(--spacing-sm) 0;
+}
+
+.slider-vertical::-webkit-slider-thumb {
+    width: 20px;
+    height: 20px;
+}
+
+.slider-vertical::-webkit-slider-thumb:hover {
+    width: 24px;
+    height: 24px;
+}
+
+.slider-vertical::-moz-range-thumb {
+    width: 20px;
+    height: 20px;
+}
+
+.slider-vertical::-moz-range-thumb:hover {
+    width: 24px;
+    height: 24px;
+}
+
+/* Responsive: Horizontal on mobile */
+@media (max-width: 900px) {
+    .curve-with-control {
+        grid-template-columns: 1fr;
+        grid-template-rows: auto auto;
+    }
+
+    .curve-vertical-control {
+        order: -1;
+        padding: var(--spacing-sm) var(--spacing-md);
+    }
+
+    .curve-vertical-control .control-group {
+        flex-direction: row;
+        width: 100%;
+        max-width: 600px;
+        margin: 0 auto;
+    }
+
+    .curve-vertical-control .control-label {
+        flex-direction: row;
+        justify-content: space-between;
+        width: 100%;
+        font-size: 0.9rem;
+    }
+
+    .curve-vertical-control .control-hint {
+        writing-mode: horizontal-tb;
+        transform: none;
+        text-align: center;
+        width: 100%;
+    }
+
+    .slider-vertical {
+        writing-mode: horizontal-tb;
+        -webkit-appearance: none;
+        appearance: none;
+        width: 100%;
+        height: 8px;
+        flex: 0;
+    }
+}
+
 .curve-legend {
     display: flex;
     flex-wrap: wrap;
