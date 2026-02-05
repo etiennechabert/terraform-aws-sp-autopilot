@@ -1,5 +1,5 @@
 import { test, expect } from '@playwright/test';
-import { readFileSync, readdirSync } from 'fs';
+import { readFileSync, readdirSync, existsSync } from 'fs';
 import { resolve, dirname } from 'path';
 import { fileURLToPath } from 'url';
 
@@ -8,16 +8,23 @@ const __dirname = dirname(__filename);
 
 // Path to reporter HTML files
 const REPORTER_HTML_DIR = resolve(__dirname, '../../../lambda/reporter/local_data/reports');
+const REPORTER_FIXTURE = resolve(__dirname, '../fixtures/reporter-sample.html');
 
-// Get the most recent reporter HTML file
+// Get the most recent reporter HTML file, or use fixture if directory doesn't exist
 function getMostRecentReporterHTML() {
+  // If directory doesn't exist (CI environment), use fixture
+  if (!existsSync(REPORTER_HTML_DIR)) {
+    return REPORTER_FIXTURE;
+  }
+
   const files = readdirSync(REPORTER_HTML_DIR)
     .filter(f => f.endsWith('.html'))
     .sort()
     .reverse();
 
   if (files.length === 0) {
-    throw new Error('No reporter HTML files found. Run reporter locally first.');
+    // No real reports, use fixture
+    return REPORTER_FIXTURE;
   }
 
   return resolve(REPORTER_HTML_DIR, files[0]);
