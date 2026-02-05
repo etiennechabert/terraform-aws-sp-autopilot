@@ -754,7 +754,7 @@
             const commitment = SPCalculations.commitmentFromCoverage(strategies.tooPrudent, savingsPercentage);
             const results = calculateMetricsForCoverage(strategies.tooPrudent);
             const minHourlyPct = minHourlyCommitment > 0 ? (commitment / minHourlyCommitment) * 100 : 100;
-            tooPrudentValue.textContent = `${CostCalculator.formatCurrency(commitment)}/h`;
+            tooPrudentValue.textContent = `${CostCalculator.formatCurrency(strategies.tooPrudent)}/h`;
             tooPrudentSavings.textContent = `${CostCalculator.formatCurrency(results.savings / numHours)}/h`;
             tooPrudentSavingsPct.textContent = `${results.savingsPercentageActual.toFixed(1)}%`;
             tooPrudentMinHourlyPct.textContent = `${minHourlyPct.toFixed(1)}% Min-Hourly`;
@@ -769,7 +769,7 @@
             const commitment = SPCalculations.commitmentFromCoverage(strategies.minHourly, savingsPercentage);
             const results = calculateMetricsForCoverage(strategies.minHourly);
             const minHourlyPct = minHourlyCommitment > 0 ? (commitment / minHourlyCommitment) * 100 : 100;
-            minValue.textContent = `${CostCalculator.formatCurrency(commitment)}/h`;
+            minValue.textContent = `${CostCalculator.formatCurrency(strategies.minHourly)}/h`;
             minSavings.textContent = `${CostCalculator.formatCurrency(results.savings / numHours)}/h`;
             minSavingsPct.textContent = `${results.savingsPercentageActual.toFixed(1)}%`;
             minMinHourlyPct.textContent = `${minHourlyPct.toFixed(1)}% Min-Hourly`;
@@ -784,7 +784,7 @@
             const commitment = SPCalculations.commitmentFromCoverage(strategies.balanced, savingsPercentage);
             const results = calculateMetricsForCoverage(strategies.balanced);
             const minHourlyPct = minHourlyCommitment > 0 ? (commitment / minHourlyCommitment) * 100 : 100;
-            balancedValue.textContent = `${CostCalculator.formatCurrency(commitment)}/h`;
+            balancedValue.textContent = `${CostCalculator.formatCurrency(strategies.balanced)}/h`;
             balancedSavings.textContent = `${CostCalculator.formatCurrency(results.savings / numHours)}/h`;
             balancedSavingsPct.textContent = `${results.savingsPercentageActual.toFixed(1)}%`;
             balancedMinHourlyPct.textContent = `${minHourlyPct.toFixed(1)}% Min-Hourly`;
@@ -799,7 +799,7 @@
             const commitment = SPCalculations.commitmentFromCoverage(strategies.aggressive, savingsPercentage);
             const results = calculateMetricsForCoverage(strategies.aggressive);
             const minHourlyPct = minHourlyCommitment > 0 ? (commitment / minHourlyCommitment) * 100 : 100;
-            aggressiveValue.textContent = `${CostCalculator.formatCurrency(commitment)}/h`;
+            aggressiveValue.textContent = `${CostCalculator.formatCurrency(strategies.aggressive)}/h`;
             aggressiveSavings.textContent = `${CostCalculator.formatCurrency(results.savings / numHours)}/h`;
             aggressiveSavingsPct.textContent = `${results.savingsPercentageActual.toFixed(1)}%`;
             aggressiveMinHourlyPct.textContent = `${minHourlyPct.toFixed(1)}% Min-Hourly`;
@@ -814,7 +814,7 @@
             const commitment = SPCalculations.commitmentFromCoverage(strategies.tooAggressive, savingsPercentage);
             const results = calculateMetricsForCoverage(strategies.tooAggressive);
             const minHourlyPct = minHourlyCommitment > 0 ? (commitment / minHourlyCommitment) * 100 : 100;
-            tooAggressiveValue.textContent = `${CostCalculator.formatCurrency(commitment)}/h`;
+            tooAggressiveValue.textContent = `${CostCalculator.formatCurrency(strategies.tooAggressive)}/h`;
             tooAggressiveSavings.textContent = `${CostCalculator.formatCurrency(results.savings / numHours)}/h`;
             tooAggressiveSavingsPct.textContent = `${results.savingsPercentageActual.toFixed(1)}%`;
             tooAggressiveMinHourlyPct.textContent = `${minHourlyPct.toFixed(1)}% Min-Hourly`;
