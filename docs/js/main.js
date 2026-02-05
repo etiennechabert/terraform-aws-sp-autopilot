@@ -703,14 +703,16 @@
             let commitmentCost = 0;
             let spilloverCost = 0;
 
-            for (let i = 0; i < scaledHourlyCosts.length; i++) {
+            // Loop 168 times like CostCalculator.calculateCosts does
+            for (let hour = 0; hour < 168; hour++) {
+                const onDemandCost = scaledHourlyCosts[hour] || 0;
                 commitmentCost += coverageUnits * discountFactor;
-                spilloverCost += Math.max(0, scaledHourlyCosts[i] - coverageUnits);
+                spilloverCost += Math.max(0, onDemandCost - coverageUnits);
             }
 
             const totalCost = commitmentCost + spilloverCost;
             const netSavings = baselineCost - totalCost;
-            const netSavingsHourly = netSavings / numHours;
+            const netSavingsHourly = netSavings / 168;
 
             // Calculate effective savings rate (same as in cost calculator)
             const savingsPercentageActual = SPCalculations.calculateEffectiveSavingsRate(
