@@ -855,7 +855,7 @@
         allButtons.forEach(btn => btn.classList.remove('active'));
 
         // Compare with tolerance for floating point comparison (2%)
-        const tolerance = 0.02;
+        const highlightTolerance = 0.02;
         let activeButton = null;
 
         const tooPrudentDiff = Math.abs(currentCoverage - strategies.tooPrudent);
@@ -867,7 +867,7 @@
         // Find closest match
         const minDistance = Math.min(tooPrudentDiff, minDiff, balancedDiff, aggressiveDiff, tooAggressiveDiff);
 
-        if (minDistance / Math.max(currentCoverage, 0.01) < tolerance) {
+        if (minDistance / Math.max(currentCoverage, 0.01) < highlightTolerance) {
             if (minDistance === tooPrudentDiff) {
                 activeButton = document.getElementById('strategy-too-prudent');
             } else if (minDistance === minDiff) {
