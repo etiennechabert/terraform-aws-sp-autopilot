@@ -260,3 +260,10 @@ reporter.zip
 
 # Local development data
 local_data/
+
+# Frontend Testing (Playwright)
+docs/tests/node_modules/
+docs/tests/playwright-report/
+docs/tests/test-results/
+docs/tests/.playwright/
+docs/tests/playwright/.cache/

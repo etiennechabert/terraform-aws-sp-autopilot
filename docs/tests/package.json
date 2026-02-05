@@ -1,0 +1,20 @@
+{
+  "name": "sp-simulator-tests",
+  "version": "1.0.0",
+  "description": "Playwright tests for AWS Savings Plan Simulator",
+  "type": "module",
+  "scripts": {
+    "test": "playwright test",
+    "test:headed": "playwright test --headed",
+    "test:debug": "playwright test --debug",
+    "test:ui": "playwright test --ui",
+    "test:chromium": "playwright test --project=chromium",
+    "test:firefox": "playwright test --project=firefox",
+    "test:webkit": "playwright test --project=webkit"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.40.0"
+  },
+  "author": "",
+  "license": "Apache-2.0"
+}
