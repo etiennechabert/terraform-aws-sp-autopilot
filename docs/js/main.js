@@ -1297,12 +1297,11 @@
             savingsPctElement.textContent = CostCalculator.formatPercentage(results.savingsPercentageActual);
         }
 
-        // SP Commitment
+        // SP Commitment - show coverage amount (on-demand equivalent)
         const commitmentElement = document.getElementById('metric-commitment');
         if (commitmentElement) {
-            const discountFactor = (1 - appState.savingsPercentage / 100);
-            const commitmentPerHour = appState.coverageCost * discountFactor;
-            commitmentElement.textContent = CostCalculator.formatCurrency(commitmentPerHour) + '/h';
+            // Show the coverage in on-demand terms (matches slider display)
+            commitmentElement.textContent = CostCalculator.formatCurrency(appState.coverageCost) + '/h';
         }
 
         const commitmentPctElement = document.getElementById('metric-commitment-pct');

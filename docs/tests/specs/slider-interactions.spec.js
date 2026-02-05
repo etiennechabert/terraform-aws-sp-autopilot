@@ -16,9 +16,9 @@ test.describe('Slider Interaction Tests', () => {
     const coverageUnits = await page.locator('#coverage-units').textContent();
     expect(coverageUnits).toContain('$35.00/h');
 
-    // Verify SP Commitment metric shows the discounted cost (35 * 0.7 = 24.50 with 30% savings)
+    // Verify SP Coverage metric shows the coverage amount (matches slider)
     const commitment = await page.locator('#metric-commitment').textContent();
-    expect(commitment).toContain('24.50');
+    expect(commitment).toContain('$35.00/h');
 
     // Verify metrics recalculated (not zero)
     const savings = await page.locator('#metric-savings').textContent();
@@ -64,9 +64,9 @@ test.describe('Slider Interaction Tests', () => {
     const coverageUnits = await page.locator('#coverage-units').textContent();
     expect(coverageUnits).toContain('$100.00/h');
 
-    // Verify commitment metric shows the discounted cost (100 * 0.7 = 70 with 30% savings)
+    // Verify coverage metric shows the coverage amount (matches slider)
     const commitment = await page.locator('#metric-commitment').textContent();
-    expect(commitment).toContain('70.00');
+    expect(commitment).toContain('$100.00/h');
 
     // At max commitment, there should be some waste
     const waste = await page.locator('#metric-waste').textContent();
@@ -132,12 +132,9 @@ test.describe('Slider Interaction Tests', () => {
     const savingsDisplay = await page.locator('#savings-display').textContent();
     expect(savingsDisplay).toBe('99%');
 
-    // At 99% discount, commitment cost should be nearly free
+    // Coverage metric shows coverage amount regardless of discount
     const commitment = await page.locator('#metric-commitment').textContent();
-    const commitmentValue = parseFloat(commitment.replace(/[$\/h]/g, ''));
-
-    // 35 dollars at 99% off = $0.35/h
-    expect(commitmentValue).toBeLessThan(1);
+    expect(commitment).toContain('$35.00/h');
   });
 
   test('load factor slider updates chart data', async ({ page }) => {

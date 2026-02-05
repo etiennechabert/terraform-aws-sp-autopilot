@@ -76,30 +76,9 @@ test.describe('Metric Consistency Tests', () => {
     expect(cardSavingsPct.trim()).toBe(topSavingsPct.trim());
   });
 
-  test('strategy card cost matches top total cost when clicking Risky', async ({ page }) => {
-    await page.goto('index.html');
-
-    // Wait for page to load
-    await page.waitForSelector('#strategy-aggressive');
-
-    // Click Risky strategy
-    await page.click('#strategy-aggressive');
-
-    // Wait for metrics to update
-    await page.waitForTimeout(500);
-
-    // Get cost from strategy card
-    const cardCost = await page.locator('#strategy-aggressive-value').textContent();
-
-    // Get commitment from top metrics (should match card cost)
-    const topCommitment = await page.locator('#metric-commitment').textContent();
-
-    // Extract just the dollar amounts (remove /h suffix from top)
-    const cardAmount = cardCost.trim().replace('/h', '');
-    const topAmount = topCommitment.trim().replace('/h', '');
-
-    expect(cardAmount).toBe(topAmount);
-  });
+  // REMOVED: strategy card cost matching top commitment test
+  // Top metric now shows coverage (on-demand equivalent) while strategy cards
+  // show commitment cost (discounted). These intentionally differ.
 
 });
 
