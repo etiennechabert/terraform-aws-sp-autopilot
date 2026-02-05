@@ -95,19 +95,19 @@
 
                 <!-- Horizontal Metrics Row -->
                 <div class="metrics-row">
+                    <div class="metric-card highlight">
+                        <div class="metric-value" id="metric-commitment">$0.00/h</div>
+                        <div class="metric-label">SP Coverage</div>
+                        <div class="metric-subvalue" id="metric-commitment-pct">0.0% of total cost</div>
+                    </div>
                     <div class="metric-card">
                         <div class="metric-value" id="metric-ondemand">$0.00/h</div>
                         <div class="metric-label">Pure On-Demand Cost</div>
                     </div>
-                    <div class="metric-card highlight">
+                    <div class="metric-card">
                         <div class="metric-value" id="metric-savingsplan">$0.00/h</div>
                         <div class="metric-label">Total Cost with SP</div>
                         <div class="metric-subvalue" id="metric-breakdown">(Commitment + Spillover)</div>
-                    </div>
-                    <div class="metric-card">
-                        <div class="metric-value" id="metric-commitment">$0.00/h</div>
-                        <div class="metric-label">SP Coverage</div>
-                        <div class="metric-subvalue" id="metric-commitment-pct">0.0% of total cost</div>
                     </div>
                     <div class="metric-card">
                         <div class="metric-value" id="metric-waste">$0.00/h</div>
@@ -138,7 +138,7 @@
                                 <span class="control-value" id="coverage-display">$50/h</span>
                             </label>
                             <input type="range" id="coverage-slider" class="slider" min="0" max="100" value="50" step="1" aria-label="Savings Plan commitment in dollars per hour">
-                            <div class="control-hint" id="coverage-units">Covers $X/h on-demand</div>
+                            <div class="control-hint" id="savings-rate">$0.070/h vs $0.100/h On-Demand</div>
                         </div>
 
                         <div class="control-group">
@@ -147,7 +147,7 @@
                                 <span class="control-value" id="savings-display">30%</span>
                             </label>
                             <input type="range" id="savings-percentage" class="slider" min="0" max="99" value="30" step="1" aria-label="Savings percentage">
-                            <div class="control-hint" id="savings-rate">$0.070/h vs $0.100/h On-Demand</div>
+                            <div class="control-hint" id="coverage-units">Covers $X/h on-demand</div>
                         </div>
                     </div>
 

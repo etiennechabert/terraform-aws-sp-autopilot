@@ -756,7 +756,7 @@
             const minHourlyPct = minHourlyCommitment > 0 ? (commitment / minHourlyCommitment) * 100 : 100;
             tooPrudentValue.textContent = `${CostCalculator.formatCurrency(strategies.tooPrudent)}/h`;
             tooPrudentSavings.textContent = `${CostCalculator.formatCurrency(results.savings / numHours)}/h`;
-            tooPrudentSavingsPct.textContent = `${results.savingsPercentageActual.toFixed(1)}%`;
+            tooPrudentSavingsPct.textContent = `${results.savingsPercentageActual.toFixed(1)}% On-Demand`;
             tooPrudentMinHourlyPct.textContent = `${minHourlyPct.toFixed(1)}% Min-Hourly`;
 
             const pureOnDemand = hourlyOnDemand;
@@ -790,7 +790,7 @@
             const minHourlyPct = minHourlyCommitment > 0 ? (commitment / minHourlyCommitment) * 100 : 100;
             minValue.textContent = `${CostCalculator.formatCurrency(strategies.minHourly)}/h`;
             minSavings.textContent = `${CostCalculator.formatCurrency(results.savings / numHours)}/h`;
-            minSavingsPct.textContent = `${results.savingsPercentageActual.toFixed(1)}%`;
+            minSavingsPct.textContent = `${results.savingsPercentageActual.toFixed(1)}% On-Demand`;
             minMinHourlyPct.textContent = `${minHourlyPct.toFixed(1)}% Min-Hourly`;
 
             const pureOnDemand = hourlyOnDemand;
@@ -824,7 +824,7 @@
             const minHourlyPct = minHourlyCommitment > 0 ? (commitment / minHourlyCommitment) * 100 : 100;
             balancedValue.textContent = `${CostCalculator.formatCurrency(strategies.balanced)}/h`;
             balancedSavings.textContent = `${CostCalculator.formatCurrency(results.savings / numHours)}/h`;
-            balancedSavingsPct.textContent = `${results.savingsPercentageActual.toFixed(1)}%`;
+            balancedSavingsPct.textContent = `${results.savingsPercentageActual.toFixed(1)}% On-Demand`;
             balancedMinHourlyPct.textContent = `${minHourlyPct.toFixed(1)}% Min-Hourly`;
 
             const pureOnDemand = hourlyOnDemand;
@@ -858,7 +858,7 @@
             const minHourlyPct = minHourlyCommitment > 0 ? (commitment / minHourlyCommitment) * 100 : 100;
             aggressiveValue.textContent = `${CostCalculator.formatCurrency(strategies.aggressive)}/h`;
             aggressiveSavings.textContent = `${CostCalculator.formatCurrency(results.savings / numHours)}/h`;
-            aggressiveSavingsPct.textContent = `${results.savingsPercentageActual.toFixed(1)}%`;
+            aggressiveSavingsPct.textContent = `${results.savingsPercentageActual.toFixed(1)}% On-Demand`;
             aggressiveMinHourlyPct.textContent = `${minHourlyPct.toFixed(1)}% Min-Hourly`;
 
             const pureOnDemand = hourlyOnDemand;
@@ -892,7 +892,7 @@
             const minHourlyPct = minHourlyCommitment > 0 ? (commitment / minHourlyCommitment) * 100 : 100;
             tooAggressiveValue.textContent = `${CostCalculator.formatCurrency(strategies.tooAggressive)}/h`;
             tooAggressiveSavings.textContent = `${CostCalculator.formatCurrency(results.savings / numHours)}/h`;
-            tooAggressiveSavingsPct.textContent = `${results.savingsPercentageActual.toFixed(1)}%`;
+            tooAggressiveSavingsPct.textContent = `${results.savingsPercentageActual.toFixed(1)}% On-Demand`;
             tooAggressiveMinHourlyPct.textContent = `${minHourlyPct.toFixed(1)}% Min-Hourly`;
 
             const pureOnDemand = hourlyOnDemand;

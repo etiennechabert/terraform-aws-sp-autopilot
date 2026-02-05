@@ -857,6 +857,10 @@ h1, h2, h3, h4, h5, h6 {
     box-shadow: 0 4px 12px rgba(0, 212, 255, 0.2);
 }
 
+.strategy-button:has(.strategy-savings-amount:hover) {
+    z-index: 10001;
+}
+
 .strategy-button:active {
     transform: translateY(0);
 }
@@ -948,7 +952,7 @@ h1, h2, h3, h4, h5, h6 {
 }
 
 .strategy-savings-amount {
-    font-size: 1.1rem;
+    font-size: 1.2rem;
     font-weight: 700;
     color: var(--color-success);
     font-family: Consolas, Monaco, 'Courier New', monospace;
@@ -961,19 +965,19 @@ h1, h2, h3, h4, h5, h6 {
 .strategy-savings-tooltip {
     visibility: hidden;
     position: absolute;
-    z-index: 1000;
+    z-index: 10000;
     bottom: 125%;
     left: 50%;
     transform: translateX(-50%);
-    background-color: rgba(20, 20, 30, 0.98);
+    background-color: rgba(10, 10, 15, 0.98);
     color: var(--text-primary);
     padding: 12px;
     border-radius: 6px;
     font-size: 0.85rem;
     font-weight: 400;
     white-space: nowrap;
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5);
-    border: 1px solid rgba(255, 255, 255, 0.1);
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.8);
+    border: 1px solid rgba(255, 255, 255, 0.2);
     pointer-events: none;
     opacity: 0;
     transition: opacity 0.2s, visibility 0.2s;
@@ -991,7 +995,7 @@ h1, h2, h3, h4, h5, h6 {
     left: 50%;
     transform: translateX(-50%);
     border: 6px solid transparent;
-    border-top-color: rgba(20, 20, 30, 0.98);
+    border-top-color: rgba(10, 10, 15, 0.98);
 }
 
 .tooltip-line {
@@ -1016,27 +1020,31 @@ h1, h2, h3, h4, h5, h6 {
 }
 
 .tooltip-value-ondemand {
-    color: var(--accent-cyan);
+    color: #00d4ff;
     font-weight: 600;
 }
 
 .tooltip-value-commitment {
-    color: var(--accent-cyan);
+    color: #a78bfa;
     font-weight: 600;
 }
 
 .tooltip-value-spillover {
-    color: #ffa500;
+    color: #fbbf24;
     font-weight: 600;
 }
 
 .tooltip-value-savings {
-    color: var(--color-success);
-    font-weight: 600;
+    color: #10b981;
+    font-weight: 700;
+    font-size: 1.15em;
+    background: rgba(16, 185, 129, 0.15);
+    padding: 2px 6px;
+    border-radius: 3px;
 }
 
 .strategy-savings-pct {
-    font-size: 0.85rem;
+    font-size: 0.75rem;
     font-weight: 500;
     color: var(--text-muted);
 }
