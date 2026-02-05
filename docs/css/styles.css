@@ -720,6 +720,7 @@ h1, h2, h3, h4, h5, h6 {
 /* ===== Strategy Buttons Container ===== */
 .strategy-container {
     width: 100%;
+    grid-column: 1 / -1; /* Span all columns in sliders-row */
 }
 
 .strategy-header {
@@ -777,6 +778,7 @@ h1, h2, h3, h4, h5, h6 {
     transition: all 0.2s ease;
     min-height: 100px;
     justify-content: center;
+    min-width: 0; /* Allow grid items to shrink below content size */
 }
 
 .strategy-button:hover {
@@ -860,6 +862,7 @@ h1, h2, h3, h4, h5, h6 {
     gap: var(--spacing-sm);
     margin-top: var(--spacing-sm);
     width: 100%;
+    min-width: 0; /* Allow grid to shrink */
 }
 
 .strategy-metric-col {
@@ -867,6 +870,21 @@ h1, h2, h3, h4, h5, h6 {
     flex-direction: column;
     align-items: center;
     gap: 2px;
+    min-width: 0; /* Allow column to shrink */
+    overflow: hidden; /* Prevent content overflow */
+}
+
+.strategy-metric-col:last-child {
+    border-left: 1px solid rgba(255, 255, 255, 0.1); /* Subtle vertical separator */
+    padding-left: var(--spacing-sm);
+}
+
+.strategy-metric-label {
+    font-size: 0.65rem;
+    color: rgba(255, 255, 255, 0.35);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    margin-bottom: 2px;
 }
 
 .strategy-savings-amount {
