@@ -437,7 +437,7 @@
      */
     function handleLoadFactorChange(event) {
         const value = parseInt(event.target.value, 10);
-        if (!isNaN(value) && value >= 0 && value <= 150) {
+        if (!isNaN(value) && value >= 1 && value <= 150) {
             appState.loadFactor = value;
             updateLoadFactorDisplay(value);
             calculateAndUpdateCosts();

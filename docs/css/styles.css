@@ -1246,31 +1246,35 @@ h1, h2, h3, h4, h5, h6 {
 }
 
 .reset-load-factor {
-    background: rgba(255, 255, 255, 0.05);
-    border: 1px solid rgba(255, 255, 255, 0.1);
-    border-radius: var(--radius-sm);
-    padding: 6px;
+    background: linear-gradient(135deg, rgba(0, 255, 136, 0.1), rgba(0, 200, 255, 0.1));
+    border: 2px solid rgba(0, 200, 255, 0.3);
+    border-radius: 50%;
+    width: 36px;
+    height: 36px;
+    padding: 0;
     cursor: pointer;
     display: flex;
     align-items: center;
     justify-content: center;
-    color: var(--text-muted);
-    transition: all 0.2s ease;
+    color: var(--accent-cyan);
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
     position: absolute;
-    top: calc(-1 * var(--spacing-sm) - 28px);
+    top: calc(-1 * var(--spacing-sm) - 38px);
     left: 50%;
     transform: translateX(-50%);
     z-index: 10;
+    box-shadow: 0 2px 8px rgba(0, 200, 255, 0.2);
 }
 
 .reset-load-factor:hover {
-    background: rgba(255, 255, 255, 0.1);
-    color: var(--accent-cyan);
-    border-color: rgba(255, 255, 255, 0.2);
+    background: linear-gradient(135deg, rgba(0, 255, 136, 0.2), rgba(0, 200, 255, 0.2));
+    border-color: rgba(0, 200, 255, 0.6);
+    box-shadow: 0 4px 16px rgba(0, 200, 255, 0.4);
+    transform: translateX(-50%) rotate(180deg);
 }
 
 .reset-load-factor:active {
-    transform: scale(0.95);
+    transform: translateX(-50%) rotate(180deg) scale(0.9);
 }
 
 /* Vertical Slider */
