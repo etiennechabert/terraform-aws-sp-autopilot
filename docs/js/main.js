@@ -692,8 +692,8 @@
         const loadFactor = appState.loadFactor / 100;
         const scaledHourlyCosts = baseHourlyCosts.map(cost => cost * loadFactor);
 
-        // Always use 168 hours to match CostCalculator behavior
-        const numHours = 168;
+        // Use actual array length for division, same as updateMetricsDisplay
+        const numHours = appState.hourlyCosts?.length || 168;
 
         // Calculate baseline on-demand cost for all 168 hours
         let baselineCost = 0;
