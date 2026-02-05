@@ -1199,6 +1199,39 @@
     }
 
     /**
+     * Get color for percentage value based on metric type
+     * @param {number} percentage - The percentage value
+     * @param {string} type - The metric type: 'commitment', 'waste', 'spillover', 'savings'
+     * @returns {string} Color code
+     */
+    function getPercentageColor(percentage, type) {
+        switch (type) {
+            case 'commitment': // Higher is better
+                if (percentage >= 60) return '#00ff88'; // Green
+                if (percentage >= 30) return '#ffb84d'; // Orange
+                return '#ff4d4d'; // Red
+
+            case 'waste': // Lower is better
+                if (percentage <= 10) return '#00ff88'; // Green
+                if (percentage <= 25) return '#ffb84d'; // Orange
+                return '#ff4d4d'; // Red
+
+            case 'spillover': // Lower is better
+                if (percentage <= 20) return '#00ff88'; // Green
+                if (percentage <= 40) return '#ffb84d'; // Orange
+                return '#ff4d4d'; // Red
+
+            case 'savings': // Higher is better
+                if (percentage >= 10) return '#00ff88'; // Green
+                if (percentage >= 5) return '#ffb84d'; // Orange
+                return '#ff4d4d'; // Red
+
+            default:
+                return 'inherit';
+        }
+    }
+
+    /**
      * Update metrics display
      */
     function updateMetricsDisplay(results) {
@@ -1249,6 +1282,7 @@
         const savingsPctElement = document.getElementById('metric-savings-pct');
         if (savingsPctElement) {
             savingsPctElement.textContent = CostCalculator.formatPercentage(results.savingsPercentageActual);
+            savingsPctElement.style.color = getPercentageColor(results.savingsPercentageActual, 'savings');
         }
 
         // SP Commitment
@@ -1265,6 +1299,7 @@
                 ? (results.commitmentCost / results.savingsPlanCost) * 100
                 : 0;
             commitmentPctElement.textContent = `${commitmentPct.toFixed(1)}% of total cost`;
+            commitmentPctElement.style.color = getPercentageColor(commitmentPct, 'commitment');
         }
 
         // Spillover Cost
@@ -1276,6 +1311,7 @@
         const spilloverPctElement = document.getElementById('metric-spillover-pct');
         if (spilloverPctElement) {
             spilloverPctElement.textContent = `${CostCalculator.formatPercentage(results.spilloverPercentage)} of total`;
+            spilloverPctElement.style.color = getPercentageColor(results.spilloverPercentage, 'spillover');
         }
 
         // Wasted commitment
@@ -1287,6 +1323,7 @@
         const wastePctElement = document.getElementById('metric-waste-pct');
         if (wastePctElement) {
             wastePctElement.textContent = `${CostCalculator.formatPercentage(results.wastePercentage)} of commitment`;
+            wastePctElement.style.color = getPercentageColor(results.wastePercentage, 'waste');
         }
     }
 
