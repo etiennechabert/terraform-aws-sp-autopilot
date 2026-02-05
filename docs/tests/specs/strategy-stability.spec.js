@@ -194,52 +194,65 @@ test.describe('Strategy Card Stability Tests', () => {
     expect(afterMinHourly.aggressive).toEqual(baselineValues.aggressive);
   });
 
-  test('CRITICAL: selected strategy card MUST match top metrics', async ({ page }) => {
+  test('REGRESSION BLOCKER: ALL cards show identical values selected or not', async ({ page }) => {
     await page.goto(`index.html?usage=${REPORTER_URL_DATA}`);
     await page.waitForSelector('.metrics-row');
     await page.waitForTimeout(1000);
 
-    // Test that when you SELECT a strategy card, its savings match the top metrics
-    // This ensures the user sees consistent information
+    // CRITICAL: Each card must show the SAME value whether it's selected or not
+    // This prevents the bug where Risky showed $4.24/h when selected but $7.90/h when not selected
 
-    // Click Aggressive strategy
-    await page.click('#strategy-too-aggressive');
-    await page.waitForTimeout(500);
+    // Helper to get all card values
+    const getAllCardValues = async () => ({
+      prudent: {
+        savings: await page.locator('#strategy-too-prudent-savings').textContent(),
+        savingsPct: await page.locator('#strategy-too-prudent-savings-pct').textContent()
+      },
+      minHourly: {
+        savings: await page.locator('#strategy-min-savings').textContent(),
+        savingsPct: await page.locator('#strategy-min-savings-pct').textContent()
+      },
+      balanced: {
+        savings: await page.locator('#strategy-balanced-savings').textContent(),
+        savingsPct: await page.locator('#strategy-balanced-savings-pct').textContent()
+      },
+      risky: {
+        savings: await page.locator('#strategy-aggressive-savings').textContent(),
+        savingsPct: await page.locator('#strategy-aggressive-savings-pct').textContent()
+      },
+      aggressive: {
+        savings: await page.locator('#strategy-too-aggressive-savings').textContent(),
+        savingsPct: await page.locator('#strategy-too-aggressive-savings-pct').textContent()
+      }
+    });
 
-    // Get values from Aggressive card
-    const cardSavings = await page.locator('#strategy-too-aggressive-savings').textContent();
-    const cardSavingsPct = await page.locator('#strategy-too-aggressive-savings-pct').textContent();
+    // Get baseline (Balanced is initially selected)
+    const baseline = await getAllCardValues();
 
-    // Get values from top metrics
-    const topSavings = await page.locator('#metric-savings').textContent();
-    const topSavingsPct = await page.locator('#metric-savings-pct').textContent();
-
-    // MUST match when card is selected
-    expect(cardSavings.trim()).toBe(topSavings.trim());
-    expect(cardSavingsPct.trim()).toBe(topSavingsPct.trim());
-
-    // Test another strategy - Risky
+    // Click Risky - ALL card values should stay the same
     await page.click('#strategy-aggressive');
     await page.waitForTimeout(500);
+    const afterRiskyClick = await getAllCardValues();
+    expect(afterRiskyClick).toEqual(baseline);
 
-    const riskyCardSavings = await page.locator('#strategy-aggressive-savings').textContent();
-    const riskyCardSavingsPct = await page.locator('#strategy-aggressive-savings-pct').textContent();
-    const riskyTopSavings = await page.locator('#metric-savings').textContent();
-    const riskyTopSavingsPct = await page.locator('#metric-savings-pct').textContent();
+    // Click Aggressive - ALL card values should STILL be the same
+    await page.click('#strategy-too-aggressive');
+    await page.waitForTimeout(500);
+    const afterAggressiveClick = await getAllCardValues();
+    expect(afterAggressiveClick).toEqual(baseline);
 
-    expect(riskyCardSavings.trim()).toBe(riskyTopSavings.trim());
-    expect(riskyCardSavingsPct.trim()).toBe(riskyTopSavingsPct.trim());
-
-    // Test Min-Hourly
+    // Click Min-Hourly - ALL card values should STILL be the same
     await page.click('#strategy-min');
     await page.waitForTimeout(500);
+    const afterMinClick = await getAllCardValues();
+    expect(afterMinClick).toEqual(baseline);
 
-    const minCardSavings = await page.locator('#strategy-min-savings').textContent();
-    const minCardSavingsPct = await page.locator('#strategy-min-savings-pct').textContent();
-    const minTopSavings = await page.locator('#metric-savings').textContent();
-    const minTopSavingsPct = await page.locator('#metric-savings-pct').textContent();
+    // Click Prudent - ALL card values should STILL be the same
+    await page.click('#strategy-too-prudent');
+    await page.waitForTimeout(500);
+    const afterPrudentClick = await getAllCardValues();
+    expect(afterPrudentClick).toEqual(baseline);
 
-    expect(minCardSavings.trim()).toBe(minTopSavings.trim());
-    expect(minCardSavingsPct.trim()).toBe(minTopSavingsPct.trim());
+    // ALL cards must show identical values regardless of which is selected
   });
 });
