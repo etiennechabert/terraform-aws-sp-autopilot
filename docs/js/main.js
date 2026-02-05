@@ -245,6 +245,17 @@
             loadFactorSlider.addEventListener('input', handleLoadFactorChange);
         }
 
+        // Reset load factor button
+        const resetLoadFactorButton = document.getElementById('reset-load-factor');
+        if (resetLoadFactorButton) {
+            resetLoadFactorButton.addEventListener('click', () => {
+                if (loadFactorSlider) {
+                    loadFactorSlider.value = 100;
+                    handleLoadFactorChange({ target: { value: '100' } });
+                }
+            });
+        }
+
         // On-demand rate input (advanced)
         const onDemandRateInput = document.getElementById('on-demand-rate');
         if (onDemandRateInput) {
@@ -426,7 +437,7 @@
      */
     function handleLoadFactorChange(event) {
         const value = parseInt(event.target.value, 10);
-        if (!isNaN(value) && value >= 50 && value <= 200) {
+        if (!isNaN(value) && value >= 0 && value <= 150) {
             appState.loadFactor = value;
             updateLoadFactorDisplay(value);
             calculateAndUpdateCosts();
@@ -1158,7 +1169,21 @@
     function updateLoadFactorDisplay(value) {
         const displayElement = document.getElementById('load-factor-display');
         if (displayElement) {
-            displayElement.textContent = `${value}%`;
+            const delta = value - 100;
+
+            // Remove existing color classes
+            displayElement.classList.remove('positive', 'negative', 'neutral');
+
+            if (delta === 0) {
+                displayElement.textContent = '100%';
+                displayElement.classList.add('neutral');
+            } else if (delta > 0) {
+                displayElement.textContent = `+${delta}%`;
+                displayElement.classList.add('positive'); // Red for increase
+            } else {
+                displayElement.textContent = `${delta}%`; // Negative sign already included
+                displayElement.classList.add('negative'); // Green for reduction
+            }
         }
 
         const hintElement = document.getElementById('load-factor-hint');

@@ -1184,6 +1184,13 @@ h1, h2, h3, h4, h5, h6 {
     grid-template-columns: 1fr 80px;
     gap: var(--spacing-sm);
     margin-top: var(--spacing-sm);
+    align-items: start;
+}
+
+.curve-control-column {
+    position: relative;
+    display: flex;
+    flex-direction: column;
 }
 
 .curve-vertical-control {
@@ -1191,9 +1198,10 @@ h1, h2, h3, h4, h5, h6 {
     flex-direction: column;
     align-items: center;
     padding: var(--spacing-sm) var(--spacing-xs);
-    background: rgba(0, 0, 0, 0.1);
-    border: 1px solid rgba(255, 255, 255, 0.05);
-    border-radius: var(--radius-sm);
+    background: rgba(0, 0, 0, 0.2);
+    border-radius: var(--radius-md);
+    min-height: 240px;
+    margin-top: var(--spacing-sm);
 }
 
 .curve-vertical-control .control-group {
@@ -1218,10 +1226,51 @@ h1, h2, h3, h4, h5, h6 {
     font-size: 1.2rem;
     font-weight: 700;
     color: var(--accent-cyan);
+    transition: color 0.2s ease;
+}
+
+.curve-vertical-control .control-value.positive {
+    color: #ff6b6b; /* Red for increase (higher costs) */
+}
+
+.curve-vertical-control .control-value.negative {
+    color: #00ff88; /* Green for reduction (savings) */
+}
+
+.curve-vertical-control .control-value.neutral {
+    color: var(--text-muted); /* Gray for baseline */
 }
 
 .curve-vertical-control .control-hint {
     display: none; /* Hide the hint text */
+}
+
+.reset-load-factor {
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: var(--radius-sm);
+    padding: 6px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--text-muted);
+    transition: all 0.2s ease;
+    position: absolute;
+    top: calc(-1 * var(--spacing-sm) - 28px);
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 10;
+}
+
+.reset-load-factor:hover {
+    background: rgba(255, 255, 255, 0.1);
+    color: var(--accent-cyan);
+    border-color: rgba(255, 255, 255, 0.2);
+}
+
+.reset-load-factor:active {
+    transform: scale(0.95);
 }
 
 /* Vertical Slider */
@@ -1255,48 +1304,6 @@ h1, h2, h3, h4, h5, h6 {
     height: 24px;
 }
 
-/* Responsive: Horizontal on mobile */
-@media (max-width: 900px) {
-    .curve-with-control {
-        grid-template-columns: 1fr;
-        grid-template-rows: auto auto;
-    }
-
-    .curve-vertical-control {
-        order: -1;
-        padding: var(--spacing-sm) var(--spacing-md);
-    }
-
-    .curve-vertical-control .control-group {
-        flex-direction: row;
-        width: 100%;
-        max-width: 600px;
-        margin: 0 auto;
-    }
-
-    .curve-vertical-control .control-label {
-        flex-direction: row;
-        justify-content: space-between;
-        width: 100%;
-        font-size: 0.9rem;
-    }
-
-    .curve-vertical-control .control-hint {
-        writing-mode: horizontal-tb;
-        transform: none;
-        text-align: center;
-        width: 100%;
-    }
-
-    .slider-vertical {
-        writing-mode: horizontal-tb;
-        -webkit-appearance: none;
-        appearance: none;
-        width: 100%;
-        height: 8px;
-        flex: 0;
-    }
-}
 
 .curve-legend {
     display: flex;
