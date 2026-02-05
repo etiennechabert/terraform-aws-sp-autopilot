@@ -735,8 +735,10 @@
         const minHourlyCommitment = SPCalculations.commitmentFromCoverage(strategies.minHourly, savingsPercentage);
 
         // Detect if current coverage matches this strategy (with tolerance for floating point)
+        // Only use active logic if we have valid data (non-zero strategies and cost results)
+        const hasValidData = strategies.minHourly > 0 && currentCostResults;
         const tolerance = 0.05;  // 5% tolerance
-        const isTooPrudentActive = Math.abs(currentCoverage - strategies.tooPrudent) / Math.max(currentCoverage, 0.01) < tolerance;
+        const isTooPrudentActive = hasValidData && Math.abs(currentCoverage - strategies.tooPrudent) / Math.max(currentCoverage, 0.01) < tolerance;
 
         // Update Too Prudent
         const tooPrudentValue = document.getElementById('strategy-too-prudent-value');
@@ -761,7 +763,7 @@
         }
 
         // Update Min-Hourly
-        const isMinHourlyActive = Math.abs(currentCoverage - strategies.minHourly) / Math.max(currentCoverage, 0.01) < tolerance;
+        const isMinHourlyActive = hasValidData && Math.abs(currentCoverage - strategies.minHourly) / Math.max(currentCoverage, 0.01) < tolerance;
         const minValue = document.getElementById('strategy-min-value');
         const minSavings = document.getElementById('strategy-min-savings');
         const minSavingsPct = document.getElementById('strategy-min-savings-pct');
@@ -783,7 +785,7 @@
         }
 
         // Update Balanced
-        const isBalancedActive = Math.abs(currentCoverage - strategies.balanced) / Math.max(currentCoverage, 0.01) < tolerance;
+        const isBalancedActive = hasValidData && Math.abs(currentCoverage - strategies.balanced) / Math.max(currentCoverage, 0.01) < tolerance;
         const balancedValue = document.getElementById('strategy-balanced-value');
         const balancedSavings = document.getElementById('strategy-balanced-savings');
         const balancedSavingsPct = document.getElementById('strategy-balanced-savings-pct');
@@ -805,7 +807,7 @@
         }
 
         // Update Aggressive
-        const isAggressiveActive = Math.abs(currentCoverage - strategies.aggressive) / Math.max(currentCoverage, 0.01) < tolerance;
+        const isAggressiveActive = hasValidData && Math.abs(currentCoverage - strategies.aggressive) / Math.max(currentCoverage, 0.01) < tolerance;
         const aggressiveValue = document.getElementById('strategy-aggressive-value');
         const aggressiveSavings = document.getElementById('strategy-aggressive-savings');
         const aggressiveSavingsPct = document.getElementById('strategy-aggressive-savings-pct');
@@ -827,7 +829,7 @@
         }
 
         // Update Too Aggressive
-        const isTooAggressiveActive = Math.abs(currentCoverage - strategies.tooAggressive) / Math.max(currentCoverage, 0.01) < tolerance;
+        const isTooAggressiveActive = hasValidData && Math.abs(currentCoverage - strategies.tooAggressive) / Math.max(currentCoverage, 0.01) < tolerance;
         const tooAggressiveValue = document.getElementById('strategy-too-aggressive-value');
         const tooAggressiveSavings = document.getElementById('strategy-too-aggressive-savings');
         const tooAggressiveSavingsPct = document.getElementById('strategy-too-aggressive-savings-pct');
