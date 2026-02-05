@@ -666,11 +666,11 @@
 
         // Show success message
         const strategyNames = {
-            'too-prudent': 'Too Prudent 🐔',
+            'too-prudent': 'Prudent 🐔',
             'min-hourly': 'Min-Hourly',
             'balanced': 'Balanced',
-            'aggressive': 'Aggressive',
-            'too-aggressive': 'Too Aggressive 💀'
+            'aggressive': 'Risky',
+            'too-aggressive': 'Aggressive 💀'
         };
         showToast(`${strategyNames[strategy]} strategy applied: ${CostCalculator.formatCurrency(coverageCost)}/h`);
     }
