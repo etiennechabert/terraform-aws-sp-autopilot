@@ -87,7 +87,7 @@
         if (typeof Chart !== 'undefined') {
             const ctx = document.getElementById('coverageChart');
             if (ctx) {
-                new Chart(ctx, {
+                const chart = new Chart(ctx, {
                     type: 'line',
                     data: {
                         labels: ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun'],
@@ -103,6 +103,7 @@
                         maintainAspectRatio: false
                     }
                 });
+                chart.resize();
             }
         }
 

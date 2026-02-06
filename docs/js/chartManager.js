@@ -775,7 +775,7 @@ const ChartManager = (function() {
     }
 
     function updateSavingsCurveChart(opts) {
-        const { curveData, minHourlySavings, optimalCoverage, minCost, maxCost, baselineCost, currentCoverage, savingsPercentage, numHours } = opts;
+        const { curveData, minHourlySavings, minCost, maxCost, baselineCost, currentCoverage, savingsPercentage, numHours } = opts;
         if (!savingsCurveChart) return;
 
         savingsCurveChart.$minHourlySavings = minHourlySavings;

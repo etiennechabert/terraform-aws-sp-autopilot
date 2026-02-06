@@ -1089,7 +1089,6 @@
         ChartManager.updateSavingsCurveChart({
             curveData,
             minHourlySavings,
-            optimalCoverage,
             minCost,
             maxCost: chartMaxCost,
             baselineCost,
