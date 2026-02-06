@@ -1086,17 +1086,17 @@
         const currentCoverageFromData = appState.coverageCost;
 
         // Update chart (use optimal from curve data for consistency)
-        ChartManager.updateSavingsCurveChart(
+        ChartManager.updateSavingsCurveChart({
             curveData,
             minHourlySavings,
             optimalCoverage,
             minCost,
-            chartMaxCost,
+            maxCost: chartMaxCost,
             baselineCost,
-            currentCoverageFromData,
+            currentCoverage: currentCoverageFromData,
             savingsPercentage,
-            hourlyCosts.length
-        );
+            numHours: hourlyCosts.length
+        });
     }
 
     /**

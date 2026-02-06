@@ -92,7 +92,7 @@ export function parseDollarAmount(formattedValue) {
  * @returns {number} Numeric value
  */
 export function parsePercentage(formattedValue) {
-  return Number.parseFloat(formattedValue.replaceAll(/%/g, ''));
+  return Number.parseFloat(formattedValue.replaceAll('%', ''));
 }
 
 /**
