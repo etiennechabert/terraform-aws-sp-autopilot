@@ -72,9 +72,9 @@ func TestFullDeploymentAndCleanup(t *testing.T) {
 			},
 			// EventBridge schedules - SAFETY: far future to prevent accidental triggers
 			"scheduler": map[string]interface{}{
-				"scheduler": "cron(0 0 1 1 ? 2099)", // Jan 1, 2099 - will never trigger
-				"purchaser": "cron(0 0 1 1 ? 2099)", // Jan 1, 2099 - will never trigger
-				"reporter":  "cron(0 0 1 1 ? 2099)", // Jan 1, 2099 - will never trigger
+				"scheduler": disabledCronSchedule, // Jan 1, 2099 - will never trigger
+				"purchaser": disabledCronSchedule, // Jan 1, 2099 - will never trigger
+				"reporter":  disabledCronSchedule, // Jan 1, 2099 - will never trigger
 			},
 			// Notification configuration
 			"notifications": map[string]interface{}{
@@ -106,9 +106,9 @@ func TestFullDeploymentAndCleanup(t *testing.T) {
 	// Ensure resources are destroyed at the end of the test
 	defer terraform.Destroy(t, terraformOptions)
 
-	t.Log("========================================")
+	t.Log(logSeparator)
 	t.Log("Phase 1: Infrastructure Deployment")
-	t.Log("========================================")
+	t.Log(logSeparator)
 
 	// Initialize and apply Terraform
 	terraform.InitAndApply(t, terraformOptions)
@@ -119,9 +119,9 @@ func TestFullDeploymentAndCleanup(t *testing.T) {
 	// Phase 2: Comprehensive Resource Validation
 	// ============================================================================
 
-	t.Log("========================================")
+	t.Log(logSeparator)
 	t.Log("Phase 2: Resource Validation")
-	t.Log("========================================")
+	t.Log(logSeparator)
 
 	// ============================================================================
 	// Validate SQS Queues
@@ -173,8 +173,8 @@ func TestFullDeploymentAndCleanup(t *testing.T) {
 	require.NotEmpty(t, schedulerLambdaARN, "Scheduler Lambda ARN should not be empty")
 	require.NotEmpty(t, purchaserLambdaARN, "Purchaser Lambda ARN should not be empty")
 
-	assert.Contains(t, schedulerLambdaName, uniquePrefix+"-scheduler", "Scheduler Lambda name should contain expected function name")
-	assert.Contains(t, purchaserLambdaName, uniquePrefix+"-purchaser", "Purchaser Lambda name should contain expected function name")
+	assert.Contains(t, schedulerLambdaName, uniquePrefix+suffixScheduler, "Scheduler Lambda name should contain expected function name")
+	assert.Contains(t, purchaserLambdaName, uniquePrefix+suffixPurchaser, "Purchaser Lambda name should contain expected function name")
 
 	// Validate Lambda function configuration
 	lambdaClient := terratest_aws.NewLambdaClient(t, awsRegion)
@@ -203,8 +203,8 @@ func TestFullDeploymentAndCleanup(t *testing.T) {
 	require.NotEmpty(t, schedulerRoleARN, "Scheduler Lambda role ARN should not be empty")
 	require.NotEmpty(t, purchaserRoleARN, "Purchaser Lambda role ARN should not be empty")
 
-	assert.Contains(t, schedulerRoleARN, uniquePrefix+"-scheduler", "Scheduler role ARN should contain expected role name")
-	assert.Contains(t, purchaserRoleARN, uniquePrefix+"-purchaser", "Purchaser role ARN should contain expected role name")
+	assert.Contains(t, schedulerRoleARN, uniquePrefix+suffixScheduler, "Scheduler role ARN should contain expected role name")
+	assert.Contains(t, purchaserRoleARN, uniquePrefix+suffixPurchaser, "Purchaser role ARN should contain expected role name")
 
 	t.Log("✓ IAM roles validated")
 
@@ -224,8 +224,8 @@ func TestFullDeploymentAndCleanup(t *testing.T) {
 	require.NotEmpty(t, schedulerRuleARN, "Scheduler rule ARN should not be empty")
 	require.NotEmpty(t, purchaserRuleARN, "Purchaser rule ARN should not be empty")
 
-	assert.Contains(t, schedulerRuleName, uniquePrefix+"-scheduler", "Scheduler rule name should contain expected rule name")
-	assert.Contains(t, purchaserRuleName, uniquePrefix+"-purchaser", "Purchaser rule name should contain expected rule name")
+	assert.Contains(t, schedulerRuleName, uniquePrefix+suffixScheduler, "Scheduler rule name should contain expected rule name")
+	assert.Contains(t, purchaserRuleName, uniquePrefix+suffixPurchaser, "Purchaser rule name should contain expected rule name")
 
 	// Validate EventBridge rule details
 	sess, err := terratest_aws.NewAuthenticatedSession(awsRegion)
@@ -284,9 +284,9 @@ func TestFullDeploymentAndCleanup(t *testing.T) {
 	// Phase 3: Cleanup Validation
 	// ============================================================================
 
-	t.Log("========================================")
+	t.Log(logSeparator)
 	t.Log("Phase 3: Cleanup Validation")
-	t.Log("========================================")
+	t.Log(logSeparator)
 
 	// The defer statement will handle cleanup automatically
 	// Validate that we have all resource identifiers needed for cleanup
@@ -314,9 +314,9 @@ func TestFullDeploymentAndCleanup(t *testing.T) {
 
 	t.Log("✓ All resource identifiers validated for cleanup")
 
-	t.Log("========================================")
+	t.Log(logSeparator)
 	t.Log("Test Complete - Cleanup Will Run via defer")
-	t.Log("========================================")
+	t.Log(logSeparator)
 
 	// Note: terraform.Destroy() will be called automatically via defer
 	// when this function exits, ensuring all AWS resources are cleaned up

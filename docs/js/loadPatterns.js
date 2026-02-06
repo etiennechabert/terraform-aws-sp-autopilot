@@ -6,6 +6,40 @@
 const LoadPatterns = (function() {
     'use strict';
 
+    function getEcommerceWeekendUsage(hour) {
+        if (hour >= 0 && hour < 6) {
+            return 0.1;
+        } else if (hour >= 6 && hour < 10) {
+            return 0.15 + (hour - 6) * 0.1;
+        } else if (hour >= 10 && hour < 14) {
+            return 0.55 + (hour - 10) * 0.075;
+        } else if (hour >= 14 && hour < 18) {
+            return 0.85;
+        } else if (hour >= 18 && hour < 23) {
+            return 0.95;
+        }
+        return 0.5;
+    }
+
+    function getEcommerceWeekdayUsage(hour) {
+        if (hour >= 0 && hour < 6) {
+            return 0.15;
+        } else if (hour >= 6 && hour < 8) {
+            return 0.15 + (hour - 6) * 0.175;
+        } else if (hour >= 8 && hour < 12) {
+            return 0.5 + (hour - 8) * 0.0875;
+        } else if (hour >= 12 && hour < 13) {
+            return 0.7;
+        } else if (hour >= 13 && hour < 17) {
+            return 0.75 + (hour - 13) * 0.025;
+        } else if (hour >= 17 && hour < 20) {
+            return 0.85 + (hour - 17) * 0.033;
+        } else if (hour >= 20 && hour < 22) {
+            return 0.95;
+        }
+        return 0.95 - (hour - 22) * 0.4;
+    }
+
     /**
      * Generate Ecommerce load pattern
      * Weekdays: Low overnight, morning ramp, lunch dip, evening peak
@@ -18,45 +52,11 @@ const LoadPatterns = (function() {
             const isWeekend = day === 5 || day === 6; // Saturday, Sunday
 
             for (let hour = 0; hour < 24; hour++) {
-                let usage;
+                const usage = isWeekend
+                    ? getEcommerceWeekendUsage(hour)
+                    : getEcommerceWeekdayUsage(hour);
 
-                if (isWeekend) {
-                    // Weekend pattern: later start, sustained evening
-                    if (hour >= 0 && hour < 6) {
-                        usage = 0.10; // Very low overnight
-                    } else if (hour >= 6 && hour < 10) {
-                        usage = 0.15 + (hour - 6) * 0.10; // Slow morning ramp
-                    } else if (hour >= 10 && hour < 14) {
-                        usage = 0.55 + (hour - 10) * 0.075; // Midday build
-                    } else if (hour >= 14 && hour < 18) {
-                        usage = 0.85; // Afternoon plateau
-                    } else if (hour >= 18 && hour < 23) {
-                        usage = 0.95; // Evening peak
-                    } else {
-                        usage = 0.50; // Late night decline
-                    }
-                } else {
-                    // Weekday pattern: standard business with evening peak
-                    if (hour >= 0 && hour < 6) {
-                        usage = 0.15; // Low overnight
-                    } else if (hour >= 6 && hour < 8) {
-                        usage = 0.15 + (hour - 6) * 0.175; // Morning ramp
-                    } else if (hour >= 8 && hour < 12) {
-                        usage = 0.50 + (hour - 8) * 0.0875; // Morning peak build
-                    } else if (hour >= 12 && hour < 13) {
-                        usage = 0.70; // Lunch dip
-                    } else if (hour >= 13 && hour < 17) {
-                        usage = 0.75 + (hour - 13) * 0.025; // Afternoon recovery
-                    } else if (hour >= 17 && hour < 20) {
-                        usage = 0.85 + (hour - 17) * 0.033; // Evening surge
-                    } else if (hour >= 20 && hour < 22) {
-                        usage = 0.95; // Evening peak
-                    } else {
-                        usage = 0.95 - (hour - 22) * 0.40; // Night decline
-                    }
-                }
-
-                pattern.push(Math.min(1.0, Math.max(0, usage)));
+                pattern.push(Math.min(1, Math.max(0, usage)));
             }
         }
 
@@ -73,16 +73,15 @@ const LoadPatterns = (function() {
         for (let day = 0; day < 7; day++) {
             const isWeekend = day === 5 || day === 6;
             const baselineWeekday = 0.75;
-            const baselineWeekend = 0.70;
+            const baselineWeekend = 0.7;
             const baseline = isWeekend ? baselineWeekend : baselineWeekday;
 
             for (let hour = 0; hour < 24; hour++) {
-                // Create gentle sine wave with 8-hour period (3 regional handoffs per day)
                 const totalHour = day * 24 + hour;
-                const wave = Math.sin((totalHour / 8) * Math.PI * 2) * 0.10;
+                const wave = Math.sin((totalHour / 8) * Math.PI * 2) * 0.1;
 
                 const usage = baseline + wave;
-                pattern.push(Math.min(1.0, Math.max(0, usage)));
+                pattern.push(Math.min(1, Math.max(0, usage)));
             }
         }
 
@@ -98,11 +97,36 @@ const LoadPatterns = (function() {
 
         for (let day = 0; day < 7; day++) {
             for (let hour = 0; hour < 24; hour++) {
-                pattern.push(1.0);
+                pattern.push(1);
             }
         }
 
         return pattern;
+    }
+
+    function calculateBatchSpike(hour, peakHour, peakUsage, nearUsage, farUsage) {
+        const distance = Math.abs(hour - peakHour);
+        if (distance === 0) return peakUsage;
+        if (distance === 1) return nearUsage;
+        return farUsage;
+    }
+
+    function getBatchWeekendUsage(hour) {
+        if (hour >= 2 && hour < 5) {
+            return calculateBatchSpike(hour, 3, 1, 0.85, 0.6);
+        }
+        return 0.05;
+    }
+
+    function getBatchWeekdayUsage(hour) {
+        if (hour >= 2 && hour < 5) {
+            return calculateBatchSpike(hour, 3, 1, 0.9, 0.7);
+        } else if (hour >= 10 && hour < 13) {
+            return calculateBatchSpike(hour, 11, 1, 0.85, 0.65);
+        } else if (hour >= 18 && hour < 21) {
+            return calculateBatchSpike(hour, 19, 1, 0.9, 0.7);
+        }
+        return 0.05;
     }
 
     /**
@@ -116,39 +140,11 @@ const LoadPatterns = (function() {
             const isWeekend = day === 5 || day === 6;
 
             for (let hour = 0; hour < 24; hour++) {
-                let usage = 0.05; // Low baseline
+                const usage = isWeekend
+                    ? getBatchWeekendUsage(hour)
+                    : getBatchWeekdayUsage(hour);
 
-                if (isWeekend) {
-                    // Weekend: Only overnight batch
-                    if (hour >= 2 && hour < 5) {
-                        // 2am-5am spike (bell curve)
-                        const peakHour = 3;
-                        const distance = Math.abs(hour - peakHour);
-                        usage = distance === 0 ? 1.0 : (distance === 1 ? 0.85 : 0.60);
-                    }
-                } else {
-                    // Weekday: Three scheduled batches
-                    // Early morning batch (2am-5am)
-                    if (hour >= 2 && hour < 5) {
-                        const peakHour = 3;
-                        const distance = Math.abs(hour - peakHour);
-                        usage = distance === 0 ? 1.0 : (distance === 1 ? 0.90 : 0.70);
-                    }
-                    // Mid-morning batch (10am-1pm)
-                    else if (hour >= 10 && hour < 13) {
-                        const peakHour = 11;
-                        const distance = Math.abs(hour - peakHour);
-                        usage = distance === 0 ? 1.0 : (distance === 1 ? 0.85 : 0.65);
-                    }
-                    // Evening batch (6pm-9pm)
-                    else if (hour >= 18 && hour < 21) {
-                        const peakHour = 19;
-                        const distance = Math.abs(hour - peakHour);
-                        usage = distance === 0 ? 1.0 : (distance === 1 ? 0.90 : 0.70);
-                    }
-                }
-
-                pattern.push(Math.min(1.0, Math.max(0, usage)));
+                pattern.push(Math.min(1, Math.max(0, usage)));
             }
         }
 
@@ -284,6 +280,23 @@ const LoadPatterns = (function() {
         return controlPoints;
     }
 
+    function findSurroundingControlPoints(controlPoints, targetIndex) {
+        let prevPoint = null;
+        let nextPoint = null;
+
+        for (const point of controlPoints) {
+            if (point.index <= targetIndex) {
+                prevPoint = point;
+            }
+            if (point.index >= targetIndex && !nextPoint) {
+                nextPoint = point;
+                break;
+            }
+        }
+
+        return { prevPoint, nextPoint };
+    }
+
     /**
      * Interpolate full pattern from control points
      * @param {Array<Object>} controlPoints - Control points with index and value
@@ -294,21 +307,8 @@ const LoadPatterns = (function() {
         const pattern = new Array(length);
 
         for (let i = 0; i < length; i++) {
-            // Find surrounding control points
-            let prevPoint = null;
-            let nextPoint = null;
+            const { prevPoint, nextPoint } = findSurroundingControlPoints(controlPoints, i);
 
-            for (let j = 0; j < controlPoints.length; j++) {
-                if (controlPoints[j].index <= i) {
-                    prevPoint = controlPoints[j];
-                }
-                if (controlPoints[j].index >= i && !nextPoint) {
-                    nextPoint = controlPoints[j];
-                    break;
-                }
-            }
-
-            // Interpolate value
             if (prevPoint && nextPoint && prevPoint.index !== nextPoint.index) {
                 const t = (i - prevPoint.index) / (nextPoint.index - prevPoint.index);
                 pattern[i] = prevPoint.value + t * (nextPoint.value - prevPoint.value);
@@ -335,13 +335,13 @@ const LoadPatterns = (function() {
 
         return {
             min: sorted[0],
-            max: sorted[sorted.length - 1],
+            max: sorted.at(-1),
             avg: sum / pattern.length,
             median: sorted[Math.floor(sorted.length / 2)],
             p25: sorted[Math.floor(sorted.length * 0.25)],
-            p50: sorted[Math.floor(sorted.length * 0.50)],
+            p50: sorted[Math.floor(sorted.length * 0.5)],
             p75: sorted[Math.floor(sorted.length * 0.75)],
-            p90: sorted[Math.floor(sorted.length * 0.90)]
+            p90: sorted[Math.floor(sorted.length * 0.9)]
         };
     }
 

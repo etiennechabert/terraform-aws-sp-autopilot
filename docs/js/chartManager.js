@@ -255,7 +255,7 @@ const ChartManager = (function() {
                             footer: function(context) {
                                 const hour = context[0].dataIndex;
                                 const breakdown = getCurrentHourlyBreakdown(hour);
-                                if (!breakdown) return '';
+                                if (!breakdown) return [];
 
                                 const lines = [
                                     '',
@@ -375,41 +375,6 @@ const ChartManager = (function() {
     }
 
     /**
-     * Sync hover effect from load chart to cost chart
-     * @param {number} index - Hour index
-     */
-    function syncCostChartHover(index) {
-        if (!costChart) return;
-
-        // Trigger tooltip on cost chart
-        costChart.setActiveElements([
-            { datasetIndex: 0, index },
-            { datasetIndex: 1, index },
-            { datasetIndex: 2, index }
-        ]);
-        costChart.tooltip.setActiveElements([
-            { datasetIndex: 0, index }
-        ]);
-        costChart.update('none');
-    }
-
-    /**
-     * Sync hover effect from cost chart to load chart
-     * @param {number} index - Hour index
-     */
-    function syncLoadChartHover(index) {
-        if (!loadChart) return;
-
-        loadChart.setActiveElements([
-            { datasetIndex: 0, index }
-        ]);
-        loadChart.tooltip.setActiveElements([
-            { datasetIndex: 0, index }
-        ]);
-        loadChart.update('none');
-    }
-
-    /**
      * Get hourly breakdown for tooltip
      * Stored in a closure to be accessible by tooltip callbacks
      */
@@ -420,7 +385,7 @@ const ChartManager = (function() {
     }
 
     function getCurrentHourlyBreakdown(hour) {
-        if (!currentCostResults || !currentCostResults.hourlyBreakdown) {
+        if (!currentCostResults?.hourlyBreakdown) {
             return null;
         }
         return currentCostResults.hourlyBreakdown[hour];
@@ -712,93 +677,37 @@ const ChartManager = (function() {
         return savingsCurveChart;
     }
 
-    /**
-     * Update savings curve chart with new data
-     * @param {Array} curveData - Savings curve data points
-     * @param {number} minHourlySavings - Baseline savings at min-hourly (dollars)
-     * @param {number} optimalCoverage - Optimal coverage in $/h
-     * @param {number} minCost - Min-hourly cost
-     * @param {number} maxCost - Max-hourly cost
-     * @param {number} baselineCost - Total baseline on-demand cost
-     * @param {number} currentCoverage - Current actual coverage in $/h (optional)
-     * @param {number} savingsPercentage - Savings percentage (0-99)
-     * @param {number} numHours - Actual number of hours in the data series
-     */
-    function updateSavingsCurveChart(curveData, minHourlySavings, optimalCoverage, minCost, maxCost, baselineCost, currentCoverage, savingsPercentage, numHours) {
-        if (!savingsCurveChart) return;
+    function toXY(d) {
+        return { x: d.commitment, y: d.savingsPercent };
+    }
 
-        // Store values for tooltip access
-        savingsCurveChart.$minHourlySavings = minHourlySavings;
-        savingsCurveChart.$minCost = minCost;
-        savingsCurveChart.$maxCost = maxCost;
-        savingsCurveChart.$curveData = curveData; // Store full curve data for tooltip access
-
-        // Set x-axis max to max commitment (get from curve data)
-        const maxCommitment = curveData.length > 0 ? curveData[curveData.length - 1].commitment : maxCost;
-        savingsCurveChart.options.scales.x.max = maxCommitment;
-
-        // Calculate right y-axis (absolute $/h savings) to match left y-axis (percentage) range
-        // Convert percentage range to dollar range using baseline hourly cost
-        const baselineHourly = baselineCost / numHours;
-
-        // Get the percentage range from the curve data
-        const savingsPercentages = curveData.map(d => d.savingsPercent);
-        let minSavingsPercent = Math.min(...savingsPercentages);
-        let maxSavingsPercent = Math.max(...savingsPercentages);
-
-        // Ensure there's a minimum range to prevent chart rendering issues
-        // This handles edge case where savingsPercentage is 0% (no discount)
-        if (maxSavingsPercent - minSavingsPercent < 0.1) {
-            const midpoint = (minSavingsPercent + maxSavingsPercent) / 2;
-            minSavingsPercent = midpoint - 0.05;
-            maxSavingsPercent = midpoint + 0.05;
-        }
-
-        // Convert to absolute dollar savings per hour
-        const minAbsoluteSavings = baselineHourly * (minSavingsPercent / 100);
-        const maxAbsoluteSavings = baselineHourly * (maxSavingsPercent / 100);
-
-        // Set right y-axis range to match left y-axis percentage range
-        savingsCurveChart.options.scales.y1.min = minAbsoluteSavings;
-        savingsCurveChart.options.scales.y1.max = maxAbsoluteSavings;
-
-        // Find indices for transitions
+    function findCurveIndices(curveData, minCost, minHourlySavings) {
         let minCostIndex = -1;
         let optimalIndex = -1;
         let breakevenIndex = -1;
-
-        // Find the actual optimal point (maximum netSavings)
         let maxSavings = -Infinity;
+
         for (let i = 0; i < curveData.length; i++) {
-            // Find min-hourly crossing
             if (curveData[i].coverage >= minCost && minCostIndex === -1) {
                 minCostIndex = i;
             }
-            // Find optimal point (max savings)
             if (curveData[i].netSavings > maxSavings) {
                 maxSavings = curveData[i].netSavings;
                 optimalIndex = i;
             }
         }
 
-        // Ensure indices are valid
         if (minCostIndex === -1) minCostIndex = 0;
         if (optimalIndex === -1) optimalIndex = minCostIndex;
 
-        // Calculate min-hourly savings percentage
-        const minHourlySavingsPercent = baselineCost > 0 ? (minHourlySavings / baselineCost) * 100 : 0;
-
-        // Find where savings decline back to min-hourly level (not optimal anymore)
         let minHourlyReturnIndex = -1;
         for (let i = optimalIndex + 1; i < curveData.length; i++) {
-            const point = curveData[i];
-            if (point.netSavings <= minHourlySavings) {
+            if (curveData[i].netSavings <= minHourlySavings) {
                 minHourlyReturnIndex = i;
                 break;
             }
         }
 
-        // Find where savings go to 0 or negative (worse than on-demand)
         for (let i = optimalIndex + 1; i < curveData.length; i++) {
             if (curveData[i].savingsPercent <= 0) {
                 breakevenIndex = i;
@@ -806,82 +715,47 @@ const ChartManager = (function() {
             }
         }
 
-        // Set defaults if not found
         if (breakevenIndex === -1) breakevenIndex = curveData.length - 1;
 
-        console.log('Dataset boundaries:', {
-            minCostIndex,
-            optimalIndex,
-            minHourlyReturnIndex,
-            breakevenIndex,
-            totalPoints: curveData.length,
-            minHourlySavingsPercent: minHourlySavingsPercent.toFixed(2) + '%',
-            declineDetected: minHourlyReturnIndex !== -1
-        });
+        return { minCostIndex, optimalIndex, breakevenIndex, minHourlyReturnIndex };
+    }
 
-        // Split data into five datasets based on commitment ranges
-        // Blue: 0 to min-hourly (building up)
-        const dataset1 = curveData.slice(0, minCostIndex + 1).map(d => ({ x: d.commitment, y: d.savingsPercent }));
+    function splitCurveDatasets(curveData, indices) {
+        const { minCostIndex, optimalIndex, breakevenIndex, minHourlyReturnIndex } = indices;
 
-        // Green: min-hourly to optimal (or to end if no decline detected)
-        const greenEndIndex = minHourlyReturnIndex !== -1 ? minHourlyReturnIndex : curveData.length - 1;
-        const dataset2 = curveData.slice(minCostIndex, Math.min(optimalIndex + 1, greenEndIndex + 1)).map(d => ({ x: d.commitment, y: d.savingsPercent }));
+        const dataset1 = curveData.slice(0, minCostIndex + 1).map(toXY);
 
-        // If green extends beyond optimal (no decline), extend it all the way
+        const dataset2 = curveData.slice(minCostIndex, Math.min(optimalIndex + 1, (minHourlyReturnIndex !== -1 ? minHourlyReturnIndex : curveData.length - 1) + 1)).map(toXY);
+
         const dataset2Extended = minHourlyReturnIndex === -1 && optimalIndex < curveData.length - 1
-            ? curveData.slice(minCostIndex, curveData.length).map(d => ({ x: d.commitment, y: d.savingsPercent }))
+            ? curveData.slice(minCostIndex, curveData.length).map(toXY)
             : dataset2;
 
-        // Orange: optimal to min-hourly-return (only if decline detected)
         const dataset3 = minHourlyReturnIndex !== -1 && optimalIndex < minHourlyReturnIndex
-            ? curveData.slice(optimalIndex, minHourlyReturnIndex + 1).map(d => ({ x: d.commitment, y: d.savingsPercent }))
+            ? curveData.slice(optimalIndex, minHourlyReturnIndex + 1).map(toXY)
             : [];
 
-        // Purple: min-hourly-return to breakeven (only if we found min-hourly return point)
         const dataset4 = minHourlyReturnIndex !== -1 && minHourlyReturnIndex < breakevenIndex
-            ? curveData.slice(minHourlyReturnIndex, breakevenIndex + 1).map(d => ({ x: d.commitment, y: d.savingsPercent }))
+            ? curveData.slice(minHourlyReturnIndex, breakevenIndex + 1).map(toXY)
             : [];
 
-        // Red: beyond breakeven (negative savings, losing money)
         const dataset5 = breakevenIndex < curveData.length - 1 && curveData[breakevenIndex].savingsPercent <= 0
-            ? curveData.slice(breakevenIndex).map(d => ({ x: d.commitment, y: d.savingsPercent }))
+            ? curveData.slice(breakevenIndex).map(toXY)
             : [];
 
-        console.log('Dataset sizes:', {
-            blue: dataset1.length,
-            green: dataset2.length,
-            orange: dataset3.length,
-            purple: dataset4.length,
-            red: dataset5.length
-        });
+        return [dataset1, dataset2Extended, dataset3, dataset4, dataset5];
+    }
 
-        savingsCurveChart.data.datasets[0].data = dataset1;
-        savingsCurveChart.data.datasets[1].data = dataset2Extended;
-        savingsCurveChart.data.datasets[2].data = dataset3;
-        savingsCurveChart.data.datasets[3].data = dataset4;
-        savingsCurveChart.data.datasets[4].data = dataset5;
-
-        // Find breakeven point (where savings return to 0%)
-        let breakevenCoverage = null;
-        for (let i = curveData.length - 1; i >= 0; i--) {
-            if (curveData[i].savingsPercent >= 0) {
-                breakevenCoverage = curveData[i].coverage;
-                break;
-            }
+    function buildCoverageAnnotation(currentCoverage, maxCost, minCost, savingsPercentage) {
+        if (!currentCoverage || currentCoverage <= 0 || currentCoverage > maxCost) {
+            return {};
         }
 
-        // Build annotations - only show current coverage line
-        const annotations = {};
+        const currentCommitment = commitmentFromCoverage(currentCoverage, savingsPercentage || 0);
+        const percentOfMin = minCost > 0 ? (currentCoverage / minCost * 100).toFixed(1) : '0.0';
 
-        // Add current coverage line if provided and within range
-        if (currentCoverage && currentCoverage > 0 && currentCoverage <= maxCost) {
-            // Calculate commitment using centralized function
-            const currentCommitment = commitmentFromCoverage(currentCoverage, savingsPercentage || 0);
-
-            // Calculate percentage of min-hourly
-            const percentOfMin = minCost > 0 ? (currentCoverage / minCost * 100).toFixed(1) : '0.0';
-
-            annotations.currentLine = {
+        return {
+            currentLine: {
                 type: 'line',
                 xMin: currentCommitment,
                 xMax: currentCommitment,
@@ -896,12 +770,47 @@ const ChartManager = (function() {
                     color: '#1a1f3a',
                     font: { size: 13, weight: 'bold' }
                 }
-            };
+            }
+        };
+    }
+
+    /**
+     * Update savings curve chart with new data
+     * @param {Object} opts - Chart update options
+     */
+    function updateSavingsCurveChart(curveData, minHourlySavings, optimalCoverage, minCost, maxCost, baselineCost, currentCoverage, savingsPercentage, numHours) {
+        if (!savingsCurveChart) return;
+
+        savingsCurveChart.$minHourlySavings = minHourlySavings;
+        savingsCurveChart.$minCost = minCost;
+        savingsCurveChart.$maxCost = maxCost;
+        savingsCurveChart.$curveData = curveData;
+
+        const maxCommitment = curveData.length > 0 ? curveData.at(-1).commitment : maxCost;
+        savingsCurveChart.options.scales.x.max = maxCommitment;
+
+        const baselineHourly = baselineCost / numHours;
+        const savingsPercentages = curveData.map(d => d.savingsPercent);
+        let minSavingsPercent = Math.min(...savingsPercentages);
+        let maxSavingsPercent = Math.max(...savingsPercentages);
+
+        if (maxSavingsPercent - minSavingsPercent < 0.1) {
+            const midpoint = (minSavingsPercent + maxSavingsPercent) / 2;
+            minSavingsPercent = midpoint - 0.05;
+            maxSavingsPercent = midpoint + 0.05;
         }
 
-        savingsCurveChart.options.plugins.annotation.annotations = annotations;
+        savingsCurveChart.options.scales.y1.min = baselineHourly * (minSavingsPercent / 100);
+        savingsCurveChart.options.scales.y1.max = baselineHourly * (maxSavingsPercent / 100);
 
-        // Use 'none' mode for instant updates without animation lag
+        const indices = findCurveIndices(curveData, minCost, minHourlySavings);
+        const datasets = splitCurveDatasets(curveData, indices);
+
+        for (let i = 0; i < datasets.length; i++) {
+            savingsCurveChart.data.datasets[i].data = datasets[i];
+        }
+
+        savingsCurveChart.options.plugins.annotation.annotations = buildCoverageAnnotation(currentCoverage, maxCost, minCost, savingsPercentage);
         savingsCurveChart.update('none');
     }
 

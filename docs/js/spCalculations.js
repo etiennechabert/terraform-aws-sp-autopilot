@@ -145,8 +145,8 @@ if (typeof module !== 'undefined' && module.exports) {
 }
 
 // Also make available globally for browser usage
-if (typeof window !== 'undefined') {
-    window.SPCalculations = {
+if (typeof globalThis.window !== 'undefined') {
+    globalThis.SPCalculations = {
         coverageFromCommitment,
         commitmentFromCoverage,
         calculateSavingsPercentage,

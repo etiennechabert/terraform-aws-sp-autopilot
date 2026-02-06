@@ -55,7 +55,7 @@ export async function assertAllMetricsValid(page) {
 
   for (const metricId of metricIds) {
     const value = await page.locator(metricId).textContent();
-    expect(value).toMatch(/[-]?\$\d+\.\d{2}\/h/);
+    expect(value).toMatch(/-?\$\d+\.\d{2}\/h/);
   }
 }
 
@@ -72,8 +72,8 @@ export async function assertAllStrategyCardsValid(page) {
     const savingsPct = await page.locator(`#strategy-${strategy}-savings-pct`).textContent();
 
     expect(cost).toMatch(/\$\d+\.\d{2}\/h/);
-    expect(savings).toMatch(/[-]?\$\d+\.\d{2}\/h/);
-    expect(savingsPct).toMatch(/[-]?\d+\.\d%/);
+    expect(savings).toMatch(/-?\$\d+\.\d{2}\/h/);
+    expect(savingsPct).toMatch(/-?\d+\.\d%/);
   }
 }
 
@@ -83,7 +83,7 @@ export async function assertAllStrategyCardsValid(page) {
  * @returns {number} Numeric value
  */
 export function parseDollarAmount(formattedValue) {
-  return parseFloat(formattedValue.replace(/[$\/h]/g, ''));
+  return Number.parseFloat(formattedValue.replaceAll(/[$/h]/g, ''));
 }
 
 /**
@@ -92,7 +92,7 @@ export function parseDollarAmount(formattedValue) {
  * @returns {number} Numeric value
  */
 export function parsePercentage(formattedValue) {
-  return parseFloat(formattedValue.replace(/%/g, ''));
+  return Number.parseFloat(formattedValue.replaceAll(/%/g, ''));
 }
 
 /**

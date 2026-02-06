@@ -20,7 +20,7 @@ const CostCalculator = (function() {
             hourlyCosts = [],
             coverageCost = 0,
             savingsPercentage = 30,
-            onDemandRate = 0.10
+            onDemandRate = 0.1
         } = config;
 
         // Calculate the discounted rate (as a fraction of on-demand)
@@ -183,8 +183,7 @@ const CostCalculator = (function() {
             let commitmentCost = 0;
             let spilloverCost = 0;
 
-            for (let hour = 0; hour < hourlyCosts.length; hour++) {
-                const onDemandCost = hourlyCosts[hour];
+            for (const onDemandCost of hourlyCosts) {
                 commitmentCost += coverageCost * discountFactor;
                 spilloverCost += Math.max(0, onDemandCost - coverageCost);
             }
@@ -255,11 +254,11 @@ const CostCalculator = (function() {
                 coverageUnits: minCost,
                 commitmentUnits: minCost * discountFactor,
                 lastOptimalCoverage: minCost,
-                coveragePercentage: 100.0,
+                coveragePercentage: 100,
                 maxNetSavings: totalCost * (savingsPercentage / 100),
                 minHourlySavings: minHourlySavings,
                 extraSavings: 0,
-                percentiles: { p50: 100.0, p75: 100.0, p90: 100.0 }
+                percentiles: { p50: 100, p75: 100, p90: 100 }
             };
         }
 
@@ -275,8 +274,7 @@ const CostCalculator = (function() {
             let commitmentCost = 0;
             let spilloverCost = 0;
 
-            for (let hour = 0; hour < hourlyCosts.length; hour++) {
-                const onDemandCost = hourlyCosts[hour];
+            for (const onDemandCost of hourlyCosts) {
                 commitmentCost += coverageCost * discountFactor;
                 spilloverCost += Math.max(0, onDemandCost - coverageCost);
             }
@@ -302,9 +300,9 @@ const CostCalculator = (function() {
         const extraSavings = bestNetSavings - minHourlySavings;
 
         // Calculate percentile-based recommendations
-        const p50 = sortedCosts[Math.floor(sortedCosts.length * 0.50)];
+        const p50 = sortedCosts[Math.floor(sortedCosts.length * 0.5)];
         const p75 = sortedCosts[Math.floor(sortedCosts.length * 0.75)];
-        const p90 = sortedCosts[Math.floor(sortedCosts.length * 0.90)];
+        const p90 = sortedCosts[Math.floor(sortedCosts.length * 0.9)];
 
         return {
             coverageUnits: bestCoverage,  // On-demand equivalent coverage at maximum savings
@@ -336,8 +334,6 @@ const CostCalculator = (function() {
         let icon = '✅';
 
         if (difference <= 5) {
-            status = 'optimal';
-            icon = '✅';
             message = `Your coverage is optimal (within 5% of ideal). Current: ${currentCoverage.toFixed(1)}%, Optimal: ${optimalCoverage.toFixed(1)}%`;
         } else if (difference <= 10) {
             status = 'warning';
@@ -392,9 +388,9 @@ const CostCalculator = (function() {
         // Calculate net savings at current coverage
         let commitmentCost = 0;
         let spilloverCost = 0;
-        for (let i = 0; i < hourlyCosts.length; i++) {
+        for (const cost of hourlyCosts) {
             commitmentCost += currentCoverage * discountFactor;
-            spilloverCost += Math.max(0, hourlyCosts[i] - currentCoverage);
+            spilloverCost += Math.max(0, cost - currentCoverage);
         }
         const totalCost = commitmentCost + spilloverCost;
         const currentNetSavings = baselineCost - totalCost;
@@ -451,6 +447,60 @@ const CostCalculator = (function() {
         };
     }
 
+    function getZoneMessage(zone, difference, optimalCost, additionalSavings, percentDiff) {
+        switch (zone) {
+            case 'building':
+                return {
+                    icon: '🔵',
+                    message: `Building to baseline. Increase commitment by ${formatCurrency(difference)}/h to reach optimal coverage and unlock ${formatCurrency(additionalSavings)}/h more savings.`
+                };
+            case 'gaining':
+                if (percentDiff <= 5) {
+                    return { message: `At optimal! Maximizing savings while minimizing waste.` };
+                }
+                return {
+                    icon: '🟢',
+                    message: `Gaining efficiency. Increase by ${formatCurrency(difference)}/h to reach optimal and unlock ${formatCurrency(additionalSavings)}/h more savings.`
+                };
+            case 'wasting':
+                return {
+                    icon: '🟠',
+                    message: `Over-committed. Decrease by ${formatCurrency(difference)}/h to optimal (${formatCurrency(optimalCost)}/h) to reduce waste.`
+                };
+            case 'very-bad':
+                return {
+                    icon: '🟣',
+                    message: `Severely over-committed. Savings dropped below min-hourly baseline. Decrease to ${formatCurrency(optimalCost)}/h immediately.`
+                };
+            case 'losing-money':
+                return {
+                    icon: '🔴',
+                    message: `LOSING MONEY vs on-demand! Commitment too high. Decrease to ${formatCurrency(optimalCost)}/h to stop losses.`
+                };
+            default:
+                return {};
+        }
+    }
+
+    function getFallbackMessage(percentDiff, currentCost, optimalCost, difference, additionalSavings) {
+        if (percentDiff <= 5) {
+            return {
+                status: 'optimal',
+                message: `Commitment is optimal (within 5%). Current: ${formatCurrency(currentCost)}/h`
+            };
+        }
+        if (percentDiff <= 10) {
+            const message = currentCost < optimalCost
+                ? `Increase commitment by ${formatCurrency(difference)}/h to reach optimal coverage and unlock ${formatCurrency(additionalSavings)}/h more savings.`
+                : `Decrease to ${formatCurrency(optimalCost)}/h (current: ${formatCurrency(currentCost)}/h) to reduce waste.`;
+            return { status: 'warning', icon: '⚠️', message };
+        }
+        const message = currentCost < optimalCost
+            ? `Increase commitment by ${formatCurrency(difference)}/h to reach optimal coverage and unlock ${formatCurrency(additionalSavings)}/h more savings.`
+            : `Commitment significantly above optimal. Decrease to ${formatCurrency(optimalCost)}/h (current: ${formatCurrency(currentCost)}/h) to reduce waste.`;
+        return { status: 'danger', icon: '🔴', message };
+    }
+
     /**
      * Get optimization suggestion with dollar values using zone-based logic
      * @param {number} currentCost - Current commitment in $/h
@@ -464,13 +514,11 @@ const CostCalculator = (function() {
         const difference = Math.abs(currentCost - optimalCost);
         const percentDiff = minCost > 0 ? (difference / minCost) * 100 : 0;
 
-        // Use zone-based status if zoneInfo provided
-        let status = 'optimal';
+        let status;
         let message = '';
         let icon = '✅';
 
-        if (zoneInfo && zoneInfo.zone) {
-            // Map zones to status for backward compatibility with CSS
+        if (zoneInfo?.zone) {
             const zoneToStatus = {
                 'building': 'building',
                 'gaining': 'gaining',
@@ -480,57 +528,14 @@ const CostCalculator = (function() {
             };
             status = zoneToStatus[zoneInfo.zone] || 'optimal';
 
-            // Zone-specific messages and icons
-            switch (zoneInfo.zone) {
-                case 'building':
-                    icon = '🔵';
-                    message = `Building to baseline. Increase commitment by ${formatCurrency(difference)}/h to reach optimal coverage and unlock ${formatCurrency(additionalSavings)}/h more savings.`;
-                    break;
-                case 'gaining':
-                    if (percentDiff <= 5) {
-                        icon = '✅';
-                        message = `At optimal! Maximizing savings while minimizing waste.`;
-                    } else {
-                        icon = '🟢';
-                        message = `Gaining efficiency. Increase by ${formatCurrency(difference)}/h to reach optimal and unlock ${formatCurrency(additionalSavings)}/h more savings.`;
-                    }
-                    break;
-                case 'wasting':
-                    icon = '🟠';
-                    message = `Over-committed. Decrease by ${formatCurrency(difference)}/h to optimal (${formatCurrency(optimalCost)}/h) to reduce waste.`;
-                    break;
-                case 'very-bad':
-                    icon = '🟣';
-                    message = `Severely over-committed. Savings dropped below min-hourly baseline. Decrease to ${formatCurrency(optimalCost)}/h immediately.`;
-                    break;
-                case 'losing-money':
-                    icon = '🔴';
-                    message = `LOSING MONEY vs on-demand! Commitment too high. Decrease to ${formatCurrency(optimalCost)}/h to stop losses.`;
-                    break;
-            }
+            const zoneResult = getZoneMessage(zoneInfo.zone, difference, optimalCost, additionalSavings, percentDiff);
+            if (zoneResult.icon) icon = zoneResult.icon;
+            if (zoneResult.message) message = zoneResult.message;
         } else {
-            // Fallback to old logic if no zone info
-            if (percentDiff <= 5) {
-                status = 'optimal';
-                icon = '✅';
-                message = `Commitment is optimal (within 5%). Current: ${formatCurrency(currentCost)}/h`;
-            } else if (percentDiff <= 10) {
-                status = 'warning';
-                icon = '⚠️';
-                if (currentCost < optimalCost) {
-                    message = `Increase commitment by ${formatCurrency(difference)}/h to reach optimal coverage and unlock ${formatCurrency(additionalSavings)}/h more savings.`;
-                } else {
-                    message = `Decrease to ${formatCurrency(optimalCost)}/h (current: ${formatCurrency(currentCost)}/h) to reduce waste.`;
-                }
-            } else {
-                status = 'danger';
-                icon = '🔴';
-                if (currentCost < optimalCost) {
-                    message = `Increase commitment by ${formatCurrency(difference)}/h to reach optimal coverage and unlock ${formatCurrency(additionalSavings)}/h more savings.`;
-                } else {
-                    message = `Commitment significantly above optimal. Decrease to ${formatCurrency(optimalCost)}/h (current: ${formatCurrency(currentCost)}/h) to reduce waste.`;
-                }
-            }
+            const fallback = getFallbackMessage(percentDiff, currentCost, optimalCost, difference, additionalSavings);
+            status = fallback.status;
+            message = fallback.message;
+            if (fallback.icon) icon = fallback.icon;
         }
 
         return {

@@ -19,7 +19,6 @@ import (
 type cleanLogger struct{}
 
 func (l *cleanLogger) Logf(_ terratesting.TestingT, format string, args ...interface{}) {
-	// Format the message and print directly without test name/timestamp prefix
 	msg := fmt.Sprintf(format, args...)
 	fmt.Println(msg)
 }
@@ -29,15 +28,11 @@ func getCleanLogger() *logger.Logger {
 }
 
 // TestExampleSingleAccountCompute validates the single-account-compute example
-// Focus: Compute SP with mixed term/payment options (3-year + 1-year, all-upfront)
 func TestExampleSingleAccountCompute(t *testing.T) {
-	// Note: NOT using t.Parallel() to avoid IAM rate limits when creating roles
 	exampleDir := "../../examples/single-account-compute"
 
-	// Generate unique name prefix (must match CI IAM policy pattern: sp-autopilot-test-*)
 	uniquePrefix := fmt.Sprintf("sp-autopilot-test-%s", time.Now().Format("20060102-150405"))
 
-	// Create a test copy of the example with local source
 	testDir := prepareExampleForTesting(t, exampleDir, uniquePrefix)
 	defer os.RemoveAll(testDir)
 
@@ -48,9 +43,9 @@ func TestExampleSingleAccountCompute(t *testing.T) {
 		Vars: map[string]interface{}{
 			"name_prefix": uniquePrefix,
 			"scheduler": map[string]interface{}{
-				"scheduler": "cron(0 0 1 1 ? 2099)",
-				"purchaser": "cron(0 0 1 1 ? 2099)",
-				"reporter":  "cron(0 0 1 1 ? 2099)",
+				"scheduler": disabledCronSchedule,
+				"purchaser": disabledCronSchedule,
+				"reporter":  disabledCronSchedule,
 			},
 			"lambda_config": map[string]interface{}{
 				"scheduler": map[string]interface{}{
@@ -63,30 +58,24 @@ func TestExampleSingleAccountCompute(t *testing.T) {
 	})
 
 	defer func() {
-		// Best-effort cleanup: log errors but don't fail the test
-		// AWS eventual consistency can cause destroy to fail intermittently
 		_, err := terraform.DestroyE(t, terraformOptions)
 		if err != nil {
-			t.Logf("⚠ Warning: Destroy failed (non-fatal): %v", err)
+			t.Logf("Warning: Destroy failed (non-fatal): %v", err)
 			t.Logf("  Resources may need manual cleanup. Run cleanup test if needed.")
 		}
 	}()
 	terraform.InitAndApply(t, terraformOptions)
 
-	// Validate compute SP is enabled with the expected term mix
 	schedulerLambdaName := terraform.Output(t, terraformOptions, "scheduler_lambda_name")
-	assert.Contains(t, schedulerLambdaName, uniquePrefix+"-scheduler")
+	assert.Contains(t, schedulerLambdaName, uniquePrefix+suffixScheduler)
 
-	t.Logf("✓ Example validation passed: %s", exampleDir)
+	t.Logf("Example validation passed: %s", exampleDir)
 }
 
 // TestExampleDichotomyStrategy validates the dichotomy-strategy example
-// Focus: Dichotomy purchase strategy with adaptive purchase sizing
 func TestExampleDichotomyStrategy(t *testing.T) {
-	// Note: NOT using t.Parallel() to avoid IAM rate limits when creating roles
 	exampleDir := "../../examples/dichotomy-strategy"
 
-	// Generate unique name prefix (must match CI IAM policy pattern: sp-autopilot-test-*)
 	uniquePrefix := fmt.Sprintf("sp-autopilot-test-%s", time.Now().Format("20060102-150405"))
 	testDir := prepareExampleForTesting(t, exampleDir, uniquePrefix)
 	defer os.RemoveAll(testDir)
@@ -98,9 +87,9 @@ func TestExampleDichotomyStrategy(t *testing.T) {
 		Vars: map[string]interface{}{
 			"name_prefix": uniquePrefix,
 			"scheduler": map[string]interface{}{
-				"scheduler": "cron(0 0 1 1 ? 2099)",
-				"purchaser": "cron(0 0 1 1 ? 2099)",
-				"reporter":  "cron(0 0 1 1 ? 2099)",
+				"scheduler": disabledCronSchedule,
+				"purchaser": disabledCronSchedule,
+				"reporter":  disabledCronSchedule,
 			},
 			"lambda_config": map[string]interface{}{
 				"scheduler": map[string]interface{}{
@@ -113,78 +102,37 @@ func TestExampleDichotomyStrategy(t *testing.T) {
 	})
 
 	defer func() {
-		// Best-effort cleanup: log errors but don't fail the test
-		// AWS eventual consistency can cause destroy to fail intermittently
 		_, err := terraform.DestroyE(t, terraformOptions)
 		if err != nil {
-			t.Logf("⚠ Warning: Destroy failed (non-fatal): %v", err)
+			t.Logf("Warning: Destroy failed (non-fatal): %v", err)
 			t.Logf("  Resources may need manual cleanup. Run cleanup test if needed.")
 		}
 	}()
 	terraform.InitAndApply(t, terraformOptions)
 
 	schedulerLambdaName := terraform.Output(t, terraformOptions, "scheduler_lambda_name")
-	assert.Contains(t, schedulerLambdaName, uniquePrefix+"-scheduler")
+	assert.Contains(t, schedulerLambdaName, uniquePrefix+suffixScheduler)
 }
 
-// prepareExampleForTesting creates a temporary copy of an example directory
-// and modifies the module source to point to the local codebase instead of the registry.
-func prepareExampleForTesting(t *testing.T, exampleDir string, namePrefix string) string {
-	// Use the fixtures approach - copy to integration test directory instead of temp
-	// This allows us to use relative paths like the fixture tests do
-	testDir := filepath.Join("./test-examples", namePrefix)
-	err := os.MkdirAll(testDir, 0755)
-	require.NoError(t, err, "Failed to create test directory")
+func transformExampleContent(content string) string {
+	result := strings.ReplaceAll(content,
+		`source = "etiennechabert/sp-autopilot/aws"`,
+		`source = "../../../../"`)
 
-	fileCount := 0
-
-	// Copy all .tf files from the example
-	err = filepath.Walk(exampleDir, func(path string, info os.FileInfo, err error) error {
-		if err != nil {
-			return err
+	lines := strings.Split(result, "\n")
+	var newLines []string
+	for _, line := range lines {
+		if !strings.Contains(line, `version = "~>`) && !strings.Contains(line, `version = ">`) {
+			newLines = append(newLines, line)
 		}
+	}
+	result = strings.Join(newLines, "\n")
 
-		if info.IsDir() {
-			return nil
-		}
-
-		// Only copy .tf files
-		if !strings.HasSuffix(path, ".tf") {
-			return nil
-		}
-
-		// Read the source file
-		content, err := os.ReadFile(path)
-		if err != nil {
-			return fmt.Errorf("failed to read %s: %w", path, err)
-		}
-
-		// Modify the module source to point to local codebase
-		contentStr := string(content)
-
-		// Replace registry source with relative path (like fixtures do)
-		// From test-examples/<name>/ to module root is ../../../../
-		contentStr = strings.ReplaceAll(contentStr,
-			`source = "etiennechabert/sp-autopilot/aws"`,
-			`source = "../../../../"`)
-
-		// Remove version constraint (not needed for local source)
-		lines := strings.Split(contentStr, "\n")
-		var newLines []string
-		for _, line := range lines {
-			if !strings.Contains(line, `version = "~>`) && !strings.Contains(line, `version = ">`) {
-				newLines = append(newLines, line)
-			}
-		}
-		contentStr = strings.Join(newLines, "\n")
-
-		// Add default_tags to provider block for CI IAM policy compliance
-		// CI IAM policy requires ManagedBy = "terratest" tag
-		contentStr = strings.ReplaceAll(contentStr,
-			`provider "aws" {
+	result = strings.ReplaceAll(result,
+		`provider "aws" {
   region = "us-east-1"
 }`,
-			`provider "aws" {
+		`provider "aws" {
   region = "us-east-1"
 
   default_tags {
@@ -195,7 +143,38 @@ func prepareExampleForTesting(t *testing.T, exampleDir string, namePrefix string
   }
 }`)
 
-		// Write to test directory
+	return result
+}
+
+// prepareExampleForTesting creates a temporary copy of an example directory
+// and modifies the module source to point to the local codebase instead of the registry.
+func prepareExampleForTesting(t *testing.T, exampleDir string, namePrefix string) string {
+	testDir := filepath.Join("./test-examples", namePrefix)
+	err := os.MkdirAll(testDir, 0755)
+	require.NoError(t, err, "Failed to create test directory")
+
+	fileCount := 0
+
+	err = filepath.Walk(exampleDir, func(path string, info os.FileInfo, err error) error {
+		if err != nil {
+			return err
+		}
+
+		if info.IsDir() {
+			return nil
+		}
+
+		if !strings.HasSuffix(path, ".tf") {
+			return nil
+		}
+
+		content, err := os.ReadFile(path)
+		if err != nil {
+			return fmt.Errorf("failed to read %s: %w", path, err)
+		}
+
+		contentStr := transformExampleContent(string(content))
+
 		destPath := filepath.Join(testDir, filepath.Base(path))
 		err = os.WriteFile(destPath, []byte(contentStr), 0644)
 		if err != nil {

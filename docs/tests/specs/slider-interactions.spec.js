@@ -37,8 +37,8 @@ test.describe('Slider Interaction Tests', () => {
     const newSavings = await page.locator('#metric-savings').textContent();
     expect(newSavings).not.toBe(initialSavings);
 
-    const initialValue = parseFloat(initialSavings.replace(/[$\/h]/g, ''));
-    const newValue = parseFloat(newSavings.replace(/[$\/h]/g, ''));
+    const initialValue = Number.parseFloat(initialSavings.replaceAll(/[$/h]/g, ''));
+    const newValue = Number.parseFloat(newSavings.replaceAll(/[$/h]/g, ''));
     expect(newValue).toBeGreaterThan(initialValue);
   });
 
@@ -60,8 +60,8 @@ test.describe('Slider Interaction Tests', () => {
     const newCost = await page.locator('#metric-ondemand').textContent();
     expect(newCost).not.toBe(initialCost);
 
-    const initialValue = parseFloat(initialCost.replace(/[$\/h]/g, ''));
-    const newValue = parseFloat(newCost.replace(/[$\/h]/g, ''));
+    const initialValue = Number.parseFloat(initialCost.replaceAll(/[$/h]/g, ''));
+    const newValue = Number.parseFloat(newCost.replaceAll(/[$/h]/g, ''));
     expect(newValue).toBeGreaterThan(initialValue);
   });
 
@@ -86,6 +86,6 @@ test.describe('Slider Interaction Tests', () => {
     const savings = await page.locator('#metric-savings').textContent();
 
     expect(commitment).toMatch(/\$\d+\.\d{2}\/h/);
-    expect(savings).toMatch(/[-]?\$\d+\.\d{2}\/h/);
+    expect(savings).toMatch(/-?\$\d+\.\d{2}\/h/);
   });
 });

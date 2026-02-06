@@ -1,7 +1,7 @@
 import { test, expect } from '@playwright/test';
-import { readFileSync, readdirSync, existsSync } from 'fs';
-import { resolve, dirname } from 'path';
-import { fileURLToPath } from 'url';
+import { readdirSync, existsSync } from 'node:fs';
+import { resolve, dirname } from 'node:path';
+import { fileURLToPath } from 'node:url';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -96,12 +96,12 @@ test.describe('Reporter HTML Tests', () => {
     await page.waitForLoadState('networkidle');
 
     const chartJsLoaded = await page.evaluate(() => {
-      return typeof window.Chart !== 'undefined';
+      return globalThis.Chart !== undefined;
     });
     expect(chartJsLoaded).toBe(true);
 
     const pakoLoaded = await page.evaluate(() => {
-      return typeof window.pako !== 'undefined';
+      return globalThis.pako !== undefined;
     });
     expect(pakoLoaded).toBe(true);
 
