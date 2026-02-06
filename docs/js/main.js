@@ -179,18 +179,33 @@
             : 'All Types';
 
         const savingsPct = appState.savingsPercentage || 30;
+        const fromReporter = !!appState.usageData?.optimal_from_python;
 
         const banner = document.createElement('div');
-        banner.className = 'usage-data-banner';
-        banner.innerHTML = `
-            <div class="banner-content">
-                <span class="banner-icon">📊</span>
-                <span class="banner-text">
-                    <strong>Real Usage Data Loaded</strong> - ${spType} Savings Plans<br>
-                    <small>Using your actual ${savingsPct.toFixed(1)}% discount rate</small>
-                </span>
-            </div>
-        `;
+
+        if (fromReporter) {
+            banner.className = 'usage-data-banner';
+            banner.innerHTML = `
+                <div class="banner-content">
+                    <span class="banner-icon">📊</span>
+                    <span class="banner-text">
+                        <strong>Real Usage Data Loaded</strong> - ${spType} Savings Plans<br>
+                        <small>Using your actual ${savingsPct.toFixed(1)}% discount rate</small>
+                    </span>
+                </div>
+            `;
+        } else {
+            banner.className = 'usage-data-banner usage-data-banner-estimate';
+            banner.innerHTML = `
+                <div class="banner-content">
+                    <span class="banner-icon">⚠️</span>
+                    <span class="banner-text">
+                        <strong>Rough Estimation</strong> - Manual CLI data with default ${savingsPct.toFixed(1)}% discount<br>
+                        <small>For accurate purchase recommendations, deploy the <a href="https://github.com/etiennechabert/terraform-aws-sp-autopilot" target="_blank" rel="noopener" style="color: inherit; text-decoration: underline;">terraform-aws-sp-autopilot</a> reporter</small>
+                    </span>
+                </div>
+            `;
+        }
 
         header.appendChild(banner);
     }
@@ -286,6 +301,29 @@
         strategyButtons.forEach(button => {
             button.addEventListener('click', handleStrategyClick);
         });
+
+        // Custom data modal
+        const modalCopyBtn = document.getElementById('modal-copy-btn');
+        if (modalCopyBtn) modalCopyBtn.addEventListener('click', handleModalCopyCliCommand);
+
+        const modalCancelBtn = document.getElementById('modal-cancel-btn');
+        if (modalCancelBtn) modalCancelBtn.addEventListener('click', hideCustomDataModal);
+
+        const modalLoadBtn = document.getElementById('modal-load-btn');
+        if (modalLoadBtn) modalLoadBtn.addEventListener('click', handleModalLoad);
+
+        const modalBackdrop = document.getElementById('custom-data-modal');
+        if (modalBackdrop) {
+            modalBackdrop.addEventListener('click', (e) => {
+                if (e.target === modalBackdrop) hideCustomDataModal();
+            });
+        }
+
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape' && !document.getElementById('custom-data-modal').classList.contains('hidden')) {
+                hideCustomDataModal();
+            }
+        });
     }
 
     /**
@@ -344,6 +382,11 @@
      * Handle pattern type change
      */
     function handlePatternChange(event) {
+        if (event.target.value === 'custom' && !appState.usageDataLoaded) {
+            showCustomDataModal(event.target);
+            return;
+        }
+
         appState.pattern = event.target.value;
 
         // If switching to custom and we don't have a custom curve, copy current pattern
@@ -1419,6 +1462,132 @@
 
         // Store zone info for use in metrics display
         currentCostResults.currentZone = zoneInfo;
+    }
+
+    // ===== Custom Data Modal =====
+
+    function showCustomDataModal(selectElement) {
+        // Revert dropdown to previous pattern
+        selectElement.value = appState.pattern;
+
+        // Calculate date range: 7 full days ending today at midnight UTC (exclusive)
+        const end = new Date();
+        end.setUTCHours(0, 0, 0, 0);
+        const start = new Date(end);
+        start.setUTCDate(start.getUTCDate() - 7);
+
+        const fmt = (d) => d.toISOString().slice(0, 19) + 'Z';
+        const cmd = `aws ce get-savings-plans-coverage \\
+  --time-period "Start=${fmt(start)},End=${fmt(end)}" \\
+  --granularity HOURLY \\
+  | jq -c '[.SavingsPlansCoverages[].Coverage.TotalCost | tonumber]'`;
+
+        const cliEl = document.getElementById('modal-cli-command');
+        if (cliEl) cliEl.textContent = cmd;
+
+        // Reset state
+        const textarea = document.getElementById('modal-textarea');
+        if (textarea) {
+            textarea.value = '';
+            textarea.classList.remove('error');
+        }
+        const errorEl = document.getElementById('modal-error');
+        if (errorEl) errorEl.classList.add('hidden');
+
+        document.getElementById('custom-data-modal').classList.remove('hidden');
+    }
+
+    function hideCustomDataModal() {
+        document.getElementById('custom-data-modal').classList.add('hidden');
+    }
+
+    function showModalError(message) {
+        const textarea = document.getElementById('modal-textarea');
+        if (textarea) textarea.classList.add('error');
+        const errorEl = document.getElementById('modal-error');
+        if (errorEl) {
+            errorEl.textContent = message;
+            errorEl.classList.remove('hidden');
+        }
+    }
+
+    function handleModalCopyCliCommand() {
+        const cliEl = document.getElementById('modal-cli-command');
+        if (!cliEl) return;
+
+        const text = cliEl.textContent;
+        const btn = document.getElementById('modal-copy-btn');
+
+        if (navigator.clipboard?.writeText) {
+            navigator.clipboard.writeText(text).then(() => {
+                if (btn) {
+                    btn.textContent = 'Copied!';
+                    setTimeout(() => { btn.textContent = 'Copy'; }, 2000);
+                }
+            });
+        }
+    }
+
+    function handleModalLoad() {
+        const textarea = document.getElementById('modal-textarea');
+        const raw = textarea?.value?.trim();
+
+        // Reset error state
+        textarea?.classList.remove('error');
+        const errorEl = document.getElementById('modal-error');
+        if (errorEl) errorEl.classList.add('hidden');
+
+        if (!raw) {
+            showModalError('Please paste the output from the command.');
+            return;
+        }
+
+        let hourlyCosts;
+        try {
+            hourlyCosts = JSON.parse(raw);
+        } catch {
+            showModalError('Invalid JSON. Make sure you copied the complete output.');
+            return;
+        }
+
+        if (!Array.isArray(hourlyCosts) || hourlyCosts.length === 0) {
+            showModalError('Expected a JSON array of numbers. Make sure you ran the full command.');
+            return;
+        }
+
+        if (hourlyCosts.length < 24) {
+            showModalError(`Only ${hourlyCosts.length} data points found. Need at least 24 hours.`);
+            return;
+        }
+
+        const sorted = [...hourlyCosts].sort((a, b) => a - b);
+        const percentile = (arr, p) => arr[Math.max(0, Math.ceil(arr.length * p / 100) - 1)];
+
+        const usageData = {
+            hourly_costs: hourlyCosts,
+            stats: {
+                min: sorted[0],
+                max: sorted[sorted.length - 1],
+                p50: percentile(sorted, 50),
+                p75: percentile(sorted, 75),
+                p90: percentile(sorted, 90),
+                p95: percentile(sorted, 95)
+            },
+            savings_percentage: 30,
+            current_coverage: sorted[0],
+            sp_type: 'Compute'
+        };
+
+        const jsonStr = JSON.stringify(usageData);
+        const deflated = pako.deflate(jsonStr);
+        let binary = '';
+        for (let i = 0; i < deflated.length; i++) {
+            binary += String.fromCharCode(deflated[i]);
+        }
+        const encoded = encodeURIComponent(btoa(binary));
+
+        const baseUrl = window.location.origin + window.location.pathname;
+        window.location.href = `${baseUrl}?usage=${encoded}`;
     }
 
     /**

@@ -78,11 +78,34 @@ const URLState = (function() {
                 bytes[i] = decoded.codePointAt(i);
             }
 
-            const inflated = pako.inflate(bytes, { to: 'string' });
+            // Try zlib (deflate) first, then gzip
+            let inflated;
+            try {
+                inflated = pako.inflate(bytes, { to: 'string' });
+            } catch {
+                inflated = pako.ungzip(bytes, { to: 'string' });
+            }
             const data = JSON.parse(inflated);
 
-            if (!data.hourly_costs || !Array.isArray(data.hourly_costs) || !data.stats) {
+            if (!data.hourly_costs || !Array.isArray(data.hourly_costs)) {
                 throw new Error('Invalid usage data structure');
+            }
+
+            // Compute stats if missing (e.g. from CLI-generated data)
+            if (!data.stats) {
+                const sorted = [...data.hourly_costs].sort((a, b) => a - b);
+                const pct = (arr, p) => arr[Math.max(0, Math.ceil(arr.length * p / 100) - 1)];
+                data.stats = {
+                    min: sorted[0],
+                    max: sorted[sorted.length - 1],
+                    p50: pct(sorted, 50),
+                    p75: pct(sorted, 75),
+                    p90: pct(sorted, 90),
+                    p95: pct(sorted, 95)
+                };
+                if (data.current_coverage === undefined) {
+                    data.current_coverage = sorted[0];
+                }
             }
 
             return data;

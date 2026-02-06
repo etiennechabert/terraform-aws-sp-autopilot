@@ -222,8 +222,8 @@ const LoadPatterns = (function() {
      */
     function getDayName(hour) {
         const dayNames = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
-        const dayIndex = Math.floor(hour / 24);
-        return dayNames[dayIndex] || 'Unknown';
+        const dayIndex = Math.floor(hour / 24) % 7;
+        return dayNames[dayIndex];
     }
 
     /**

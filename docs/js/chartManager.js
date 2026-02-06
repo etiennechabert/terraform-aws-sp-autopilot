@@ -318,12 +318,13 @@ const ChartManager = (function() {
     }
 
     /**
-     * Generate time labels for 168 hours
+     * Generate time labels for N hours
+     * @param {number} count - Number of hours
      * @returns {Array<string>} Time labels
      */
-    function generateTimeLabels() {
+    function generateTimeLabels(count = 168) {
         const labels = [];
-        for (let i = 0; i < 168; i++) {
+        for (let i = 0; i < count; i++) {
             labels.push(LoadPatterns.formatTimeLabel(i));
         }
         return labels;
@@ -331,11 +332,14 @@ const ChartManager = (function() {
 
     /**
      * Update load chart with new data
-     * @param {Array<number>} usageData - Scaled usage data (168 values)
+     * @param {Array<number>} usageData - Scaled usage data
      */
     function updateLoadChart(usageData) {
         if (!loadChart) return;
 
+        if (loadChart.data.labels.length !== usageData.length) {
+            loadChart.data.labels = generateTimeLabels(usageData.length);
+        }
         loadChart.data.datasets[0].data = usageData;
         loadChart.update('none'); // No animation for smoother updates
     }
@@ -363,7 +367,12 @@ const ChartManager = (function() {
 
         // Dataset 3: Commitment level (horizontal line showing coverage in $/h)
         // This represents the on-demand cost equivalent you're committing to cover
-        const commitmentLine = new Array(168).fill(coverageUnits);
+        const numHours = hourlyBreakdown.length;
+        const commitmentLine = new Array(numHours).fill(coverageUnits);
+
+        if (costChart.data.labels.length !== numHours) {
+            costChart.data.labels = generateTimeLabels(numHours);
+        }
 
         // Update datasets
         costChart.data.datasets[0].data = coveredCosts;
