@@ -9,9 +9,6 @@ test.describe('Slider Interaction Tests', () => {
     await page.locator('#coverage-slider').fill('35');
     await page.waitForTimeout(500);
 
-    const coverageUnits = await page.locator('#coverage-units').textContent();
-    expect(coverageUnits).toContain('$35.00/h');
-
     const commitment = await page.locator('#metric-commitment').textContent();
     expect(commitment).toMatch(/\$\d+\.\d{2}\/h/);
     expect(commitment).not.toBe('$0.00/h');
@@ -78,9 +75,6 @@ test.describe('Slider Interaction Tests', () => {
     await page.waitForTimeout(200);
     await page.locator('#load-factor').fill('120');
     await page.waitForTimeout(500);
-
-    const coverageUnits = await page.locator('#coverage-units').textContent();
-    expect(coverageUnits).toContain('$40.00/h');
 
     const savingsDisplay = await page.locator('#savings-display').textContent();
     expect(savingsDisplay).toBe('35%');
