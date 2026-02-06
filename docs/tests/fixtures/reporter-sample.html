@@ -15,10 +15,10 @@
         .container { background-color: white; padding: 30px; border-radius: 8px; }
         h1 { color: #232f3e; border-bottom: 3px solid #ff9900; padding-bottom: 10px; }
         .summary { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 12px; margin-bottom: 20px; }
-        .summary-card { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 15px; border-radius: 6px; }
+        .summary-card { background: linear-gradient(135deg, #4f5ebf 0%, #764ba2 100%); color: white; padding: 15px; border-radius: 6px; }
         .summary-card h3 { margin: 0 0 6px 0; font-size: 0.8em; }
         .summary-card .value { font-size: 1.6em; font-weight: bold; margin: 0; }
-        .simulator-button { display: inline-block; background: #ff9900; color: white; padding: 10px 20px; text-decoration: none; border-radius: 4px; margin: 20px 0; }
+        .simulator-button { display: inline-block; background: #ff9900; color: #232f3e; padding: 10px 20px; text-decoration: none; border-radius: 4px; margin: 20px 0; font-weight: 600; }
         .tab-button { padding: 10px 20px; margin: 5px; border: none; background: #e0e0e0; cursor: pointer; border-radius: 4px; }
         .tab-button.active { background: #232f3e; color: white; }
         .metric-card { background: white; padding: 15px; border: 1px solid #e0e0e0; border-radius: 6px; margin: 10px 0; }
@@ -87,7 +87,7 @@
         if (typeof Chart !== 'undefined') {
             const ctx = document.getElementById('coverageChart');
             if (ctx) {
-                const _chart = new Chart(ctx, {
+                new Chart(ctx, {
                     type: 'line',
                     data: {
                         labels: ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun'],

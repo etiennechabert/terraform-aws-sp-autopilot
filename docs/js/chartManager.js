@@ -725,7 +725,7 @@ const ChartManager = (function() {
 
         const dataset1 = curveData.slice(0, minCostIndex + 1).map(toXY);
 
-        const dataset2 = curveData.slice(minCostIndex, Math.min(optimalIndex + 1, (minHourlyReturnIndex !== -1 ? minHourlyReturnIndex : curveData.length - 1) + 1)).map(toXY);
+        const dataset2 = curveData.slice(minCostIndex, Math.min(optimalIndex + 1, (minHourlyReturnIndex === -1 ? curveData.length - 1 : minHourlyReturnIndex) + 1)).map(toXY);
 
         const dataset2Extended = minHourlyReturnIndex === -1 && optimalIndex < curveData.length - 1
             ? curveData.slice(minCostIndex, curveData.length).map(toXY)
@@ -774,11 +774,8 @@ const ChartManager = (function() {
         };
     }
 
-    /**
-     * Update savings curve chart with new data
-     * @param {Object} opts - Chart update options
-     */
-    function updateSavingsCurveChart(curveData, minHourlySavings, optimalCoverage, minCost, maxCost, baselineCost, currentCoverage, savingsPercentage, numHours) {
+    function updateSavingsCurveChart(opts) {
+        const { curveData, minHourlySavings, optimalCoverage, minCost, maxCost, baselineCost, currentCoverage, savingsPercentage, numHours } = opts;
         if (!savingsCurveChart) return;
 
         savingsCurveChart.$minHourlySavings = minHourlySavings;
