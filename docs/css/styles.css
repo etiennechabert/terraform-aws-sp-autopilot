@@ -649,13 +649,7 @@ h1, h2, h3, h4, h5, h6 {
     background: rgba(0, 0, 0, 0.3);
     border-radius: var(--radius-sm);
     border: 1px solid transparent;
-    transition: all 0.3s ease;
     text-align: center;
-}
-
-.metric-card:hover {
-    border-color: var(--accent-cyan);
-    transform: translateY(-2px);
 }
 
 .metric-card.highlight {
