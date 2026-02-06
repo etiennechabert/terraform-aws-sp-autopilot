@@ -43,7 +43,7 @@ test.describe('Pattern Selection Tests', () => {
     await page.goto('index.html');
     await page.waitForSelector('#pattern-select');
 
-    const patterns = ['ecommerce', 'global247', 'batch'];
+    const patterns = ['ecommerce', 'global247', 'flat'];
 
     for (const pattern of patterns) {
       await page.selectOption('#pattern-select', pattern);
