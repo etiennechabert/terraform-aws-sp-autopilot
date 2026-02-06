@@ -58,7 +58,7 @@
                             <select id="pattern-select" class="select-input">
                                 <option value="ecommerce">E-commerce (Weekday peaks)</option>
                                 <option value="global247">Global 24/7 (Consistent load)</option>
-                                <option value="batch">Batch Processing (Scheduled spikes)</option>
+                                <option value="flat">Flat (100% constant)</option>
                                 <option value="custom">Custom (Real Usage Data)</option>
                             </select>
                         </div>
@@ -95,19 +95,19 @@
 
                 <!-- Horizontal Metrics Row -->
                 <div class="metrics-row">
+                    <div class="metric-card highlight">
+                        <div class="metric-value" id="metric-commitment">$0.00/h</div>
+                        <div class="metric-label">Target Commitment</div>
+                        <div class="metric-subvalue" id="metric-commitment-pct">0.0% of on-demand</div>
+                    </div>
                     <div class="metric-card">
                         <div class="metric-value" id="metric-ondemand">$0.00/h</div>
                         <div class="metric-label">Pure On-Demand Cost</div>
                     </div>
-                    <div class="metric-card highlight">
+                    <div class="metric-card">
                         <div class="metric-value" id="metric-savingsplan">$0.00/h</div>
                         <div class="metric-label">Total Cost with SP</div>
                         <div class="metric-subvalue" id="metric-breakdown">(Commitment + Spillover)</div>
-                    </div>
-                    <div class="metric-card">
-                        <div class="metric-value" id="metric-commitment">$0.00/h</div>
-                        <div class="metric-label">SP Commitment</div>
-                        <div class="metric-subvalue" id="metric-commitment-pct">0.0% of total cost</div>
                     </div>
                     <div class="metric-card">
                         <div class="metric-value" id="metric-waste">$0.00/h</div>
@@ -120,7 +120,10 @@
                         <div class="metric-subvalue" id="metric-spillover-pct">0.0% of total</div>
                     </div>
                     <div class="metric-card" id="metric-savings-container">
-                        <div class="metric-value" id="metric-savings">$0.00/h</div>
+                        <div class="metric-value-wrapper">
+                            <span class="metric-value" id="metric-savings">$0.00/h</span>
+                            <div class="metric-savings-tooltip" id="metric-savings-tooltip"></div>
+                        </div>
                         <div class="metric-label">Net Savings</div>
                         <div class="metric-subvalue" id="metric-savings-pct">0.0%</div>
                     </div>
@@ -138,7 +141,7 @@
                                 <span class="control-value" id="coverage-display">$50/h</span>
                             </label>
                             <input type="range" id="coverage-slider" class="slider" min="0" max="100" value="50" step="1" aria-label="Savings Plan commitment in dollars per hour">
-                            <div class="control-hint" id="coverage-units">Covers $X/h on-demand</div>
+                            <div class="control-hint" id="savings-rate">$0.070/h vs $0.100/h On-Demand</div>
                         </div>
 
                         <div class="control-group">
@@ -147,7 +150,6 @@
                                 <span class="control-value" id="savings-display">30%</span>
                             </label>
                             <input type="range" id="savings-percentage" class="slider" min="0" max="99" value="30" step="1" aria-label="Savings percentage">
-                            <div class="control-hint" id="savings-rate">$0.070/h vs $0.100/h On-Demand</div>
                         </div>
                     </div>
 
@@ -162,13 +164,16 @@
                                         <div class="strategy-desc">Under-committed</div>
                                         <div class="strategy-metrics">
                                             <div class="strategy-metric-col">
-                                                <div class="strategy-metric-label">Cost / h</div>
+                                                <div class="strategy-metric-label">SP Coverage / h</div>
                                                 <div class="strategy-value" id="strategy-too-prudent-value">$0.00/h</div>
                                                 <div class="strategy-min-hourly-pct" id="strategy-too-prudent-min-hourly-pct">100.0% Min-Hourly</div>
                                             </div>
                                             <div class="strategy-metric-col">
                                                 <div class="strategy-metric-label">Savings / h</div>
-                                                <div class="strategy-savings-amount" id="strategy-too-prudent-savings">$0.00/h</div>
+                                                <div class="strategy-savings-amount">
+                                                    <span id="strategy-too-prudent-savings">$0.00/h</span>
+                                                    <div class="strategy-savings-tooltip" id="strategy-too-prudent-savings-tooltip"></div>
+                                                </div>
                                                 <div class="strategy-savings-pct" id="strategy-too-prudent-savings-pct">0.0%</div>
                                             </div>
                                         </div>
@@ -181,13 +186,16 @@
                                         <div class="strategy-desc">Baseline only</div>
                                         <div class="strategy-metrics">
                                             <div class="strategy-metric-col">
-                                                <div class="strategy-metric-label">Cost / h</div>
+                                                <div class="strategy-metric-label">SP Coverage / h</div>
                                                 <div class="strategy-value" id="strategy-min-value">$0.00/h</div>
                                                 <div class="strategy-min-hourly-pct" id="strategy-min-min-hourly-pct">100.0% Min-Hourly</div>
                                             </div>
                                             <div class="strategy-metric-col">
                                                 <div class="strategy-metric-label">Savings / h</div>
-                                                <div class="strategy-savings-amount" id="strategy-min-savings">$0.00/h</div>
+                                                <div class="strategy-savings-amount">
+                                                    <span id="strategy-min-savings">$0.00/h</span>
+                                                    <div class="strategy-savings-tooltip" id="strategy-min-savings-tooltip"></div>
+                                                </div>
                                                 <div class="strategy-savings-pct" id="strategy-min-savings-pct">0.0%</div>
                                             </div>
                                         </div>
@@ -200,13 +208,16 @@
                                         <div class="strategy-desc">Knee point</div>
                                         <div class="strategy-metrics">
                                             <div class="strategy-metric-col">
-                                                <div class="strategy-metric-label">Cost / h</div>
+                                                <div class="strategy-metric-label">SP Coverage / h</div>
                                                 <div class="strategy-value" id="strategy-balanced-value">$0.00/h</div>
                                                 <div class="strategy-min-hourly-pct" id="strategy-balanced-min-hourly-pct">100.0% Min-Hourly</div>
                                             </div>
                                             <div class="strategy-metric-col">
                                                 <div class="strategy-metric-label">Savings / h</div>
-                                                <div class="strategy-savings-amount" id="strategy-balanced-savings">$0.00/h</div>
+                                                <div class="strategy-savings-amount">
+                                                    <span id="strategy-balanced-savings">$0.00/h</span>
+                                                    <div class="strategy-savings-tooltip" id="strategy-balanced-savings-tooltip"></div>
+                                                </div>
                                                 <div class="strategy-savings-pct" id="strategy-balanced-savings-pct">0.0%</div>
                                             </div>
                                         </div>
@@ -220,13 +231,16 @@
                                         <div class="strategy-desc">Max savings</div>
                                         <div class="strategy-metrics">
                                             <div class="strategy-metric-col">
-                                                <div class="strategy-metric-label">Cost / h</div>
+                                                <div class="strategy-metric-label">SP Coverage / h</div>
                                                 <div class="strategy-value" id="strategy-aggressive-value">$0.00/h</div>
                                                 <div class="strategy-min-hourly-pct" id="strategy-aggressive-min-hourly-pct">100.0% Min-Hourly</div>
                                             </div>
                                             <div class="strategy-metric-col">
                                                 <div class="strategy-metric-label">Savings / h</div>
-                                                <div class="strategy-savings-amount" id="strategy-aggressive-savings">$0.00/h</div>
+                                                <div class="strategy-savings-amount">
+                                                    <span id="strategy-aggressive-savings">$0.00/h</span>
+                                                    <div class="strategy-savings-tooltip" id="strategy-aggressive-savings-tooltip"></div>
+                                                </div>
                                                 <div class="strategy-savings-pct" id="strategy-aggressive-savings-pct">0.0%</div>
                                             </div>
                                         </div>
@@ -239,13 +253,16 @@
                                         <div class="strategy-desc">Over-committed</div>
                                         <div class="strategy-metrics">
                                             <div class="strategy-metric-col">
-                                                <div class="strategy-metric-label">Cost / h</div>
+                                                <div class="strategy-metric-label">SP Coverage / h</div>
                                                 <div class="strategy-value" id="strategy-too-aggressive-value">$0.00/h</div>
                                                 <div class="strategy-min-hourly-pct" id="strategy-too-aggressive-min-hourly-pct">100.0% Min-Hourly</div>
                                             </div>
                                             <div class="strategy-metric-col">
                                                 <div class="strategy-metric-label">Savings / h</div>
-                                                <div class="strategy-savings-amount" id="strategy-too-aggressive-savings">$0.00/h</div>
+                                                <div class="strategy-savings-amount">
+                                                    <span id="strategy-too-aggressive-savings">$0.00/h</span>
+                                                    <div class="strategy-savings-tooltip" id="strategy-too-aggressive-savings-tooltip"></div>
+                                                </div>
                                                 <div class="strategy-savings-pct" id="strategy-too-aggressive-savings-pct">0.0%</div>
                                             </div>
                                         </div>

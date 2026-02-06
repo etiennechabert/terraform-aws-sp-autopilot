@@ -40,8 +40,9 @@ const CostCalculator = (function() {
         // Hourly breakdowns for visualization
         const hourlyBreakdown = [];
 
-        // Calculate costs for each hour
-        for (let hour = 0; hour < 168; hour++) {
+        // Calculate costs for each hour in the actual data
+        const numHours = hourlyCosts.length || 168;
+        for (let hour = 0; hour < numHours; hour++) {
             // Actual on-demand cost for this hour
             const onDemandCost = hourlyCosts[hour] || 0;
             totalOnDemandCost += onDemandCost;
@@ -96,7 +97,7 @@ const CostCalculator = (function() {
         );
 
         // Calculate efficiency metrics
-        const totalCommitmentCost = commitmentCostPerHour * 168;
+        const totalCommitmentCost = commitmentCostPerHour * numHours;
         const totalCoveredCost = totalCommitmentCost - totalWastedCommitment;
 
         const spilloverPercentage = totalSavingsPlanCost > 0

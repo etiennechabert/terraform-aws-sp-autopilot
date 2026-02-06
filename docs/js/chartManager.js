@@ -618,52 +618,22 @@ const ChartManager = (function() {
                         intersect: false,
                         callbacks: {
                             title: function(context) {
-                                const coverage = context[0].parsed.x;
+                                const commitment = context[0].parsed.x;
+                                const curveData = context[0].chart.$curveData || [];
+
+                                // Find the data point for this commitment to get the coverage
+                                const point = curveData.reduce((prev, curr) => {
+                                    return Math.abs(curr.commitment - commitment) < Math.abs(prev.commitment - commitment) ? curr : prev;
+                                });
+
+                                const coverage = point?.coverage || 0;
                                 const minCost = context[0].chart.$minCost || 0;
-                                const percentOfMin = minCost > 0 ? (coverage / minCost * 100).toFixed(0) : 0;
-                                return `Coverage: ${CostCalculator.formatCurrency(coverage)}/h (${percentOfMin}% of min)`;
+                                const percentOfMin = minCost > 0 ? (coverage / minCost * 100).toFixed(1) : 0;
+                                return `${percentOfMin}% of min-hourly`;
                             },
                             label: function(context) {
                                 const savingsPercent = context.parsed.y;
-                                const coverage = context.parsed.x;
-                                const curveData = context.chart.$curveData || [];
-
-                                // Find the data point closest to this coverage
-                                const point = curveData.reduce((prev, curr) => {
-                                    return Math.abs(curr.coverage - coverage) < Math.abs(prev.coverage - coverage) ? curr : prev;
-                                });
-
-                                const netSavingsDollars = point?.netSavings || 0;
-                                const netSavingsMonthly = netSavingsDollars * 4.33; // Convert weekly to monthly
-                                return `Savings: ${savingsPercent.toFixed(1)}% (${CostCalculator.formatCurrency(netSavingsMonthly)}/month)`;
-                            },
-                            afterLabel: function(context) {
-                                const coverage = context.parsed.x;
-                                const curveData = context.chart.$curveData || [];
-
-                                // Find the data point closest to this coverage
-                                const point = curveData.reduce((prev, curr) => {
-                                    return Math.abs(curr.coverage - coverage) < Math.abs(prev.coverage - coverage) ? curr : prev;
-                                });
-
-                                if (!point) return null;
-
-                                const extraSavings = point.extraSavings || 0;
-                                const extraSavingsMonthly = extraSavings * 4.33; // Convert weekly to monthly
-
-                                if (extraSavings > 0.01) {
-                                    return `vs Optimal: +${CostCalculator.formatCurrency(extraSavingsMonthly)}/month`;
-                                } else if (extraSavings < -0.01) {
-                                    return `vs Optimal: ${CostCalculator.formatCurrency(extraSavingsMonthly)}/month`;
-                                }
-                                return 'At optimal';
-                            },
-                            footer: function(context) {
-                                const savingsPercent = context[0].parsed.y;
-                                if (savingsPercent < 0) {
-                                    return '\n⚠️ Over-committed: Losing money vs on-demand';
-                                }
-                                return null;
+                                return `Savings: ${savingsPercent.toFixed(1)}%`;
                             }
                         }
                     },
@@ -693,11 +663,9 @@ const ChartManager = (function() {
                     },
                     y: {
                         type: 'linear',
+                        position: 'left',
                         title: {
-                            display: true,
-                            text: 'Net Savings (% of baseline on-demand cost)',
-                            color: '#e0e6ed',
-                            font: { size: 12, weight: 'bold' }
+                            display: false
                         },
                         ticks: {
                             color: '#8b95a8',
@@ -720,6 +688,22 @@ const ChartManager = (function() {
                                 return 1;
                             }
                         }
+                    },
+                    y1: {
+                        type: 'linear',
+                        position: 'right',
+                        title: {
+                            display: false
+                        },
+                        ticks: {
+                            color: '#8b95a8',
+                            callback: function(value) {
+                                return '$' + value.toFixed(2);
+                            }
+                        },
+                        grid: {
+                            drawOnChartArea: false
+                        }
                     }
                 }
             }
@@ -738,8 +722,9 @@ const ChartManager = (function() {
      * @param {number} baselineCost - Total baseline on-demand cost
      * @param {number} currentCoverage - Current actual coverage in $/h (optional)
      * @param {number} savingsPercentage - Savings percentage (0-99)
+     * @param {number} numHours - Actual number of hours in the data series
      */
-    function updateSavingsCurveChart(curveData, minHourlySavings, optimalCoverage, minCost, maxCost, baselineCost, currentCoverage, savingsPercentage) {
+    function updateSavingsCurveChart(curveData, minHourlySavings, optimalCoverage, minCost, maxCost, baselineCost, currentCoverage, savingsPercentage, numHours) {
         if (!savingsCurveChart) return;
 
         // Store values for tooltip access
@@ -752,18 +737,46 @@ const ChartManager = (function() {
         const maxCommitment = curveData.length > 0 ? curveData[curveData.length - 1].commitment : maxCost;
         savingsCurveChart.options.scales.x.max = maxCommitment;
 
+        // Calculate right y-axis (absolute $/h savings) to match left y-axis (percentage) range
+        // Convert percentage range to dollar range using baseline hourly cost
+        const baselineHourly = baselineCost / numHours;
+
+        // Get the percentage range from the curve data
+        const savingsPercentages = curveData.map(d => d.savingsPercent);
+        let minSavingsPercent = Math.min(...savingsPercentages);
+        let maxSavingsPercent = Math.max(...savingsPercentages);
+
+        // Ensure there's a minimum range to prevent chart rendering issues
+        // This handles edge case where savingsPercentage is 0% (no discount)
+        if (maxSavingsPercent - minSavingsPercent < 0.1) {
+            const midpoint = (minSavingsPercent + maxSavingsPercent) / 2;
+            minSavingsPercent = midpoint - 0.05;
+            maxSavingsPercent = midpoint + 0.05;
+        }
+
+        // Convert to absolute dollar savings per hour
+        const minAbsoluteSavings = baselineHourly * (minSavingsPercent / 100);
+        const maxAbsoluteSavings = baselineHourly * (maxSavingsPercent / 100);
+
+        // Set right y-axis range to match left y-axis percentage range
+        savingsCurveChart.options.scales.y1.min = minAbsoluteSavings;
+        savingsCurveChart.options.scales.y1.max = maxAbsoluteSavings;
+
         // Find indices for transitions
         let minCostIndex = -1;
         let optimalIndex = -1;
         let breakevenIndex = -1;
 
+        // Find the actual optimal point (maximum netSavings)
+        let maxSavings = -Infinity;
         for (let i = 0; i < curveData.length; i++) {
             // Find min-hourly crossing
             if (curveData[i].coverage >= minCost && minCostIndex === -1) {
                 minCostIndex = i;
             }
-            // Find optimal crossing
-            if (curveData[i].coverage >= optimalCoverage && optimalIndex === -1) {
+            // Find optimal point (max savings)
+            if (curveData[i].netSavings > maxSavings) {
+                maxSavings = curveData[i].netSavings;
                 optimalIndex = i;
             }
         }

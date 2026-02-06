@@ -90,6 +90,22 @@ const LoadPatterns = (function() {
     }
 
     /**
+     * Generate Flat load pattern
+     * Constant 100% utilization
+     */
+    function generateFlatPattern() {
+        const pattern = [];
+
+        for (let day = 0; day < 7; day++) {
+            for (let hour = 0; hour < 24; hour++) {
+                pattern.push(1.0);
+            }
+        }
+
+        return pattern;
+    }
+
+    /**
      * Generate Batch Processing load pattern
      * Sharp spikes at scheduled times, low baseline
      */
@@ -141,7 +157,7 @@ const LoadPatterns = (function() {
 
     /**
      * Generate load pattern by type
-     * @param {string} type - 'ecommerce', 'global247', 'batch', or 'custom'
+     * @param {string} type - 'ecommerce', 'global247', 'flat', 'batch', or 'custom'
      * @returns {Array<number>} 168-element array of normalized values (0-1)
      */
     function generatePattern(type) {
@@ -150,6 +166,8 @@ const LoadPatterns = (function() {
                 return generateEcommercePattern();
             case 'global247':
                 return generateGlobal247Pattern();
+            case 'flat':
+                return generateFlatPattern();
             case 'batch':
                 return generateBatchPattern();
             case 'custom':

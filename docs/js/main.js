@@ -734,6 +734,17 @@
         // Calculate min-hourly commitment for percentage calculations
         const minHourlyCommitment = SPCalculations.commitmentFromCoverage(strategies.minHourly, savingsPercentage);
 
+        // Helper to calculate what top metrics would show for a given coverage
+        const calculateMetricsForCoverage = (coverageValue) => {
+            const config = {
+                hourlyCosts: scaledHourlyCosts,
+                coverageCost: coverageValue,
+                savingsPercentage: savingsPercentage,
+                onDemandRate: appState.onDemandRate
+            };
+            return CostCalculator.calculateCosts(config);
+        };
+
         // Update Too Prudent
         const tooPrudentValue = document.getElementById('strategy-too-prudent-value');
         const tooPrudentSavings = document.getElementById('strategy-too-prudent-savings');
@@ -741,12 +752,31 @@
         const tooPrudentMinHourlyPct = document.getElementById('strategy-too-prudent-min-hourly-pct');
         if (tooPrudentValue && tooPrudentSavings && tooPrudentSavingsPct && tooPrudentMinHourlyPct) {
             const commitment = SPCalculations.commitmentFromCoverage(strategies.tooPrudent, savingsPercentage);
-            const savingsData = calculateStrategySavings(strategies.tooPrudent);
+            const results = calculateMetricsForCoverage(strategies.tooPrudent);
             const minHourlyPct = minHourlyCommitment > 0 ? (commitment / minHourlyCommitment) * 100 : 100;
-            tooPrudentValue.textContent = `${CostCalculator.formatCurrency(commitment)}`;
-            tooPrudentSavings.textContent = `${CostCalculator.formatCurrency(savingsData.hourly)}`;
-            tooPrudentSavingsPct.textContent = `${savingsData.percentage.toFixed(1)}%`;
+            tooPrudentValue.textContent = `${CostCalculator.formatCurrency(strategies.tooPrudent)}/h`;
+            tooPrudentSavings.textContent = `${CostCalculator.formatCurrency(results.savings / numHours)}/h`;
+            tooPrudentSavingsPct.textContent = `${results.savingsPercentageActual.toFixed(1)}% On-Demand`;
             tooPrudentMinHourlyPct.textContent = `${minHourlyPct.toFixed(1)}% Min-Hourly`;
+
+            const pureOnDemand = hourlyOnDemand;
+            const commitmentCost = results.commitmentCost / numHours;
+            const spilloverCost = results.spilloverCost / numHours;
+            const savingsValue = results.savings / numHours;
+            const tooltip = document.getElementById('strategy-too-prudent-savings-tooltip');
+            if (tooltip) {
+                tooltip.innerHTML = `
+                    <div class="tooltip-line"><span class="tooltip-label">Pure On-Demand:</span><span class="tooltip-value-ondemand">${CostCalculator.formatCurrency(pureOnDemand)}/h</span></div>
+                    <div class="tooltip-line"><span class="tooltip-label">Commitment:</span><span class="tooltip-value-commitment">${CostCalculator.formatCurrency(commitmentCost)}/h</span></div>
+                    <div class="tooltip-line"><span class="tooltip-label">Spillover:</span><span class="tooltip-value-spillover">${CostCalculator.formatCurrency(spilloverCost)}/h</span></div>
+                    <div class="tooltip-calculation">
+                        <span class="tooltip-value-ondemand">${CostCalculator.formatCurrency(pureOnDemand)}/h</span> -
+                        (<span class="tooltip-value-commitment">${CostCalculator.formatCurrency(commitmentCost)}/h</span> +
+                        <span class="tooltip-value-spillover">${CostCalculator.formatCurrency(spilloverCost)}/h</span>) =
+                        <span class="tooltip-value-savings">${CostCalculator.formatCurrency(savingsValue)}/h</span>
+                    </div>
+                `;
+            }
         }
 
         // Update Min-Hourly
@@ -756,12 +786,31 @@
         const minMinHourlyPct = document.getElementById('strategy-min-min-hourly-pct');
         if (minValue && minSavings && minSavingsPct && minMinHourlyPct) {
             const commitment = SPCalculations.commitmentFromCoverage(strategies.minHourly, savingsPercentage);
-            const savingsData = calculateStrategySavings(strategies.minHourly);
+            const results = calculateMetricsForCoverage(strategies.minHourly);
             const minHourlyPct = minHourlyCommitment > 0 ? (commitment / minHourlyCommitment) * 100 : 100;
-            minValue.textContent = `${CostCalculator.formatCurrency(commitment)}`;
-            minSavings.textContent = `${CostCalculator.formatCurrency(savingsData.hourly)}`;
-            minSavingsPct.textContent = `${savingsData.percentage.toFixed(1)}%`;
+            minValue.textContent = `${CostCalculator.formatCurrency(strategies.minHourly)}/h`;
+            minSavings.textContent = `${CostCalculator.formatCurrency(results.savings / numHours)}/h`;
+            minSavingsPct.textContent = `${results.savingsPercentageActual.toFixed(1)}% On-Demand`;
             minMinHourlyPct.textContent = `${minHourlyPct.toFixed(1)}% Min-Hourly`;
+
+            const pureOnDemand = hourlyOnDemand;
+            const commitmentCost = results.commitmentCost / numHours;
+            const spilloverCost = results.spilloverCost / numHours;
+            const savingsValue = results.savings / numHours;
+            const tooltip = document.getElementById('strategy-min-savings-tooltip');
+            if (tooltip) {
+                tooltip.innerHTML = `
+                    <div class="tooltip-line"><span class="tooltip-label">Pure On-Demand:</span><span class="tooltip-value-ondemand">${CostCalculator.formatCurrency(pureOnDemand)}/h</span></div>
+                    <div class="tooltip-line"><span class="tooltip-label">Commitment:</span><span class="tooltip-value-commitment">${CostCalculator.formatCurrency(commitmentCost)}/h</span></div>
+                    <div class="tooltip-line"><span class="tooltip-label">Spillover:</span><span class="tooltip-value-spillover">${CostCalculator.formatCurrency(spilloverCost)}/h</span></div>
+                    <div class="tooltip-calculation">
+                        <span class="tooltip-value-ondemand">${CostCalculator.formatCurrency(pureOnDemand)}/h</span> -
+                        (<span class="tooltip-value-commitment">${CostCalculator.formatCurrency(commitmentCost)}/h</span> +
+                        <span class="tooltip-value-spillover">${CostCalculator.formatCurrency(spilloverCost)}/h</span>) =
+                        <span class="tooltip-value-savings">${CostCalculator.formatCurrency(savingsValue)}/h</span>
+                    </div>
+                `;
+            }
         }
 
         // Update Balanced
@@ -771,27 +820,65 @@
         const balancedMinHourlyPct = document.getElementById('strategy-balanced-min-hourly-pct');
         if (balancedValue && balancedSavings && balancedSavingsPct && balancedMinHourlyPct) {
             const commitment = SPCalculations.commitmentFromCoverage(strategies.balanced, savingsPercentage);
-            const savingsData = calculateStrategySavings(strategies.balanced);
+            const results = calculateMetricsForCoverage(strategies.balanced);
             const minHourlyPct = minHourlyCommitment > 0 ? (commitment / minHourlyCommitment) * 100 : 100;
-            balancedValue.textContent = `${CostCalculator.formatCurrency(commitment)}`;
-            balancedSavings.textContent = `${CostCalculator.formatCurrency(savingsData.hourly)}`;
-            balancedSavingsPct.textContent = `${savingsData.percentage.toFixed(1)}%`;
+            balancedValue.textContent = `${CostCalculator.formatCurrency(strategies.balanced)}/h`;
+            balancedSavings.textContent = `${CostCalculator.formatCurrency(results.savings / numHours)}/h`;
+            balancedSavingsPct.textContent = `${results.savingsPercentageActual.toFixed(1)}% On-Demand`;
             balancedMinHourlyPct.textContent = `${minHourlyPct.toFixed(1)}% Min-Hourly`;
+
+            const pureOnDemand = hourlyOnDemand;
+            const commitmentCost = results.commitmentCost / numHours;
+            const spilloverCost = results.spilloverCost / numHours;
+            const savingsValue = results.savings / numHours;
+            const tooltip = document.getElementById('strategy-balanced-savings-tooltip');
+            if (tooltip) {
+                tooltip.innerHTML = `
+                    <div class="tooltip-line"><span class="tooltip-label">Pure On-Demand:</span><span class="tooltip-value-ondemand">${CostCalculator.formatCurrency(pureOnDemand)}/h</span></div>
+                    <div class="tooltip-line"><span class="tooltip-label">Commitment:</span><span class="tooltip-value-commitment">${CostCalculator.formatCurrency(commitmentCost)}/h</span></div>
+                    <div class="tooltip-line"><span class="tooltip-label">Spillover:</span><span class="tooltip-value-spillover">${CostCalculator.formatCurrency(spilloverCost)}/h</span></div>
+                    <div class="tooltip-calculation">
+                        <span class="tooltip-value-ondemand">${CostCalculator.formatCurrency(pureOnDemand)}/h</span> -
+                        (<span class="tooltip-value-commitment">${CostCalculator.formatCurrency(commitmentCost)}/h</span> +
+                        <span class="tooltip-value-spillover">${CostCalculator.formatCurrency(spilloverCost)}/h</span>) =
+                        <span class="tooltip-value-savings">${CostCalculator.formatCurrency(savingsValue)}/h</span>
+                    </div>
+                `;
+            }
         }
 
-        // Update Aggressive
+        // Update Aggressive (Risky)
         const aggressiveValue = document.getElementById('strategy-aggressive-value');
         const aggressiveSavings = document.getElementById('strategy-aggressive-savings');
         const aggressiveSavingsPct = document.getElementById('strategy-aggressive-savings-pct');
         const aggressiveMinHourlyPct = document.getElementById('strategy-aggressive-min-hourly-pct');
         if (aggressiveValue && aggressiveSavings && aggressiveSavingsPct && aggressiveMinHourlyPct) {
             const commitment = SPCalculations.commitmentFromCoverage(strategies.aggressive, savingsPercentage);
-            const savingsData = calculateStrategySavings(strategies.aggressive);
+            const results = calculateMetricsForCoverage(strategies.aggressive);
             const minHourlyPct = minHourlyCommitment > 0 ? (commitment / minHourlyCommitment) * 100 : 100;
-            aggressiveValue.textContent = `${CostCalculator.formatCurrency(commitment)}`;
-            aggressiveSavings.textContent = `${CostCalculator.formatCurrency(savingsData.hourly)}`;
-            aggressiveSavingsPct.textContent = `${savingsData.percentage.toFixed(1)}%`;
+            aggressiveValue.textContent = `${CostCalculator.formatCurrency(strategies.aggressive)}/h`;
+            aggressiveSavings.textContent = `${CostCalculator.formatCurrency(results.savings / numHours)}/h`;
+            aggressiveSavingsPct.textContent = `${results.savingsPercentageActual.toFixed(1)}% On-Demand`;
             aggressiveMinHourlyPct.textContent = `${minHourlyPct.toFixed(1)}% Min-Hourly`;
+
+            const pureOnDemand = hourlyOnDemand;
+            const commitmentCost = results.commitmentCost / numHours;
+            const spilloverCost = results.spilloverCost / numHours;
+            const savingsValue = results.savings / numHours;
+            const tooltip = document.getElementById('strategy-aggressive-savings-tooltip');
+            if (tooltip) {
+                tooltip.innerHTML = `
+                    <div class="tooltip-line"><span class="tooltip-label">Pure On-Demand:</span><span class="tooltip-value-ondemand">${CostCalculator.formatCurrency(pureOnDemand)}/h</span></div>
+                    <div class="tooltip-line"><span class="tooltip-label">Commitment:</span><span class="tooltip-value-commitment">${CostCalculator.formatCurrency(commitmentCost)}/h</span></div>
+                    <div class="tooltip-line"><span class="tooltip-label">Spillover:</span><span class="tooltip-value-spillover">${CostCalculator.formatCurrency(spilloverCost)}/h</span></div>
+                    <div class="tooltip-calculation">
+                        <span class="tooltip-value-ondemand">${CostCalculator.formatCurrency(pureOnDemand)}/h</span> -
+                        (<span class="tooltip-value-commitment">${CostCalculator.formatCurrency(commitmentCost)}/h</span> +
+                        <span class="tooltip-value-spillover">${CostCalculator.formatCurrency(spilloverCost)}/h</span>) =
+                        <span class="tooltip-value-savings">${CostCalculator.formatCurrency(savingsValue)}/h</span>
+                    </div>
+                `;
+            }
         }
 
         // Update Too Aggressive
@@ -801,12 +888,31 @@
         const tooAggressiveMinHourlyPct = document.getElementById('strategy-too-aggressive-min-hourly-pct');
         if (tooAggressiveValue && tooAggressiveSavings && tooAggressiveSavingsPct && tooAggressiveMinHourlyPct) {
             const commitment = SPCalculations.commitmentFromCoverage(strategies.tooAggressive, savingsPercentage);
-            const savingsData = calculateStrategySavings(strategies.tooAggressive);
+            const results = calculateMetricsForCoverage(strategies.tooAggressive);
             const minHourlyPct = minHourlyCommitment > 0 ? (commitment / minHourlyCommitment) * 100 : 100;
-            tooAggressiveValue.textContent = `${CostCalculator.formatCurrency(commitment)}`;
-            tooAggressiveSavings.textContent = `${CostCalculator.formatCurrency(savingsData.hourly)}`;
-            tooAggressiveSavingsPct.textContent = `${savingsData.percentage.toFixed(1)}%`;
+            tooAggressiveValue.textContent = `${CostCalculator.formatCurrency(strategies.tooAggressive)}/h`;
+            tooAggressiveSavings.textContent = `${CostCalculator.formatCurrency(results.savings / numHours)}/h`;
+            tooAggressiveSavingsPct.textContent = `${results.savingsPercentageActual.toFixed(1)}% On-Demand`;
             tooAggressiveMinHourlyPct.textContent = `${minHourlyPct.toFixed(1)}% Min-Hourly`;
+
+            const pureOnDemand = hourlyOnDemand;
+            const commitmentCost = results.commitmentCost / numHours;
+            const spilloverCost = results.spilloverCost / numHours;
+            const savingsValue = results.savings / numHours;
+            const tooltip = document.getElementById('strategy-too-aggressive-savings-tooltip');
+            if (tooltip) {
+                tooltip.innerHTML = `
+                    <div class="tooltip-line"><span class="tooltip-label">Pure On-Demand:</span><span class="tooltip-value-ondemand">${CostCalculator.formatCurrency(pureOnDemand)}/h</span></div>
+                    <div class="tooltip-line"><span class="tooltip-label">Commitment:</span><span class="tooltip-value-commitment">${CostCalculator.formatCurrency(commitmentCost)}/h</span></div>
+                    <div class="tooltip-line"><span class="tooltip-label">Spillover:</span><span class="tooltip-value-spillover">${CostCalculator.formatCurrency(spilloverCost)}/h</span></div>
+                    <div class="tooltip-calculation">
+                        <span class="tooltip-value-ondemand">${CostCalculator.formatCurrency(pureOnDemand)}/h</span> -
+                        (<span class="tooltip-value-commitment">${CostCalculator.formatCurrency(commitmentCost)}/h</span> +
+                        <span class="tooltip-value-spillover">${CostCalculator.formatCurrency(spilloverCost)}/h</span>) =
+                        <span class="tooltip-value-savings">${CostCalculator.formatCurrency(savingsValue)}/h</span>
+                    </div>
+                `;
+            }
         }
 
         // Detect and highlight active strategy
@@ -814,7 +920,7 @@
         allButtons.forEach(btn => btn.classList.remove('active'));
 
         // Compare with tolerance for floating point comparison (2%)
-        const tolerance = 0.02;
+        const highlightTolerance = 0.02;
         let activeButton = null;
 
         const tooPrudentDiff = Math.abs(currentCoverage - strategies.tooPrudent);
@@ -826,7 +932,7 @@
         // Find closest match
         const minDistance = Math.min(tooPrudentDiff, minDiff, balancedDiff, aggressiveDiff, tooAggressiveDiff);
 
-        if (minDistance / Math.max(currentCoverage, 0.01) < tolerance) {
+        if (minDistance / Math.max(currentCoverage, 0.01) < highlightTolerance) {
             if (minDistance === tooPrudentDiff) {
                 activeButton = document.getElementById('strategy-too-prudent');
             } else if (minDistance === minDiff) {
@@ -1086,14 +1192,9 @@
         const optimalResult = CostCalculator.calculateOptimalCoverage(hourlyCosts, savingsPercentage);
 
         // Calculate extra savings for each point
-        // - Below optimal: extra savings vs min-hourly (positive gain)
-        // - Past optimal: waste vs optimal (negative)
+        // All points compare to optimal (positive if better, negative if worse, 0 at optimal)
         curveData.forEach(point => {
-            if (point.coverage <= optimalCoverage) {
-                point.extraSavings = point.netSavings - minHourlySavings;
-            } else {
-                point.extraSavings = point.netSavings - optimalNetSavings;
-            }
+            point.extraSavings = point.netSavings - optimalNetSavings;
         });
 
         // Always use the current slider position for the vertical line
@@ -1108,7 +1209,8 @@
             chartMaxCost,
             baselineCost,
             currentCoverageFromData,
-            savingsPercentage
+            savingsPercentage,
+            hourlyCosts.length
         );
     }
 
@@ -1130,12 +1232,6 @@
             displayElement.textContent = `$${commitmentCost.toFixed(2)}/h (${percentOfMin.toFixed(1)}% Min-Hourly)`;
         }
 
-        const unitsElement = document.getElementById('coverage-units');
-        if (unitsElement) {
-            // Show on-demand coverage below
-            unitsElement.textContent = `Covers ${CostCalculator.formatCurrency(coverageCost)}/h on-demand`;
-        }
-
         // Update savings rate hint to reflect coverage commitment
         updateSavingsRateHint();
     }
@@ -1153,7 +1249,7 @@
                 : 0;
 
             const coverageCommitment = appState.coverageCost || 0;
-            rateElement.textContent = `Coverage $${coverageCommitment.toFixed(3)}/h vs $${avgUsage.toFixed(3)}/h Avg Usage`;
+            rateElement.textContent = `Coverage $${coverageCommitment.toFixed(2)}/h vs $${avgUsage.toFixed(2)}/h Avg Usage`;
         }
     }
 
@@ -1256,7 +1352,36 @@
         // Net Savings
         const savingsElement = document.getElementById('metric-savings');
         if (savingsElement) {
-            savingsElement.textContent = CostCalculator.formatCurrency(results.savings / numHours) + '/h';
+            const savingsValue = results.savings / numHours;
+            savingsElement.textContent = CostCalculator.formatCurrency(savingsValue) + '/h';
+
+            // Apply color based on positive/negative
+            savingsElement.classList.remove('positive', 'negative');
+            if (savingsValue > 0) {
+                savingsElement.classList.add('positive');
+            } else if (savingsValue < 0) {
+                savingsElement.classList.add('negative');
+            }
+
+            // Populate tooltip with calculation breakdown
+            const tooltip = document.getElementById('metric-savings-tooltip');
+            if (tooltip) {
+                const pureOnDemand = results.onDemandCost / numHours;
+                const commitmentCost = results.commitmentCost / numHours;
+                const spilloverCost = results.spilloverCost / numHours;
+                const savingsValue = results.savings / numHours;
+                tooltip.innerHTML = `
+                    <div class="tooltip-line"><span class="tooltip-label">Pure On-Demand:</span><span class="tooltip-value-ondemand">${CostCalculator.formatCurrency(pureOnDemand)}/h</span></div>
+                    <div class="tooltip-line"><span class="tooltip-label">Commitment:</span><span class="tooltip-value-commitment">${CostCalculator.formatCurrency(commitmentCost)}/h</span></div>
+                    <div class="tooltip-line"><span class="tooltip-label">Spillover:</span><span class="tooltip-value-spillover">${CostCalculator.formatCurrency(spilloverCost)}/h</span></div>
+                    <div class="tooltip-calculation">
+                        <span class="tooltip-value-ondemand">${CostCalculator.formatCurrency(pureOnDemand)}/h</span> -
+                        (<span class="tooltip-value-commitment">${CostCalculator.formatCurrency(commitmentCost)}/h</span> +
+                        <span class="tooltip-value-spillover">${CostCalculator.formatCurrency(spilloverCost)}/h</span>) =
+                        <span class="tooltip-value-savings">${CostCalculator.formatCurrency(savingsValue)}/h</span>
+                    </div>
+                `;
+            }
 
             // Change color based on zone if available
             const savingsContainer = savingsElement.closest('.metric-item');
@@ -1286,21 +1411,23 @@
             savingsPctElement.textContent = CostCalculator.formatPercentage(results.savingsPercentageActual);
         }
 
-        // SP Commitment
+        // SP Commitment - show actual commitment cost (what user needs to pay)
         const commitmentElement = document.getElementById('metric-commitment');
         if (commitmentElement) {
-            const discountFactor = (1 - appState.savingsPercentage / 100);
-            const commitmentPerHour = appState.coverageCost * discountFactor;
-            commitmentElement.textContent = CostCalculator.formatCurrency(commitmentPerHour) + '/h';
+            // Show the actual commitment cost
+            const commitmentCost = SPCalculations.commitmentFromCoverage(appState.coverageCost, appState.savingsPercentage);
+            commitmentElement.textContent = CostCalculator.formatCurrency(commitmentCost) + '/h';
         }
 
         const commitmentPctElement = document.getElementById('metric-commitment-pct');
         if (commitmentPctElement) {
-            const commitmentPct = results.savingsPlanCost > 0
-                ? (results.commitmentCost / results.savingsPlanCost) * 100
+            // Calculate how much of on-demand usage is covered by the commitment
+            const avgOnDemandPerHour = results.onDemandCost / numHours;
+            const coveragePct = avgOnDemandPerHour > 0
+                ? (appState.coverageCost / avgOnDemandPerHour) * 100
                 : 0;
-            commitmentPctElement.textContent = `${commitmentPct.toFixed(1)}% of total cost`;
-            commitmentPctElement.style.color = getPercentageColor(commitmentPct, 'commitment');
+            commitmentPctElement.textContent = `Covering ${CostCalculator.formatCurrency(appState.coverageCost)}/h - ${coveragePct.toFixed(1)}% of on-demand`;
+            commitmentPctElement.style.color = getPercentageColor(coveragePct, 'commitment');
         }
 
         // Spillover Cost
