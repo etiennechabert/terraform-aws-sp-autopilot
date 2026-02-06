@@ -24,13 +24,8 @@ func CleanupOrphanedResources(t *testing.T, awsRegion string, namePrefix string)
 		return
 	}
 
-	// Cleanup CloudWatch Log Groups
 	cleanupLogGroups(t, sess, namePrefix)
-
-	// Cleanup IAM Roles (must be done after detaching policies)
 	cleanupIAMRoles(t, sess, namePrefix)
-
-	// Cleanup S3 Buckets
 	cleanupS3Buckets(t, sess, namePrefix)
 
 	t.Logf("Cleanup complete for prefix: %s", namePrefix)
@@ -51,12 +46,44 @@ func cleanupLogGroups(t *testing.T, sess *session.Session, namePrefix string) {
 		})
 		if err != nil {
 			if strings.Contains(err.Error(), "ResourceNotFoundException") {
-				t.Logf("  ✓ Log group %s does not exist (already clean)", logGroupName)
+				t.Logf("  Log group %s does not exist (already clean)", logGroupName)
 			} else {
-				t.Logf("  ⚠ Failed to delete log group %s: %v", logGroupName, err)
+				t.Logf("  Warning: Failed to delete log group %s: %v", logGroupName, err)
 			}
 		} else {
-			t.Logf("  ✓ Deleted log group: %s", logGroupName)
+			t.Logf("  Deleted log group: %s", logGroupName)
+		}
+	}
+}
+
+func cleanupRolePolicies(t *testing.T, iamClient *iam.IAM, roleName string) {
+	listPoliciesOutput, err := iamClient.ListAttachedRolePolicies(&iam.ListAttachedRolePoliciesInput{
+		RoleName: aws.String(roleName),
+	})
+	if err == nil {
+		for _, policy := range listPoliciesOutput.AttachedPolicies {
+			_, err := iamClient.DetachRolePolicy(&iam.DetachRolePolicyInput{
+				RoleName:  aws.String(roleName),
+				PolicyArn: policy.PolicyArn,
+			})
+			if err != nil {
+				t.Logf("  Warning: Failed to detach policy %s from role %s: %v", *policy.PolicyArn, roleName, err)
+			}
+		}
+	}
+
+	listInlinePoliciesOutput, err := iamClient.ListRolePolicies(&iam.ListRolePoliciesInput{
+		RoleName: aws.String(roleName),
+	})
+	if err == nil {
+		for _, policyName := range listInlinePoliciesOutput.PolicyNames {
+			_, err := iamClient.DeleteRolePolicy(&iam.DeleteRolePolicyInput{
+				RoleName:   aws.String(roleName),
+				PolicyName: policyName,
+			})
+			if err != nil {
+				t.Logf("  Warning: Failed to delete inline policy %s from role %s: %v", *policyName, roleName, err)
+			}
 		}
 	}
 }
@@ -71,135 +98,112 @@ func cleanupIAMRoles(t *testing.T, sess *session.Session, namePrefix string) {
 	}
 
 	for _, roleName := range roleNames {
-		// First, list and detach all attached policies
-		listPoliciesOutput, err := iamClient.ListAttachedRolePolicies(&iam.ListAttachedRolePoliciesInput{
+		// Check if the role exists by listing its policies
+		_, err := iamClient.ListAttachedRolePolicies(&iam.ListAttachedRolePoliciesInput{
 			RoleName: aws.String(roleName),
 		})
 		if err != nil {
 			if strings.Contains(err.Error(), "NoSuchEntity") {
-				t.Logf("  ✓ IAM role %s does not exist (already clean)", roleName)
-				continue
-			} else {
-				t.Logf("  ⚠ Failed to list policies for role %s: %v", roleName, err)
+				t.Logf("  IAM role %s does not exist (already clean)", roleName)
 				continue
 			}
+			t.Logf("  Warning: Failed to list policies for role %s: %v", roleName, err)
+			continue
 		}
 
-		// Detach all managed policies
-		for _, policy := range listPoliciesOutput.AttachedPolicies {
-			_, err := iamClient.DetachRolePolicy(&iam.DetachRolePolicyInput{
-				RoleName:  aws.String(roleName),
-				PolicyArn: policy.PolicyArn,
-			})
-			if err != nil {
-				t.Logf("  ⚠ Failed to detach policy %s from role %s: %v", *policy.PolicyArn, roleName, err)
-			}
-		}
+		cleanupRolePolicies(t, iamClient, roleName)
 
-		// List and delete inline policies
-		listInlinePoliciesOutput, err := iamClient.ListRolePolicies(&iam.ListRolePoliciesInput{
-			RoleName: aws.String(roleName),
-		})
-		if err == nil {
-			for _, policyName := range listInlinePoliciesOutput.PolicyNames {
-				_, err := iamClient.DeleteRolePolicy(&iam.DeleteRolePolicyInput{
-					RoleName:   aws.String(roleName),
-					PolicyName: policyName,
-				})
-				if err != nil {
-					t.Logf("  ⚠ Failed to delete inline policy %s from role %s: %v", *policyName, roleName, err)
-				}
-			}
-		}
-
-		// Now delete the role
 		_, err = iamClient.DeleteRole(&iam.DeleteRoleInput{
 			RoleName: aws.String(roleName),
 		})
 		if err != nil {
 			if strings.Contains(err.Error(), "NoSuchEntity") {
-				t.Logf("  ✓ IAM role %s does not exist (already clean)", roleName)
+				t.Logf("  IAM role %s does not exist (already clean)", roleName)
 			} else {
-				t.Logf("  ⚠ Failed to delete IAM role %s: %v", roleName, err)
+				t.Logf("  Warning: Failed to delete IAM role %s: %v", roleName, err)
 			}
 		} else {
-			t.Logf("  ✓ Deleted IAM role: %s", roleName)
+			t.Logf("  Deleted IAM role: %s", roleName)
 		}
 	}
 }
 
-func cleanupS3Buckets(t *testing.T, sess *session.Session, namePrefix string) {
-	s3Client := s3.New(sess)
-
-	// Get AWS account ID for bucket name
-	accountID := terratest_aws.GetAccountId(t)
-	bucketName := fmt.Sprintf("%s-reports-%s", namePrefix, accountID)
-
-	// First, delete all objects in the bucket
+func emptyS3Bucket(t *testing.T, s3Client *s3.S3, bucketName string) error {
 	listObjectsOutput, err := s3Client.ListObjectsV2(&s3.ListObjectsV2Input{
 		Bucket: aws.String(bucketName),
 	})
 	if err != nil {
-		if strings.Contains(err.Error(), "NoSuchBucket") {
-			t.Logf("  ✓ S3 bucket %s does not exist (already clean)", bucketName)
-			return
-		} else {
-			t.Logf("  ⚠ Failed to list objects in bucket %s: %v", bucketName, err)
-			return
-		}
+		return err
 	}
 
-	// Delete all objects
 	for _, object := range listObjectsOutput.Contents {
 		_, err := s3Client.DeleteObject(&s3.DeleteObjectInput{
 			Bucket: aws.String(bucketName),
 			Key:    object.Key,
 		})
 		if err != nil {
-			t.Logf("  ⚠ Failed to delete object %s from bucket %s: %v", *object.Key, bucketName, err)
+			t.Logf("  Warning: Failed to delete object %s from bucket %s: %v", *object.Key, bucketName, err)
 		}
 	}
 
-	// Delete all object versions (if versioning is enabled)
 	listVersionsOutput, err := s3Client.ListObjectVersions(&s3.ListObjectVersionsInput{
 		Bucket: aws.String(bucketName),
 	})
-	if err == nil {
-		for _, version := range listVersionsOutput.Versions {
-			_, err := s3Client.DeleteObject(&s3.DeleteObjectInput{
-				Bucket:    aws.String(bucketName),
-				Key:       version.Key,
-				VersionId: version.VersionId,
-			})
-			if err != nil {
-				t.Logf("  ⚠ Failed to delete version %s of object %s: %v", *version.VersionId, *version.Key, err)
-			}
-		}
+	if err != nil {
+		return nil
+	}
 
-		// Delete all delete markers
-		for _, marker := range listVersionsOutput.DeleteMarkers {
-			_, err := s3Client.DeleteObject(&s3.DeleteObjectInput{
-				Bucket:    aws.String(bucketName),
-				Key:       marker.Key,
-				VersionId: marker.VersionId,
-			})
-			if err != nil {
-				t.Logf("  ⚠ Failed to delete marker %s of object %s: %v", *marker.VersionId, *marker.Key, err)
-			}
+	for _, version := range listVersionsOutput.Versions {
+		_, err := s3Client.DeleteObject(&s3.DeleteObjectInput{
+			Bucket:    aws.String(bucketName),
+			Key:       version.Key,
+			VersionId: version.VersionId,
+		})
+		if err != nil {
+			t.Logf("  Warning: Failed to delete version %s of object %s: %v", *version.VersionId, *version.Key, err)
 		}
 	}
 
-	// Now delete the bucket
+	for _, marker := range listVersionsOutput.DeleteMarkers {
+		_, err := s3Client.DeleteObject(&s3.DeleteObjectInput{
+			Bucket:    aws.String(bucketName),
+			Key:       marker.Key,
+			VersionId: marker.VersionId,
+		})
+		if err != nil {
+			t.Logf("  Warning: Failed to delete marker %s of object %s: %v", *marker.VersionId, *marker.Key, err)
+		}
+	}
+
+	return nil
+}
+
+func cleanupS3Buckets(t *testing.T, sess *session.Session, namePrefix string) {
+	s3Client := s3.New(sess)
+
+	accountID := terratest_aws.GetAccountId(t)
+	bucketName := fmt.Sprintf("%s-reports-%s", namePrefix, accountID)
+
+	err := emptyS3Bucket(t, s3Client, bucketName)
+	if err != nil {
+		if strings.Contains(err.Error(), "NoSuchBucket") {
+			t.Logf("  S3 bucket %s does not exist (already clean)", bucketName)
+			return
+		}
+		t.Logf("  Warning: Failed to list objects in bucket %s: %v", bucketName, err)
+		return
+	}
+
 	_, err = s3Client.DeleteBucket(&s3.DeleteBucketInput{
 		Bucket: aws.String(bucketName),
 	})
 	if err != nil {
 		if strings.Contains(err.Error(), "NoSuchBucket") {
-			t.Logf("  ✓ S3 bucket %s does not exist (already clean)", bucketName)
+			t.Logf("  S3 bucket %s does not exist (already clean)", bucketName)
 		} else {
-			t.Logf("  ⚠ Failed to delete S3 bucket %s: %v", bucketName, err)
+			t.Logf("  Warning: Failed to delete S3 bucket %s: %v", bucketName, err)
 		}
 	} else {
-		t.Logf("  ✓ Deleted S3 bucket: %s", bucketName)
+		t.Logf("  Deleted S3 bucket: %s", bucketName)
 	}
 }

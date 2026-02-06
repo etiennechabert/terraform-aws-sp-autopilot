@@ -17,40 +17,38 @@ import (
 	terratest_aws "github.com/gruntwork-io/terratest/modules/aws"
 )
 
+func matchesTestPrefix(name string, prefixes []string) bool {
+	for _, prefix := range prefixes {
+		if strings.HasPrefix(name, prefix) {
+			return true
+		}
+	}
+	return false
+}
+
+func containsTestPrefix(name string, prefixes []string) bool {
+	for _, prefix := range prefixes {
+		if strings.Contains(name, prefix) {
+			return true
+		}
+	}
+	return false
+}
+
 // TestCleanupAllOrphanedResources finds and removes ALL orphaned test resources
 // from previous failed test runs using direct AWS API calls (not Terraform).
-//
-// This test cleans up resources matching the pattern "sp-autopilot-test-*" including:
-//   - CloudWatch Log Groups: /aws/lambda/sp-autopilot-test-*
-//   - CloudWatch Alarms: sp-autopilot-test-*
-//   - Lambda Functions: sp-autopilot-test-*
-//   - EventBridge Rules: sp-autopilot-test-*
-//   - SQS Queues: sp-autopilot-test-*
-//   - SNS Topics & Subscriptions: sp-autopilot-test-*
-//   - IAM Roles: sp-autopilot-test-* (with policy detachment)
-//   - S3 Buckets: sp-autopilot-test-* (with object deletion)
-//
-// USAGE:
-//   Automated (CI): Runs automatically after integration tests in GitHub Actions
-//   Manual cleanup: go test -v -run TestCleanupAllOrphanedResources -timeout 10m
-//
-// SAFETY:
-//   - Only deletes resources with "sp-autopilot-test-" prefix
-//   - Production resources (sp-autopilot-*) are NOT affected
-//   - Uses || true in CI to continue even if cleanup fails
 func TestCleanupAllOrphanedResources(t *testing.T) {
 	awsRegion := "us-east-1"
 
-	t.Log("========================================")
+	t.Log(logSeparator)
 	t.Log("Cleaning Up ALL Orphaned Test Resources")
-	t.Log("========================================")
+	t.Log(logSeparator)
 
 	sess, err := terratest_aws.NewAuthenticatedSession(awsRegion)
 	if err != nil {
 		t.Fatalf("Failed to create AWS session: %v", err)
 	}
 
-	// Cleanup all resources matching test patterns
 	cleanupAllCloudWatchAlarms(t, sess)
 	cleanupAllLogGroups(t, sess)
 	cleanupAllLambdaFunctions(t, sess)
@@ -60,20 +58,32 @@ func TestCleanupAllOrphanedResources(t *testing.T) {
 	cleanupAllIAMRoles(t, sess)
 	cleanupAllS3Buckets(t, sess)
 
-	t.Log("========================================")
+	t.Log(logSeparator)
 	t.Log("Cleanup Complete")
-	t.Log("========================================")
+	t.Log(logSeparator)
+}
+
+func deleteAlarms(t *testing.T, cwClient *cloudwatch.CloudWatch, alarmNames []*string) int {
+	deleted := 0
+	for _, alarmName := range alarmNames {
+		_, err := cwClient.DeleteAlarms(&cloudwatch.DeleteAlarmsInput{
+			AlarmNames: []*string{alarmName},
+		})
+		if err != nil {
+			t.Logf("  Warning: Failed to delete CloudWatch alarm %s: %v", *alarmName, err)
+		} else {
+			t.Logf("  Deleted CloudWatch alarm: %s", *alarmName)
+			deleted++
+		}
+	}
+	return deleted
 }
 
 func cleanupAllCloudWatchAlarms(t *testing.T, sess *session.Session) {
 	t.Log("\n[CloudWatch Alarms]")
 	cwClient := cloudwatch.New(sess)
 
-	// Check multiple test prefix patterns
-	alarmPrefixes := []string{
-		"sp-autopilot-test",  // Current prefix
-		"sp-test-",           // Old prefix pattern
-	}
+	alarmPrefixes := []string{testPrefixCurrent, testPrefixOld}
 
 	deletedCount := 0
 	for _, prefix := range alarmPrefixes {
@@ -81,39 +91,25 @@ func cleanupAllCloudWatchAlarms(t *testing.T, sess *session.Session) {
 			AlarmNamePrefix: aws.String(prefix),
 		})
 		if err != nil {
-			t.Logf("  ⚠ Failed to list CloudWatch alarms with prefix %s: %v", prefix, err)
+			t.Logf("  Warning: Failed to list CloudWatch alarms with prefix %s: %v", prefix, err)
 			continue
 		}
 
-		// Delete metric alarms
-		for _, alarm := range output.MetricAlarms {
-			_, err := cwClient.DeleteAlarms(&cloudwatch.DeleteAlarmsInput{
-				AlarmNames: []*string{alarm.AlarmName},
-			})
-			if err != nil {
-				t.Logf("  ⚠ Failed to delete CloudWatch alarm %s: %v", *alarm.AlarmName, err)
-			} else {
-				t.Logf("  ✓ Deleted CloudWatch alarm: %s", *alarm.AlarmName)
-				deletedCount++
-			}
+		metricAlarmNames := make([]*string, len(output.MetricAlarms))
+		for i, alarm := range output.MetricAlarms {
+			metricAlarmNames[i] = alarm.AlarmName
 		}
+		deletedCount += deleteAlarms(t, cwClient, metricAlarmNames)
 
-		// Delete composite alarms
-		for _, alarm := range output.CompositeAlarms {
-			_, err := cwClient.DeleteAlarms(&cloudwatch.DeleteAlarmsInput{
-				AlarmNames: []*string{alarm.AlarmName},
-			})
-			if err != nil {
-				t.Logf("  ⚠ Failed to delete composite alarm %s: %v", *alarm.AlarmName, err)
-			} else {
-				t.Logf("  ✓ Deleted composite alarm: %s", *alarm.AlarmName)
-				deletedCount++
-			}
+		compositeAlarmNames := make([]*string, len(output.CompositeAlarms))
+		for i, alarm := range output.CompositeAlarms {
+			compositeAlarmNames[i] = alarm.AlarmName
 		}
+		deletedCount += deleteAlarms(t, cwClient, compositeAlarmNames)
 	}
 
 	if deletedCount == 0 {
-		t.Log("  ✓ No orphaned CloudWatch alarms found")
+		t.Log("  No orphaned CloudWatch alarms found")
 	}
 }
 
@@ -121,10 +117,9 @@ func cleanupAllLogGroups(t *testing.T, sess *session.Session) {
 	t.Log("\n[CloudWatch Log Groups]")
 	cwlClient := cloudwatchlogs.New(sess)
 
-	// Check multiple test prefix patterns
 	logGroupPrefixes := []string{
-		"/aws/lambda/sp-autopilot-test",  // Current prefix
-		"/aws/lambda/sp-test-",           // Old prefix pattern
+		"/aws/lambda/" + testPrefixCurrent,
+		"/aws/lambda/" + testPrefixOld,
 	}
 
 	deletedCount := 0
@@ -133,7 +128,7 @@ func cleanupAllLogGroups(t *testing.T, sess *session.Session) {
 			LogGroupNamePrefix: aws.String(prefix),
 		})
 		if err != nil {
-			t.Logf("  ⚠ Failed to list log groups with prefix %s: %v", prefix, err)
+			t.Logf("  Warning: Failed to list log groups with prefix %s: %v", prefix, err)
 			continue
 		}
 
@@ -142,16 +137,16 @@ func cleanupAllLogGroups(t *testing.T, sess *session.Session) {
 				LogGroupName: logGroup.LogGroupName,
 			})
 			if err != nil {
-				t.Logf("  ⚠ Failed to delete log group %s: %v", *logGroup.LogGroupName, err)
+				t.Logf("  Warning: Failed to delete log group %s: %v", *logGroup.LogGroupName, err)
 			} else {
-				t.Logf("  ✓ Deleted log group: %s", *logGroup.LogGroupName)
+				t.Logf("  Deleted log group: %s", *logGroup.LogGroupName)
 				deletedCount++
 			}
 		}
 	}
 
 	if deletedCount == 0 {
-		t.Log("  ✓ No orphaned log groups found")
+		t.Log("  No orphaned log groups found")
 	}
 }
 
@@ -159,57 +154,68 @@ func cleanupAllLambdaFunctions(t *testing.T, sess *session.Session) {
 	t.Log("\n[Lambda Functions]")
 	lambdaClient := lambda.New(sess)
 
-	// List all Lambda functions
 	output, err := lambdaClient.ListFunctions(&lambda.ListFunctionsInput{})
 	if err != nil {
-		t.Logf("  ⚠ Failed to list Lambda functions: %v", err)
+		t.Logf("  Warning: Failed to list Lambda functions: %v", err)
 		return
 	}
 
 	deleted := false
-	// Check multiple test prefix patterns
-	testPrefixes := []string{
-		"sp-autopilot-test-",  // Current prefix
-		"sp-test-",            // Old prefix pattern
-	}
+	testPrefixes := []string{testPrefixCurrentDash, testPrefixOld}
 
 	for _, function := range output.Functions {
-		// Only delete functions matching test patterns
-		isTestFunction := false
-		for _, prefix := range testPrefixes {
-			if strings.HasPrefix(*function.FunctionName, prefix) {
-				isTestFunction = true
-				break
-			}
-		}
-
-		if isTestFunction {
+		if matchesTestPrefix(*function.FunctionName, testPrefixes) {
 			_, err := lambdaClient.DeleteFunction(&lambda.DeleteFunctionInput{
 				FunctionName: function.FunctionName,
 			})
 			if err != nil {
-				t.Logf("  ⚠ Failed to delete Lambda function %s: %v", *function.FunctionName, err)
+				t.Logf("  Warning: Failed to delete Lambda function %s: %v", *function.FunctionName, err)
 			} else {
-				t.Logf("  ✓ Deleted Lambda function: %s", *function.FunctionName)
+				t.Logf("  Deleted Lambda function: %s", *function.FunctionName)
 				deleted = true
 			}
 		}
 	}
 
 	if !deleted {
-		t.Log("  ✓ No orphaned Lambda functions found")
+		t.Log("  No orphaned Lambda functions found")
 	}
+}
+
+func deleteEventBridgeRule(t *testing.T, eventsClient *cloudwatchevents.CloudWatchEvents, rule *cloudwatchevents.Rule) bool {
+	targetsOutput, err := eventsClient.ListTargetsByRule(&cloudwatchevents.ListTargetsByRuleInput{
+		Rule: rule.Name,
+	})
+	if err == nil && len(targetsOutput.Targets) > 0 {
+		targetIDs := make([]*string, len(targetsOutput.Targets))
+		for i, target := range targetsOutput.Targets {
+			targetIDs[i] = target.Id
+		}
+		_, err = eventsClient.RemoveTargets(&cloudwatchevents.RemoveTargetsInput{
+			Rule: rule.Name,
+			Ids:  targetIDs,
+		})
+		if err != nil {
+			t.Logf("  Warning: Failed to remove targets from rule %s: %v", *rule.Name, err)
+		}
+	}
+
+	_, err = eventsClient.DeleteRule(&cloudwatchevents.DeleteRuleInput{
+		Name: rule.Name,
+	})
+	if err != nil {
+		t.Logf("  Warning: Failed to delete EventBridge rule %s: %v", *rule.Name, err)
+		return false
+	}
+	t.Logf("  Deleted EventBridge rule: %s", *rule.Name)
+	return true
 }
 
 func cleanupAllEventBridgeRules(t *testing.T, sess *session.Session) {
 	t.Log("\n[EventBridge Rules]")
 	eventsClient := cloudwatchevents.New(sess)
 
-	// Check multiple test prefix patterns
-	rulePrefixes := []string{
-		"sp-autopilot-test",  // Current prefix
-		"sp-test-",           // Old prefix pattern
-	}
+	rulePrefixes := []string{testPrefixCurrent, testPrefixOld}
 
 	deletedCount := 0
 	for _, prefix := range rulePrefixes {
@@ -217,44 +223,19 @@ func cleanupAllEventBridgeRules(t *testing.T, sess *session.Session) {
 			NamePrefix: aws.String(prefix),
 		})
 		if err != nil {
-			t.Logf("  ⚠ Failed to list EventBridge rules with prefix %s: %v", prefix, err)
+			t.Logf("  Warning: Failed to list EventBridge rules with prefix %s: %v", prefix, err)
 			continue
 		}
 
 		for _, rule := range output.Rules {
-		// First, remove all targets from the rule
-		targetsOutput, err := eventsClient.ListTargetsByRule(&cloudwatchevents.ListTargetsByRuleInput{
-			Rule: rule.Name,
-		})
-		if err == nil && len(targetsOutput.Targets) > 0 {
-			targetIDs := make([]*string, len(targetsOutput.Targets))
-			for i, target := range targetsOutput.Targets {
-				targetIDs[i] = target.Id
-			}
-			_, err = eventsClient.RemoveTargets(&cloudwatchevents.RemoveTargetsInput{
-				Rule: rule.Name,
-				Ids:  targetIDs,
-			})
-			if err != nil {
-				t.Logf("  ⚠ Failed to remove targets from rule %s: %v", *rule.Name, err)
-			}
-		}
-
-			// Now delete the rule
-			_, err = eventsClient.DeleteRule(&cloudwatchevents.DeleteRuleInput{
-				Name: rule.Name,
-			})
-			if err != nil {
-				t.Logf("  ⚠ Failed to delete EventBridge rule %s: %v", *rule.Name, err)
-			} else {
-				t.Logf("  ✓ Deleted EventBridge rule: %s", *rule.Name)
+			if deleteEventBridgeRule(t, eventsClient, rule) {
 				deletedCount++
 			}
 		}
 	}
 
 	if deletedCount == 0 {
-		t.Log("  ✓ No orphaned EventBridge rules found")
+		t.Log("  No orphaned EventBridge rules found")
 	}
 }
 
@@ -262,11 +243,7 @@ func cleanupAllSQSQueues(t *testing.T, sess *session.Session) {
 	t.Log("\n[SQS Queues]")
 	sqsClient := sqs.New(sess)
 
-	// List all SQS queues with any test-related prefix
-	prefixes := []string{
-		"sp-autopilot-test",  // Current prefix
-		"sp-test-",           // Old prefix pattern
-	}
+	prefixes := []string{testPrefixCurrent, testPrefixOld}
 
 	deletedCount := 0
 	for _, prefix := range prefixes {
@@ -274,7 +251,7 @@ func cleanupAllSQSQueues(t *testing.T, sess *session.Session) {
 			QueueNamePrefix: aws.String(prefix),
 		})
 		if err != nil {
-			t.Logf("  ⚠ Failed to list SQS queues with prefix %s: %v", prefix, err)
+			t.Logf("  Warning: Failed to list SQS queues with prefix %s: %v", prefix, err)
 			continue
 		}
 
@@ -283,231 +260,199 @@ func cleanupAllSQSQueues(t *testing.T, sess *session.Session) {
 				QueueUrl: queueURL,
 			})
 			if err != nil {
-				t.Logf("  ⚠ Failed to delete SQS queue %s: %v", *queueURL, err)
+				t.Logf("  Warning: Failed to delete SQS queue %s: %v", *queueURL, err)
 			} else {
-				t.Logf("  ✓ Deleted SQS queue: %s", *queueURL)
+				t.Logf("  Deleted SQS queue: %s", *queueURL)
 				deletedCount++
 			}
 		}
 	}
 
 	if deletedCount == 0 {
-		t.Log("  ✓ No orphaned SQS queues found")
+		t.Log("  No orphaned SQS queues found")
 	}
+}
+
+func deleteSNSTopic(t *testing.T, snsClient *sns.SNS, topic *sns.Topic) bool {
+	subsOutput, err := snsClient.ListSubscriptionsByTopic(&sns.ListSubscriptionsByTopicInput{
+		TopicArn: topic.TopicArn,
+	})
+	if err == nil {
+		for _, sub := range subsOutput.Subscriptions {
+			_, _ = snsClient.Unsubscribe(&sns.UnsubscribeInput{
+				SubscriptionArn: sub.SubscriptionArn,
+			})
+			t.Logf("  Deleted subscription: %s", *sub.SubscriptionArn)
+		}
+	}
+
+	_, err = snsClient.DeleteTopic(&sns.DeleteTopicInput{
+		TopicArn: topic.TopicArn,
+	})
+	if err != nil {
+		t.Logf("  Warning: Failed to delete SNS topic %s: %v", *topic.TopicArn, err)
+		return false
+	}
+	t.Logf("  Deleted SNS topic: %s", *topic.TopicArn)
+	return true
 }
 
 func cleanupAllSNSTopics(t *testing.T, sess *session.Session) {
 	t.Log("\n[SNS Topics & Subscriptions]")
 	snsClient := sns.New(sess)
 
-	// List all SNS topics
 	output, err := snsClient.ListTopics(&sns.ListTopicsInput{})
 	if err != nil {
-		t.Logf("  ⚠ Failed to list SNS topics: %v", err)
+		t.Logf("  Warning: Failed to list SNS topics: %v", err)
 		return
 	}
 
 	deleted := false
-	// Check multiple test prefix patterns
-	testPrefixes := []string{
-		"sp-autopilot-test-",  // Current prefix
-		"sp-test-",            // Old prefix pattern
-	}
+	testPrefixes := []string{testPrefixCurrentDash, testPrefixOld}
 
 	for _, topic := range output.Topics {
-		// Only delete topics matching test patterns
-		isTestTopic := false
-		for _, prefix := range testPrefixes {
-			if strings.Contains(*topic.TopicArn, prefix) {
-				isTestTopic = true
-				break
-			}
-		}
-
-		if isTestTopic {
-			// First, delete all subscriptions for this topic
-			subsOutput, err := snsClient.ListSubscriptionsByTopic(&sns.ListSubscriptionsByTopicInput{
-				TopicArn: topic.TopicArn,
-			})
-			if err == nil {
-				for _, sub := range subsOutput.Subscriptions {
-					_, _ = snsClient.Unsubscribe(&sns.UnsubscribeInput{
-						SubscriptionArn: sub.SubscriptionArn,
-					})
-					t.Logf("  ✓ Deleted subscription: %s", *sub.SubscriptionArn)
-				}
-			}
-
-			// Now delete the topic
-			_, err = snsClient.DeleteTopic(&sns.DeleteTopicInput{
-				TopicArn: topic.TopicArn,
-			})
-			if err != nil {
-				t.Logf("  ⚠ Failed to delete SNS topic %s: %v", *topic.TopicArn, err)
-			} else {
-				t.Logf("  ✓ Deleted SNS topic: %s", *topic.TopicArn)
+		if containsTestPrefix(*topic.TopicArn, testPrefixes) {
+			if deleteSNSTopic(t, snsClient, topic) {
 				deleted = true
 			}
 		}
 	}
 
 	if !deleted {
-		t.Log("  ✓ No orphaned SNS topics/subscriptions found")
+		t.Log("  No orphaned SNS topics/subscriptions found")
 	}
+}
+
+func deleteIAMRole(t *testing.T, iamClient *iam.IAM, role *iam.Role) bool {
+	policiesOutput, err := iamClient.ListAttachedRolePolicies(&iam.ListAttachedRolePoliciesInput{
+		RoleName: role.RoleName,
+	})
+	if err == nil {
+		for _, policy := range policiesOutput.AttachedPolicies {
+			_, _ = iamClient.DetachRolePolicy(&iam.DetachRolePolicyInput{
+				RoleName:  role.RoleName,
+				PolicyArn: policy.PolicyArn,
+			})
+		}
+	}
+
+	inlinePoliciesOutput, err := iamClient.ListRolePolicies(&iam.ListRolePoliciesInput{
+		RoleName: role.RoleName,
+	})
+	if err == nil {
+		for _, policyName := range inlinePoliciesOutput.PolicyNames {
+			_, _ = iamClient.DeleteRolePolicy(&iam.DeleteRolePolicyInput{
+				RoleName:   role.RoleName,
+				PolicyName: policyName,
+			})
+		}
+	}
+
+	_, err = iamClient.DeleteRole(&iam.DeleteRoleInput{
+		RoleName: role.RoleName,
+	})
+	if err != nil {
+		t.Logf("  Warning: Failed to delete IAM role %s: %v", *role.RoleName, err)
+		return false
+	}
+	t.Logf("  Deleted IAM role: %s", *role.RoleName)
+	return true
 }
 
 func cleanupAllIAMRoles(t *testing.T, sess *session.Session) {
 	t.Log("\n[IAM Roles]")
 	iamClient := iam.New(sess)
 
-	// List all IAM roles
 	output, err := iamClient.ListRoles(&iam.ListRolesInput{
 		PathPrefix: aws.String("/"),
 	})
 	if err != nil {
-		t.Logf("  ⚠ Failed to list IAM roles: %v", err)
+		t.Logf("  Warning: Failed to list IAM roles: %v", err)
 		return
 	}
 
 	deleted := false
-	// Check multiple test prefix patterns
-	testPrefixes := []string{
-		"sp-autopilot-test-",  // Current prefix
-		"sp-test-",            // Old prefix pattern
-	}
+	testPrefixes := []string{testPrefixCurrentDash, testPrefixOld}
 
 	for _, role := range output.Roles {
-		// Only delete roles matching test patterns
-		isTestRole := false
-		for _, prefix := range testPrefixes {
-			if strings.HasPrefix(*role.RoleName, prefix) {
-				isTestRole = true
-				break
-			}
-		}
-
-		if isTestRole {
-			// First, detach all managed policies
-			policiesOutput, err := iamClient.ListAttachedRolePolicies(&iam.ListAttachedRolePoliciesInput{
-				RoleName: role.RoleName,
-			})
-			if err == nil {
-				for _, policy := range policiesOutput.AttachedPolicies {
-					_, _ = iamClient.DetachRolePolicy(&iam.DetachRolePolicyInput{
-						RoleName:  role.RoleName,
-						PolicyArn: policy.PolicyArn,
-					})
-				}
-			}
-
-			// Delete inline policies
-			inlinePoliciesOutput, err := iamClient.ListRolePolicies(&iam.ListRolePoliciesInput{
-				RoleName: role.RoleName,
-			})
-			if err == nil {
-				for _, policyName := range inlinePoliciesOutput.PolicyNames {
-					_, _ = iamClient.DeleteRolePolicy(&iam.DeleteRolePolicyInput{
-						RoleName:   role.RoleName,
-						PolicyName: policyName,
-					})
-				}
-			}
-
-			// Now delete the role
-			_, err = iamClient.DeleteRole(&iam.DeleteRoleInput{
-				RoleName: role.RoleName,
-			})
-			if err != nil {
-				t.Logf("  ⚠ Failed to delete IAM role %s: %v", *role.RoleName, err)
-			} else {
-				t.Logf("  ✓ Deleted IAM role: %s", *role.RoleName)
+		if matchesTestPrefix(*role.RoleName, testPrefixes) {
+			if deleteIAMRole(t, iamClient, role) {
 				deleted = true
 			}
 		}
 	}
 
 	if !deleted {
-		t.Log("  ✓ No orphaned IAM roles found")
+		t.Log("  No orphaned IAM roles found")
 	}
+}
+
+func deleteS3Bucket(t *testing.T, s3Client *s3.S3, bucket *s3.Bucket) bool {
+	listObjectsOutput, err := s3Client.ListObjectsV2(&s3.ListObjectsV2Input{
+		Bucket: bucket.Name,
+	})
+	if err == nil {
+		for _, object := range listObjectsOutput.Contents {
+			_, _ = s3Client.DeleteObject(&s3.DeleteObjectInput{
+				Bucket: bucket.Name,
+				Key:    object.Key,
+			})
+		}
+	}
+
+	listVersionsOutput, err := s3Client.ListObjectVersions(&s3.ListObjectVersionsInput{
+		Bucket: bucket.Name,
+	})
+	if err == nil {
+		for _, version := range listVersionsOutput.Versions {
+			_, _ = s3Client.DeleteObject(&s3.DeleteObjectInput{
+				Bucket:    bucket.Name,
+				Key:       version.Key,
+				VersionId: version.VersionId,
+			})
+		}
+		for _, marker := range listVersionsOutput.DeleteMarkers {
+			_, _ = s3Client.DeleteObject(&s3.DeleteObjectInput{
+				Bucket:    bucket.Name,
+				Key:       marker.Key,
+				VersionId: marker.VersionId,
+			})
+		}
+	}
+
+	_, err = s3Client.DeleteBucket(&s3.DeleteBucketInput{
+		Bucket: bucket.Name,
+	})
+	if err != nil {
+		t.Logf("  Warning: Failed to delete S3 bucket %s: %v", *bucket.Name, err)
+		return false
+	}
+	t.Logf("  Deleted S3 bucket: %s", *bucket.Name)
+	return true
 }
 
 func cleanupAllS3Buckets(t *testing.T, sess *session.Session) {
 	t.Log("\n[S3 Buckets]")
 	s3Client := s3.New(sess)
 
-	// List all S3 buckets
 	output, err := s3Client.ListBuckets(&s3.ListBucketsInput{})
 	if err != nil {
-		t.Logf("  ⚠ Failed to list S3 buckets: %v", err)
+		t.Logf("  Warning: Failed to list S3 buckets: %v", err)
 		return
 	}
 
 	deleted := false
-	// Check multiple test prefix patterns
-	testPrefixes := []string{
-		"sp-autopilot-test-",  // Current prefix
-		"sp-test-",            // Old prefix pattern
-	}
+	testPrefixes := []string{testPrefixCurrentDash, testPrefixOld}
 
 	for _, bucket := range output.Buckets {
-		// Only delete buckets matching test patterns
-		isTestBucket := false
-		for _, prefix := range testPrefixes {
-			if strings.HasPrefix(*bucket.Name, prefix) {
-				isTestBucket = true
-				break
-			}
-		}
-
-		if isTestBucket {
-			// First, delete all objects in the bucket
-			listObjectsOutput, err := s3Client.ListObjectsV2(&s3.ListObjectsV2Input{
-				Bucket: bucket.Name,
-			})
-			if err == nil {
-				for _, object := range listObjectsOutput.Contents {
-					_, _ = s3Client.DeleteObject(&s3.DeleteObjectInput{
-						Bucket: bucket.Name,
-						Key:    object.Key,
-					})
-				}
-			}
-
-			// Delete all object versions (if versioning enabled)
-			listVersionsOutput, err := s3Client.ListObjectVersions(&s3.ListObjectVersionsInput{
-				Bucket: bucket.Name,
-			})
-			if err == nil {
-				for _, version := range listVersionsOutput.Versions {
-					_, _ = s3Client.DeleteObject(&s3.DeleteObjectInput{
-						Bucket:    bucket.Name,
-						Key:       version.Key,
-						VersionId: version.VersionId,
-					})
-				}
-				for _, marker := range listVersionsOutput.DeleteMarkers {
-					_, _ = s3Client.DeleteObject(&s3.DeleteObjectInput{
-						Bucket:    bucket.Name,
-						Key:       marker.Key,
-						VersionId: marker.VersionId,
-					})
-				}
-			}
-
-			// Now delete the bucket
-			_, err = s3Client.DeleteBucket(&s3.DeleteBucketInput{
-				Bucket: bucket.Name,
-			})
-			if err != nil {
-				t.Logf("  ⚠ Failed to delete S3 bucket %s: %v", *bucket.Name, err)
-			} else {
-				t.Logf("  ✓ Deleted S3 bucket: %s", *bucket.Name)
+		if matchesTestPrefix(*bucket.Name, testPrefixes) {
+			if deleteS3Bucket(t, s3Client, bucket) {
 				deleted = true
 			}
 		}
 	}
 
 	if !deleted {
-		t.Log("  ✓ No orphaned S3 buckets found")
+		t.Log("  No orphaned S3 buckets found")
 	}
 }
