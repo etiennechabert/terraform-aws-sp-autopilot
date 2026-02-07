@@ -45,6 +45,10 @@
                 appState = { ...appState, ...urlState };
             }
 
+            if (urlState.awsRecommendation) {
+                appState.awsRecommendation = urlState.awsRecommendation;
+            }
+
             // Backward compat: old URLs with pattern=custom
             if (appState.pattern === 'custom') {
                 appState.pattern = 'custom-paste';
@@ -112,6 +116,7 @@
             coverageCost: currentCoverage,  // Set to user's actual current coverage
             customCurve: customCurve,
             savingsPercentage: savingsPercentage,  // Use actual discount from user's SPs
+            actualSavingsPercentage: savingsPercentage,  // Preserve original for restoring after AWS strategy
             usageDataLoaded: true,
             usageData: usageData,  // Store full usage data for banner
             usageStats: stats,
@@ -646,12 +651,24 @@
         // Too Aggressive: 125% of optimal (into the declining zone - for educational purposes)
         const tooAggressive = optimal * 1.25;
 
+        // AWS recommendation: convert commitment to on-demand equivalent using AWS's own savings estimate
+        let awsRecommendation = null;
+        if (appState.awsRecommendation) {
+            const awsSavingsPct = appState.awsRecommendation.estimated_savings_percentage;
+            const newPurchaseCoverage = SPCalculations.coverageFromCommitment(
+                appState.awsRecommendation.hourly_commitment,
+                awsSavingsPct
+            );
+            awsRecommendation = (appState.currentCoverage || 0) + newPurchaseCoverage;
+        }
+
         return {
             tooPrudent,
             minHourly,
             balanced,
             aggressive,
-            tooAggressive
+            tooAggressive,
+            awsRecommendation
         };
     }
 
@@ -770,15 +787,32 @@
             case 'too-aggressive':
                 coverageCost = strategies.tooAggressive;
                 break;
+            case 'aws':
+                coverageCost = strategies.awsRecommendation;
+                break;
             default:
                 showToast('Unknown strategy', 'error');
                 return;
         }
 
+        // Switch savings percentage when selecting AWS strategy
+        if (strategy === 'aws' && appState.awsRecommendation) {
+            appState.savingsPercentage = appState.awsRecommendation.estimated_savings_percentage;
+        } else if (appState.actualSavingsPercentage) {
+            appState.savingsPercentage = appState.actualSavingsPercentage;
+        }
+
         // Update state
         appState.coverageCost = coverageCost;
 
-        // Update slider
+        // Update savings slider to reflect active rate
+        const savingsSlider = document.getElementById('savings-percentage');
+        if (savingsSlider) {
+            savingsSlider.value = appState.savingsPercentage;
+        }
+        updateSavingsDisplay(appState.savingsPercentage);
+
+        // Update coverage slider
         const coverageSlider = document.getElementById('coverage-slider');
         if (coverageSlider) {
             coverageSlider.value = coverageCost;
@@ -787,7 +821,7 @@
         // Update display
         updateCoverageDisplay(coverageCost);
 
-        // Recalculate
+        // Recalculate (strategies will be recalculated with the new savings %)
         calculateAndUpdateCosts();
 
         // Update URL
@@ -799,7 +833,8 @@
             'min-hourly': 'Min-Hourly',
             'balanced': 'Balanced',
             'aggressive': 'Risky',
-            'too-aggressive': 'Aggressive 💀'
+            'too-aggressive': 'Aggressive 💀',
+            'aws': 'AWS Official'
         };
         showToast(`${strategyNames[strategy]} strategy applied: ${CostCalculator.formatCurrency(coverageCost)}/h`);
     }
@@ -928,6 +963,19 @@
         updateStrategyCard('aggressive', strategies.aggressive);
         updateStrategyCard('too-aggressive', strategies.tooAggressive);
 
+        const awsBtn = document.getElementById('strategy-aws');
+        if (strategies.awsRecommendation !== null) {
+            updateStrategyCard('aws', strategies.awsRecommendation);
+            awsBtn?.classList.remove('hidden');
+            const awsDesc = document.getElementById('strategy-aws-desc');
+            if (awsDesc && appState.awsRecommendation) {
+                const awsPct = appState.awsRecommendation.estimated_savings_percentage;
+                const actualPct = appState.actualSavingsPercentage || appState.savingsPercentage;
+                awsDesc.textContent = `AWS estimates ${awsPct.toFixed(0)}% discount (yours: ${actualPct.toFixed(1)}%)`;
+            }
+        } else {
+            awsBtn?.classList.add('hidden');
+        }
 
         // Detect and highlight active strategy
         const allButtons = document.querySelectorAll('.strategy-button');
@@ -942,9 +990,10 @@
         const balancedDiff = Math.abs(currentCoverage - strategies.balanced);
         const aggressiveDiff = Math.abs(currentCoverage - strategies.aggressive);
         const tooAggressiveDiff = Math.abs(currentCoverage - strategies.tooAggressive);
+        const awsDiff = strategies.awsRecommendation !== null ? Math.abs(currentCoverage - strategies.awsRecommendation) : Infinity;
 
         // Find closest match
-        const minDistance = Math.min(tooPrudentDiff, minDiff, balancedDiff, aggressiveDiff, tooAggressiveDiff);
+        const minDistance = Math.min(tooPrudentDiff, minDiff, balancedDiff, aggressiveDiff, tooAggressiveDiff, awsDiff);
 
         if (minDistance / Math.max(currentCoverage, 0.01) < highlightTolerance) {
             if (minDistance === tooPrudentDiff) {
@@ -957,6 +1006,8 @@
                 activeButton = document.getElementById('strategy-aggressive');
             } else if (minDistance === tooAggressiveDiff) {
                 activeButton = document.getElementById('strategy-too-aggressive');
+            } else if (minDistance === awsDiff) {
+                activeButton = document.getElementById('strategy-aws');
             }
         }
 

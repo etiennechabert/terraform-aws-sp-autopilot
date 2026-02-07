@@ -1046,14 +1046,8 @@ h1, h2, h3, h4, h5, h6 {
 
 .strategy-buttons {
     display: grid;
-    grid-template-columns: repeat(5, 1fr);
+    grid-template-columns: repeat(3, 1fr);
     gap: var(--spacing-sm);
-}
-
-@media (max-width: 1400px) {
-    .strategy-buttons {
-        grid-template-columns: repeat(3, 1fr);
-    }
 }
 
 @media (max-width: 900px) {
@@ -1344,6 +1338,22 @@ h1, h2, h3, h4, h5, h6 {
     background: var(--color-success);
     padding: 2px 6px;
     border-radius: 3px;
+}
+
+.strategy-aws {
+    border-color: #ff9900;
+    background: rgba(255, 153, 0, 0.05);
+}
+.strategy-aws:hover {
+    border-color: #ff9900;
+    background: rgba(255, 153, 0, 0.1);
+}
+.strategy-aws.active {
+    border-color: #ff9900;
+    background: rgba(255, 153, 0, 0.15);
+}
+.strategy-badge-aws {
+    background: #ff9900;
 }
 
 /* ===== Legacy Optimal Suggestion (kept for reference) ===== */
