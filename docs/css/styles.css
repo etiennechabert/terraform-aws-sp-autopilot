@@ -302,6 +302,19 @@ h1, h2, h3, h4, h5, h6 {
     }
 }
 
+.random-archetype-badge {
+    display: inline-block;
+    margin-left: var(--spacing-sm);
+    padding: 1px 8px;
+    background: rgba(0, 255, 136, 0.15);
+    border: 1px solid var(--color-success);
+    border-radius: 10px;
+    font-size: 0.75rem;
+    font-weight: 600;
+    color: var(--color-success);
+    vertical-align: middle;
+}
+
 /* ===== Pattern Selector Buttons ===== */
 .pattern-selector {
     display: flex;

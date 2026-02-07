@@ -471,6 +471,13 @@
         updateLoadPattern();
         calculateAndUpdateCosts();
         URLState.debouncedUpdateURL(appState);
+
+        if (value === 'random') {
+            const name = LoadPatterns.getLastRandomName();
+            if (name) showRandomLabel(name);
+        } else {
+            hideRandomLabel();
+        }
     }
 
     /**
@@ -1677,6 +1684,23 @@
     /**
      * Show toast notification
      */
+    function showRandomLabel(name) {
+        const desc = document.querySelector('.section-load-pattern .section-description');
+        if (!desc) return;
+        let badge = desc.querySelector('.random-archetype-badge');
+        if (!badge) {
+            badge = document.createElement('span');
+            badge.className = 'random-archetype-badge';
+            desc.appendChild(badge);
+        }
+        badge.textContent = name;
+    }
+
+    function hideRandomLabel() {
+        const badge = document.querySelector('.random-archetype-badge');
+        if (badge) badge.remove();
+    }
+
     function showToast(message, type = 'success') {
         const toast = document.getElementById('toast');
         if (!toast) return;

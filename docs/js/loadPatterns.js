@@ -184,21 +184,32 @@ const LoadPatterns = (function() {
         return pattern;
     }
 
+    let lastRandomName = null;
+
     /**
      * Generate Random realistic load pattern
      * Picks a random archetype each time for visually distinct results
      */
     function generateRandomPattern() {
         const archetypes = [
-            randomMultiPeak,
-            randomSpiky,
-            randomPlateau,
-            randomGradual,
-            randomHighBase,
-            randomNocturnal
+            { fn: randomMultiPeak, name: 'Multi-Peak' },
+            { fn: randomSpiky, name: 'Cron Jobs' },
+            { fn: randomPlateau, name: 'Plateau' },
+            { fn: randomGradual, name: 'Gradual Ramp' },
+            { fn: randomHighBase, name: 'High Baseline' },
+            { fn: randomNocturnal, name: 'Nocturnal' },
+            { fn: randomBlackFriday, name: 'Black Friday' },
+            { fn: randomLaunchDay, name: 'Launch Day' },
+            { fn: randomDoubleShift, name: 'Double Shift' },
+            { fn: randomSeasonalDecline, name: 'Seasonal Decline' },
         ];
         const pick = archetypes[Math.floor(Math.random() * archetypes.length)];
-        return pick();
+        lastRandomName = pick.name;
+        return pick.fn();
+    }
+
+    function getLastRandomName() {
+        return lastRandomName;
     }
 
     // Multi-peak: 2-3 peaks per day at random hours
@@ -339,6 +350,107 @@ const LoadPatterns = (function() {
                 let usage = dayLow + (nightPeak - dayLow) * nightCurve;
                 if (isWeekend) usage += weekendBoost;
                 usage += (Math.random() - 0.5) * 0.06;
+                pattern.push(Math.min(1, Math.max(0, usage)));
+            }
+        }
+        return pattern;
+    }
+
+    // Black Friday: normal week then massive spike on Friday, elevated Saturday
+    function randomBlackFriday() {
+        const normalBase = 0.2 + Math.random() * 0.15;
+        const normalPeak = 0.4 + Math.random() * 0.15;
+        const peakHour = 10 + Math.floor(Math.random() * 4);
+        const pattern = [];
+
+        for (let day = 0; day < 7; day++) {
+            for (let hour = 0; hour < 24; hour++) {
+                const dist = Math.abs(hour - peakHour);
+                const dailyCurve = Math.exp(-(dist * dist) / 20);
+                let usage;
+                if (day === 4) { // Friday
+                    usage = 0.4 + dailyCurve * 0.6;
+                } else if (day === 5) { // Saturday
+                    usage = 0.3 + dailyCurve * 0.4;
+                } else {
+                    usage = normalBase + dailyCurve * (normalPeak - normalBase);
+                }
+                usage += (Math.random() - 0.5) * 0.05;
+                pattern.push(Math.min(1, Math.max(0, usage)));
+            }
+        }
+        return pattern;
+    }
+
+    // Launch Day: huge spike on one random day, normal otherwise
+    function randomLaunchDay() {
+        const launchDay = 1 + Math.floor(Math.random() * 5); // Tue-Sat
+        const normalBase = 0.15 + Math.random() * 0.15;
+        const pattern = [];
+
+        for (let day = 0; day < 7; day++) {
+            for (let hour = 0; hour < 24; hour++) {
+                let usage;
+                if (day === launchDay) {
+                    // Sharp ramp to peak at hour 10, sustained, slow decline
+                    if (hour < 8) usage = normalBase + (hour / 8) * 0.3;
+                    else if (hour < 14) usage = 0.85 + Math.random() * 0.15;
+                    else usage = 0.9 - (hour - 14) * 0.06;
+                } else if (day === launchDay + 1 || (launchDay === 6 && day === 0)) {
+                    // Aftershock: elevated but declining
+                    usage = 0.3 + Math.exp(-(hour * hour) / 80) * 0.3;
+                } else {
+                    usage = normalBase + (Math.random() - 0.5) * 0.08;
+                }
+                usage += (Math.random() - 0.5) * 0.04;
+                pattern.push(Math.min(1, Math.max(0, usage)));
+            }
+        }
+        return pattern;
+    }
+
+    // Double Shift: two distinct work periods per day (morning + evening)
+    function randomDoubleShift() {
+        const shift1Start = 6 + Math.floor(Math.random() * 2);
+        const shift2Start = 16 + Math.floor(Math.random() * 3);
+        const shiftDuration = 3 + Math.random() * 2;
+        const peakLevel = 0.7 + Math.random() * 0.3;
+        const baseline = 0.05 + Math.random() * 0.1;
+        const weekendFactor = 0.2 + Math.random() * 0.4;
+        const pattern = [];
+
+        for (let day = 0; day < 7; day++) {
+            const isWeekend = day === 5 || day === 6;
+            for (let hour = 0; hour < 24; hour++) {
+                const d1 = Math.abs(hour - shift1Start - shiftDuration / 2);
+                const d2 = Math.abs(hour - shift2Start - shiftDuration / 2);
+                const s1 = Math.exp(-(d1 * d1) / (2 * (shiftDuration / 2) * (shiftDuration / 2)));
+                const s2 = Math.exp(-(d2 * d2) / (2 * (shiftDuration / 2) * (shiftDuration / 2)));
+                let usage = baseline + Math.max(s1, s2) * (peakLevel - baseline);
+                usage *= isWeekend ? weekendFactor : 1;
+                usage += (Math.random() - 0.5) * 0.05;
+                pattern.push(Math.min(1, Math.max(0, usage)));
+            }
+        }
+        return pattern;
+    }
+
+    // Seasonal Decline: starts high Monday, steadily drops to low by Sunday
+    function randomSeasonalDecline() {
+        const startLevel = 0.8 + Math.random() * 0.2;
+        const endLevel = 0.05 + Math.random() * 0.15;
+        const dailySwing = 0.1 + Math.random() * 0.15;
+        const peakHour = 11 + Math.floor(Math.random() * 4);
+        const pattern = [];
+
+        for (let day = 0; day < 7; day++) {
+            const dayProgress = day / 6;
+            const dayBase = startLevel - (startLevel - endLevel) * dayProgress;
+            for (let hour = 0; hour < 24; hour++) {
+                const dist = Math.abs(hour - peakHour);
+                const dailyCycle = Math.exp(-(dist * dist) / 20) * dailySwing;
+                let usage = dayBase + dailyCycle;
+                usage += (Math.random() - 0.5) * 0.05;
                 pattern.push(Math.min(1, Math.max(0, usage)));
             }
         }
@@ -547,6 +659,7 @@ const LoadPatterns = (function() {
     // Public API
     return {
         generatePattern,
+        getLastRandomName,
         scalePattern,
         smoothCurve,
         getDayName,
