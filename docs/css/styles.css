@@ -269,9 +269,9 @@ h1, h2, h3, h4, h5, h6 {
 }
 
 .pattern-btn-compact {
-    width: 36px;
-    height: 28px;
-    padding: 3px;
+    width: 52px;
+    height: 36px;
+    padding: 4px;
     background: rgba(0, 0, 0, 0.3);
     border: 1.5px solid var(--card-border);
     border-radius: var(--radius-sm);
