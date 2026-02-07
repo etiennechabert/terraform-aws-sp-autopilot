@@ -257,10 +257,6 @@
         // Coverage slider
         const coverageSlider = document.getElementById('coverage-slider');
         if (coverageSlider) {
-            // Set slider max to match maxCost
-            coverageSlider.max = appState.maxCost;
-            // Set step to 0.1% of max cost for precise control
-            coverageSlider.step = appState.maxCost / 1000;
             coverageSlider.value = appState.coverageCost;
             coverageSlider.addEventListener('input', handleCoverageChange);
         }
@@ -395,8 +391,6 @@
         // Coverage slider
         const coverageSlider = document.getElementById('coverage-slider');
         if (coverageSlider) {
-            coverageSlider.max = appState.maxCost;
-            coverageSlider.step = appState.maxCost / 1000;
             coverageSlider.value = appState.coverageCost;
         }
         updateCoverageDisplay(appState.coverageCost);
@@ -513,19 +507,6 @@
                 if (minCostInput) minCostInput.value = appState.minCost;
             }
 
-            // Update coverage slider max and step
-            const coverageSlider = document.getElementById('coverage-slider');
-            if (coverageSlider) {
-                coverageSlider.max = appState.maxCost;
-                coverageSlider.step = appState.maxCost / 1000; // 0.1% of max cost for precise control
-                // Cap coverage if it exceeds new max
-                if (appState.coverageCost > appState.maxCost) {
-                    appState.coverageCost = appState.maxCost;
-                    coverageSlider.value = appState.coverageCost;
-                    updateCoverageDisplay(appState.coverageCost);
-                }
-            }
-
             updateLoadPattern();
             calculateAndUpdateCosts();
             URLState.debouncedUpdateURL(appState);
@@ -537,7 +518,8 @@
      */
     function handleCoverageChange(event) {
         const value = parseFloat(event.target.value);
-        if (!isNaN(value) && value >= 0 && value <= appState.maxCost) {
+        const sliderMax = parseFloat(event.target.max) || appState.maxCost;
+        if (!isNaN(value) && value >= 0 && value <= sliderMax) {
             appState.coverageCost = value;
             updateCoverageDisplay(value);
             calculateAndUpdateCosts();
@@ -568,6 +550,7 @@
             appState.loadFactor = value;
             syncLoadFactorSliders(value);
             updateLoadFactorDisplay(value);
+            updateCoverageSliderMax();
             calculateAndUpdateCosts();
             URLState.debouncedUpdateURL(appState);
         }
@@ -1055,6 +1038,25 @@
         if (legendLosingMoney) legendLosingMoney.style.background = rgbaToGradient(curves.losingMoney.border, curves.losingMoney.background);
     }
 
+    function updateCoverageSliderMax() {
+        const hourlyCosts = appState.hourlyCosts || [];
+        if (hourlyCosts.length === 0) return;
+
+        const loadFactor = appState.loadFactor / 100;
+        const maxHourly = Math.max(...hourlyCosts) * loadFactor;
+
+        const coverageSlider = document.getElementById('coverage-slider');
+        if (coverageSlider) {
+            coverageSlider.max = maxHourly;
+            coverageSlider.step = maxHourly / 1000;
+            if (appState.coverageCost > maxHourly) {
+                appState.coverageCost = maxHourly;
+                coverageSlider.value = appState.coverageCost;
+                updateCoverageDisplay(appState.coverageCost);
+            }
+        }
+    }
+
     /**
      * Update load pattern based on current state
      */
@@ -1097,6 +1099,9 @@
 
         // Update load chart with cost data
         ChartManager.updateLoadChart(costPattern);
+
+        // Update coverage slider max to match actual peak hourly cost
+        updateCoverageSliderMax();
 
         // Update savings rate hint to reflect new average usage
         updateSavingsRateHint();
