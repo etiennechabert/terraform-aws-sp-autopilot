@@ -60,6 +60,7 @@ def calculate_scheduler_preview(
     config: dict[str, Any],
     clients: dict[str, Any],
     coverage_data: dict[str, Any],
+    savings_data: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
     """
     Calculate what each scheduler strategy would purchase right now.
@@ -73,6 +74,7 @@ def calculate_scheduler_preview(
         config: Reporter config (includes scheduler strategy params)
         clients: AWS clients dict (ce, savingsplans, s3, sns)
         coverage_data: Already-fetched coverage data from SpendingAnalyzer
+        savings_data: Savings plans summary (for discount rates)
 
     Returns:
         dict: Preview data with all three strategies' recommendations
@@ -91,7 +93,7 @@ def calculate_scheduler_preview(
                 )
 
                 purchases = _calculate_scheduled_purchases(
-                    strategy_config, clients, coverage_data, strategy_type
+                    strategy_config, clients, coverage_data, strategy_type, savings_data
                 )
                 all_strategies[strategy_type] = {
                     "purchases": purchases,
@@ -126,6 +128,7 @@ def _calculate_scheduled_purchases(
     clients: dict[str, Any],
     coverage_data: dict[str, Any],
     strategy_type: str,
+    savings_data: dict[str, Any] | None = None,
 ) -> list[dict[str, Any]]:
     """
     Calculate scheduled purchases using the configured strategy.
@@ -156,6 +159,14 @@ def _calculate_scheduled_purchases(
         # Call strategy function (coverage_data structure matches spending_data structure)
         purchase_plans = strategy_func(config, clients, coverage_data)
 
+        from shared import sp_calculations
+
+        breakdown_by_type = (
+            savings_data.get("actual_savings", {}).get("breakdown_by_type", {})
+            if savings_data
+            else {}
+        )
+
         # Enrich with coverage impact
         enriched = []
         for plan in purchase_plans:
@@ -163,27 +174,37 @@ def _calculate_scheduled_purchases(
             sp_data = coverage_data.get(sp_type, {})
             summary = sp_data.get("summary", {})
 
-            current_coverage = summary.get("avg_coverage_total", 0.0)
-            avg_hourly_total = summary.get("avg_hourly_total", 0.0)
-            avg_hourly_uncovered = summary.get("avg_hourly_uncovered", 0.0)
             hourly_commitment = plan["hourly_commitment"]
 
-            # Calculate purchase_percent if not provided (Follow AWS case)
-            if "purchase_percent" in plan:
-                # Fixed/Dichotomy provide this
-                purchase_percent = plan["purchase_percent"]
-            # Follow AWS: calculate from hourly commitment and uncovered spend
-            elif avg_hourly_uncovered > 0:
-                purchase_percent = (hourly_commitment / avg_hourly_uncovered) * 100.0
-            elif avg_hourly_total > 0:
-                # If uncovered is 0, calculate as % of total spend
-                purchase_percent = (hourly_commitment / avg_hourly_total) * 100.0
-            else:
-                # No spend data available
-                purchase_percent = 0.0
+            # Coverage as percentage of min-hourly
+            timeseries = sp_data.get("timeseries", [])
+            total_costs = [
+                item.get("total", 0.0) for item in timeseries if item.get("total", 0.0) > 0
+            ]
+            min_hourly = min(total_costs) if total_costs else 0.0
 
-            # Calculate projected coverage
-            projected_coverage = min(current_coverage + purchase_percent, 100.0)
+            aws_type_name = {
+                "compute": "Compute",
+                "database": "Database",
+                "sagemaker": "SageMaker",
+            }.get(sp_type, sp_type)
+            type_breakdown = breakdown_by_type.get(aws_type_name, {})
+            savings_pct = type_breakdown.get("savings_percentage", 0.0)
+            existing_commitment = type_breakdown.get("total_commitment", 0.0)
+
+            current_od_equiv = sp_calculations.coverage_from_commitment(
+                existing_commitment, savings_pct
+            )
+            new_od_equiv = sp_calculations.coverage_from_commitment(hourly_commitment, savings_pct)
+
+            if min_hourly > 0:
+                purchase_percent = (new_od_equiv / min_hourly) * 100.0
+                current_coverage = (current_od_equiv / min_hourly) * 100.0
+                projected_coverage = ((current_od_equiv + new_od_equiv) / min_hourly) * 100.0
+            else:
+                purchase_percent = 0.0
+                current_coverage = 0.0
+                projected_coverage = 0.0
 
             enriched.append(
                 {
