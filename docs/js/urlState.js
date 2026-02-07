@@ -53,7 +53,7 @@ const URLState = (function() {
             params.set('rate', state.onDemandRate.toString());
         }
 
-        if (state.pattern === 'custom' && state.customCurve) {
+        if ((state.pattern === 'custom' || state.pattern === 'custom-paste' || state.pattern === 'custom-url') && state.customCurve) {
             const compressed = compressCurve(state.customCurve);
             params.set('curve', compressed);
         }
@@ -136,8 +136,16 @@ const URLState = (function() {
             }
         }
 
+        const pasteParam = params.get('paste');
+        if (pasteParam) {
+            const pasteData = decompressUsageData(pasteParam);
+            if (pasteData) {
+                state.pasteData = pasteData;
+            }
+        }
+
         const pattern = params.get('pattern');
-        if (pattern && ['ecommerce', 'global247', 'batch', 'custom'].includes(pattern)) {
+        if (pattern && ['ecommerce', 'global247', 'batch', 'custom', 'custom-paste', 'custom-url'].includes(pattern)) {
             state.pattern = pattern;
         }
 
@@ -156,7 +164,7 @@ const URLState = (function() {
         const rateValue = parseNumericParam(params, 'rate', 0, 10, Number.parseFloat, true);
         if (rateValue !== null) state.onDemandRate = rateValue;
 
-        if (state.pattern === 'custom') {
+        if (state.pattern === 'custom' || state.pattern === 'custom-paste' || state.pattern === 'custom-url') {
             const curve = params.get('curve');
             if (curve) {
                 try {

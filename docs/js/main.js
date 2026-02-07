@@ -21,6 +21,10 @@
 
     let currentCostResults = null;
 
+    function isCustomPattern(pattern) {
+        return pattern === 'custom' || pattern === 'custom-paste' || pattern === 'custom-url';
+    }
+
     /**
      * Initialize the application
      */
@@ -32,12 +36,17 @@
         if (urlState) {
             console.log('Restoring state from URL:', urlState);
 
-            // Check if we have usage data from reporter
             if (urlState.usageData) {
-                console.log('Loading real usage data from reporter');
-                loadUsageData(urlState.usageData);
+                loadUsageData(urlState.usageData, 'custom-url');
+            } else if (urlState.pasteData) {
+                loadUsageData(urlState.pasteData, 'custom-paste');
             } else {
                 appState = { ...appState, ...urlState };
+            }
+
+            // Backward compat: old URLs with pattern=custom
+            if (appState.pattern === 'custom') {
+                appState.pattern = 'custom-paste';
             }
         }
 
@@ -66,7 +75,7 @@
      * Load real usage data from reporter
      * @param {Object} usageData - Usage data from reporter
      */
-    function loadUsageData(usageData) {
+    function loadUsageData(usageData, pattern) {
         console.log('Processing usage data:', usageData);
 
         const hourlyCosts = usageData.hourly_costs;
@@ -96,7 +105,7 @@
         // Update app state with real data
         appState = {
             ...appState,
-            pattern: 'custom',
+            pattern: pattern,
             minCost: minCost,
             maxCost: maxCost,
             coverageCost: currentCoverage,  // Set to user's actual current coverage
@@ -174,6 +183,8 @@
         const header = document.querySelector('.header-content');
         if (!header) return;
 
+        header.querySelectorAll('.usage-data-banner').forEach(el => el.remove());
+
         const spType = appState.usageDataLoaded && appState.usageData?.sp_type
             ? appState.usageData.sp_type
             : 'All Types';
@@ -214,10 +225,24 @@
      * Setup all event listeners
      */
     function setupEventListeners() {
+        // Title reset link
+        const titleLink = document.getElementById('title-reset-link');
+        if (titleLink) {
+            titleLink.addEventListener('click', (e) => {
+                e.preventDefault();
+                window.location.href = window.location.origin + window.location.pathname;
+            });
+        }
+
         // Pattern selector
         const patternSelect = document.getElementById('pattern-select');
         if (patternSelect) {
             patternSelect.value = appState.pattern;
+            patternSelect.addEventListener('mousedown', () => {
+                if (patternSelect.value === 'custom-paste') {
+                    patternSelect.value = '';
+                }
+            });
             patternSelect.addEventListener('change', handlePatternChange);
         }
 
@@ -320,10 +345,26 @@
         }
 
         document.addEventListener('keydown', (e) => {
-            if (e.key === 'Escape' && !document.getElementById('custom-data-modal').classList.contains('hidden')) {
-                hideCustomDataModal();
+            if (e.key === 'Escape') {
+                if (!document.getElementById('custom-data-modal').classList.contains('hidden')) {
+                    hideCustomDataModal();
+                }
+                if (!document.getElementById('no-url-data-modal').classList.contains('hidden')) {
+                    hideNoUrlDataModal();
+                }
             }
         });
+
+        // No URL data modal
+        const noUrlDataCloseBtn = document.getElementById('no-url-data-close-btn');
+        if (noUrlDataCloseBtn) noUrlDataCloseBtn.addEventListener('click', hideNoUrlDataModal);
+
+        const noUrlDataBackdrop = document.getElementById('no-url-data-modal');
+        if (noUrlDataBackdrop) {
+            noUrlDataBackdrop.addEventListener('click', (e) => {
+                if (e.target === noUrlDataBackdrop) hideNoUrlDataModal();
+            });
+        }
     }
 
     /**
@@ -382,15 +423,35 @@
      * Handle pattern type change
      */
     function handlePatternChange(event) {
-        if (event.target.value === 'custom' && !appState.usageDataLoaded) {
+        const value = event.target.value;
+
+        if (value === 'custom-paste') {
             showCustomDataModal(event.target);
             return;
         }
 
-        appState.pattern = event.target.value;
+        if (value === 'custom-url') {
+            const params = new URLSearchParams(window.location.search);
+            if (params.get('usage')) {
+                // URL has usage data - load it
+                const usageData = URLState.decompressUsageData(params.get('usage'));
+                if (usageData) {
+                    loadUsageData(usageData, 'custom-url');
+                    updateUIFromState();
+                    updateLoadPattern();
+                    calculateAndUpdateCosts();
+                    URLState.debouncedUpdateURL(appState);
+                    return;
+                }
+            }
+            // No usage data in URL - show error modal
+            showNoUrlDataModal(event.target);
+            return;
+        }
 
-        // If switching to custom and we don't have a custom curve, copy current pattern
-        if (appState.pattern === 'custom' && !appState.customCurve) {
+        appState.pattern = value;
+
+        if (isCustomPattern(appState.pattern) && !appState.customCurve) {
             appState.customCurve = [...appState.currentLoadPattern];
         }
 
@@ -955,7 +1016,7 @@
         // Generate or retrieve pattern
         let normalizedPattern;
 
-        if (appState.pattern === 'custom' && appState.customCurve) {
+        if (isCustomPattern(appState.pattern) && appState.customCurve) {
             normalizedPattern = appState.customCurve;
         } else {
             normalizedPattern = LoadPatterns.generatePattern(appState.pattern);
@@ -1501,6 +1562,15 @@
         document.getElementById('custom-data-modal').classList.add('hidden');
     }
 
+    function showNoUrlDataModal(selectElement) {
+        selectElement.value = appState.pattern;
+        document.getElementById('no-url-data-modal').classList.remove('hidden');
+    }
+
+    function hideNoUrlDataModal() {
+        document.getElementById('no-url-data-modal').classList.add('hidden');
+    }
+
     function showModalError(message) {
         const textarea = document.getElementById('modal-textarea');
         if (textarea) textarea.classList.add('error');
@@ -1574,7 +1644,7 @@
                 p95: percentile(sorted, 95)
             },
             savings_percentage: 30,
-            current_coverage: sorted[0],
+            current_coverage: sorted[0] * 0.80,
             sp_type: 'Compute'
         };
 
@@ -1587,7 +1657,7 @@
         const encoded = encodeURIComponent(btoa(binary));
 
         const baseUrl = window.location.origin + window.location.pathname;
-        window.location.href = `${baseUrl}?usage=${encoded}`;
+        window.location.href = `${baseUrl}?paste=${encoded}`;
     }
 
     /**

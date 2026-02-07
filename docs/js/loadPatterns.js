@@ -167,6 +167,8 @@ const LoadPatterns = (function() {
             case 'batch':
                 return generateBatchPattern();
             case 'custom':
+            case 'custom-paste':
+            case 'custom-url':
                 // Start with ecommerce as base for custom editing
                 return generateEcommercePattern();
             default:
