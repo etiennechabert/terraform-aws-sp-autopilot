@@ -96,12 +96,16 @@ def calculate_purchase_need_follow_aws(
             logger.info(f"{sp_type['name']} SP recommendation has zero commitment - skipping")
             continue
 
+        details = recommendation.get("Details", {})
+        estimated_savings_pct = float(details.get("EstimatedSavingsPercentage", "0"))
+
         purchase_plan = {
             "sp_type": key,
             "hourly_commitment": hourly_commitment_float,
             "payment_option": config[sp_type["payment_option_config"]],
             "recommendation_id": recommendation.get("RecommendationId", "unknown"),
             "strategy": "follow_aws",
+            "estimated_savings_percentage": estimated_savings_pct,
         }
 
         # Set term based on SP type
