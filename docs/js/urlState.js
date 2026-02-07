@@ -52,6 +52,9 @@ const URLState = (function() {
         if (state.onDemandRate !== undefined && state.onDemandRate !== 0.1) {
             params.set('rate', state.onDemandRate.toString());
         }
+        if (state.contrast !== undefined && state.contrast !== 100) {
+            params.set('contrast', state.contrast.toString());
+        }
 
         if ((state.pattern === 'custom' || state.pattern === 'custom-paste' || state.pattern === 'custom-url') && state.customCurve) {
             const compressed = compressCurve(state.customCurve);
@@ -145,7 +148,7 @@ const URLState = (function() {
         }
 
         const pattern = params.get('pattern');
-        if (pattern && ['ecommerce', 'global247', 'batch', 'custom', 'custom-paste', 'custom-url'].includes(pattern)) {
+        if (pattern && ['ecommerce', 'flat', 'batch', 'business-hours', 'random', 'custom', 'custom-paste', 'custom-url'].includes(pattern)) {
             state.pattern = pattern;
         }
 
@@ -158,11 +161,14 @@ const URLState = (function() {
         const coverageValue = parseNumericParam(params, 'coverage', 0, 10000, Number.parseFloat);
         if (coverageValue !== null) state.coverageCost = coverageValue;
 
-        const savingsValue = parseNumericParam(params, 'savings', 0, 99, (v) => Number.parseInt(v, 10));
+        const savingsValue = parseNumericParam(params, 'savings', 10, 90, (v) => Number.parseInt(v, 10));
         if (savingsValue !== null) state.savingsPercentage = savingsValue;
 
         const rateValue = parseNumericParam(params, 'rate', 0, 10, Number.parseFloat, true);
         if (rateValue !== null) state.onDemandRate = rateValue;
+
+        const contrastValue = parseNumericParam(params, 'contrast', 0, 200, (v) => Number.parseInt(v, 10));
+        if (contrastValue !== null) state.contrast = contrastValue;
 
         if (state.pattern === 'custom' || state.pattern === 'custom-paste' || state.pattern === 'custom-url') {
             const curve = params.get('curve');

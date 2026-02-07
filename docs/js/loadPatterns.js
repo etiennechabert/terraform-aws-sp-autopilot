@@ -165,15 +165,15 @@ const LoadPatterns = (function() {
                 let usage;
                 if (isWeekend) {
                     usage = 0.08;
-                } else if (hour >= 9 && hour < 18) {
-                    // Ramp up in morning, plateau, slight lunch dip
-                    if (hour < 10) usage = 0.6;
+                } else if (hour >= 8 && hour < 20) {
+                    if (hour < 9) usage = 0.6;
                     else if (hour === 12) usage = 0.75;
-                    else usage = 0.9 + Math.sin((hour - 9) * 0.3) * 0.1;
-                } else if (hour >= 7 && hour < 9) {
-                    usage = 0.1 + (hour - 7) * 0.25;
-                } else if (hour >= 18 && hour < 20) {
-                    usage = 0.5 - (hour - 18) * 0.2;
+                    else if (hour >= 18) usage = 0.7 - (hour - 18) * 0.15;
+                    else usage = 0.9 + Math.sin((hour - 8) * 0.25) * 0.1;
+                } else if (hour >= 6 && hour < 8) {
+                    usage = 0.05 + (hour - 6) * 0.25;
+                } else if (hour >= 20 && hour < 22) {
+                    usage = 0.4 - (hour - 20) * 0.17;
                 } else {
                     usage = 0.05;
                 }
@@ -185,11 +185,8 @@ const LoadPatterns = (function() {
     }
 
     let lastRandomName = null;
+    let recentPicks = [];
 
-    /**
-     * Generate Random realistic load pattern
-     * Picks a random archetype each time for visually distinct results
-     */
     function generateRandomPattern() {
         const archetypes = [
             { fn: randomMultiPeak, name: 'Multi-Peak' },
@@ -202,8 +199,13 @@ const LoadPatterns = (function() {
             { fn: randomLaunchDay, name: 'Launch Day' },
             { fn: randomDoubleShift, name: 'Double Shift' },
             { fn: randomSeasonalDecline, name: 'Seasonal Decline' },
+            { fn: randomHighWeekend, name: 'High Weekend' },
         ];
-        const pick = archetypes[Math.floor(Math.random() * archetypes.length)];
+        const maxHistory = archetypes.length - 1;
+        const candidates = archetypes.filter(a => !recentPicks.includes(a.name));
+        const pick = candidates[Math.floor(Math.random() * candidates.length)];
+        recentPicks.push(pick.name);
+        if (recentPicks.length > maxHistory) recentPicks.shift();
         lastRandomName = pick.name;
         return pick.fn();
     }
@@ -450,6 +452,29 @@ const LoadPatterns = (function() {
                 const dist = Math.abs(hour - peakHour);
                 const dailyCycle = Math.exp(-(dist * dist) / 20) * dailySwing;
                 let usage = dayBase + dailyCycle;
+                usage += (Math.random() - 0.5) * 0.05;
+                pattern.push(Math.min(1, Math.max(0, usage)));
+            }
+        }
+        return pattern;
+    }
+
+    function randomHighWeekend() {
+        const weekdayBase = 0.15 + Math.random() * 0.15;
+        const weekendBase = 0.7 + Math.random() * 0.2;
+        const peakHour = 12 + Math.floor(Math.random() * 4);
+        const weekdaySwing = 0.1 + Math.random() * 0.1;
+        const weekendSwing = 0.15 + Math.random() * 0.1;
+        const pattern = [];
+
+        for (let day = 0; day < 7; day++) {
+            const isWeekend = day >= 5;
+            const base = isWeekend ? weekendBase : weekdayBase;
+            const swing = isWeekend ? weekendSwing : weekdaySwing;
+            for (let hour = 0; hour < 24; hour++) {
+                const dist = Math.abs(hour - peakHour);
+                const dailyCycle = Math.exp(-(dist * dist) / 25) * swing;
+                let usage = base + dailyCycle;
                 usage += (Math.random() - 0.5) * 0.05;
                 pattern.push(Math.min(1, Math.max(0, usage)));
             }

@@ -258,14 +258,45 @@ h1, h2, h3, h4, h5, h6 {
     flex-shrink: 0;
 }
 
-/* ===== Compact Pattern Buttons (shown when collapsed) ===== */
+/* ===== Compact Controls (shown when collapsed) ===== */
+.compact-controls {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    align-items: flex-end;
+}
+
+.compact-controls.hidden {
+    display: none;
+}
+
 .pattern-selector-compact {
     display: flex;
     gap: 4px;
 }
 
-.pattern-selector-compact.hidden {
-    display: none;
+.contrast-compact {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    width: 100%;
+}
+
+.contrast-compact-label {
+    font-size: 0.65rem;
+    color: var(--text-muted);
+    white-space: nowrap;
+}
+
+.contrast-compact .slider {
+    flex: 1;
+    height: 4px;
+}
+
+.contrast-compact .control-value {
+    font-size: 0.65rem;
+    min-width: 32px;
+    text-align: right;
 }
 
 .pattern-btn-compact {
@@ -297,7 +328,7 @@ h1, h2, h3, h4, h5, h6 {
 }
 
 @media (max-width: 900px) {
-    .pattern-selector-compact {
+    .compact-controls {
         display: none !important;
     }
 }

@@ -14,6 +14,7 @@
         coverageCost: 50,     // Coverage commitment in $/h
         savingsPercentage: 30,
         loadFactor: 100,      // Load factor percentage (50-200%)
+        contrast: 100,        // Contrast percentage (0-200%) - amplifies min/max delta
         onDemandRate: 0.10,
         currentLoadPattern: [],
         customCurve: null
@@ -278,12 +279,11 @@
             loadFactorSlider.addEventListener('input', handleLoadFactorChange);
         }
 
-        // Load factor slider (top horizontal)
-        const loadFactorTopSlider = document.getElementById('load-factor-top');
-        if (loadFactorTopSlider) {
-            loadFactorTopSlider.value = appState.loadFactor;
-            loadFactorTopSlider.addEventListener('input', handleLoadFactorChange);
-        }
+        // Contrast sliders (main + compact)
+        document.querySelectorAll('#contrast-slider, #contrast-slider-compact').forEach(el => {
+            el.value = appState.contrast;
+            el.addEventListener('input', handleContrastChange);
+        });
 
         // Reset load factor button
         const resetLoadFactorButton = document.getElementById('reset-load-factor');
@@ -408,9 +408,13 @@
         }
         updateSavingsDisplay(appState.savingsPercentage);
 
-        // Load factor sliders (both)
+        // Load factor slider
         syncLoadFactorSliders(appState.loadFactor);
         updateLoadFactorDisplay(appState.loadFactor);
+
+        // Contrast sliders
+        syncContrastSliders(appState.contrast);
+        updateContrastDisplay(appState.contrast);
 
         // On-demand rate
         const onDemandRateInput = document.getElementById('on-demand-rate');
@@ -426,9 +430,7 @@
     }
 
     function syncLoadFactorSliders(value) {
-        const top = document.getElementById('load-factor-top');
         const bottom = document.getElementById('load-factor');
-        if (top) top.value = value;
         if (bottom) bottom.value = value;
     }
 
@@ -548,7 +550,7 @@
      */
     function handleSavingsChange(event) {
         const value = parseInt(event.target.value, 10);
-        if (!isNaN(value) && value >= 0 && value <= 99) {
+        if (!isNaN(value) && value >= 10 && value <= 90) {
             appState.savingsPercentage = value;
             updateSavingsDisplay(value);
             calculateAndUpdateCosts();
@@ -568,6 +570,24 @@
             calculateAndUpdateCosts();
             URLState.debouncedUpdateURL(appState);
         }
+    }
+
+    function handleContrastChange(event) {
+        const value = parseInt(event.target.value, 10);
+        if (!isNaN(value) && value >= 0 && value <= 200) {
+            appState.contrast = value;
+            syncContrastSliders(value);
+            updateContrastDisplay(value);
+            updateLoadPattern(false);
+            calculateAndUpdateCosts();
+            URLState.debouncedUpdateURL(appState);
+        }
+    }
+
+    function syncContrastSliders(value) {
+        document.querySelectorAll('#contrast-slider, #contrast-slider-compact').forEach(el => {
+            el.value = value;
+        });
     }
 
     /**
@@ -968,15 +988,15 @@
     function handleToggleLoadPattern() {
         const content = document.getElementById('load-pattern-content');
         const button = document.getElementById('toggle-load-pattern');
-        const compactBar = document.querySelector('.pattern-selector-compact');
+        const compactControls = document.querySelector('.compact-controls');
 
         if (!content || !button) return;
 
         content.classList.toggle('collapsed');
         button.classList.toggle('collapsed');
 
-        if (compactBar) {
-            compactBar.classList.toggle('hidden', !content.classList.contains('collapsed'));
+        if (compactControls) {
+            compactControls.classList.toggle('hidden', !content.classList.contains('collapsed'));
         }
     }
 
@@ -1037,11 +1057,12 @@
     /**
      * Update load pattern based on current state
      */
-    function updateLoadPattern() {
-        // Generate or retrieve pattern
+    function updateLoadPattern(regenerate) {
         let normalizedPattern;
 
-        if (isCustomPattern(appState.pattern) && appState.customCurve) {
+        if (regenerate === false && appState.currentLoadPattern.length > 0) {
+            normalizedPattern = appState.currentLoadPattern;
+        } else if (isCustomPattern(appState.pattern) && appState.customCurve) {
             normalizedPattern = appState.customCurve;
         } else {
             normalizedPattern = LoadPatterns.generatePattern(appState.pattern);
@@ -1054,16 +1075,20 @@
         const patternMax = Math.max(...normalizedPattern);
         const patternRange = patternMax - patternMin;
 
-        // Scale pattern so its min = minCost and its max = maxCost
-        const costRange = appState.maxCost - appState.minCost;
+        // Apply contrast: scale the range around the midpoint
+        const midpoint = (appState.minCost + appState.maxCost) / 2;
+        const halfRange = (appState.maxCost - appState.minCost) / 2;
+        const contrastFactor = appState.contrast / 100;
+        const effectiveMin = Math.max(0, midpoint - halfRange * contrastFactor);
+        const effectiveMax = midpoint + halfRange * contrastFactor;
+        const costRange = effectiveMax - effectiveMin;
+
         const costPattern = normalizedPattern.map(normalized => {
             if (patternRange === 0) {
-                // If pattern is flat, use average of min and max costs
-                return (appState.minCost + appState.maxCost) / 2;
+                return midpoint;
             }
-            // Map pattern's [patternMin, patternMax] to [minCost, maxCost]
             const normalizedInRange = (normalized - patternMin) / patternRange;
-            return appState.minCost + (normalizedInRange * costRange);
+            return effectiveMin + (normalizedInRange * costRange);
         });
 
         // Store the actual hourly costs for use in cost calculations
@@ -1284,8 +1309,7 @@
      */
     function updateLoadFactorDisplay(value) {
         const displays = [
-            document.getElementById('load-factor-display'),
-            document.getElementById('load-factor-display-top')
+            document.getElementById('load-factor-display')
         ];
 
         const delta = value - 100;
@@ -1312,6 +1336,20 @@
                 hintElement.textContent = `${value}% of original usage`;
             }
         }
+    }
+
+    function updateContrastDisplay(value) {
+        document.querySelectorAll('#contrast-display, #contrast-display-compact').forEach(el => {
+            el.textContent = `${value}%`;
+            el.classList.remove('positive', 'negative', 'neutral');
+            if (value === 100) {
+                el.classList.add('neutral');
+            } else if (value > 100) {
+                el.classList.add('positive');
+            } else {
+                el.classList.add('negative');
+            }
+        });
     }
 
     /**
