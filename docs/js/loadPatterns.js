@@ -152,8 +152,70 @@ const LoadPatterns = (function() {
     }
 
     /**
+     * Generate Business Hours load pattern
+     * High during 9-18, low evenings/nights, minimal weekends
+     */
+    function generateBusinessHoursPattern() {
+        const pattern = [];
+
+        for (let day = 0; day < 7; day++) {
+            const isWeekend = day === 5 || day === 6;
+
+            for (let hour = 0; hour < 24; hour++) {
+                let usage;
+                if (isWeekend) {
+                    usage = 0.08;
+                } else if (hour >= 9 && hour < 18) {
+                    // Ramp up in morning, plateau, slight lunch dip
+                    if (hour < 10) usage = 0.6;
+                    else if (hour === 12) usage = 0.75;
+                    else usage = 0.9 + Math.sin((hour - 9) * 0.3) * 0.1;
+                } else if (hour >= 7 && hour < 9) {
+                    usage = 0.1 + (hour - 7) * 0.25;
+                } else if (hour >= 18 && hour < 20) {
+                    usage = 0.5 - (hour - 18) * 0.2;
+                } else {
+                    usage = 0.05;
+                }
+                pattern.push(Math.min(1, Math.max(0, usage)));
+            }
+        }
+
+        return pattern;
+    }
+
+    /**
+     * Generate Random realistic load pattern
+     * Combines random baseline, daily cycle amplitude, weekend factor, and noise
+     */
+    function generateRandomPattern() {
+        const pattern = [];
+
+        const baseline = 0.3 + Math.random() * 0.3;
+        const amplitude = 0.2 + Math.random() * 0.4;
+        const peakHour = 10 + Math.floor(Math.random() * 8);
+        const weekendFactor = 0.3 + Math.random() * 0.5;
+        const noiseLevel = 0.03 + Math.random() * 0.07;
+
+        for (let day = 0; day < 7; day++) {
+            const isWeekend = day === 5 || day === 6;
+            const dayFactor = isWeekend ? weekendFactor : 1;
+
+            for (let hour = 0; hour < 24; hour++) {
+                const hourDist = Math.abs(hour - peakHour);
+                const dailyCycle = Math.exp(-(hourDist * hourDist) / 18) * amplitude;
+                const noise = (Math.random() - 0.5) * noiseLevel * 2;
+                const usage = (baseline + dailyCycle) * dayFactor + noise;
+                pattern.push(Math.min(1, Math.max(0, usage)));
+            }
+        }
+
+        return pattern;
+    }
+
+    /**
      * Generate load pattern by type
-     * @param {string} type - 'ecommerce', 'global247', 'flat', 'batch', or 'custom'
+     * @param {string} type - Pattern type name
      * @returns {Array<number>} 168-element array of normalized values (0-1)
      */
     function generatePattern(type) {
@@ -166,10 +228,13 @@ const LoadPatterns = (function() {
                 return generateFlatPattern();
             case 'batch':
                 return generateBatchPattern();
+            case 'business-hours':
+                return generateBusinessHoursPattern();
+            case 'random':
+                return generateRandomPattern();
             case 'custom':
             case 'custom-paste':
             case 'custom-url':
-                // Start with ecommerce as base for custom editing
                 return generateEcommercePattern();
             default:
                 console.warn(`Unknown pattern type: ${type}, defaulting to ecommerce`);
