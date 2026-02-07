@@ -3,16 +3,16 @@ import { test, expect } from '@playwright/test';
 test.describe('Pattern Selection Tests', () => {
   test('switching patterns updates metrics', async ({ page }) => {
     await page.goto('index.html');
-    await page.waitForSelector('#pattern-select');
+    await page.waitForSelector('.pattern-btn[data-pattern="ecommerce"]');
     await page.waitForTimeout(500);
 
     const ecommerceCost = await page.locator('#metric-ondemand').textContent();
 
-    await page.selectOption('#pattern-select', 'global247');
+    await page.locator('.pattern-btn[data-pattern="flat"]').click();
     await page.waitForTimeout(500);
 
-    const global247Cost = await page.locator('#metric-ondemand').textContent();
-    expect(global247Cost).not.toBe(ecommerceCost);
+    const flatCost = await page.locator('#metric-ondemand').textContent();
+    expect(flatCost).not.toBe(ecommerceCost);
 
     const commitment = await page.locator('#metric-commitment').textContent();
     const savings = await page.locator('#metric-savings').textContent();
@@ -23,7 +23,8 @@ test.describe('Pattern Selection Tests', () => {
 
   test('min cost input updates baseline cost', async ({ page }) => {
     await page.goto('index.html');
-    await page.waitForSelector('#min-cost');
+    await page.locator('#toggle-advanced-costs').click();
+    await page.waitForSelector('#min-cost', { state: 'visible' });
     await page.waitForTimeout(500);
 
     const initialCost = await page.locator('#metric-ondemand').textContent();
@@ -41,12 +42,12 @@ test.describe('Pattern Selection Tests', () => {
 
   test('all patterns load without errors', async ({ page }) => {
     await page.goto('index.html');
-    await page.waitForSelector('#pattern-select');
+    await page.waitForSelector('.pattern-btn[data-pattern="ecommerce"]');
 
-    const patterns = ['ecommerce', 'global247', 'flat'];
+    const patterns = ['ecommerce', 'flat', 'batch'];
 
     for (const pattern of patterns) {
-      await page.selectOption('#pattern-select', pattern);
+      await page.locator(`.pattern-btn[data-pattern="${pattern}"]`).click();
       await page.waitForTimeout(500);
 
       const onDemand = await page.locator('#metric-ondemand').textContent();
@@ -66,8 +67,8 @@ test.describe('Pattern Selection Tests', () => {
     await page.waitForSelector('.metrics-row');
     await page.waitForTimeout(1000);
 
-    const selectedPattern = await page.locator('#pattern-select').inputValue();
-    expect(selectedPattern).toBe('custom');
+    const activeBtn = await page.locator('.pattern-btn.active').getAttribute('data-pattern');
+    expect(activeBtn).toBe('custom-url');
 
     const onDemand = await page.locator('#metric-ondemand').textContent();
     expect(onDemand).toMatch(/\$\d+\.\d{2}\/h/);
@@ -78,7 +79,8 @@ test.describe('Pattern Selection Tests', () => {
 
   test('invalid min/max cost range handled gracefully', async ({ page }) => {
     await page.goto('index.html');
-    await page.waitForSelector('#min-cost');
+    await page.locator('#toggle-advanced-costs').click();
+    await page.waitForSelector('#min-cost', { state: 'visible' });
     await page.waitForTimeout(500);
 
     await page.locator('#min-cost').fill('90');

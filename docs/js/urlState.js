@@ -52,8 +52,11 @@ const URLState = (function() {
         if (state.onDemandRate !== undefined && state.onDemandRate !== 0.1) {
             params.set('rate', state.onDemandRate.toString());
         }
+        if (state.contrast !== undefined && state.contrast !== 100) {
+            params.set('contrast', state.contrast.toString());
+        }
 
-        if (state.pattern === 'custom' && state.customCurve) {
+        if ((state.pattern === 'custom' || state.pattern === 'custom-paste' || state.pattern === 'custom-url') && state.customCurve) {
             const compressed = compressCurve(state.customCurve);
             params.set('curve', compressed);
         }
@@ -78,11 +81,34 @@ const URLState = (function() {
                 bytes[i] = decoded.codePointAt(i);
             }
 
-            const inflated = pako.inflate(bytes, { to: 'string' });
+            // Try zlib (deflate) first, then gzip
+            let inflated;
+            try {
+                inflated = pako.inflate(bytes, { to: 'string' });
+            } catch {
+                inflated = pako.ungzip(bytes, { to: 'string' });
+            }
             const data = JSON.parse(inflated);
 
-            if (!data.hourly_costs || !Array.isArray(data.hourly_costs) || !data.stats) {
+            if (!data.hourly_costs || !Array.isArray(data.hourly_costs)) {
                 throw new Error('Invalid usage data structure');
+            }
+
+            // Compute stats if missing (e.g. from CLI-generated data)
+            if (!data.stats) {
+                const sorted = [...data.hourly_costs].sort((a, b) => a - b);
+                const pct = (arr, p) => arr[Math.max(0, Math.ceil(arr.length * p / 100) - 1)];
+                data.stats = {
+                    min: sorted[0],
+                    max: sorted[sorted.length - 1],
+                    p50: pct(sorted, 50),
+                    p75: pct(sorted, 75),
+                    p90: pct(sorted, 90),
+                    p95: pct(sorted, 95)
+                };
+                if (data.current_coverage === undefined) {
+                    data.current_coverage = sorted[0];
+                }
             }
 
             return data;
@@ -113,8 +139,16 @@ const URLState = (function() {
             }
         }
 
+        const pasteParam = params.get('paste');
+        if (pasteParam) {
+            const pasteData = decompressUsageData(pasteParam);
+            if (pasteData) {
+                state.pasteData = pasteData;
+            }
+        }
+
         const pattern = params.get('pattern');
-        if (pattern && ['ecommerce', 'global247', 'batch', 'custom'].includes(pattern)) {
+        if (pattern && ['ecommerce', 'flat', 'batch', 'business-hours', 'random', 'custom', 'custom-paste', 'custom-url'].includes(pattern)) {
             state.pattern = pattern;
         }
 
@@ -127,13 +161,16 @@ const URLState = (function() {
         const coverageValue = parseNumericParam(params, 'coverage', 0, 10000, Number.parseFloat);
         if (coverageValue !== null) state.coverageCost = coverageValue;
 
-        const savingsValue = parseNumericParam(params, 'savings', 0, 99, (v) => Number.parseInt(v, 10));
+        const savingsValue = parseNumericParam(params, 'savings', 10, 90, (v) => Number.parseInt(v, 10));
         if (savingsValue !== null) state.savingsPercentage = savingsValue;
 
         const rateValue = parseNumericParam(params, 'rate', 0, 10, Number.parseFloat, true);
         if (rateValue !== null) state.onDemandRate = rateValue;
 
-        if (state.pattern === 'custom') {
+        const contrastValue = parseNumericParam(params, 'contrast', 0, 200, (v) => Number.parseInt(v, 10));
+        if (contrastValue !== null) state.contrast = contrastValue;
+
+        if (state.pattern === 'custom' || state.pattern === 'custom-paste' || state.pattern === 'custom-url') {
             const curve = params.get('curve');
             if (curve) {
                 try {

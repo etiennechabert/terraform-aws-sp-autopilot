@@ -14,12 +14,17 @@
         coverageCost: 50,     // Coverage commitment in $/h
         savingsPercentage: 30,
         loadFactor: 100,      // Load factor percentage (50-200%)
+        contrast: 100,        // Contrast percentage (0-200%) - amplifies min/max delta
         onDemandRate: 0.10,
         currentLoadPattern: [],
         customCurve: null
     };
 
     let currentCostResults = null;
+
+    function isCustomPattern(pattern) {
+        return pattern === 'custom' || pattern === 'custom-paste' || pattern === 'custom-url';
+    }
 
     /**
      * Initialize the application
@@ -32,12 +37,17 @@
         if (urlState) {
             console.log('Restoring state from URL:', urlState);
 
-            // Check if we have usage data from reporter
             if (urlState.usageData) {
-                console.log('Loading real usage data from reporter');
-                loadUsageData(urlState.usageData);
+                loadUsageData(urlState.usageData, 'custom-url');
+            } else if (urlState.pasteData) {
+                loadUsageData(urlState.pasteData, 'custom-paste');
             } else {
                 appState = { ...appState, ...urlState };
+            }
+
+            // Backward compat: old URLs with pattern=custom
+            if (appState.pattern === 'custom') {
+                appState.pattern = 'custom-paste';
             }
         }
 
@@ -66,7 +76,7 @@
      * Load real usage data from reporter
      * @param {Object} usageData - Usage data from reporter
      */
-    function loadUsageData(usageData) {
+    function loadUsageData(usageData, pattern) {
         console.log('Processing usage data:', usageData);
 
         const hourlyCosts = usageData.hourly_costs;
@@ -96,7 +106,7 @@
         // Update app state with real data
         appState = {
             ...appState,
-            pattern: 'custom',
+            pattern: pattern,
             minCost: minCost,
             maxCost: maxCost,
             coverageCost: currentCoverage,  // Set to user's actual current coverage
@@ -174,23 +184,40 @@
         const header = document.querySelector('.header-content');
         if (!header) return;
 
+        header.querySelectorAll('.usage-data-banner').forEach(el => el.remove());
+
         const spType = appState.usageDataLoaded && appState.usageData?.sp_type
             ? appState.usageData.sp_type
             : 'All Types';
 
         const savingsPct = appState.savingsPercentage || 30;
+        const fromReporter = !!appState.usageData?.optimal_from_python;
 
         const banner = document.createElement('div');
-        banner.className = 'usage-data-banner';
-        banner.innerHTML = `
-            <div class="banner-content">
-                <span class="banner-icon">📊</span>
-                <span class="banner-text">
-                    <strong>Real Usage Data Loaded</strong> - ${spType} Savings Plans<br>
-                    <small>Using your actual ${savingsPct.toFixed(1)}% discount rate</small>
-                </span>
-            </div>
-        `;
+
+        if (fromReporter) {
+            banner.className = 'usage-data-banner';
+            banner.innerHTML = `
+                <div class="banner-content">
+                    <span class="banner-icon">📊</span>
+                    <span class="banner-text">
+                        <strong>Real Usage Data Loaded</strong> - ${spType} Savings Plans<br>
+                        <small>Using your actual ${savingsPct.toFixed(1)}% discount rate</small>
+                    </span>
+                </div>
+            `;
+        } else {
+            banner.className = 'usage-data-banner usage-data-banner-estimate';
+            banner.innerHTML = `
+                <div class="banner-content">
+                    <span class="banner-icon">⚠️</span>
+                    <span class="banner-text">
+                        <strong>Rough Estimation</strong> - Manual CLI data with default ${savingsPct.toFixed(1)}% discount<br>
+                        <small>For accurate purchase recommendations, deploy the <a href="https://github.com/etiennechabert/terraform-aws-sp-autopilot" target="_blank" rel="noopener" style="color: inherit; text-decoration: underline;">terraform-aws-sp-autopilot</a> reporter</small>
+                    </span>
+                </div>
+            `;
+        }
 
         header.appendChild(banner);
     }
@@ -199,12 +226,19 @@
      * Setup all event listeners
      */
     function setupEventListeners() {
-        // Pattern selector
-        const patternSelect = document.getElementById('pattern-select');
-        if (patternSelect) {
-            patternSelect.value = appState.pattern;
-            patternSelect.addEventListener('change', handlePatternChange);
+        // Title reset link
+        const titleLink = document.getElementById('title-reset-link');
+        if (titleLink) {
+            titleLink.addEventListener('click', (e) => {
+                e.preventDefault();
+                window.location.href = window.location.origin + window.location.pathname;
+            });
         }
+
+        // Pattern buttons (both full and compact)
+        document.querySelectorAll('.pattern-btn, .pattern-btn-compact').forEach(btn => {
+            btn.addEventListener('click', handlePatternBtnClick);
+        });
 
         // Min cost input
         const minCostInput = document.getElementById('min-cost');
@@ -223,10 +257,6 @@
         // Coverage slider
         const coverageSlider = document.getElementById('coverage-slider');
         if (coverageSlider) {
-            // Set slider max to match maxCost
-            coverageSlider.max = appState.maxCost;
-            // Set step to 0.1% of max cost for precise control
-            coverageSlider.step = appState.maxCost / 1000;
             coverageSlider.value = appState.coverageCost;
             coverageSlider.addEventListener('input', handleCoverageChange);
         }
@@ -238,21 +268,33 @@
             savingsSlider.addEventListener('input', handleSavingsChange);
         }
 
-        // Load factor slider
+        // Load factor slider (bottom vertical)
         const loadFactorSlider = document.getElementById('load-factor');
         if (loadFactorSlider) {
             loadFactorSlider.value = appState.loadFactor;
             loadFactorSlider.addEventListener('input', handleLoadFactorChange);
         }
 
+        // Contrast sliders (main + compact)
+        document.querySelectorAll('#contrast-slider, #contrast-slider-compact').forEach(el => {
+            el.value = appState.contrast;
+            el.addEventListener('input', handleContrastChange);
+        });
+
         // Reset load factor button
         const resetLoadFactorButton = document.getElementById('reset-load-factor');
         if (resetLoadFactorButton) {
             resetLoadFactorButton.addEventListener('click', () => {
-                if (loadFactorSlider) {
-                    loadFactorSlider.value = 100;
-                    handleLoadFactorChange({ target: { value: '100' } });
-                }
+                handleLoadFactorChange({ target: { value: '100' } });
+            });
+        }
+
+        // Advanced costs toggle
+        const toggleAdvancedCosts = document.getElementById('toggle-advanced-costs');
+        if (toggleAdvancedCosts) {
+            toggleAdvancedCosts.addEventListener('click', () => {
+                const panel = document.getElementById('advanced-costs');
+                if (panel) panel.classList.toggle('hidden');
             });
         }
 
@@ -286,17 +328,53 @@
         strategyButtons.forEach(button => {
             button.addEventListener('click', handleStrategyClick);
         });
+
+        // Custom data modal
+        const modalCopyBtn = document.getElementById('modal-copy-btn');
+        if (modalCopyBtn) modalCopyBtn.addEventListener('click', handleModalCopyCliCommand);
+
+        const modalCancelBtn = document.getElementById('modal-cancel-btn');
+        if (modalCancelBtn) modalCancelBtn.addEventListener('click', hideCustomDataModal);
+
+        const modalLoadBtn = document.getElementById('modal-load-btn');
+        if (modalLoadBtn) modalLoadBtn.addEventListener('click', handleModalLoad);
+
+        const modalBackdrop = document.getElementById('custom-data-modal');
+        if (modalBackdrop) {
+            modalBackdrop.addEventListener('click', (e) => {
+                if (e.target === modalBackdrop) hideCustomDataModal();
+            });
+        }
+
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape') {
+                if (!document.getElementById('custom-data-modal').classList.contains('hidden')) {
+                    hideCustomDataModal();
+                }
+                if (!document.getElementById('no-url-data-modal').classList.contains('hidden')) {
+                    hideNoUrlDataModal();
+                }
+            }
+        });
+
+        // No URL data modal
+        const noUrlDataCloseBtn = document.getElementById('no-url-data-close-btn');
+        if (noUrlDataCloseBtn) noUrlDataCloseBtn.addEventListener('click', hideNoUrlDataModal);
+
+        const noUrlDataBackdrop = document.getElementById('no-url-data-modal');
+        if (noUrlDataBackdrop) {
+            noUrlDataBackdrop.addEventListener('click', (e) => {
+                if (e.target === noUrlDataBackdrop) hideNoUrlDataModal();
+            });
+        }
     }
 
     /**
      * Update UI elements from current state
      */
     function updateUIFromState() {
-        // Pattern selector
-        const patternSelect = document.getElementById('pattern-select');
-        if (patternSelect) {
-            patternSelect.value = appState.pattern;
-        }
+        // Pattern buttons
+        setActivePatternBtn(appState.pattern);
 
         // Min cost
         const minCostInput = document.getElementById('min-cost');
@@ -313,8 +391,6 @@
         // Coverage slider
         const coverageSlider = document.getElementById('coverage-slider');
         if (coverageSlider) {
-            coverageSlider.max = appState.maxCost;
-            coverageSlider.step = appState.maxCost / 1000;
             coverageSlider.value = appState.coverageCost;
         }
         updateCoverageDisplay(appState.coverageCost);
@@ -327,11 +403,12 @@
         updateSavingsDisplay(appState.savingsPercentage);
 
         // Load factor slider
-        const loadFactorSlider = document.getElementById('load-factor');
-        if (loadFactorSlider) {
-            loadFactorSlider.value = appState.loadFactor;
-        }
+        syncLoadFactorSliders(appState.loadFactor);
         updateLoadFactorDisplay(appState.loadFactor);
+
+        // Contrast sliders
+        syncContrastSliders(appState.contrast);
+        updateContrastDisplay(appState.contrast);
 
         // On-demand rate
         const onDemandRateInput = document.getElementById('on-demand-rate');
@@ -340,20 +417,63 @@
         }
     }
 
+    function setActivePatternBtn(pattern) {
+        document.querySelectorAll('.pattern-btn, .pattern-btn-compact').forEach(btn => {
+            btn.classList.toggle('active', btn.dataset.pattern === pattern);
+        });
+    }
+
+    function syncLoadFactorSliders(value) {
+        const bottom = document.getElementById('load-factor');
+        if (bottom) bottom.value = value;
+    }
+
     /**
      * Handle pattern type change
      */
-    function handlePatternChange(event) {
-        appState.pattern = event.target.value;
+    function handlePatternBtnClick(event) {
+        const btn = event.currentTarget;
+        const value = btn.dataset.pattern;
 
-        // If switching to custom and we don't have a custom curve, copy current pattern
-        if (appState.pattern === 'custom' && !appState.customCurve) {
+        if (value === 'custom-paste') {
+            showCustomDataModal();
+            return;
+        }
+
+        if (value === 'custom-url') {
+            const params = new URLSearchParams(window.location.search);
+            if (params.get('usage')) {
+                const usageData = URLState.decompressUsageData(params.get('usage'));
+                if (usageData) {
+                    loadUsageData(usageData, 'custom-url');
+                    updateUIFromState();
+                    updateLoadPattern();
+                    calculateAndUpdateCosts();
+                    URLState.debouncedUpdateURL(appState);
+                    return;
+                }
+            }
+            showNoUrlDataModal();
+            return;
+        }
+
+        appState.pattern = value;
+        setActivePatternBtn(value);
+
+        if (isCustomPattern(appState.pattern) && !appState.customCurve) {
             appState.customCurve = [...appState.currentLoadPattern];
         }
 
         updateLoadPattern();
         calculateAndUpdateCosts();
         URLState.debouncedUpdateURL(appState);
+
+        if (value === 'random') {
+            const name = LoadPatterns.getLastRandomName();
+            if (name) showRandomLabel(name);
+        } else {
+            hideRandomLabel();
+        }
     }
 
     /**
@@ -387,19 +507,6 @@
                 if (minCostInput) minCostInput.value = appState.minCost;
             }
 
-            // Update coverage slider max and step
-            const coverageSlider = document.getElementById('coverage-slider');
-            if (coverageSlider) {
-                coverageSlider.max = appState.maxCost;
-                coverageSlider.step = appState.maxCost / 1000; // 0.1% of max cost for precise control
-                // Cap coverage if it exceeds new max
-                if (appState.coverageCost > appState.maxCost) {
-                    appState.coverageCost = appState.maxCost;
-                    coverageSlider.value = appState.coverageCost;
-                    updateCoverageDisplay(appState.coverageCost);
-                }
-            }
-
             updateLoadPattern();
             calculateAndUpdateCosts();
             URLState.debouncedUpdateURL(appState);
@@ -411,7 +518,8 @@
      */
     function handleCoverageChange(event) {
         const value = parseFloat(event.target.value);
-        if (!isNaN(value) && value >= 0 && value <= appState.maxCost) {
+        const sliderMax = parseFloat(event.target.max) || appState.maxCost;
+        if (!isNaN(value) && value >= 0 && value <= sliderMax) {
             appState.coverageCost = value;
             updateCoverageDisplay(value);
             calculateAndUpdateCosts();
@@ -424,9 +532,10 @@
      */
     function handleSavingsChange(event) {
         const value = parseInt(event.target.value, 10);
-        if (!isNaN(value) && value >= 0 && value <= 99) {
+        if (!isNaN(value) && value >= 10 && value <= 90) {
             appState.savingsPercentage = value;
             updateSavingsDisplay(value);
+            updateCoverageDisplay(appState.coverageCost);
             calculateAndUpdateCosts();
             URLState.debouncedUpdateURL(appState);
         }
@@ -439,10 +548,30 @@
         const value = parseInt(event.target.value, 10);
         if (!isNaN(value) && value >= 1 && value <= 150) {
             appState.loadFactor = value;
+            syncLoadFactorSliders(value);
             updateLoadFactorDisplay(value);
+            updateCoverageSliderMax();
             calculateAndUpdateCosts();
             URLState.debouncedUpdateURL(appState);
         }
+    }
+
+    function handleContrastChange(event) {
+        const value = parseInt(event.target.value, 10);
+        if (!isNaN(value) && value >= 0 && value <= 200) {
+            appState.contrast = value;
+            syncContrastSliders(value);
+            updateContrastDisplay(value);
+            updateLoadPattern(false);
+            calculateAndUpdateCosts();
+            URLState.debouncedUpdateURL(appState);
+        }
+    }
+
+    function syncContrastSliders(value) {
+        document.querySelectorAll('#contrast-slider, #contrast-slider-compact').forEach(el => {
+            el.value = value;
+        });
     }
 
     /**
@@ -843,12 +972,16 @@
     function handleToggleLoadPattern() {
         const content = document.getElementById('load-pattern-content');
         const button = document.getElementById('toggle-load-pattern');
+        const compactControls = document.querySelector('.compact-controls');
 
         if (!content || !button) return;
 
-        // Toggle collapsed class
         content.classList.toggle('collapsed');
         button.classList.toggle('collapsed');
+
+        if (compactControls) {
+            compactControls.classList.toggle('hidden', !content.classList.contains('collapsed'));
+        }
     }
 
     /**
@@ -905,14 +1038,34 @@
         if (legendLosingMoney) legendLosingMoney.style.background = rgbaToGradient(curves.losingMoney.border, curves.losingMoney.background);
     }
 
+    function updateCoverageSliderMax() {
+        const hourlyCosts = appState.hourlyCosts || [];
+        if (hourlyCosts.length === 0) return;
+
+        const loadFactor = appState.loadFactor / 100;
+        const maxHourly = Math.max(...hourlyCosts) * loadFactor;
+
+        const coverageSlider = document.getElementById('coverage-slider');
+        if (coverageSlider) {
+            coverageSlider.max = maxHourly;
+            coverageSlider.step = maxHourly / 1000;
+            if (appState.coverageCost > maxHourly) {
+                appState.coverageCost = maxHourly;
+                coverageSlider.value = appState.coverageCost;
+                updateCoverageDisplay(appState.coverageCost);
+            }
+        }
+    }
+
     /**
      * Update load pattern based on current state
      */
-    function updateLoadPattern() {
-        // Generate or retrieve pattern
+    function updateLoadPattern(regenerate) {
         let normalizedPattern;
 
-        if (appState.pattern === 'custom' && appState.customCurve) {
+        if (regenerate === false && appState.currentLoadPattern.length > 0) {
+            normalizedPattern = appState.currentLoadPattern;
+        } else if (isCustomPattern(appState.pattern) && appState.customCurve) {
             normalizedPattern = appState.customCurve;
         } else {
             normalizedPattern = LoadPatterns.generatePattern(appState.pattern);
@@ -925,16 +1078,20 @@
         const patternMax = Math.max(...normalizedPattern);
         const patternRange = patternMax - patternMin;
 
-        // Scale pattern so its min = minCost and its max = maxCost
-        const costRange = appState.maxCost - appState.minCost;
+        // Apply contrast: scale the range around the midpoint
+        const midpoint = (appState.minCost + appState.maxCost) / 2;
+        const halfRange = (appState.maxCost - appState.minCost) / 2;
+        const contrastFactor = appState.contrast / 100;
+        const effectiveMin = Math.max(0, midpoint - halfRange * contrastFactor);
+        const effectiveMax = midpoint + halfRange * contrastFactor;
+        const costRange = effectiveMax - effectiveMin;
+
         const costPattern = normalizedPattern.map(normalized => {
             if (patternRange === 0) {
-                // If pattern is flat, use average of min and max costs
-                return (appState.minCost + appState.maxCost) / 2;
+                return midpoint;
             }
-            // Map pattern's [patternMin, patternMax] to [minCost, maxCost]
             const normalizedInRange = (normalized - patternMin) / patternRange;
-            return appState.minCost + (normalizedInRange * costRange);
+            return effectiveMin + (normalizedInRange * costRange);
         });
 
         // Store the actual hourly costs for use in cost calculations
@@ -942,6 +1099,9 @@
 
         // Update load chart with cost data
         ChartManager.updateLoadChart(costPattern);
+
+        // Update coverage slider max to match actual peak hourly cost
+        updateCoverageSliderMax();
 
         // Update savings rate hint to reflect new average usage
         updateSavingsRateHint();
@@ -1000,19 +1160,23 @@
         const savingsPercentage = appState.savingsPercentage;
         const baselineCost = hourlyCosts.reduce((sum, cost) => sum + cost, 0);
 
-        // First pass: find breakeven point by testing coverage levels
-        let breakevenCoverage = maxCost;
         // NOTE: This is equivalent to commitmentFromCoverage() in spCalculations.js
-        // Kept as variable for performance (reused in loops)
         const discountFactor = (1 - savingsPercentage / 100);
-        const testIncrement = maxCost / 500; // Fine granularity for finding breakeven
+        const numHours = hourlyCosts.length;
 
-        for (let coverageCost = 0; coverageCost <= maxCost; coverageCost += testIncrement) {
+        // Beyond maxCost, spillover=0, so breakeven = baselineCost / (discountFactor * numHours)
+        const analyticalBreakeven = discountFactor > 0
+            ? baselineCost / (discountFactor * numHours)
+            : maxCost * 2;
+        const searchLimit = Math.max(maxCost, analyticalBreakeven) * 1.2;
+        const testIncrement = searchLimit / 500;
+
+        let breakevenCoverage = searchLimit;
+        for (let coverageCost = 0; coverageCost <= searchLimit; coverageCost += testIncrement) {
             let commitmentCost = 0;
             let spilloverCost = 0;
 
-            for (let i = 0; i < hourlyCosts.length; i++) {
-                // NOTE: commitmentCost calculation uses discountFactor (see above comment)
+            for (let i = 0; i < numHours; i++) {
                 commitmentCost += coverageCost * discountFactor;
                 spilloverCost += Math.max(0, hourlyCosts[i] - coverageCost);
             }
@@ -1020,22 +1184,19 @@
             const totalCost = commitmentCost + spilloverCost;
             const netSavings = baselineCost - totalCost;
 
-            // Found where we cross back to negative savings
             if (netSavings < 0) {
                 breakevenCoverage = coverageCost - testIncrement;
                 break;
             }
         }
 
-        // Set chart range to breakeven + 10% buffer (or max if breakeven is close to max)
-        const bufferMultiplier = 1.1;
-        const chartMaxCost = Math.min(breakevenCoverage * bufferMultiplier, maxCost);
-
-        // Generate curve data from $0 to chartMaxCost with high resolution
+        // Generate data up to breakeven so all zones are computed,
+        // but the chart x-axis will be capped at maxCost (commitment terms)
+        const dataMaxCoverage = Math.max(maxCost, breakevenCoverage * 1.1);
         const curveData = [];
-        const increment = chartMaxCost / 500; // 500 data points for smooth curve
+        const increment = dataMaxCoverage / 500;
 
-        for (let coverageCost = 0; coverageCost <= chartMaxCost; coverageCost += increment) {
+        for (let coverageCost = 0; coverageCost <= dataMaxCoverage; coverageCost += increment) {
             let commitmentCost = 0;
             let spilloverCost = 0;
 
@@ -1090,7 +1251,7 @@
             curveData,
             minHourlySavings,
             minCost,
-            maxCost: chartMaxCost,
+            maxCost,
             baselineCost,
             currentCoverage: currentCoverageFromData,
             savingsPercentage,
@@ -1154,35 +1315,48 @@
      * Update load factor display
      */
     function updateLoadFactorDisplay(value) {
-        const displayElement = document.getElementById('load-factor-display');
-        if (displayElement) {
-            const delta = value - 100;
+        const displays = [
+            document.getElementById('load-factor-display')
+        ];
 
-            // Remove existing color classes
-            displayElement.classList.remove('positive', 'negative', 'neutral');
-
+        const delta = value - 100;
+        displays.forEach(el => {
+            if (!el) return;
+            el.classList.remove('positive', 'negative', 'neutral');
             if (delta === 0) {
-                displayElement.textContent = '100%';
-                displayElement.classList.add('neutral');
+                el.textContent = '100%';
+                el.classList.add('neutral');
             } else if (delta > 0) {
-                displayElement.textContent = `+${delta}%`;
-                displayElement.classList.add('positive'); // Red for increase
+                el.textContent = `+${delta}%`;
+                el.classList.add('positive');
             } else {
-                displayElement.textContent = `${delta}%`; // Negative sign already included
-                displayElement.classList.add('negative'); // Green for reduction
+                el.textContent = `${delta}%`;
+                el.classList.add('negative');
             }
-        }
+        });
 
         const hintElement = document.getElementById('load-factor-hint');
         if (hintElement) {
             if (value === 100) {
                 hintElement.textContent = 'Original usage level';
-            } else if (value < 100) {
-                hintElement.textContent = `${value}% of original usage`;
             } else {
                 hintElement.textContent = `${value}% of original usage`;
             }
         }
+    }
+
+    function updateContrastDisplay(value) {
+        document.querySelectorAll('#contrast-display, #contrast-display-compact').forEach(el => {
+            el.textContent = `${value}%`;
+            el.classList.remove('positive', 'negative', 'neutral');
+            if (value === 100) {
+                el.classList.add('neutral');
+            } else if (value > 100) {
+                el.classList.add('positive');
+            } else {
+                el.classList.add('negative');
+            }
+        });
     }
 
     /**
@@ -1421,9 +1595,157 @@
         currentCostResults.currentZone = zoneInfo;
     }
 
+    // ===== Custom Data Modal =====
+
+    function showCustomDataModal() {
+        // Calculate date range: 7 full days ending today at midnight UTC (exclusive)
+        const end = new Date();
+        end.setUTCHours(0, 0, 0, 0);
+        const start = new Date(end);
+        start.setUTCDate(start.getUTCDate() - 7);
+
+        const fmt = (d) => d.toISOString().slice(0, 19) + 'Z';
+        const cmd = `aws ce get-savings-plans-coverage \\
+  --time-period "Start=${fmt(start)},End=${fmt(end)}" \\
+  --granularity HOURLY \\
+  | jq -c '[.SavingsPlansCoverages[].Coverage.TotalCost | tonumber]'`;
+
+        const cliEl = document.getElementById('modal-cli-command');
+        if (cliEl) cliEl.textContent = cmd;
+
+        // Reset state
+        const textarea = document.getElementById('modal-textarea');
+        if (textarea) {
+            textarea.value = '';
+            textarea.classList.remove('error');
+        }
+        const errorEl = document.getElementById('modal-error');
+        if (errorEl) errorEl.classList.add('hidden');
+
+        document.getElementById('custom-data-modal').classList.remove('hidden');
+    }
+
+    function hideCustomDataModal() {
+        document.getElementById('custom-data-modal').classList.add('hidden');
+    }
+
+    function showNoUrlDataModal() {
+        document.getElementById('no-url-data-modal').classList.remove('hidden');
+    }
+
+    function hideNoUrlDataModal() {
+        document.getElementById('no-url-data-modal').classList.add('hidden');
+    }
+
+    function showModalError(message) {
+        const textarea = document.getElementById('modal-textarea');
+        if (textarea) textarea.classList.add('error');
+        const errorEl = document.getElementById('modal-error');
+        if (errorEl) {
+            errorEl.textContent = message;
+            errorEl.classList.remove('hidden');
+        }
+    }
+
+    function handleModalCopyCliCommand() {
+        const cliEl = document.getElementById('modal-cli-command');
+        if (!cliEl) return;
+
+        const text = cliEl.textContent;
+        const btn = document.getElementById('modal-copy-btn');
+
+        if (navigator.clipboard?.writeText) {
+            navigator.clipboard.writeText(text).then(() => {
+                if (btn) {
+                    btn.textContent = 'Copied!';
+                    setTimeout(() => { btn.textContent = 'Copy'; }, 2000);
+                }
+            });
+        }
+    }
+
+    function handleModalLoad() {
+        const textarea = document.getElementById('modal-textarea');
+        const raw = textarea?.value?.trim();
+
+        // Reset error state
+        textarea?.classList.remove('error');
+        const errorEl = document.getElementById('modal-error');
+        if (errorEl) errorEl.classList.add('hidden');
+
+        if (!raw) {
+            showModalError('Please paste the output from the command.');
+            return;
+        }
+
+        let hourlyCosts;
+        try {
+            hourlyCosts = JSON.parse(raw);
+        } catch {
+            showModalError('Invalid JSON. Make sure you copied the complete output.');
+            return;
+        }
+
+        if (!Array.isArray(hourlyCosts) || hourlyCosts.length === 0) {
+            showModalError('Expected a JSON array of numbers. Make sure you ran the full command.');
+            return;
+        }
+
+        if (hourlyCosts.length < 24) {
+            showModalError(`Only ${hourlyCosts.length} data points found. Need at least 24 hours.`);
+            return;
+        }
+
+        const sorted = [...hourlyCosts].sort((a, b) => a - b);
+        const percentile = (arr, p) => arr[Math.max(0, Math.ceil(arr.length * p / 100) - 1)];
+
+        const usageData = {
+            hourly_costs: hourlyCosts,
+            stats: {
+                min: sorted[0],
+                max: sorted[sorted.length - 1],
+                p50: percentile(sorted, 50),
+                p75: percentile(sorted, 75),
+                p90: percentile(sorted, 90),
+                p95: percentile(sorted, 95)
+            },
+            savings_percentage: 30,
+            current_coverage: sorted[0] * 0.80,
+            sp_type: 'Compute'
+        };
+
+        const jsonStr = JSON.stringify(usageData);
+        const deflated = pako.deflate(jsonStr);
+        let binary = '';
+        for (let i = 0; i < deflated.length; i++) {
+            binary += String.fromCharCode(deflated[i]);
+        }
+        const encoded = encodeURIComponent(btoa(binary));
+
+        const baseUrl = window.location.origin + window.location.pathname;
+        window.location.href = `${baseUrl}?paste=${encoded}`;
+    }
+
     /**
      * Show toast notification
      */
+    function showRandomLabel(name) {
+        const desc = document.querySelector('.section-load-pattern .section-description');
+        if (!desc) return;
+        let badge = desc.querySelector('.random-archetype-badge');
+        if (!badge) {
+            badge = document.createElement('span');
+            badge.className = 'random-archetype-badge';
+            desc.appendChild(badge);
+        }
+        badge.textContent = name;
+    }
+
+    function hideRandomLabel() {
+        const badge = document.querySelector('.random-archetype-badge');
+        if (badge) badge.remove();
+    }
+
     function showToast(message, type = 'success') {
         const toast = document.getElementById('toast');
         if (!toast) return;

@@ -16,8 +16,10 @@
         <header class="header">
             <div class="header-content">
                 <h1 class="title">
-                    <span class="title-icon">📊</span>
-                    AWS Savings Plan Simulator
+                    <a href="#" id="title-reset-link" class="title-link">
+                        <span class="title-icon">📊</span>
+                        AWS Savings Plan Simulator
+                    </a>
                 </h1>
                 <p class="subtitle">
                     Visualize and optimize your AWS compute costs with interactive Savings Plan scenarios
@@ -46,37 +48,122 @@
                         <h2 class="section-title">Workload Pattern & Cost Range</h2>
                         <p class="section-description">Define your usage pattern and hourly cost range (min-max $/h)</p>
                     </div>
-                    <button id="toggle-load-pattern" class="button-toggle" aria-label="Toggle load pattern section">
-                        <span class="toggle-icon">▼</span>
-                    </button>
+                    <div class="header-right">
+                        <div class="compact-controls hidden">
+                            <div class="pattern-selector-compact">
+                                <button class="pattern-btn-compact active" data-pattern="ecommerce" type="button" title="E-commerce">
+                                    <svg viewBox="0 0 48 24"><polygon class="sparkline-fill" points="0,22 3,21 6,18 9,10 12,5 15,3 18,5 21,14 24,22 27,21 30,18 33,10 36,5 39,3 42,5 45,14 48,22 48,24 0,24"/><polyline class="sparkline-line" points="0,22 3,21 6,18 9,10 12,5 15,3 18,5 21,14 24,22 27,21 30,18 33,10 36,5 39,3 42,5 45,14 48,22"/></svg>
+                                </button>
+                                <button class="pattern-btn-compact" data-pattern="flat" type="button" title="Flat">
+                                    <svg viewBox="0 0 48 24"><polygon class="sparkline-fill" points="0,4 48,4 48,24 0,24"/><polyline class="sparkline-line" points="0,4 48,4"/></svg>
+                                </button>
+                                <button class="pattern-btn-compact" data-pattern="batch" type="button" title="Batch">
+                                    <svg viewBox="0 0 48 24"><polygon class="sparkline-fill" points="0,22 5,22 6,4 7,22 15,22 16,4 17,22 23,22 24,4 25,22 31,22 32,4 33,22 40,22 41,4 42,22 48,22 48,24 0,24"/><polyline class="sparkline-line" points="0,22 5,22 6,4 7,22 15,22 16,4 17,22 23,22 24,4 25,22 31,22 32,4 33,22 40,22 41,4 42,22 48,22"/></svg>
+                                </button>
+                                <button class="pattern-btn-compact" data-pattern="business-hours" type="button" title="Business">
+                                    <svg viewBox="0 0 48 24"><polygon class="sparkline-fill" points="0,20 4,20 6,4 12,4 14,20 18,20 20,4 26,4 28,20 32,20 34,4 40,4 42,20 48,20 48,24 0,24"/><polyline class="sparkline-line" points="0,20 4,20 6,4 12,4 14,20 18,20 20,4 26,4 28,20 32,20 34,4 40,4 42,20 48,20"/></svg>
+                                </button>
+                                <button class="pattern-btn-compact" data-pattern="random" type="button" title="Random">
+                                    <svg viewBox="0 0 48 24"><rect class="icon-shape" x="12" y="0" width="24" height="24" rx="4"/><circle class="icon-shape icon-dot" cx="18" cy="6" r="1.8"/><circle class="icon-shape icon-dot" cx="24" cy="12" r="1.8"/><circle class="icon-shape icon-dot" cx="30" cy="18" r="1.8"/><circle class="icon-shape icon-dot" cx="18" cy="18" r="1.8"/><circle class="icon-shape icon-dot" cx="30" cy="6" r="1.8"/></svg>
+                                </button>
+                                <button class="pattern-btn-compact" data-pattern="custom-paste" type="button" title="Paste">
+                                    <svg viewBox="0 0 48 24"><rect class="icon-shape" x="14" y="2" width="20" height="20" rx="2"/><rect class="icon-shape" x="18" y="0" width="12" height="4" rx="1"/><line class="icon-shape" x1="19" y1="10" x2="29" y2="10"/><line class="icon-shape" x1="19" y1="14" x2="29" y2="14"/><line class="icon-shape" x1="19" y1="18" x2="26" y2="18"/></svg>
+                                </button>
+                                <button class="pattern-btn-compact" data-pattern="custom-url" type="button" title="From URL">
+                                    <svg viewBox="0 0 48 24"><circle class="icon-shape" cx="24" cy="12" r="10"/><ellipse class="icon-shape" cx="24" cy="12" rx="4" ry="10"/><line class="icon-shape" x1="14" y1="12" x2="34" y2="12"/></svg>
+                                </button>
+                            </div>
+                            <div class="contrast-compact">
+                                <span class="contrast-compact-label">Contrast</span>
+                                <input type="range" id="contrast-slider-compact" class="slider" min="0" max="200" value="100" step="5">
+                                <span class="control-value" id="contrast-display-compact">100%</span>
+                            </div>
+                        </div>
+                        <button id="toggle-load-pattern" class="button-toggle" aria-label="Toggle load pattern section">
+                            <span class="toggle-icon">▼</span>
+                        </button>
+                    </div>
                 </div>
 
                 <div id="load-pattern-content" class="collapsible-content">
-                    <div class="pattern-controls-row">
-                        <div class="control-group">
-                            <label for="pattern-select" class="control-label">Pattern Type</label>
-                            <select id="pattern-select" class="select-input">
-                                <option value="ecommerce">E-commerce (Weekday peaks)</option>
-                                <option value="global247">Global 24/7 (Consistent load)</option>
-                                <option value="flat">Flat (100% constant)</option>
-                                <option value="custom">Custom (Real Usage Data)</option>
-                            </select>
-                        </div>
+                    <div class="pattern-selector">
+                        <button class="pattern-btn active" data-pattern="ecommerce" type="button">
+                            <svg class="pattern-sparkline" viewBox="0 0 48 24">
+                                <polygon class="sparkline-fill" points="0,22 3,21 6,18 9,10 12,5 15,3 18,5 21,14 24,22 27,21 30,18 33,10 36,5 39,3 42,5 45,14 48,22 48,24 0,24"/>
+                                <polyline class="sparkline-line" points="0,22 3,21 6,18 9,10 12,5 15,3 18,5 21,14 24,22 27,21 30,18 33,10 36,5 39,3 42,5 45,14 48,22"/>
+                            </svg>
+                            <span class="pattern-btn-label">E-commerce</span>
+                        </button>
+                        <button class="pattern-btn" data-pattern="flat" type="button">
+                            <svg class="pattern-sparkline" viewBox="0 0 48 24">
+                                <polygon class="sparkline-fill" points="0,4 48,4 48,24 0,24"/>
+                                <polyline class="sparkline-line" points="0,4 48,4"/>
+                            </svg>
+                            <span class="pattern-btn-label">Flat</span>
+                        </button>
+                        <button class="pattern-btn" data-pattern="batch" type="button">
+                            <svg class="pattern-sparkline" viewBox="0 0 48 24">
+                                <polygon class="sparkline-fill" points="0,22 5,22 6,4 7,22 15,22 16,4 17,22 23,22 24,4 25,22 31,22 32,4 33,22 40,22 41,4 42,22 48,22 48,24 0,24"/>
+                                <polyline class="sparkline-line" points="0,22 5,22 6,4 7,22 15,22 16,4 17,22 23,22 24,4 25,22 31,22 32,4 33,22 40,22 41,4 42,22 48,22"/>
+                            </svg>
+                            <span class="pattern-btn-label">Batch</span>
+                        </button>
+                        <button class="pattern-btn" data-pattern="business-hours" type="button">
+                            <svg class="pattern-sparkline" viewBox="0 0 48 24">
+                                <polygon class="sparkline-fill" points="0,20 4,20 6,4 12,4 14,20 18,20 20,4 26,4 28,20 32,20 34,4 40,4 42,20 48,20 48,24 0,24"/>
+                                <polyline class="sparkline-line" points="0,20 4,20 6,4 12,4 14,20 18,20 20,4 26,4 28,20 32,20 34,4 40,4 42,20 48,20"/>
+                            </svg>
+                            <span class="pattern-btn-label">Business</span>
+                        </button>
+                        <button class="pattern-btn" data-pattern="random" type="button">
+                            <svg class="pattern-icon" viewBox="0 0 48 24">
+                                <rect class="icon-shape" x="12" y="0" width="24" height="24" rx="4"/>
+                                <circle class="icon-shape icon-dot" cx="18" cy="6" r="1.8"/>
+                                <circle class="icon-shape icon-dot" cx="24" cy="12" r="1.8"/>
+                                <circle class="icon-shape icon-dot" cx="30" cy="18" r="1.8"/>
+                                <circle class="icon-shape icon-dot" cx="18" cy="18" r="1.8"/>
+                                <circle class="icon-shape icon-dot" cx="30" cy="6" r="1.8"/>
+                            </svg>
+                            <span class="pattern-btn-label">Random</span>
+                        </button>
+                        <button class="pattern-btn" data-pattern="custom-paste" type="button">
+                            <svg class="pattern-icon" viewBox="0 0 48 24">
+                                <rect class="icon-shape" x="14" y="2" width="20" height="20" rx="2"/>
+                                <rect class="icon-shape" x="18" y="0" width="12" height="4" rx="1"/>
+                                <line class="icon-shape" x1="19" y1="10" x2="29" y2="10"/>
+                                <line class="icon-shape" x1="19" y1="14" x2="29" y2="14"/>
+                                <line class="icon-shape" x1="19" y1="18" x2="26" y2="18"/>
+                            </svg>
+                            <span class="pattern-btn-label">Paste</span>
+                        </button>
+                        <button class="pattern-btn" data-pattern="custom-url" type="button">
+                            <svg class="pattern-icon" viewBox="0 0 48 24">
+                                <circle class="icon-shape" cx="24" cy="12" r="10"/>
+                                <ellipse class="icon-shape" cx="24" cy="12" rx="4" ry="10"/>
+                                <line class="icon-shape" x1="14" y1="12" x2="34" y2="12"/>
+                            </svg>
+                            <span class="pattern-btn-label">From URL</span>
+                        </button>
+                    </div>
 
-                        <div class="control-group">
-                            <label for="min-cost" class="control-label">
-                                Min Cost ($/h)
-                                <span class="control-hint">Baseline hourly cost</span>
+                    <div class="load-factor-row">
+                        <div class="control-group" style="flex: 1;">
+                            <label for="contrast-slider" class="control-label">
+                                Contrast
+                                <span class="control-value" id="contrast-display">100%</span>
                             </label>
-                            <input type="number" id="min-cost" class="number-input" value="15" min="0" max="10000" step="1">
+                            <input type="range" id="contrast-slider" class="slider" min="0" max="200" value="100" step="5">
                         </div>
-
-                        <div class="control-group">
-                            <label for="max-cost" class="control-label">
-                                Max Cost ($/h)
-                                <span class="control-hint">Peak hourly cost</span>
-                            </label>
-                            <input type="number" id="max-cost" class="number-input" value="100" min="1" max="10000" step="1">
+                        <button id="toggle-advanced-costs" class="button-toggle-inline" type="button" title="Min/Max Cost">&#9881;</button>
+                        <div id="advanced-costs" class="advanced-costs hidden">
+                            <div class="control-group">
+                                <label for="min-cost" class="control-label">Min $/h</label>
+                                <input type="number" id="min-cost" class="number-input" value="15" min="0" max="10000" step="1">
+                            </div>
+                            <div class="control-group">
+                                <label for="max-cost" class="control-label">Max $/h</label>
+                                <input type="number" id="max-cost" class="number-input" value="100" min="1" max="10000" step="1">
+                            </div>
                         </div>
                     </div>
 
@@ -149,7 +236,7 @@
                                 Savings Percentage
                                 <span class="control-value" id="savings-display">30%</span>
                             </label>
-                            <input type="range" id="savings-percentage" class="slider" min="0" max="99" value="30" step="1" aria-label="Savings percentage">
+                            <input type="range" id="savings-percentage" class="slider" min="10" max="90" value="30" step="1" aria-label="Savings percentage">
                         </div>
                     </div>
 
@@ -357,6 +444,54 @@
                 </p>
             </div>
         </footer>
+    </div>
+
+    <!-- Custom Data Modal -->
+    <div id="custom-data-modal" class="modal-backdrop hidden" role="dialog" aria-modal="true" aria-labelledby="modal-title">
+        <div class="modal-content">
+            <h3 id="modal-title" class="modal-title">Load Real Usage Data</h3>
+            <p class="modal-description">Run this AWS CLI command to export your Savings Plans coverage data, then paste the output below.</p>
+
+            <div class="modal-cli-block">
+                <div class="modal-cli-header">
+                    <span class="modal-cli-label">AWS CLI</span>
+                    <button id="modal-copy-btn" class="modal-copy-btn" type="button">Copy</button>
+                </div>
+                <pre class="modal-cli-code"><code id="modal-cli-command"></code></pre>
+            </div>
+
+            <textarea id="modal-textarea" class="modal-textarea" rows="4" placeholder="Paste the JSON array here, e.g. [58.00, 54.02, 53.52, ...]"></textarea>
+            <div id="modal-error" class="modal-error hidden"></div>
+
+            <div class="modal-disclaimer">
+                This provides a rough estimation only (default 30% discount, no SP type breakdown).
+                For accurate analysis, deploy the <a href="https://github.com/etiennechabert/terraform-aws-sp-autopilot" target="_blank" rel="noopener">terraform-aws-sp-autopilot</a> reporter which generates a precise, pre-filled link.
+            </div>
+
+            <div class="modal-actions">
+                <button id="modal-cancel-btn" class="modal-btn modal-btn-cancel" type="button">Cancel</button>
+                <button id="modal-load-btn" class="modal-btn modal-btn-load" type="button">Load Data</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- No URL Data Modal -->
+    <div id="no-url-data-modal" class="modal-backdrop hidden" role="dialog" aria-modal="true">
+        <div class="modal-content">
+            <h3 class="modal-title">No Usage Data in URL</h3>
+            <p class="modal-description">
+                The current URL does not contain any usage data. This option only works when you arrive from
+                your personalized report link, generated by the
+                <a href="https://github.com/etiennechabert/terraform-aws-sp-autopilot" target="_blank" rel="noopener">terraform-aws-sp-autopilot</a>
+                reporter lambda deployed in your AWS account.
+            </p>
+            <p class="modal-description" style="margin-bottom: 0;">
+                Alternatively, use the <strong>Paste</strong> button to manually paste data from the AWS CLI.
+            </p>
+            <div class="modal-actions">
+                <button id="no-url-data-close-btn" class="modal-btn modal-btn-load" type="button">OK</button>
+            </div>
+        </div>
     </div>
 
     <!-- Toast Notification -->
