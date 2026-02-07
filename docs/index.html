@@ -237,6 +237,7 @@
                                 <span class="control-value" id="savings-display">30%</span>
                             </label>
                             <input type="range" id="savings-percentage" class="slider" min="10" max="90" value="30" step="1" aria-label="Savings percentage">
+                            <div class="control-hint savings-source hidden" id="savings-source"></div>
                         </div>
                     </div>
 
@@ -333,32 +334,10 @@
                                         </div>
                                     </div>
                                 </button>
-                                <button class="strategy-button strategy-warning" data-strategy="too-aggressive" id="strategy-too-aggressive">
-                                    <div class="strategy-icon">💀</div>
-                                    <div class="strategy-content">
-                                        <div class="strategy-name">Aggressive</div>
-                                        <div class="strategy-desc">Over-committed</div>
-                                        <div class="strategy-metrics">
-                                            <div class="strategy-metric-col">
-                                                <div class="strategy-metric-label">SP Coverage / h</div>
-                                                <div class="strategy-value" id="strategy-too-aggressive-value">$0.00/h</div>
-                                                <div class="strategy-min-hourly-pct" id="strategy-too-aggressive-min-hourly-pct">100.0% Min-Hourly</div>
-                                            </div>
-                                            <div class="strategy-metric-col">
-                                                <div class="strategy-metric-label">Savings / h</div>
-                                                <div class="strategy-savings-amount">
-                                                    <span id="strategy-too-aggressive-savings">$0.00/h</span>
-                                                    <div class="strategy-savings-tooltip" id="strategy-too-aggressive-savings-tooltip"></div>
-                                                </div>
-                                                <div class="strategy-savings-pct" id="strategy-too-aggressive-savings-pct">0.0%</div>
-                                            </div>
-                                        </div>
-                                    </div>
-                                </button>
                                 <button class="strategy-button strategy-aws hidden" data-strategy="aws" id="strategy-aws">
                                     <div class="strategy-icon">🏢</div>
                                     <div class="strategy-content">
-                                        <div class="strategy-name">AWS Official</div>
+                                        <div class="strategy-name">Recommendation</div>
                                         <div class="strategy-desc" id="strategy-aws-desc">CE Recommendation</div>
                                         <div class="strategy-metrics">
                                             <div class="strategy-metric-col">
