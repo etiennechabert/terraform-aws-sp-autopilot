@@ -186,30 +186,162 @@ const LoadPatterns = (function() {
 
     /**
      * Generate Random realistic load pattern
-     * Combines random baseline, daily cycle amplitude, weekend factor, and noise
+     * Picks a random archetype each time for visually distinct results
      */
     function generateRandomPattern() {
-        const pattern = [];
+        const archetypes = [
+            randomMultiPeak,
+            randomSpiky,
+            randomPlateau,
+            randomGradual,
+            randomHighBase,
+            randomNocturnal
+        ];
+        const pick = archetypes[Math.floor(Math.random() * archetypes.length)];
+        return pick();
+    }
 
-        const baseline = 0.3 + Math.random() * 0.3;
-        const amplitude = 0.2 + Math.random() * 0.4;
-        const peakHour = 10 + Math.floor(Math.random() * 8);
-        const weekendFactor = 0.3 + Math.random() * 0.5;
-        const noiseLevel = 0.03 + Math.random() * 0.07;
+    // Multi-peak: 2-3 peaks per day at random hours
+    function randomMultiPeak() {
+        const numPeaks = 2 + Math.floor(Math.random() * 2);
+        const peaks = [];
+        for (let i = 0; i < numPeaks; i++) {
+            peaks.push({ hour: Math.floor(Math.random() * 24), width: 1.5 + Math.random() * 3 });
+        }
+        const baseline = 0.05 + Math.random() * 0.15;
+        const weekendFactor = 0.3 + Math.random() * 0.6;
+        const pattern = [];
 
         for (let day = 0; day < 7; day++) {
             const isWeekend = day === 5 || day === 6;
-            const dayFactor = isWeekend ? weekendFactor : 1;
-
             for (let hour = 0; hour < 24; hour++) {
-                const hourDist = Math.abs(hour - peakHour);
-                const dailyCycle = Math.exp(-(hourDist * hourDist) / 18) * amplitude;
-                const noise = (Math.random() - 0.5) * noiseLevel * 2;
-                const usage = (baseline + dailyCycle) * dayFactor + noise;
+                let usage = baseline;
+                for (const p of peaks) {
+                    const dist = Math.min(Math.abs(hour - p.hour), 24 - Math.abs(hour - p.hour));
+                    usage += Math.exp(-(dist * dist) / (2 * p.width * p.width)) * (0.4 + Math.random() * 0.1);
+                }
+                usage *= isWeekend ? weekendFactor : 1;
+                usage += (Math.random() - 0.5) * 0.06;
                 pattern.push(Math.min(1, Math.max(0, usage)));
             }
         }
+        return pattern;
+    }
 
+    // Spiky: sharp narrow spikes at random intervals, very low baseline
+    function randomSpiky() {
+        const numSpikes = 2 + Math.floor(Math.random() * 4);
+        const spikeHours = new Set();
+        while (spikeHours.size < numSpikes) {
+            spikeHours.add(Math.floor(Math.random() * 24));
+        }
+        const baseline = 0.03 + Math.random() * 0.08;
+        const pattern = [];
+
+        for (let day = 0; day < 7; day++) {
+            const isWeekend = day === 5 || day === 6;
+            const daySpikes = isWeekend ? Math.random() > 0.5 : true;
+            for (let hour = 0; hour < 24; hour++) {
+                let usage = baseline;
+                if (daySpikes && spikeHours.has(hour)) {
+                    usage = 0.7 + Math.random() * 0.3;
+                } else if (daySpikes && spikeHours.has((hour + 1) % 24)) {
+                    usage = 0.3 + Math.random() * 0.2;
+                }
+                usage += (Math.random() - 0.5) * 0.04;
+                pattern.push(Math.min(1, Math.max(0, usage)));
+            }
+        }
+        return pattern;
+    }
+
+    // Plateau: flat high period with sharp ramp up/down
+    function randomPlateau() {
+        const startHour = 4 + Math.floor(Math.random() * 8);
+        const duration = 6 + Math.floor(Math.random() * 10);
+        const endHour = (startHour + duration) % 24;
+        const highLevel = 0.7 + Math.random() * 0.3;
+        const lowLevel = 0.02 + Math.random() * 0.1;
+        const weekendFactor = 0.2 + Math.random() * 0.6;
+        const pattern = [];
+
+        for (let day = 0; day < 7; day++) {
+            const isWeekend = day === 5 || day === 6;
+            for (let hour = 0; hour < 24; hour++) {
+                const inPlateau = duration < 24
+                    ? (startHour < endHour ? hour >= startHour && hour < endHour : hour >= startHour || hour < endHour)
+                    : true;
+                let usage = inPlateau ? highLevel : lowLevel;
+                usage *= isWeekend ? weekendFactor : 1;
+                usage += (Math.random() - 0.5) * 0.06;
+                pattern.push(Math.min(1, Math.max(0, usage)));
+            }
+        }
+        return pattern;
+    }
+
+    // Gradual: slow ramp up across the week, resets Monday
+    function randomGradual() {
+        const startLevel = 0.1 + Math.random() * 0.2;
+        const endLevel = 0.7 + Math.random() * 0.3;
+        const dailySwing = 0.1 + Math.random() * 0.2;
+        const peakHour = 10 + Math.floor(Math.random() * 8);
+        const pattern = [];
+
+        for (let day = 0; day < 7; day++) {
+            const dayProgress = day / 6;
+            const dayBase = startLevel + (endLevel - startLevel) * dayProgress;
+            for (let hour = 0; hour < 24; hour++) {
+                const dist = Math.abs(hour - peakHour);
+                const dailyCycle = Math.exp(-(dist * dist) / 20) * dailySwing;
+                let usage = dayBase + dailyCycle;
+                usage += (Math.random() - 0.5) * 0.05;
+                pattern.push(Math.min(1, Math.max(0, usage)));
+            }
+        }
+        return pattern;
+    }
+
+    // High base: consistently high with small dips (like 24/7 but noisier)
+    function randomHighBase() {
+        const base = 0.65 + Math.random() * 0.2;
+        const dipDepth = 0.15 + Math.random() * 0.25;
+        const dipHour = Math.floor(Math.random() * 24);
+        const dipWidth = 2 + Math.random() * 4;
+        const pattern = [];
+
+        for (let day = 0; day < 7; day++) {
+            const dayShift = (Math.random() - 0.5) * 0.1;
+            for (let hour = 0; hour < 24; hour++) {
+                const dist = Math.min(Math.abs(hour - dipHour), 24 - Math.abs(hour - dipHour));
+                const dip = Math.exp(-(dist * dist) / (2 * dipWidth * dipWidth)) * dipDepth;
+                let usage = base + dayShift - dip;
+                usage += (Math.random() - 0.5) * 0.08;
+                pattern.push(Math.min(1, Math.max(0, usage)));
+            }
+        }
+        return pattern;
+    }
+
+    // Nocturnal: peak at night, low during day (opposite of business hours)
+    function randomNocturnal() {
+        const nightPeak = 0.8 + Math.random() * 0.2;
+        const dayLow = 0.05 + Math.random() * 0.15;
+        const peakHour = 1 + Math.floor(Math.random() * 4);
+        const weekendBoost = Math.random() > 0.5 ? 0.15 : 0;
+        const pattern = [];
+
+        for (let day = 0; day < 7; day++) {
+            const isWeekend = day === 5 || day === 6;
+            for (let hour = 0; hour < 24; hour++) {
+                const dist = Math.min(Math.abs(hour - peakHour), 24 - Math.abs(hour - peakHour));
+                const nightCurve = Math.exp(-(dist * dist) / 30);
+                let usage = dayLow + (nightPeak - dayLow) * nightCurve;
+                if (isWeekend) usage += weekendBoost;
+                usage += (Math.random() - 0.5) * 0.06;
+                pattern.push(Math.min(1, Math.max(0, usage)));
+            }
+        }
         return pattern;
     }
 
