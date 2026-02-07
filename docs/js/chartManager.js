@@ -792,7 +792,7 @@ const ChartManager = (function() {
         savingsCurveChart.$maxCost = maxCost;
         savingsCurveChart.$curveData = curveData;
 
-        const maxCommitment = curveData.length > 0 ? curveData.at(-1).commitment : maxCost;
+        const maxCommitment = maxCost * (1 - savingsPercentage / 100);
         savingsCurveChart.options.scales.x.max = maxCommitment;
 
         const baselineHourly = baselineCost / numHours;

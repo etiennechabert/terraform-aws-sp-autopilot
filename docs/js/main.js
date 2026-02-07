@@ -553,6 +553,7 @@
         if (!isNaN(value) && value >= 10 && value <= 90) {
             appState.savingsPercentage = value;
             updateSavingsDisplay(value);
+            updateCoverageDisplay(appState.coverageCost);
             calculateAndUpdateCosts();
             URLState.debouncedUpdateURL(appState);
         }
@@ -1154,19 +1155,23 @@
         const savingsPercentage = appState.savingsPercentage;
         const baselineCost = hourlyCosts.reduce((sum, cost) => sum + cost, 0);
 
-        // First pass: find breakeven point by testing coverage levels
-        let breakevenCoverage = maxCost;
         // NOTE: This is equivalent to commitmentFromCoverage() in spCalculations.js
-        // Kept as variable for performance (reused in loops)
         const discountFactor = (1 - savingsPercentage / 100);
-        const testIncrement = maxCost / 500; // Fine granularity for finding breakeven
+        const numHours = hourlyCosts.length;
 
-        for (let coverageCost = 0; coverageCost <= maxCost; coverageCost += testIncrement) {
+        // Beyond maxCost, spillover=0, so breakeven = baselineCost / (discountFactor * numHours)
+        const analyticalBreakeven = discountFactor > 0
+            ? baselineCost / (discountFactor * numHours)
+            : maxCost * 2;
+        const searchLimit = Math.max(maxCost, analyticalBreakeven) * 1.2;
+        const testIncrement = searchLimit / 500;
+
+        let breakevenCoverage = searchLimit;
+        for (let coverageCost = 0; coverageCost <= searchLimit; coverageCost += testIncrement) {
             let commitmentCost = 0;
             let spilloverCost = 0;
 
-            for (let i = 0; i < hourlyCosts.length; i++) {
-                // NOTE: commitmentCost calculation uses discountFactor (see above comment)
+            for (let i = 0; i < numHours; i++) {
                 commitmentCost += coverageCost * discountFactor;
                 spilloverCost += Math.max(0, hourlyCosts[i] - coverageCost);
             }
@@ -1174,22 +1179,19 @@
             const totalCost = commitmentCost + spilloverCost;
             const netSavings = baselineCost - totalCost;
 
-            // Found where we cross back to negative savings
             if (netSavings < 0) {
                 breakevenCoverage = coverageCost - testIncrement;
                 break;
             }
         }
 
-        // Set chart range to breakeven + 10% buffer (or max if breakeven is close to max)
-        const bufferMultiplier = 1.1;
-        const chartMaxCost = Math.min(breakevenCoverage * bufferMultiplier, maxCost);
-
-        // Generate curve data from $0 to chartMaxCost with high resolution
+        // Generate data up to breakeven so all zones are computed,
+        // but the chart x-axis will be capped at maxCost (commitment terms)
+        const dataMaxCoverage = Math.max(maxCost, breakevenCoverage * 1.1);
         const curveData = [];
-        const increment = chartMaxCost / 500; // 500 data points for smooth curve
+        const increment = dataMaxCoverage / 500;
 
-        for (let coverageCost = 0; coverageCost <= chartMaxCost; coverageCost += increment) {
+        for (let coverageCost = 0; coverageCost <= dataMaxCoverage; coverageCost += increment) {
             let commitmentCost = 0;
             let spilloverCost = 0;
 
@@ -1244,7 +1246,7 @@
             curveData,
             minHourlySavings,
             minCost,
-            maxCost: chartMaxCost,
+            maxCost,
             baselineCost,
             currentCoverage: currentCoverageFromData,
             savingsPercentage,
