@@ -1521,8 +1521,8 @@ def generate_html_report(
                 // Get pre-calculated on-demand equivalent (calculated in Python to eliminate duplication)
                 const onDemandEquivalent = metrics.on_demand_coverage_hourly || 0;
 
-                // Use standard coverage metric (same as scheduler preview for consistency)
-                const currentCoveragePct = metrics.current_coverage || 0;
+                // Coverage as percentage of min-hourly
+                const currentCoveragePct = minHourly > 0 ? (onDemandEquivalent / minHourly) * 100 : 0;
 
                 // Only add current coverage line if we have coverage
                 if (spCommitmentHourly > 0) {{

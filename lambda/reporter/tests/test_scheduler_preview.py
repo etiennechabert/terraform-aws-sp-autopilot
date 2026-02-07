@@ -225,3 +225,89 @@ def test_calculate_scheduler_preview_strategy_error_handling(
 
     # follow_aws might have an error (no AWS mock), but should still be in result
     assert "follow_aws" in result["strategies"]
+
+
+def test_coverage_is_min_hourly_based(sample_config, mock_clients, aws_mock_builder):
+    """Coverage values should be expressed as percentage of min-hourly, not avg_coverage_total.
+
+    Regression test: breakdown_by_type uses AWS-capitalized keys (e.g. "Database")
+    while sp_type from coverage_data is lowercase (e.g. "database"). A key mismatch
+    would result in 0% current coverage even when a plan exists.
+    """
+    mock_clients[
+        "ce"
+    ].get_savings_plans_purchase_recommendation.return_value = aws_mock_builder.recommendation(
+        sp_type="database", hourly_commitment=5.0
+    )
+
+    config = sample_config.copy()
+    config["enable_database_sp"] = True
+    config["database_sp_term"] = "ONE_YEAR"
+    config["database_sp_payment_option"] = "NO_UPFRONT"
+
+    coverage_data = {
+        "compute": {
+            "summary": {
+                "avg_coverage_total": 70.0,
+                "avg_hourly_total": 100.0,
+                "avg_hourly_covered": 70.0,
+                "avg_hourly_uncovered": 30.0,
+            },
+            "timeseries": [
+                {"timestamp": "2026-01-20T00:00:00Z", "total": 90.0, "covered": 63.0},
+                {"timestamp": "2026-01-20T01:00:00Z", "total": 100.0, "covered": 70.0},
+                {"timestamp": "2026-01-20T02:00:00Z", "total": 110.0, "covered": 77.0},
+            ],
+        },
+        "database": {
+            "summary": {
+                "avg_coverage_total": 5.0,
+                "avg_hourly_total": 30.0,
+                "avg_hourly_covered": 1.5,
+                "avg_hourly_uncovered": 28.5,
+            },
+            "timeseries": [
+                {"timestamp": "2026-01-20T00:00:00Z", "total": 20.0, "covered": 1.5},
+                {"timestamp": "2026-01-20T01:00:00Z", "total": 30.0, "covered": 1.5},
+                {"timestamp": "2026-01-20T02:00:00Z", "total": 40.0, "covered": 1.5},
+            ],
+        },
+    }
+
+    savings_data = {
+        "actual_savings": {
+            "breakdown_by_type": {
+                "Compute": {
+                    "total_commitment": 10.0,
+                    "savings_percentage": 30.0,
+                },
+                "Database": {
+                    "total_commitment": 1.0,
+                    "savings_percentage": 35.0,
+                },
+            },
+        },
+    }
+
+    result = scheduler_preview.calculate_scheduler_preview(
+        config, mock_clients, coverage_data, savings_data
+    )
+
+    # Find database purchase from fixed strategy
+    fixed_purchases = result["strategies"]["fixed"]["purchases"]
+    db_purchase = next((p for p in fixed_purchases if p["sp_type"] == "database"), None)
+    assert db_purchase is not None
+
+    # Current coverage must be > 0 (there's a $1/hr database plan)
+    assert db_purchase["current_coverage"] > 0
+
+    # Coverage should NOT equal avg_coverage_total (5.0%) — it's min-hourly based
+    # min_hourly=20.0, commitment=1.0, savings=35% → od_equiv = 1.0/(1-0.35) = 1.538
+    # current_coverage = 1.538/20.0*100 = 7.69%
+    assert db_purchase["current_coverage"] != pytest.approx(5.0, abs=0.5)
+    assert db_purchase["current_coverage"] == pytest.approx(7.69, abs=0.1)
+
+    # Math consistency: current + purchase = projected
+    assert db_purchase["current_coverage"] + db_purchase["purchase_percent"] == pytest.approx(
+        db_purchase["projected_coverage"], abs=0.01
+    )
