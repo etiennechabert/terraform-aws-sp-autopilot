@@ -251,6 +251,57 @@ h1, h2, h3, h4, h5, h6 {
     margin-bottom: var(--spacing-md);
 }
 
+.header-right {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-sm);
+    flex-shrink: 0;
+}
+
+/* ===== Compact Pattern Buttons (shown when collapsed) ===== */
+.pattern-selector-compact {
+    display: flex;
+    gap: 4px;
+}
+
+.pattern-selector-compact.hidden {
+    display: none;
+}
+
+.pattern-btn-compact {
+    width: 36px;
+    height: 28px;
+    padding: 3px;
+    background: rgba(0, 0, 0, 0.3);
+    border: 1.5px solid var(--card-border);
+    border-radius: var(--radius-sm);
+    cursor: pointer;
+    transition: all 0.2s ease;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.pattern-btn-compact svg {
+    width: 100%;
+    height: 100%;
+}
+
+.pattern-btn-compact:hover {
+    border-color: var(--accent-cyan);
+}
+
+.pattern-btn-compact.active {
+    border-color: var(--color-success);
+    background: rgba(0, 255, 136, 0.08);
+}
+
+@media (max-width: 900px) {
+    .pattern-selector-compact {
+        display: none !important;
+    }
+}
+
 /* ===== Pattern Selector Buttons ===== */
 .pattern-selector {
     display: flex;

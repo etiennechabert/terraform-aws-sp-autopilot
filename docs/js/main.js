@@ -234,8 +234,8 @@
             });
         }
 
-        // Pattern buttons
-        document.querySelectorAll('.pattern-btn').forEach(btn => {
+        // Pattern buttons (both full and compact)
+        document.querySelectorAll('.pattern-btn, .pattern-btn-compact').forEach(btn => {
             btn.addEventListener('click', handlePatternBtnClick);
         });
 
@@ -420,7 +420,7 @@
     }
 
     function setActivePatternBtn(pattern) {
-        document.querySelectorAll('.pattern-btn').forEach(btn => {
+        document.querySelectorAll('.pattern-btn, .pattern-btn-compact').forEach(btn => {
             btn.classList.toggle('active', btn.dataset.pattern === pattern);
         });
     }
@@ -961,12 +961,16 @@
     function handleToggleLoadPattern() {
         const content = document.getElementById('load-pattern-content');
         const button = document.getElementById('toggle-load-pattern');
+        const compactBar = document.querySelector('.pattern-selector-compact');
 
         if (!content || !button) return;
 
-        // Toggle collapsed class
         content.classList.toggle('collapsed');
         button.classList.toggle('collapsed');
+
+        if (compactBar) {
+            compactBar.classList.toggle('hidden', !content.classList.contains('collapsed'));
+        }
     }
 
     /**
