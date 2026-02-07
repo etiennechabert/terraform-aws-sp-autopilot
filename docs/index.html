@@ -54,32 +54,66 @@
                 </div>
 
                 <div id="load-pattern-content" class="collapsible-content">
-                    <div class="pattern-controls-row">
-                        <div class="control-group">
-                            <label for="pattern-select" class="control-label">Pattern Type</label>
-                            <select id="pattern-select" class="select-input">
-                                <option value="ecommerce">E-commerce (Weekday peaks)</option>
-                                <option value="global247">Global 24/7 (Consistent load)</option>
-                                <option value="flat">Flat (100% constant)</option>
-                                <option value="custom-paste">Custom (Paste Data)</option>
-                                <option value="custom-url">Custom (From URL)</option>
-                            </select>
-                        </div>
+                    <div class="pattern-selector">
+                        <button class="pattern-btn active" data-pattern="ecommerce" type="button">
+                            <svg class="pattern-sparkline" viewBox="0 0 48 24">
+                                <polygon class="sparkline-fill" points="0,22 3,21 6,18 9,10 12,5 15,3 18,5 21,14 24,22 27,21 30,18 33,10 36,5 39,3 42,5 45,14 48,22 48,24 0,24"/>
+                                <polyline class="sparkline-line" points="0,22 3,21 6,18 9,10 12,5 15,3 18,5 21,14 24,22 27,21 30,18 33,10 36,5 39,3 42,5 45,14 48,22"/>
+                            </svg>
+                            <span class="pattern-btn-label">E-commerce</span>
+                        </button>
+                        <button class="pattern-btn" data-pattern="global247" type="button">
+                            <svg class="pattern-sparkline" viewBox="0 0 48 24">
+                                <polygon class="sparkline-fill" points="0,10 6,8 12,12 18,8 24,10 30,8 36,12 42,8 48,10 48,24 0,24"/>
+                                <polyline class="sparkline-line" points="0,10 6,8 12,12 18,8 24,10 30,8 36,12 42,8 48,10"/>
+                            </svg>
+                            <span class="pattern-btn-label">24/7</span>
+                        </button>
+                        <button class="pattern-btn" data-pattern="flat" type="button">
+                            <svg class="pattern-sparkline" viewBox="0 0 48 24">
+                                <polygon class="sparkline-fill" points="0,4 48,4 48,24 0,24"/>
+                                <polyline class="sparkline-line" points="0,4 48,4"/>
+                            </svg>
+                            <span class="pattern-btn-label">Flat</span>
+                        </button>
+                        <button class="pattern-btn" data-pattern="custom-paste" type="button">
+                            <svg class="pattern-icon" viewBox="0 0 48 24">
+                                <rect class="icon-shape" x="14" y="2" width="20" height="20" rx="2"/>
+                                <rect class="icon-shape" x="18" y="0" width="12" height="4" rx="1"/>
+                                <line class="icon-shape" x1="19" y1="10" x2="29" y2="10"/>
+                                <line class="icon-shape" x1="19" y1="14" x2="29" y2="14"/>
+                                <line class="icon-shape" x1="19" y1="18" x2="26" y2="18"/>
+                            </svg>
+                            <span class="pattern-btn-label">Paste</span>
+                        </button>
+                        <button class="pattern-btn" data-pattern="custom-url" type="button">
+                            <svg class="pattern-icon" viewBox="0 0 48 24">
+                                <circle class="icon-shape" cx="24" cy="12" r="10"/>
+                                <ellipse class="icon-shape" cx="24" cy="12" rx="4" ry="10"/>
+                                <line class="icon-shape" x1="14" y1="12" x2="34" y2="12"/>
+                            </svg>
+                            <span class="pattern-btn-label">From URL</span>
+                        </button>
+                    </div>
 
-                        <div class="control-group">
-                            <label for="min-cost" class="control-label">
-                                Min Cost ($/h)
-                                <span class="control-hint">Baseline hourly cost</span>
+                    <div class="load-factor-row">
+                        <div class="control-group" style="flex: 1;">
+                            <label for="load-factor-top" class="control-label">
+                                Load Factor
+                                <span class="control-value" id="load-factor-display-top">100%</span>
                             </label>
-                            <input type="number" id="min-cost" class="number-input" value="15" min="0" max="10000" step="1">
+                            <input type="range" id="load-factor-top" class="slider" min="1" max="150" value="100" step="1">
                         </div>
-
-                        <div class="control-group">
-                            <label for="max-cost" class="control-label">
-                                Max Cost ($/h)
-                                <span class="control-hint">Peak hourly cost</span>
-                            </label>
-                            <input type="number" id="max-cost" class="number-input" value="100" min="1" max="10000" step="1">
+                        <button id="toggle-advanced-costs" class="button-toggle-inline" type="button" title="Min/Max Cost">&#9881;</button>
+                        <div id="advanced-costs" class="advanced-costs hidden">
+                            <div class="control-group">
+                                <label for="min-cost" class="control-label">Min $/h</label>
+                                <input type="number" id="min-cost" class="number-input" value="15" min="0" max="10000" step="1">
+                            </div>
+                            <div class="control-group">
+                                <label for="max-cost" class="control-label">Max $/h</label>
+                                <input type="number" id="max-cost" class="number-input" value="100" min="1" max="10000" step="1">
+                            </div>
                         </div>
                     </div>
 
@@ -402,7 +436,7 @@
                 reporter lambda deployed in your AWS account.
             </p>
             <p class="modal-description" style="margin-bottom: 0;">
-                Alternatively, use <strong>Custom (Paste Data)</strong> to manually paste data from the AWS CLI.
+                Alternatively, use the <strong>Paste</strong> button to manually paste data from the AWS CLI.
             </p>
             <div class="modal-actions">
                 <button id="no-url-data-close-btn" class="modal-btn modal-btn-load" type="button">OK</button>

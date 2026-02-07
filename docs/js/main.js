@@ -234,17 +234,10 @@
             });
         }
 
-        // Pattern selector
-        const patternSelect = document.getElementById('pattern-select');
-        if (patternSelect) {
-            patternSelect.value = appState.pattern;
-            patternSelect.addEventListener('mousedown', () => {
-                if (patternSelect.value === 'custom-paste') {
-                    patternSelect.value = '';
-                }
-            });
-            patternSelect.addEventListener('change', handlePatternChange);
-        }
+        // Pattern buttons
+        document.querySelectorAll('.pattern-btn').forEach(btn => {
+            btn.addEventListener('click', handlePatternBtnClick);
+        });
 
         // Min cost input
         const minCostInput = document.getElementById('min-cost');
@@ -278,21 +271,34 @@
             savingsSlider.addEventListener('input', handleSavingsChange);
         }
 
-        // Load factor slider
+        // Load factor slider (bottom vertical)
         const loadFactorSlider = document.getElementById('load-factor');
         if (loadFactorSlider) {
             loadFactorSlider.value = appState.loadFactor;
             loadFactorSlider.addEventListener('input', handleLoadFactorChange);
         }
 
+        // Load factor slider (top horizontal)
+        const loadFactorTopSlider = document.getElementById('load-factor-top');
+        if (loadFactorTopSlider) {
+            loadFactorTopSlider.value = appState.loadFactor;
+            loadFactorTopSlider.addEventListener('input', handleLoadFactorChange);
+        }
+
         // Reset load factor button
         const resetLoadFactorButton = document.getElementById('reset-load-factor');
         if (resetLoadFactorButton) {
             resetLoadFactorButton.addEventListener('click', () => {
-                if (loadFactorSlider) {
-                    loadFactorSlider.value = 100;
-                    handleLoadFactorChange({ target: { value: '100' } });
-                }
+                handleLoadFactorChange({ target: { value: '100' } });
+            });
+        }
+
+        // Advanced costs toggle
+        const toggleAdvancedCosts = document.getElementById('toggle-advanced-costs');
+        if (toggleAdvancedCosts) {
+            toggleAdvancedCosts.addEventListener('click', () => {
+                const panel = document.getElementById('advanced-costs');
+                if (panel) panel.classList.toggle('hidden');
             });
         }
 
@@ -371,11 +377,8 @@
      * Update UI elements from current state
      */
     function updateUIFromState() {
-        // Pattern selector
-        const patternSelect = document.getElementById('pattern-select');
-        if (patternSelect) {
-            patternSelect.value = appState.pattern;
-        }
+        // Pattern buttons
+        setActivePatternBtn(appState.pattern);
 
         // Min cost
         const minCostInput = document.getElementById('min-cost');
@@ -405,11 +408,8 @@
         }
         updateSavingsDisplay(appState.savingsPercentage);
 
-        // Load factor slider
-        const loadFactorSlider = document.getElementById('load-factor');
-        if (loadFactorSlider) {
-            loadFactorSlider.value = appState.loadFactor;
-        }
+        // Load factor sliders (both)
+        syncLoadFactorSliders(appState.loadFactor);
         updateLoadFactorDisplay(appState.loadFactor);
 
         // On-demand rate
@@ -419,21 +419,34 @@
         }
     }
 
+    function setActivePatternBtn(pattern) {
+        document.querySelectorAll('.pattern-btn').forEach(btn => {
+            btn.classList.toggle('active', btn.dataset.pattern === pattern);
+        });
+    }
+
+    function syncLoadFactorSliders(value) {
+        const top = document.getElementById('load-factor-top');
+        const bottom = document.getElementById('load-factor');
+        if (top) top.value = value;
+        if (bottom) bottom.value = value;
+    }
+
     /**
      * Handle pattern type change
      */
-    function handlePatternChange(event) {
-        const value = event.target.value;
+    function handlePatternBtnClick(event) {
+        const btn = event.currentTarget;
+        const value = btn.dataset.pattern;
 
         if (value === 'custom-paste') {
-            showCustomDataModal(event.target);
+            showCustomDataModal();
             return;
         }
 
         if (value === 'custom-url') {
             const params = new URLSearchParams(window.location.search);
             if (params.get('usage')) {
-                // URL has usage data - load it
                 const usageData = URLState.decompressUsageData(params.get('usage'));
                 if (usageData) {
                     loadUsageData(usageData, 'custom-url');
@@ -444,12 +457,12 @@
                     return;
                 }
             }
-            // No usage data in URL - show error modal
-            showNoUrlDataModal(event.target);
+            showNoUrlDataModal();
             return;
         }
 
         appState.pattern = value;
+        setActivePatternBtn(value);
 
         if (isCustomPattern(appState.pattern) && !appState.customCurve) {
             appState.customCurve = [...appState.currentLoadPattern];
@@ -543,6 +556,7 @@
         const value = parseInt(event.target.value, 10);
         if (!isNaN(value) && value >= 1 && value <= 150) {
             appState.loadFactor = value;
+            syncLoadFactorSliders(value);
             updateLoadFactorDisplay(value);
             calculateAndUpdateCosts();
             URLState.debouncedUpdateURL(appState);
@@ -1258,31 +1272,31 @@
      * Update load factor display
      */
     function updateLoadFactorDisplay(value) {
-        const displayElement = document.getElementById('load-factor-display');
-        if (displayElement) {
-            const delta = value - 100;
+        const displays = [
+            document.getElementById('load-factor-display'),
+            document.getElementById('load-factor-display-top')
+        ];
 
-            // Remove existing color classes
-            displayElement.classList.remove('positive', 'negative', 'neutral');
-
+        const delta = value - 100;
+        displays.forEach(el => {
+            if (!el) return;
+            el.classList.remove('positive', 'negative', 'neutral');
             if (delta === 0) {
-                displayElement.textContent = '100%';
-                displayElement.classList.add('neutral');
+                el.textContent = '100%';
+                el.classList.add('neutral');
             } else if (delta > 0) {
-                displayElement.textContent = `+${delta}%`;
-                displayElement.classList.add('positive'); // Red for increase
+                el.textContent = `+${delta}%`;
+                el.classList.add('positive');
             } else {
-                displayElement.textContent = `${delta}%`; // Negative sign already included
-                displayElement.classList.add('negative'); // Green for reduction
+                el.textContent = `${delta}%`;
+                el.classList.add('negative');
             }
-        }
+        });
 
         const hintElement = document.getElementById('load-factor-hint');
         if (hintElement) {
             if (value === 100) {
                 hintElement.textContent = 'Original usage level';
-            } else if (value < 100) {
-                hintElement.textContent = `${value}% of original usage`;
             } else {
                 hintElement.textContent = `${value}% of original usage`;
             }
@@ -1527,10 +1541,7 @@
 
     // ===== Custom Data Modal =====
 
-    function showCustomDataModal(selectElement) {
-        // Revert dropdown to previous pattern
-        selectElement.value = appState.pattern;
-
+    function showCustomDataModal() {
         // Calculate date range: 7 full days ending today at midnight UTC (exclusive)
         const end = new Date();
         end.setUTCHours(0, 0, 0, 0);
@@ -1562,8 +1573,7 @@
         document.getElementById('custom-data-modal').classList.add('hidden');
     }
 
-    function showNoUrlDataModal(selectElement) {
-        selectElement.value = appState.pattern;
+    function showNoUrlDataModal() {
         document.getElementById('no-url-data-modal').classList.remove('hidden');
     }
 
