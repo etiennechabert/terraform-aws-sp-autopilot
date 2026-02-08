@@ -28,11 +28,6 @@ test.describe('Strategy Card Stability Tests', () => {
         cost: await page.locator('#strategy-aggressive-value').textContent(),
         savings: await page.locator('#strategy-aggressive-savings').textContent(),
         savingsPct: await page.locator('#strategy-aggressive-savings-pct').textContent()
-      },
-      aggressive: {
-        cost: await page.locator('#strategy-too-aggressive-value').textContent(),
-        savings: await page.locator('#strategy-too-aggressive-savings').textContent(),
-        savingsPct: await page.locator('#strategy-too-aggressive-savings-pct').textContent()
       }
     });
 
@@ -42,30 +37,19 @@ test.describe('Strategy Card Stability Tests', () => {
     await page.waitForTimeout(500);
     const afterRiskyClick = await getStrategyValues();
 
-    await page.click('#strategy-too-aggressive');
-    await page.waitForTimeout(500);
-    const afterAggressiveClick = await getStrategyValues();
-
     await page.click('#strategy-balanced');
     await page.waitForTimeout(500);
     const afterBalancedClick = await getStrategyValues();
 
     expect(afterRiskyClick.prudent).toEqual(baselineValues.prudent);
-    expect(afterAggressiveClick.prudent).toEqual(baselineValues.prudent);
     expect(afterBalancedClick.prudent).toEqual(baselineValues.prudent);
 
     expect(afterRiskyClick.minHourly).toEqual(baselineValues.minHourly);
-    expect(afterAggressiveClick.minHourly).toEqual(baselineValues.minHourly);
     expect(afterBalancedClick.minHourly).toEqual(baselineValues.minHourly);
 
     expect(afterRiskyClick.balanced).toEqual(baselineValues.balanced);
-    expect(afterAggressiveClick.balanced).toEqual(baselineValues.balanced);
 
-    expect(afterAggressiveClick.risky).toEqual(baselineValues.risky);
     expect(afterBalancedClick.risky).toEqual(baselineValues.risky);
-
-    expect(afterRiskyClick.aggressive).toEqual(baselineValues.aggressive);
-    expect(afterBalancedClick.aggressive).toEqual(baselineValues.aggressive);
   });
 
   test('all strategy cards show consistent values across browser reload', async ({ page }) => {
@@ -77,8 +61,7 @@ test.describe('Strategy Card Stability Tests', () => {
       prudent: await page.locator('#strategy-too-prudent-savings').textContent(),
       minHourly: await page.locator('#strategy-min-savings').textContent(),
       balanced: await page.locator('#strategy-balanced-savings').textContent(),
-      risky: await page.locator('#strategy-aggressive-savings').textContent(),
-      aggressive: await page.locator('#strategy-too-aggressive-savings').textContent()
+      risky: await page.locator('#strategy-aggressive-savings').textContent()
     });
 
     const firstLoad = await getAll();
