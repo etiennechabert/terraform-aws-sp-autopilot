@@ -45,6 +45,17 @@
                 appState = { ...appState, ...urlState };
             }
 
+            if (urlState.awsRecommendation) {
+                appState.awsRecommendation = urlState.awsRecommendation;
+
+                // If no existing SP plan, use AWS's estimated discount rate
+                if (appState.usageDataLoaded && !appState.usageData?.current_coverage) {
+                    const awsPct = Math.round(urlState.awsRecommendation.estimated_savings_percentage);
+                    appState.savingsPercentage = awsPct;
+                    appState.actualSavingsPercentage = awsPct;
+                }
+            }
+
             // Backward compat: old URLs with pattern=custom
             if (appState.pattern === 'custom') {
                 appState.pattern = 'custom-paste';
@@ -100,8 +111,8 @@
             validateOptimalCoverage(hourlyCosts, usageData.optimal_from_python, savingsPercentage);
         }
 
-        // Use current coverage from user's actual commitment, or default to min-hourly
-        const currentCoverage = usageData.current_coverage || minCost;
+        // Actual existing SP coverage (0 when no SP)
+        const currentCoverage = usageData.current_coverage || 0;
 
         // Update app state with real data
         appState = {
@@ -109,9 +120,10 @@
             pattern: pattern,
             minCost: minCost,
             maxCost: maxCost,
-            coverageCost: currentCoverage,  // Set to user's actual current coverage
+            coverageCost: currentCoverage || minCost,  // Start slider at min-hourly if no SP
             customCurve: customCurve,
             savingsPercentage: savingsPercentage,  // Use actual discount from user's SPs
+            actualSavingsPercentage: savingsPercentage,  // Preserve original for restoring after AWS strategy
             usageDataLoaded: true,
             usageData: usageData,  // Store full usage data for banner
             usageStats: stats,
@@ -267,6 +279,16 @@
             savingsSlider.value = appState.savingsPercentage;
             savingsSlider.addEventListener('input', handleSavingsChange);
         }
+
+        // Savings source reset button (delegated)
+        document.getElementById('savings-source')?.addEventListener('click', (e) => {
+            if (e.target.id === 'savings-source-reset' && appState.actualSavingsPercentage) {
+                appState.savingsPercentage = appState.actualSavingsPercentage;
+                if (savingsSlider) savingsSlider.value = appState.savingsPercentage;
+                updateSavingsDisplay(appState.savingsPercentage);
+                calculateAndUpdateCosts();
+            }
+        });
 
         // Load factor slider (bottom vertical)
         const loadFactorSlider = document.getElementById('load-factor');
@@ -441,17 +463,19 @@
         }
 
         if (value === 'custom-url') {
-            const params = new URLSearchParams(window.location.search);
-            if (params.get('usage')) {
-                const usageData = URLState.decompressUsageData(params.get('usage'));
-                if (usageData) {
-                    loadUsageData(usageData, 'custom-url');
-                    updateUIFromState();
-                    updateLoadPattern();
-                    calculateAndUpdateCosts();
-                    URLState.debouncedUpdateURL(appState);
-                    return;
-                }
+            let usageData = appState.usageData;
+            if (!usageData) {
+                const params = new URLSearchParams(window.location.search);
+                const raw = params.get('usage');
+                if (raw) usageData = URLState.decompressUsageData(raw);
+            }
+            if (usageData) {
+                loadUsageData(usageData, 'custom-url');
+                updateUIFromState();
+                updateLoadPattern();
+                calculateAndUpdateCosts();
+                URLState.debouncedUpdateURL(appState);
+                return;
             }
             showNoUrlDataModal();
             return;
@@ -615,8 +639,7 @@
                 tooPrudent: 0,
                 minHourly: 0,
                 balanced: 0,
-                aggressive: 0,
-                tooAggressive: 0
+                aggressive: 0
             };
         }
 
@@ -643,15 +666,23 @@
         // Aggressive: The exact optimal point (maximum savings)
         const aggressive = optimal;
 
-        // Too Aggressive: 125% of optimal (into the declining zone - for educational purposes)
-        const tooAggressive = optimal * 1.25;
+        // AWS recommendation: convert commitment to on-demand equivalent using actual savings rate
+        let awsRecommendation = null;
+        if (appState.awsRecommendation) {
+            const actualPct = appState.actualSavingsPercentage || appState.savingsPercentage;
+            const newPurchaseCoverage = SPCalculations.coverageFromCommitment(
+                appState.awsRecommendation.hourly_commitment,
+                actualPct
+            );
+            awsRecommendation = (appState.currentCoverage || 0) + newPurchaseCoverage;
+        }
 
         return {
             tooPrudent,
             minHourly,
             balanced,
             aggressive,
-            tooAggressive
+            awsRecommendation
         };
     }
 
@@ -767,18 +798,30 @@
             case 'aggressive':
                 coverageCost = strategies.aggressive;
                 break;
-            case 'too-aggressive':
-                coverageCost = strategies.tooAggressive;
+            case 'aws':
+                coverageCost = strategies.awsRecommendation;
                 break;
             default:
                 showToast('Unknown strategy', 'error');
                 return;
         }
 
+        // Restore actual savings percentage if it was overridden
+        if (appState.actualSavingsPercentage) {
+            appState.savingsPercentage = appState.actualSavingsPercentage;
+        }
+
         // Update state
         appState.coverageCost = coverageCost;
 
-        // Update slider
+        // Update savings slider to reflect active rate
+        const savingsSlider = document.getElementById('savings-percentage');
+        if (savingsSlider) {
+            savingsSlider.value = appState.savingsPercentage;
+        }
+        updateSavingsDisplay(appState.savingsPercentage);
+
+        // Update coverage slider
         const coverageSlider = document.getElementById('coverage-slider');
         if (coverageSlider) {
             coverageSlider.value = coverageCost;
@@ -787,7 +830,7 @@
         // Update display
         updateCoverageDisplay(coverageCost);
 
-        // Recalculate
+        // Recalculate (strategies will be recalculated with the new savings %)
         calculateAndUpdateCosts();
 
         // Update URL
@@ -799,7 +842,7 @@
             'min-hourly': 'Min-Hourly',
             'balanced': 'Balanced',
             'aggressive': 'Risky',
-            'too-aggressive': 'Aggressive 💀'
+            'aws': 'Recommendation'
         };
         showToast(`${strategyNames[strategy]} strategy applied: ${CostCalculator.formatCurrency(coverageCost)}/h`);
     }
@@ -918,6 +961,22 @@
                         results.savings / numHours
                     );
                 }
+
+                // Show purchase info when usage data is loaded
+                const desc = document.querySelector(`#strategy-${strategyId} .strategy-desc`);
+                if (desc && appState.usageDataLoaded) {
+                    const currentCommitment = SPCalculations.commitmentFromCoverage(appState.currentCoverage || 0, savingsPercentage);
+                    const delta = commitment - currentCommitment;
+                    const amt = CostCalculator.formatCurrency(Math.abs(delta));
+                    if (delta > 0.005) {
+                        desc.innerHTML = `Purchase ${currentCommitment > 0.005 ? 'additional ' : ''}<span class="purchase-amount">${amt}/h</span>`;
+                    } else if (delta < -0.005) {
+                        desc.innerHTML = `Reduce by <span class="purchase-amount reduce">${amt}/h</span>`;
+                    } else {
+                        desc.textContent = 'Current commitment';
+                    }
+                    desc.classList.add('visible');
+                }
             }
         };
 
@@ -926,8 +985,25 @@
         updateStrategyCard('min', strategies.minHourly);
         updateStrategyCard('balanced', strategies.balanced);
         updateStrategyCard('aggressive', strategies.aggressive);
-        updateStrategyCard('too-aggressive', strategies.tooAggressive);
 
+        const awsBtn = document.getElementById('strategy-aws');
+        if (strategies.awsRecommendation !== null) {
+            updateStrategyCard('aws', strategies.awsRecommendation);
+            awsBtn?.classList.remove('hidden');
+            const awsDesc = document.getElementById('strategy-aws-desc');
+            if (awsDesc && appState.awsRecommendation) {
+                const awsPct = Math.round(appState.awsRecommendation.estimated_savings_percentage * 10) / 10;
+                const actualPct = Math.round((appState.actualSavingsPercentage || appState.savingsPercentage) * 10) / 10;
+                const commitment = appState.awsRecommendation.hourly_commitment;
+                let desc = `Purchase additional <span class="purchase-amount">$${commitment.toFixed(2)}/h</span>`;
+                if (Math.abs(awsPct - actualPct) > 1) {
+                    desc += `<br><span class="aws-discount-warning">⚠ AWS estimated discount ${awsPct}% (actual: ${actualPct}%)</span>`;
+                }
+                awsDesc.innerHTML = desc;
+            }
+        } else {
+            awsBtn?.classList.add('hidden');
+        }
 
         // Detect and highlight active strategy
         const allButtons = document.querySelectorAll('.strategy-button');
@@ -941,10 +1017,10 @@
         const minDiff = Math.abs(currentCoverage - strategies.minHourly);
         const balancedDiff = Math.abs(currentCoverage - strategies.balanced);
         const aggressiveDiff = Math.abs(currentCoverage - strategies.aggressive);
-        const tooAggressiveDiff = Math.abs(currentCoverage - strategies.tooAggressive);
+        const awsDiff = strategies.awsRecommendation !== null ? Math.abs(currentCoverage - strategies.awsRecommendation) : Infinity;
 
         // Find closest match
-        const minDistance = Math.min(tooPrudentDiff, minDiff, balancedDiff, aggressiveDiff, tooAggressiveDiff);
+        const minDistance = Math.min(tooPrudentDiff, minDiff, balancedDiff, aggressiveDiff, awsDiff);
 
         if (minDistance / Math.max(currentCoverage, 0.01) < highlightTolerance) {
             if (minDistance === tooPrudentDiff) {
@@ -955,8 +1031,8 @@
                 activeButton = document.getElementById('strategy-balanced');
             } else if (minDistance === aggressiveDiff) {
                 activeButton = document.getElementById('strategy-aggressive');
-            } else if (minDistance === tooAggressiveDiff) {
-                activeButton = document.getElementById('strategy-too-aggressive');
+            } else if (minDistance === awsDiff) {
+                activeButton = document.getElementById('strategy-aws');
             }
         }
 
@@ -1254,6 +1330,7 @@
             maxCost,
             baselineCost,
             currentCoverage: currentCoverageFromData,
+            existingCoverage: appState.currentCoverage || 0,
             savingsPercentage,
             numHours: hourlyCosts.length
         });
@@ -1309,6 +1386,28 @@
 
         // Update the hint text
         updateSavingsRateHint();
+        updateSavingsSourceHint();
+    }
+
+    function updateSavingsSourceHint() {
+        const el = document.getElementById('savings-source');
+        if (!el || !appState.usageDataLoaded) return;
+
+        const actual = appState.actualSavingsPercentage;
+        if (!actual) { el.classList.add('hidden'); return; }
+
+        const source = appState.usageData?.current_coverage
+            ? 'From your existing Savings Plans'
+            : 'From AWS recommendation';
+        const current = appState.savingsPercentage;
+        const changed = Math.abs(current - actual) > 0.1;
+
+        if (changed) {
+            el.innerHTML = `${source} (${actual}%) — <button class="savings-source-reset" id="savings-source-reset">reset</button>`;
+        } else {
+            el.textContent = source;
+        }
+        el.classList.remove('hidden');
     }
 
     /**
