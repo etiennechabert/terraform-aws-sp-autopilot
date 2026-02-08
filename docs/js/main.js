@@ -463,17 +463,19 @@
         }
 
         if (value === 'custom-url') {
-            const params = new URLSearchParams(window.location.search);
-            if (params.get('usage')) {
-                const usageData = URLState.decompressUsageData(params.get('usage'));
-                if (usageData) {
-                    loadUsageData(usageData, 'custom-url');
-                    updateUIFromState();
-                    updateLoadPattern();
-                    calculateAndUpdateCosts();
-                    URLState.debouncedUpdateURL(appState);
-                    return;
-                }
+            let usageData = appState.usageData;
+            if (!usageData) {
+                const params = new URLSearchParams(window.location.search);
+                const raw = params.get('usage');
+                if (raw) usageData = URLState.decompressUsageData(raw);
+            }
+            if (usageData) {
+                loadUsageData(usageData, 'custom-url');
+                updateUIFromState();
+                updateLoadPattern();
+                calculateAndUpdateCosts();
+                URLState.debouncedUpdateURL(appState);
+                return;
             }
             showNoUrlDataModal();
             return;
