@@ -1,7 +1,6 @@
 """
 Reporter tests configuration - imports shared fixtures.
 
-⚠️ IMPORTANT: Read ../../TESTING.md before writing tests ⚠️
 All tests MUST:
 - Call handler.handler() as entry point
 - Mock ONLY AWS clients

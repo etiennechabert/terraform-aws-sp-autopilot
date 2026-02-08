@@ -17,9 +17,7 @@
 
 - [ ] Self-review completed
 - [ ] Tests pass locally (run `pytest` in lambda directory)
-- [ ] For Lambda changes: Followed [TESTING.md](../TESTING.md) guidelines:
-  - Tests call `handler.handler()` as entry point (not internal functions)
-  - Only AWS client responses are mocked (not shared modules or internal code)
+- [ ] For Lambda changes: Tests call `handler.handler()` as entry point and mock only AWS client responses
 
 ## Related Issues
 
