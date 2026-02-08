@@ -14,49 +14,9 @@
 
 Automates AWS Savings Plans purchases based on usage analysis, maintaining consistent coverage while limiting financial exposure through incremental commitments.
 
-## Table of Contents
+**[AWS Savings Plan Simulator](https://etiennechabert.github.io/terraform-aws-sp-autopilot/)** — Interactive cost visualization tool
 
-- [Overview](#overview)
-  - [Key Features](#key-features)
-  - [Savings Plan Types](#savings-plan-types)
-- [Getting Started](#getting-started)
-  - [Quick Start](#quick-start)
-  - [Examples](#examples)
-  - [First Deployment](#first-deployment)
-- [Configuration](#configuration)
-  - [Purchase Strategies](#purchase-strategies)
-  - [Scheduling](#scheduling)
-  - [Notifications](#notifications)
-  - [Data Granularity](#data-granularity)
-- [Architecture](#architecture)
-- [Advanced Topics](#advanced-topics)
-  - [AWS Organizations Setup](#aws-organizations-setup)
-  - [Gradual Rollout](#gradual-rollout)
-  - [Canceling Purchases](#canceling-purchases)
-- [Reference](#reference)
-  - [Configuration Variables](#configuration-variables)
-  - [Outputs](#outputs)
-  - [Supported Services](#supported-services)
-  - [Requirements](#requirements)
-- [Contributing](#contributing)
-  - [Development](#development)
-  - [Testing](#testing)
-  - [Pre-commit Hooks](#pre-commit-hooks)
-- [Support](#support)
-- [License](#license)
-
-**Additional Guides:**
-- [Concepts & Glossary](CONCEPTS.md)
-- [Error Patterns & Troubleshooting](ERROR_PATTERNS.md)
-- [Testing Guide](TESTING.md)
-- [Local Development](LOCAL_DEVELOPMENT.md)
-
-**Interactive Tools:**
-- 📊 **[AWS Savings Plan Simulator](https://etiennechabert.github.io/terraform-aws-sp-autopilot/)** — Interactive cost visualization tool to explore how Savings Plans optimize costs across different load patterns
-
-## Overview
-
-### Key Features
+## Key Features
 
 - **Automated Savings Plans purchasing** — Maintains target coverage without manual intervention
 - **Three purchase strategies** — Fixed, Dichotomy, and Follow-AWS for different workload patterns
@@ -65,21 +25,18 @@ Automates AWS Savings Plans purchases based on usage analysis, maintaining consi
 - **Risk management** — Spreads financial commitments over time with configurable purchase limits
 - **Coverage cap enforcement** — Hard ceiling prevents over-commitment if usage shrinks
 - **Email & webhook notifications** — SNS, Slack, and Microsoft Teams integration
-- **Auditable and transparent** — All decisions logged, all purchases tracked with idempotency
 
 ### Savings Plan Types
 
-| Type | Coverage | Terms | Payment Options | Max Discount | Configuration |
-|------|----------|-------|-----------------|--------------|---------------|
-| **Compute** | EC2, Lambda, Fargate | 1-year, 3-year | All/Partial/No Upfront | Up to 66% | Fully configurable |
-| **Database** | RDS, Aurora, DynamoDB, ElastiCache (Valkey), DocumentDB, Neptune, Keyspaces, Timestream, DMS | 1-year only ⚠️ | No Upfront only ⚠️ | Up to 35% | AWS constraints |
-| **SageMaker** | Training, Inference, Notebooks | 1-year, 3-year | All/Partial/No Upfront | Up to 64% | Fully configurable |
+| Type | Coverage | Terms | Payment Options | Max Discount |
+|------|----------|-------|-----------------|--------------|
+| **Compute** | EC2, Lambda, Fargate | 1-year, 3-year | All/Partial/No Upfront | Up to 66% |
+| **Database** | RDS, Aurora, DynamoDB, ElastiCache, DocumentDB, Neptune, Keyspaces, Timestream, DMS | 1-year only | No Upfront only | Up to 35% |
+| **SageMaker** | Training, Inference, Notebooks | 1-year, 3-year | All/Partial/No Upfront | Up to 64% |
 
-> ⚠️ **Database Savings Plans** have fixed AWS constraints: 1-year term, No Upfront payment only. Variables exist for validation but cannot be changed.
+> **Database Savings Plans** have fixed AWS constraints: 1-year term, No Upfront payment only.
 
-## Getting Started
-
-### Quick Start
+## Quick Start
 
 ```hcl
 module "savings_plans" {
@@ -127,23 +84,9 @@ See the [`examples/`](examples/) directory for complete, working examples:
 - **[organizations](examples/organizations/)** — AWS Organizations multi-account setup
 - **[dichotomy-strategy](examples/dichotomy-strategy/)** — Adaptive purchase strategy
 
-Each example includes a full Terraform configuration with README explaining the use case.
-
-### First Deployment
-
-Recommended phased approach:
-
-| Phase | Settings | Duration | Purpose |
-|-------|----------|----------|---------|
-| **1. Dry-Run** | `dry_run = true` | 1-2 weeks | Review email recommendations, verify configuration |
-| **2. Small Scale** | `dry_run = false`<br>`coverage_target = 70`<br>`max_purchase = 5%` | 2-4 weeks | Make small purchases, monitor results |
-| **3. Production** | `coverage_target = 90`<br>`max_purchase = 10%` | Ongoing | Scale up as confidence grows |
-
 ## Configuration
 
 ### Purchase Strategies
-
-The module supports three purchase strategies:
 
 #### Fixed Strategy (Default)
 
@@ -159,8 +102,6 @@ purchase_strategy = {
   }
 }
 ```
-
-**Characteristics:** Linear ramp to target, predictable, simple.
 
 #### Dichotomy Strategy
 
@@ -185,8 +126,6 @@ Example progression (max 50%, target 90%):
 - Month 2: 50% → Purchase 25% → Reaches 75%
 - Month 3: 75% → Purchase 12.5% → Reaches 87.5%
 - Month 4: 87.5% → Purchase 1.5625% → Reaches 89%
-
-**Characteristics:** Fast initial ramp, slows near target, distributed commitments, lower over-commitment risk.
 
 #### Follow-AWS Strategy
 
@@ -236,44 +175,24 @@ notifications = {
 }
 ```
 
-**Security:** Always mark webhook URLs as `sensitive = true` and store in AWS Secrets Manager or HashiCorp Vault.
-
 ### Data Granularity
 
 #### HOURLY (Recommended)
 
-**Why:** Savings Plans are purchased as hourly commitments ($/hour). Analyzing data at hourly granularity provides accurate purchase sizing.
+Savings Plans are purchased as hourly commitments ($/hour). Analyzing data at hourly granularity provides accurate purchase sizing.
 
 ```hcl
 purchase_strategy = {
   lookback_days = 14      # Max for HOURLY
   granularity   = "HOURLY" # Recommended
-  # ...
 }
 ```
 
-**Benefits:**
-- Reveals peak vs. off-peak patterns
-- More accurate spending percentiles
-- Better risk assessment
-
-**Cost:** ~$0.10-$1.00/month (minimal)
-
-**Requirement:** Enable "Hourly and resource level granularity" in Cost Explorer settings.
+**Requirement:** Enable "Hourly and resource level granularity" in Cost Explorer settings. Cost: ~$0.10-$1.00/month.
 
 #### DAILY (Compatibility)
 
-Use only if hourly data isn't available.
-
-```hcl
-purchase_strategy = {
-  lookback_days = 30     # Up to 90 days for DAILY
-  granularity   = "DAILY"
-  # ...
-}
-```
-
-**Trade-off:** Less accurate analysis, potentially suboptimal purchases.
+Use only if hourly data isn't available. Supports up to 90 `lookback_days`. Less accurate analysis, potentially suboptimal purchases.
 
 ## Architecture
 
@@ -312,8 +231,6 @@ The module consists of three Lambda functions with SQS queue coordination:
 
 For AWS Organizations, Savings Plans must be purchased from the **management account**. Deploy this module in a secondary account and configure cross-account roles.
 
-**Configuration:**
-
 ```hcl
 lambda_config = {
   scheduler = { assume_role_arn = "arn:aws:iam::123456789012:role/SPReadOnlyRole" }
@@ -338,8 +255,6 @@ See [organizations example](examples/organizations/README.md) for complete setup
 
 ### Gradual Rollout
 
-Recommended deployment approach:
-
 | Phase | Settings | Purpose |
 |-------|----------|---------|
 | **Week 1** | `dry_run = true` | Review recommendations only |
@@ -361,8 +276,7 @@ To cancel scheduled purchases before execution:
 
 ### Configuration Variables
 
-Complete variable documentation:
-- **[variables.tf](variables.tf)** — Full definitions with types, defaults, validation
+Complete variable documentation: **[variables.tf](variables.tf)**
 
 Main configuration objects:
 - `purchase_strategy` — Coverage targets, purchase limits, strategy selection
@@ -375,21 +289,13 @@ Main configuration objects:
 
 ### Outputs
 
-**Queue:**
-- `queue_url`, `queue_arn` — Purchase intents queue
-- `dlq_url`, `dlq_arn` — Dead letter queue
+**Queue:** `queue_url`, `queue_arn`, `dlq_url`, `dlq_arn`
 
-**Lambdas:**
-- `scheduler_lambda_arn`, `scheduler_lambda_name`
-- `purchaser_lambda_arn`, `purchaser_lambda_name`
-- `reporter_lambda_arn`, `reporter_lambda_name`
+**Lambdas:** `scheduler_lambda_arn`, `purchaser_lambda_arn`, `reporter_lambda_arn` (+ `_name` variants)
 
-**Notifications:**
-- `sns_topic_arn` — SNS topic for all notifications
+**Notifications:** `sns_topic_arn`
 
-**Configuration:**
-- `module_configuration` — Summary of current settings
-- `database_sp_configuration` — Database SP constraints and services
+**Configuration:** `module_configuration`, `database_sp_configuration`
 
 ### Supported Services
 
@@ -399,7 +305,7 @@ Main configuration objects:
 
 **SageMaker Savings Plans:** Training, Real-Time Inference, Serverless Inference, Notebook Instances
 
-**Note:** Coverage is tracked independently for each SP type.
+Coverage is tracked independently for each SP type.
 
 ### Requirements
 
@@ -414,56 +320,7 @@ Main configuration objects:
 
 ## Contributing
 
-Contributions are welcome! Please open an issue or pull request on GitHub.
-
-### Development
-
-#### Local Development
-
-Run Lambda functions locally for fast iteration:
-
-```bash
-make setup           # Setup local environment
-# Edit .env.local with AWS credentials
-make run-scheduler   # Analyze coverage (dry-run)
-make run-purchaser   # Process queued intents
-make run-reporter    # Generate HTML report
-```
-
-See [LOCAL_DEVELOPMENT.md](LOCAL_DEVELOPMENT.md) for detailed instructions.
-
-### Testing
-
-```bash
-make test            # Run all tests
-make lint            # Run linting and auto-fix
-make lint-check      # Check linting (CI mode)
-```
-
-See [TESTING.md](TESTING.md) for testing guide.
-
-### Pre-commit Hooks
-
-Install git hooks to ensure code quality:
-
-```bash
-make install-hooks
-```
-
-The hook automatically:
-- Runs ruff linting and formatting on staged Python files
-- Auto-fixes issues when possible
-- Re-stages modified files
-- Prevents commits with linting errors
-
-Bypass temporarily (not recommended): `git commit --no-verify`
-
-**Available Make targets:**
-- `make lint` — Run linting and auto-fix
-- `make format` — Format Python code
-- `make test` — Run all tests
-- `make install-hooks` — Install pre-commit hooks
-- `make help` — Show all targets
+Contributions welcome! See [CONTRIBUTING.md](CONTRIBUTING.md) for branch naming, commit conventions, and PR process. See [DEVELOPMENT.md](DEVELOPMENT.md) for local setup and testing.
 
 ## Support
 
@@ -472,7 +329,3 @@ For questions, issues, or feature requests, please open a [GitHub issue](https:/
 ## License
 
 This module is open-source software licensed under the [Apache License 2.0](LICENSE).
-
----
-
-**Using this module in production?** We'd love to hear from you! Submit a PR to add your company logo to our users showcase.
