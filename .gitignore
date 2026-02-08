@@ -239,7 +239,7 @@ consistency-check-report.md
 *.backup
 *.bak
 
-# Test result docs (but keep root TESTING.md and clienterror_patterns.md)
+# Test result docs
 *INTEGRATION_TEST_RESULTS*.md
 lambda/**/TESTING.md
 
@@ -265,5 +265,6 @@ local_data/
 docs/tests/node_modules/
 docs/tests/playwright-report/
 docs/tests/test-results/
+docs/test-results/
 docs/tests/.playwright/
 docs/tests/playwright/.cache/
