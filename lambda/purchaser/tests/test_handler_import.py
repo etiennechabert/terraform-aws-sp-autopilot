@@ -19,7 +19,7 @@ def test_handler_module_can_be_imported():
     - Invalid import statements (wrong module paths)
     - ModuleNotFoundError errors
 
-    Per TESTING.md: Run this test FIRST - if handler can't import, nothing else matters.
+    Run this test FIRST - if handler can't import, nothing else matters.
     """
     # Ensure lambda directory is in path
     lambda_dir = Path(__file__).parent.parent
