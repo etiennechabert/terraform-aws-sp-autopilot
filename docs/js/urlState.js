@@ -147,6 +147,21 @@ const URLState = (function() {
             }
         }
 
+        const awsParam = params.get('aws');
+        if (awsParam) {
+            const parts = awsParam.split(',');
+            if (parts.length === 2) {
+                const commitment = Number.parseFloat(parts[0]);
+                const savingsPct = Number.parseFloat(parts[1]);
+                if (!Number.isNaN(commitment) && !Number.isNaN(savingsPct) && commitment > 0) {
+                    state.awsRecommendation = {
+                        hourly_commitment: commitment,
+                        estimated_savings_percentage: savingsPct
+                    };
+                }
+            }
+        }
+
         const pattern = params.get('pattern');
         if (pattern && ['ecommerce', 'flat', 'batch', 'business-hours', 'random', 'custom', 'custom-paste', 'custom-url'].includes(pattern)) {
             state.pattern = pattern;

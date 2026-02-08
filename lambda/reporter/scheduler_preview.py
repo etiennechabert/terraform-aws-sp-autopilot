@@ -195,7 +195,11 @@ def _calculate_scheduled_purchases(
             current_od_equiv = sp_calculations.coverage_from_commitment(
                 existing_commitment, savings_pct
             )
-            new_od_equiv = sp_calculations.coverage_from_commitment(hourly_commitment, savings_pct)
+            # For follow_aws, use AWS's own estimated discount rate to convert commitment
+            new_savings_pct = plan.get("estimated_savings_percentage", savings_pct)
+            new_od_equiv = sp_calculations.coverage_from_commitment(
+                hourly_commitment, new_savings_pct
+            )
 
             if min_hourly > 0:
                 purchase_percent = (new_od_equiv / min_hourly) * 100.0
@@ -206,17 +210,19 @@ def _calculate_scheduled_purchases(
                 current_coverage = 0.0
                 projected_coverage = 0.0
 
-            enriched.append(
-                {
-                    "sp_type": sp_type,
-                    "hourly_commitment": hourly_commitment,
-                    "purchase_percent": purchase_percent,
-                    "current_coverage": current_coverage,
-                    "projected_coverage": projected_coverage,
-                    "payment_option": plan["payment_option"],
-                    "term": plan["term"],
-                }
-            )
+            entry = {
+                "sp_type": sp_type,
+                "hourly_commitment": hourly_commitment,
+                "purchase_percent": purchase_percent,
+                "current_coverage": current_coverage,
+                "projected_coverage": projected_coverage,
+                "payment_option": plan["payment_option"],
+                "term": plan["term"],
+                "discount_used": new_savings_pct,
+            }
+            if "estimated_savings_percentage" in plan:
+                entry["estimated_savings_percentage"] = plan["estimated_savings_percentage"]
+            enriched.append(entry)
 
         return enriched
 
