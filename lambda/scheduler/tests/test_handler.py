@@ -1,7 +1,7 @@
 """
 Integration tests for Scheduler Lambda handler.
 
-All tests follow TESTING.md guidelines:
+All tests follow these guidelines:
 - Test through handler.handler() entry point only
 - Mock only AWS client responses
 - Use aws_mock_builder for consistent responses
