@@ -265,5 +265,6 @@ local_data/
 docs/tests/node_modules/
 docs/tests/playwright-report/
 docs/tests/test-results/
+docs/test-results/
 docs/tests/.playwright/
 docs/tests/playwright/.cache/
