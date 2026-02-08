@@ -1,14 +1,10 @@
-# You Don't Know How to Use AWS Savings Plans
+# Savings Plans: The Curve AWS Isn't Showing You
 
-I came to this realisation while building an open-source Terraform module to manage Savings Plans automatically. After 5 years managing Savings Plans and Reserved Instances for my firm, spending way too many hours on the AWS Console staring at recommendations and coverage reports, I had to admit I was making commitment decisions without understanding the full picture.
+After 5 years managing Savings Plans and Reserved Instances for my firm, spending way too many hours on the AWS Console, I always had the feeling that something was missing from the recommendations AWS gives you.
 
-And I'm pretty sure you are too.
+When AWS announced Savings Plans for databases in 2025, I decided it was time to deep-dive this topic, replace doubts with certainty, and make the result available to everyone via an open-source Terraform module.
 
-## The end of the RI era
-
-Reserved Instances offer significantly higher discounts in theory, but they lock you to a Region and Instance Class, and now that the RI Marketplace is gone you can't offload the ones you don't need. With Compute SPs (EC2, Lambda, Fargate) and now Database SPs (RDS, Aurora, DynamoDB, ElastiCache), the two biggest chunks of most AWS bills can be covered by Savings Plans. You trade a few percentage points for flexibility — no lock-in, no transition plans. You commit to a dollar-per-hour spend and AWS applies it wherever it can. The only transition plan you'll ever need is when you decide to get off AWS — but that's a different article.
-
-EC2 Instance Savings Plans offer 6 to 10 points more discount than Compute SPs, but lock you to a region and instance family, with the same lack of flexibility as RIs. They're much more complex to manage — arguably the kind of thing you'd need a provider for (more on that below). I like simple things, so I ignored them in this module.
+It turns out there's a curve — unique to your usage pattern and discount rate — that shows the exact relationship between how much you commit and how much you save. Where the sweet spot is, where returns decline, and where you start losing money. This is most likely what AWS uses to compute their recommendation, but they never show it to you, and they don't let you influence it.
 
 ## The problem with AWS recommendations
 
@@ -18,27 +14,25 @@ And it's a one-shot decision. No notion of splitting purchases over time, no cur
 
 So when you need to answer real questions — "what if our load drops 20%?", "what's a safe commitment level?", "how bad is it if we don't use 100% of what we bought?" — you're on your own. You're committing 1 to 3 years of spending with incomplete information.
 
-## The outsourcing option
+## Flexibility or extra savings?
 
-You can hand the problem to a service provider. We tried this at limited scale — the people were great, pedagogical, and they delivered the savings they promised.
+Reserved Instances offer significantly higher discounts in theory, but they lock you to a Region and Instance Class, and now that the RI Marketplace is gone you can't offload the ones you don't need. EC2 Instance Savings Plans are essentially the same deal — 6 to 10 points more discount than Compute SPs, also locked to a region and instance family. Same rigidity, same complexity to manage, I ignored them for this reason.
 
-But my main issue was that I could never really understand what they were doing. The mechanisms they use — RIs, convertible RIs, instance-level optimisations — are complex enough that you have to take their word for it. That complexity is also what justifies their commission. In the end, if you'd just used Compute SPs with a sound strategy, you'd likely end up in the same place, without the vendor fee and without the black box.
-
-And they need privileged access to your AWS account — billing data and purchasing APIs at minimum. For any organisation with a security review process, justifying that access is a hard sell when you could do it yourself.
-
-So I decided to do it myself.
+With Compute SPs (EC2, Lambda, Fargate) and now Database SPs (RDS, Aurora, DynamoDB, ElastiCache), the two biggest chunks of most AWS bills can be covered by Savings Plans. You trade a few percentage points for flexibility — no lock-in, no transition plans. You commit to a dollar-per-hour spend and AWS applies it wherever it can. The only transition plan you'll ever need is when you decide to get off AWS — but that's a different article.
 
 ## What I built
 
-I started a project with Claude as my coding partner — every line of code in this module was written by AI, directed by 5 years of frustration with the AWS console. It turned into [terraform-aws-sp-autopilot](https://github.com/etiennechabert/terraform-aws-sp-autopilot), an open-source Terraform module that automates Savings Plans purchases with built-in strategy and safety.
+After too many homemade scripts, it was time to turn this into a proper project: [terraform-aws-sp-autopilot](https://github.com/etiennechabert/terraform-aws-sp-autopilot), an open-source Terraform module that automates Savings Plans purchases with built-in strategy and reporting.
 
-The module runs a set of Lambda functions on a schedule. But before talking about automation, let me start with what matters most: **visibility**.
+The module is composed of a set of three Lambda functions running on a schedule. But before talking about automation, let me start with what matters most: **visibility**.
 
 ### The report you wish AWS gave you
 
-Every month, the module emails an HTML report that gives you what the console doesn't. For each SP type — Compute, Database, SageMaker — you get a stacked hourly usage chart showing how much of your spend is covered vs on-demand. You see the min, max, and distribution of your hourly usage. You see your current coverage and where the optimal commitment sits.
+Every month, the module emails an HTML report that gives you what the console doesn't. For each SP type — Compute, Database, SageMaker — you get a stacked hourly usage chart showing how much of your spend is covered vs on-demand. You see the min, max, and distribution of your hourly usage. You see your current coverage and forecast future commitments.
 
-At the bottom, a link opens an [interactive simulator](https://etiennechabert.github.io/terraform-aws-sp-autopilot/) pre-loaded with your actual usage data and the current AWS recommendation.
+![Savings Plans Coverage & Savings Report](medium/0.%20repport.png)
+
+For each SP type, a link opens an [interactive simulator](https://etiennechabert.github.io/terraform-aws-sp-autopilot/) pre-loaded with your actual usage data and the current AWS recommendation. The simulator is a GitHub Pages app — you can try it right now, no install, no account needed.
 
 ### The simulator you dreamed about
 
@@ -64,7 +58,7 @@ Now the big one: **what if our load drops?** The Load Factor slider lets you sim
 
 This changed how I think about commitment. I used to believe you should keep a safe gap between your commitment and your min-hourly to avoid wasting money. The simulator showed me the opposite: being too cautious is actually how you waste money. When your load drops moderately, your spillover goes down while your wasted commitment stays small — you pay less overall. You only start losing when the drop is large enough that usage falls below your commitment.
 
-The safety buffer already exists naturally — that's what the curve declining after the optimal point shows. You don't need to add one yourself. And this is even more true if you distribute purchases over time: every month you have plans expiring that you can simply choose not to renew.
+For most workloads with some variance, the safety buffer already exists naturally — that's what the curve declining after the optimal point shows. You don't need to add one yourself. And this is even more true if you distribute purchases over time: every month you have plans expiring that you can simply choose not to renew.
 
 ![Savings vs Commitment Level — with a -20% load drop](medium/4.%20Load-drop.png)
 
@@ -89,15 +83,13 @@ The other two:
 
 You set **hard caps** — a max coverage ceiling and a max purchase per cycle — so the automation can never over-commit. Commitments are spread over time, not made in one shot. And there's a dry-run mode to watch what it would do before it spends anything.
 
-## Why I'm sharing this
+## Try it
 
-I built this module on my own time so I could open-source it. I wanted anyone dealing with the same frustrations to be able to use it.
+I built this on my own time so I could open-source it — I wanted anyone dealing with the same frustrations to benefit from what I learned. The easiest way to start is the [simulator](https://etiennechabert.github.io/terraform-aws-sp-autopilot/), go ahead, open it — plug in your numbers, play with the load factor, and see where your commitment actually sits on the curve. That alone might change how you think about your next purchase.
 
-The module is deployed at my firm — we're using the reporter and simulator today, and testing the scheduler in dry-run before turning on automated purchases. It took an AI to write the code, but the hard part was understanding the problem — and that took years of getting it wrong.
+When you're ready for more, deploy the module with just the reporter — get monthly visibility on your real coverage, no automation yet. Then add the scheduler. The purchaser is the last step, and it's optional — some teams prefer to keep that button manual, and that's fine.
 
-If you manage Savings Plans today, start with the [simulator](https://etiennechabert.github.io/terraform-aws-sp-autopilot/) — plug in your numbers and see where you stand. Then deploy the module with just the reporter to get monthly visibility on your actual coverage. Add the scheduler when you're ready to automate the decision. The purchaser is the last step, and honestly, it's optional — some teams prefer to keep that button manual, and that's fine.
-
-You might discover, like I did, that you've been either too cautious or too blind. Both cost money.
+Either way, stop guessing.
 
 ---
 
