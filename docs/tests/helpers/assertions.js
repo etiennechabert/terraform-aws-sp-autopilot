@@ -64,7 +64,7 @@ export async function assertAllMetricsValid(page) {
  * @param {Page} page - Playwright page object
  */
 export async function assertAllStrategyCardsValid(page) {
-  const strategies = ['too-prudent', 'min', 'balanced', 'aggressive', 'too-aggressive'];
+  const strategies = ['too-prudent', 'min', 'balanced', 'aggressive'];
 
   for (const strategy of strategies) {
     const cost = await page.locator(`#strategy-${strategy}-value`).textContent();

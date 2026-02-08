@@ -755,16 +755,33 @@ const ChartManager = (function() {
         return [dataset1, dataset2Extended, dataset3, dataset4, dataset5];
     }
 
-    function buildCoverageAnnotation(currentCoverage, maxCost, minCost, savingsPercentage) {
-        if (!currentCoverage || currentCoverage <= 0 || currentCoverage > maxCost) {
-            return {};
+    function buildCoverageAnnotation(currentCoverage, existingCoverage, maxCost, minCost, savingsPercentage) {
+        const annotations = {};
+
+        if (existingCoverage && existingCoverage > 0) {
+            const existingCommitment = commitmentFromCoverage(existingCoverage, savingsPercentage || 0);
+            annotations.existingLine = {
+                type: 'line',
+                xMin: existingCommitment,
+                xMax: existingCommitment,
+                borderColor: 'rgba(255, 153, 0, 0.7)',
+                borderWidth: 2,
+                borderDash: [4, 4],
+                label: {
+                    display: true,
+                    content: `Current ${CostCalculator.formatCurrency(existingCommitment)}/h`,
+                    position: 'end',
+                    backgroundColor: 'rgba(255, 153, 0, 0.8)',
+                    color: '#1a1f3a',
+                    font: { size: 11, weight: 'bold' }
+                }
+            };
         }
 
-        const currentCommitment = commitmentFromCoverage(currentCoverage, savingsPercentage || 0);
-        const percentOfMin = minCost > 0 ? (currentCoverage / minCost * 100).toFixed(1) : '0.0';
-
-        return {
-            currentLine: {
+        if (currentCoverage && currentCoverage > 0 && currentCoverage <= maxCost) {
+            const currentCommitment = commitmentFromCoverage(currentCoverage, savingsPercentage || 0);
+            const percentOfMin = minCost > 0 ? (currentCoverage / minCost * 100).toFixed(1) : '0.0';
+            annotations.currentLine = {
                 type: 'line',
                 xMin: currentCommitment,
                 xMax: currentCommitment,
@@ -779,12 +796,14 @@ const ChartManager = (function() {
                     color: '#1a1f3a',
                     font: { size: 13, weight: 'bold' }
                 }
-            }
-        };
+            };
+        }
+
+        return annotations;
     }
 
     function updateSavingsCurveChart(opts) {
-        const { curveData, minHourlySavings, minCost, maxCost, baselineCost, currentCoverage, savingsPercentage, numHours } = opts;
+        const { curveData, minHourlySavings, minCost, maxCost, baselineCost, currentCoverage, existingCoverage, savingsPercentage, numHours } = opts;
         if (!savingsCurveChart) return;
 
         savingsCurveChart.$minHourlySavings = minHourlySavings;
@@ -816,7 +835,7 @@ const ChartManager = (function() {
             savingsCurveChart.data.datasets[i].data = datasets[i];
         }
 
-        savingsCurveChart.options.plugins.annotation.annotations = buildCoverageAnnotation(currentCoverage, maxCost, minCost, savingsPercentage);
+        savingsCurveChart.options.plugins.annotation.annotations = buildCoverageAnnotation(currentCoverage, existingCoverage, maxCost, minCost, savingsPercentage);
         savingsCurveChart.update('none');
     }
 
