@@ -76,11 +76,11 @@ export const STRATEGIES = {
     description: 'Max savings',
     icon: '⚠️',
   },
-  tooAggressive: {
-    id: 'too-aggressive',
-    name: 'Aggressive',
-    description: 'Over-committed',
-    icon: '💀',
+  aws: {
+    id: 'aws',
+    name: 'Recommendation',
+    description: 'CE Recommendation',
+    icon: '🏢',
   },
 };
 

@@ -432,15 +432,17 @@ def _render_purchase_row(
     term = purchase.get("term", "N/A")
     payment_option = purchase.get("payment_option", "N/A")
     coverage_class = "green" if projected_cov >= target_coverage else "orange"
+    discount_used = purchase.get("discount_used", 0.0)
+    discount_tooltip = f"Computed with {discount_used:.1f}% discount rate"
 
     return f"""
                     <tr {row_style} data-tooltip="{tooltip}">
                         <td><strong><span class="strategy-name">{strategy_display}</span></strong>{configured_badge}</td>
                         <td class="metric" style="color: #2196f3; font-weight: bold;">${hourly_commit:.4f}/hr</td>
-                        <td class="metric">{purchase_percent:.1f}%</td>
+                        <td class="metric" title="{discount_tooltip}">{purchase_percent:.1f}%</td>
                         <td class="metric">{current_cov:.1f}%</td>
-                        <td class="metric {coverage_class}" style="font-weight: bold;">{projected_cov:.1f}%</td>
-                        <td class="metric" style="color: #28a745;">+{cov_increase:.1f}%</td>
+                        <td class="metric {coverage_class}" style="font-weight: bold;" title="{discount_tooltip}">{projected_cov:.1f}%</td>
+                        <td class="metric" style="color: #28a745;" title="{discount_tooltip}">+{cov_increase:.1f}%</td>
                         <td>{term}</td>
                         <td>{payment_option}</td>
                     </tr>
@@ -1428,11 +1430,24 @@ def generate_html_report(
         json.dumps(optimal_coverage_results) if optimal_coverage_results else "{}"
     )
 
+    follow_aws_by_type = {}
+    if preview_data:
+        for purchase in (
+            preview_data.get("strategies", {}).get("follow_aws", {}).get("purchases", [])
+        ):
+            sp = purchase["sp_type"]
+            follow_aws_by_type[sp] = {
+                "hourly_commitment": purchase["hourly_commitment"],
+                "estimated_savings_percentage": purchase.get("estimated_savings_percentage", 0),
+            }
+    follow_aws_json = json.dumps(follow_aws_by_type)
+
     html += f"""
     <script>
         const allChartData = {chart_data};
         const metricsData = {metrics_json};
         const optimalCoverageFromPython = {optimal_coverage_json};
+        const followAwsData = {follow_aws_json};
         const lookbackDays = {lookback_days};
 
         // Color palettes - Two combinations for different types of color vision deficiency
@@ -1721,7 +1736,11 @@ def generate_html_report(
                 const base64 = btoa(String.fromCharCode.apply(null, compressed));
 
                 // Base URL is determined server-side when generating the report
-                const simulatorUrl = `{simulator_base_url}?usage=${{encodeURIComponent(base64)}}`;
+                const awsRec = followAwsData[typeKey];
+                let simulatorUrl = `{simulator_base_url}?usage=${{encodeURIComponent(base64)}}`;
+                if (awsRec) {{
+                    simulatorUrl += `&aws=${{awsRec.hourly_commitment}},${{awsRec.estimated_savings_percentage}}`;
+                }}
 
                 optimizationHtml = `
                     <div class="simulator-cta">
