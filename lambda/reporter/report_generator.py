@@ -406,6 +406,7 @@ def _render_no_purchase_row(strategy_display: str, is_configured: bool, tooltip:
 
 
 def _render_purchase_row(
+    strategy_type: str,
     strategy_display: str,
     is_configured: bool,
     tooltip: str,
@@ -425,26 +426,33 @@ def _render_purchase_row(
     )
 
     hourly_commit = purchase["hourly_commitment"]
-    purchase_percent = purchase.get("purchase_percent", 0.0)
     current_cov = purchase["current_coverage"]
     projected_cov = purchase["projected_coverage"]
     cov_increase = projected_cov - current_cov
     term = purchase.get("term", "N/A")
     payment_option = purchase.get("payment_option", "N/A")
-    coverage_class = "green" if projected_cov >= target_coverage else "orange"
     discount_used = purchase.get("discount_used", 0.0)
     discount_tooltip = f"Computed with {discount_used:.1f}% discount rate"
+
+    if strategy_type == "follow_aws":
+        target_cell = '<td class="metric" style="color: #6c757d;">N/A</td>'
+        coverage_class = ""
+    else:
+        avg_to_min_ratio = purchase.get("avg_to_min_ratio", 1.0)
+        target_min_hourly = target_coverage * avg_to_min_ratio
+        coverage_class = "green" if projected_cov >= target_min_hourly else "orange"
+        target_cell = f'<td class="metric">{target_min_hourly:.1f}%</td>'
 
     return f"""
                     <tr {row_style} data-tooltip="{tooltip}">
                         <td><strong><span class="strategy-name">{strategy_display}</span></strong>{configured_badge}</td>
                         <td class="metric" style="color: #2196f3; font-weight: bold;">${hourly_commit:.4f}/hr</td>
-                        <td class="metric" title="{discount_tooltip}">{purchase_percent:.1f}%</td>
                         <td class="metric">{current_cov:.1f}%</td>
-                        <td class="metric {coverage_class}" style="font-weight: bold;" title="{discount_tooltip}">{projected_cov:.1f}%</td>
                         <td class="metric" style="color: #28a745;" title="{discount_tooltip}">+{cov_increase:.1f}%</td>
-                        <td>{term}</td>
-                        <td>{payment_option}</td>
+                        <td class="metric {coverage_class}" style="font-weight: bold;" title="{discount_tooltip}">{projected_cov:.1f}%</td>
+                        {target_cell}
+                        <td class="metric">{discount_used:.1f}%</td>
+                        <td>{term}, {payment_option}</td>
                     </tr>
                 """
 
@@ -497,12 +505,12 @@ def _render_sp_type_scheduler_preview(
                         <tr>
                             <th>Strategy</th>
                             <th>Hourly Commitment</th>
-                            <th>Purchase %</th>
                             <th>Current Coverage</th>
+                            <th>Added Coverage</th>
                             <th>Projected Coverage</th>
-                            <th>Coverage Increase</th>
-                            <th>Term</th>
-                            <th>Payment</th>
+                            <th>Target Coverage</th>
+                            <th>Discount Rate</th>
+                            <th>Term &amp; Payment</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -520,7 +528,7 @@ def _render_sp_type_scheduler_preview(
             html += _render_no_purchase_row(strategy_display, is_configured, tooltip)
         else:
             html += _render_purchase_row(
-                strategy_display, is_configured, tooltip, purchase, target_coverage
+                strategy_type, strategy_display, is_configured, tooltip, purchase, target_coverage
             )
 
     html += """
