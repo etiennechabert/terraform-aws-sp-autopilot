@@ -201,15 +201,20 @@ def _calculate_scheduled_purchases(
                 hourly_commitment, new_savings_pct
             )
 
+            avg_hourly_total = summary.get("avg_hourly_total", 0.0)
+
             if min_hourly > 0:
                 purchase_percent = (new_od_equiv / min_hourly) * 100.0
                 current_coverage = (current_od_equiv / min_hourly) * 100.0
                 projected_coverage = ((current_od_equiv + new_od_equiv) / min_hourly) * 100.0
+                avg_to_min_ratio = avg_hourly_total / min_hourly if avg_hourly_total > 0 else 1.0
             else:
                 purchase_percent = 0.0
                 current_coverage = 0.0
                 projected_coverage = 0.0
+                avg_to_min_ratio = 1.0
 
+            has_existing_plans = type_breakdown.get("plans_count", 0) > 0
             entry = {
                 "sp_type": sp_type,
                 "hourly_commitment": hourly_commitment,
@@ -219,6 +224,10 @@ def _calculate_scheduled_purchases(
                 "payment_option": plan["payment_option"],
                 "term": plan["term"],
                 "discount_used": new_savings_pct,
+                "average_utilization": type_breakdown.get("average_utilization", 0.0)
+                if has_existing_plans
+                else None,
+                "avg_to_min_ratio": avg_to_min_ratio,
             }
             if "estimated_savings_percentage" in plan:
                 entry["estimated_savings_percentage"] = plan["estimated_savings_percentage"]
