@@ -411,7 +411,6 @@ def _render_purchase_row(
     is_configured: bool,
     tooltip: str,
     purchase: dict[str, Any],
-    target_coverage: float,
 ) -> str:
     """Render a table row for a purchase recommendation."""
     row_style = (
@@ -434,12 +433,11 @@ def _render_purchase_row(
     discount_used = purchase.get("discount_used", 0.0)
     discount_tooltip = f"Computed with {discount_used:.1f}% discount rate"
 
-    if strategy_type == "follow_aws":
+    target_min_hourly = purchase.get("target_coverage_min_hourly")
+    if target_min_hourly is None:
         target_cell = '<td class="metric" style="color: #6c757d;">N/A</td>'
         coverage_class = ""
     else:
-        avg_to_min_ratio = purchase.get("avg_to_min_ratio", 1.0)
-        target_min_hourly = target_coverage * avg_to_min_ratio
         coverage_class = "green" if projected_cov >= target_min_hourly else "orange"
         target_cell = f'<td class="metric">{target_min_hourly:.1f}%</td>'
 
@@ -485,7 +483,6 @@ def _render_sp_type_scheduler_preview(
 
     strategies = preview_data.get("strategies", {})
     configured_strategy = preview_data.get("configured_strategy", "fixed")
-    target_coverage = config.get("coverage_target_percent", 90.0)
 
     strategy_purchases = {}
     for strategy_name, strategy_data in strategies.items():
@@ -528,7 +525,7 @@ def _render_sp_type_scheduler_preview(
             html += _render_no_purchase_row(strategy_display, is_configured, tooltip)
         else:
             html += _render_purchase_row(
-                strategy_type, strategy_display, is_configured, tooltip, purchase, target_coverage
+                strategy_type, strategy_display, is_configured, tooltip, purchase
             )
 
     html += """

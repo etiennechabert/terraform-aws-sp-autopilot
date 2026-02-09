@@ -17,7 +17,7 @@ import pytest
 os.environ.setdefault("AWS_DEFAULT_REGION", "us-east-1")
 os.environ.setdefault("REPORTS_BUCKET", "test-bucket")
 os.environ.setdefault("SNS_TOPIC_ARN", "arn:aws:sns:us-east-1:123456789012:test-topic")
-os.environ.setdefault("COVERAGE_TARGET_PERCENT", "90")
+os.environ.setdefault("COVERAGE_TARGET_PERCENT", "balanced")
 
 # Add lambda directory to path
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
@@ -72,7 +72,7 @@ def sample_config():
         "min_purchase_percent": 1.0,
         "compute_sp_term": "THREE_YEAR",
         "compute_sp_payment_option": "ALL_UPFRONT",
-        "coverage_target_percent": 90.0,
+        "coverage_target_percent": "balanced",
         "enable_compute_sp": True,
         "enable_database_sp": False,
         "enable_sagemaker_sp": False,
@@ -311,3 +311,76 @@ def test_coverage_is_min_hourly_based(sample_config, mock_clients, aws_mock_buil
     assert db_purchase["current_coverage"] + db_purchase["purchase_percent"] == pytest.approx(
         db_purchase["projected_coverage"], abs=0.01
     )
+
+
+def test_numeric_string_coverage_target(sample_config, mock_clients, aws_mock_builder):
+    """Numeric string coverage target like '120' should resolve to 120% of min-hourly."""
+    mock_clients[
+        "ce"
+    ].get_savings_plans_purchase_recommendation.return_value = aws_mock_builder.recommendation(
+        sp_type="compute", hourly_commitment=50.0
+    )
+
+    config = sample_config.copy()
+    config["coverage_target_percent"] = "120"
+
+    coverage_data = {
+        "compute": {
+            "summary": {
+                "avg_coverage_total": 70.0,
+                "avg_hourly_total": 1000.0,
+                "avg_hourly_covered": 700.0,
+                "avg_hourly_uncovered": 300.0,
+            },
+            "timeseries": [
+                {"timestamp": "2026-01-20T00:00:00Z", "total": 950.0, "covered": 665.0},
+                {"timestamp": "2026-01-20T01:00:00Z", "total": 1000.0, "covered": 700.0},
+                {"timestamp": "2026-01-20T02:00:00Z", "total": 1050.0, "covered": 735.0},
+            ],
+        }
+    }
+
+    savings_data = {
+        "actual_savings": {
+            "breakdown_by_type": {
+                "Compute": {
+                    "total_commitment": 10.0,
+                    "savings_percentage": 30.0,
+                },
+            },
+        },
+    }
+
+    result = scheduler_preview.calculate_scheduler_preview(
+        config, mock_clients, coverage_data, savings_data
+    )
+
+    fixed_purchases = result["strategies"]["fixed"]["purchases"]
+    assert len(fixed_purchases) > 0
+
+    purchase = fixed_purchases[0]
+    # Numeric "120" → target_coverage_min_hourly should be 120.0%
+    assert purchase["target_coverage_min_hourly"] == pytest.approx(120.0, abs=0.1)
+
+
+def test_target_coverage_min_hourly_in_enriched_entries(
+    sample_config, mock_clients, sample_coverage_data, sample_savings_data, aws_mock_builder
+):
+    """Enriched entries should include target_coverage_min_hourly (None for follow_aws)."""
+    mock_clients[
+        "ce"
+    ].get_savings_plans_purchase_recommendation.return_value = aws_mock_builder.recommendation(
+        sp_type="compute", hourly_commitment=50.0
+    )
+
+    result = scheduler_preview.calculate_scheduler_preview(
+        sample_config, mock_clients, sample_coverage_data, sample_savings_data
+    )
+
+    for strategy_name, strategy_data in result["strategies"].items():
+        for purchase in strategy_data.get("purchases", []):
+            assert "target_coverage_min_hourly" in purchase
+            if strategy_name == "follow_aws":
+                assert purchase["target_coverage_min_hourly"] is None
+            else:
+                assert isinstance(purchase["target_coverage_min_hourly"], float)

@@ -7,6 +7,8 @@ configuration to ensure data integrity before execution.
 
 from typing import Any
 
+from shared.optimal_coverage import VALID_COVERAGE_PROFILES
+
 
 # Valid values for payment_option field
 VALID_PAYMENT_OPTIONS = ["NO_UPFRONT", "ALL_UPFRONT", "PARTIAL_UPFRONT"]
@@ -227,6 +229,35 @@ def _validate_sp_payment_options(config: dict[str, Any]) -> None:
     _validate_payment_option(config, "database_sp_payment_option")
 
 
+def _validate_coverage_target(value: Any) -> None:
+    """Validate coverage_target_percent: accepts numeric (1-500) or a profile name."""
+    if isinstance(value, (int, float)):
+        if value < 1 or value > 500:
+            raise ValueError(
+                f"Field 'coverage_target_percent' must be between 1 and 500 when numeric, got {value}"
+            )
+        return
+
+    if isinstance(value, str):
+        try:
+            num = float(value)
+            if num < 1 or num > 500:
+                raise ValueError(
+                    f"Field 'coverage_target_percent' must be between 1 and 500 when numeric, got {value}"
+                )
+            return
+        except ValueError:
+            pass
+
+        if value in VALID_COVERAGE_PROFILES:
+            return
+
+    raise ValueError(
+        f"Invalid coverage_target_percent: '{value}'. "
+        f"Must be a number (1-500) or one of: {', '.join(VALID_COVERAGE_PROFILES)}"
+    )
+
+
 def _validate_strategy_and_granularity(config: dict[str, Any]) -> None:
     """Validate purchase strategy type and granularity."""
     if "purchase_strategy_type" in config:
@@ -274,8 +305,10 @@ def validate_scheduler_config(config: dict[str, Any]) -> None:
 
     _validate_sp_types_enabled(config)
 
-    # Validate percentage fields
-    for field in ["coverage_target_percent", "max_purchase_percent", "min_purchase_percent"]:
+    if "coverage_target_percent" in config:
+        _validate_coverage_target(config["coverage_target_percent"])
+
+    for field in ["max_purchase_percent", "min_purchase_percent"]:
         if field in config:
             _validate_percentage_range(config[field], field)
 
@@ -317,6 +350,9 @@ def validate_reporter_config(config: dict[str, Any]) -> None:
         raise ValueError(f"Configuration must be a dictionary, got {type(config).__name__}")
 
     _validate_sp_types_enabled(config, "reporting")
+
+    if "coverage_target_percent" in config:
+        _validate_coverage_target(config["coverage_target_percent"])
 
     # Validate report_format
     if "report_format" in config:

@@ -84,8 +84,8 @@ CONFIG_SCHEMA = {
     },
     "coverage_target_percent": {
         "required": False,
-        "type": "float",
-        "default": "90.0",
+        "type": "str",
+        "default": "balanced",
         "env_var": "COVERAGE_TARGET_PERCENT",
     },
     # Scheduler strategy parameters (for preview simulation)

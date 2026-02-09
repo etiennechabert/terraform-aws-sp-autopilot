@@ -29,6 +29,9 @@ If you modify the algorithm, you MUST:
 from typing import TypedDict
 
 
+VALID_COVERAGE_PROFILES = ["prudent", "min-hourly", "balanced", "risky"]
+
+
 class OptimalCoverageResult(TypedDict):
     """Result of optimal coverage calculation"""
 
@@ -206,3 +209,106 @@ def coverage_as_percentage_of_min(hourly_coverage: float, min_hourly: float) -> 
         return 0.0
 
     return (hourly_coverage / min_hourly) * 100
+
+
+def calculate_knee_point(hourly_costs: list[float], savings_percentage: float) -> float:
+    """
+    Find the knee point on the savings curve — the coverage level where
+    marginal returns start diminishing significantly.
+
+    Port of docs/js/main.js calculateKneePoint().
+    """
+    optimal = calculate_optimal_coverage(hourly_costs, savings_percentage)
+    optimal_coverage = optimal["coverage_hourly"]
+    min_cost = min(hourly_costs)
+    baseline_cost = sum(hourly_costs)
+    discount_factor = 1 - (savings_percentage / 100)
+
+    max_coverage = optimal_coverage * 1.2
+    num_points = 200
+    step = (max_coverage - min_cost) / num_points
+
+    curve_points = []
+    for i in range(num_points + 1):
+        coverage = min_cost + (i * step)
+        commitment_cost = coverage * discount_factor * len(hourly_costs)
+        spillover_cost = sum(max(0, cost - coverage) for cost in hourly_costs)
+        total_cost = commitment_cost + spillover_cost
+        net_savings = baseline_cost - total_cost
+        savings_percent = (net_savings / baseline_cost) * 100 if baseline_cost > 0 else 0
+        curve_points.append({"coverage": coverage, "savings_percent": savings_percent})
+
+    marginal_rates = []
+    for i in range(1, len(curve_points)):
+        if (
+            curve_points[i]["coverage"] > min_cost
+            and curve_points[i]["coverage"] <= optimal_coverage
+        ):
+            coverage_delta = curve_points[i]["coverage"] - curve_points[i - 1]["coverage"]
+            savings_delta = (
+                curve_points[i]["savings_percent"] - curve_points[i - 1]["savings_percent"]
+            )
+            marginal_rate = savings_delta / coverage_delta if coverage_delta > 0 else 0
+            marginal_rates.append(
+                {
+                    "index": i,
+                    "coverage": curve_points[i]["coverage"],
+                    "marginal_rate": marginal_rate,
+                }
+            )
+
+    if not marginal_rates:
+        return min_cost
+
+    max_marginal_rate = max(r["marginal_rate"] for r in marginal_rates)
+    threshold = max_marginal_rate * 0.30
+
+    knee_index = 0
+    for i, rate in enumerate(marginal_rates):
+        if rate["marginal_rate"] < threshold:
+            knee_index = marginal_rates[i - 1]["index"] if i > 0 else marginal_rates[0]["index"]
+            break
+
+    if knee_index == 0:
+        return min_cost + (optimal_coverage - min_cost) * 0.60
+
+    return curve_points[knee_index]["coverage"]
+
+
+def resolve_coverage_profile(
+    profile: str, hourly_costs: list[float], savings_percentage: float
+) -> float:
+    """Resolve a coverage profile name to a $/hr coverage target."""
+    if profile == "prudent":
+        return min(hourly_costs) * 0.80
+    if profile == "min-hourly":
+        return min(hourly_costs)
+    if profile == "balanced":
+        return calculate_knee_point(hourly_costs, savings_percentage)
+    if profile == "risky":
+        return calculate_optimal_coverage(hourly_costs, savings_percentage)["coverage_hourly"]
+    raise ValueError(
+        f"Unknown coverage profile: '{profile}'. Must be one of: {VALID_COVERAGE_PROFILES}"
+    )
+
+
+def parse_coverage_target(raw_value: str) -> tuple[str, float | None]:
+    """Parse a coverage target value into (type, numeric_value).
+
+    Returns ("numeric", float_value) for numeric strings, or ("profile", None) for profile names.
+    """
+    if isinstance(raw_value, (int, float)):
+        return ("numeric", float(raw_value))
+    if isinstance(raw_value, str):
+        try:
+            return ("numeric", float(raw_value))
+        except ValueError:
+            pass
+
+    if isinstance(raw_value, str) and raw_value in VALID_COVERAGE_PROFILES:
+        return ("profile", None)
+
+    raise ValueError(
+        f"Invalid coverage target: '{raw_value}'. "
+        f"Must be a number or one of: {VALID_COVERAGE_PROFILES}"
+    )

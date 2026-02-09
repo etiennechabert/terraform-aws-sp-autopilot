@@ -39,16 +39,14 @@ def _get_strategy_config(
 
     # For non-configured strategies, override with strategy-specific defaults
     if strategy_type == "fixed":
-        # Fixed strategy defaults: conservative 10% purchases
         config["max_purchase_percent"] = 10.0
         config["min_purchase_percent"] = 1.0
-        config["coverage_target_percent"] = 90.0
+        config["coverage_target_percent"] = "balanced"
 
     elif strategy_type == "dichotomy":
-        # Dichotomy strategy defaults: more aggressive with halving from 50%
         config["max_purchase_percent"] = 50.0
         config["min_purchase_percent"] = 1.0
-        config["coverage_target_percent"] = 90.0
+        config["coverage_target_percent"] = "balanced"
         config["dichotomy_initial_percent"] = 50.0
 
     # follow_aws doesn't need these parameters (uses AWS recommendations)
@@ -145,6 +143,9 @@ def _calculate_scheduled_purchases(
         from fixed_strategy import calculate_purchase_need_fixed
         from follow_aws_strategy import calculate_purchase_need_follow_aws
 
+        from shared import sp_calculations
+        from shared.optimal_coverage import parse_coverage_target, resolve_coverage_profile
+
         strategy_functions = {
             "fixed": calculate_purchase_need_fixed,
             "dichotomy": calculate_purchase_need_dichotomy,
@@ -156,16 +157,56 @@ def _calculate_scheduled_purchases(
             logger.warning(f"Unknown strategy type: {strategy_type}, defaulting to fixed")
             strategy_func = calculate_purchase_need_fixed
 
-        # Call strategy function (coverage_data structure matches spending_data structure)
-        purchase_plans = strategy_func(config, clients, coverage_data)
-
-        from shared import sp_calculations
-
         breakdown_by_type = (
             savings_data.get("actual_savings", {}).get("breakdown_by_type", {})
             if savings_data
             else {}
         )
+
+        # Resolve coverage target to avg-based % for strategy consumption
+        raw_target = config.get("coverage_target_percent", "balanced")
+        target_type, target_numeric = parse_coverage_target(str(raw_target))
+
+        if strategy_type != "follow_aws":
+            # Find first enabled SP type's timeseries to resolve profile
+            first_sp_type = None
+            for sp in ["compute", "database", "sagemaker"]:
+                if config.get(f"enable_{sp}_sp", False) and sp in coverage_data:
+                    first_sp_type = sp
+                    break
+
+            if first_sp_type:
+                sp_data = coverage_data[first_sp_type]
+                timeseries = sp_data.get("timeseries", [])
+                total_costs = [
+                    item.get("total", 0.0) for item in timeseries if item.get("total", 0.0) > 0
+                ]
+
+                aws_type_name = {
+                    "compute": "Compute",
+                    "database": "Database",
+                    "sagemaker": "SageMaker",
+                }.get(first_sp_type, first_sp_type)
+                savings_pct = breakdown_by_type.get(aws_type_name, {}).get(
+                    "savings_percentage", 0.0
+                )
+
+                if total_costs:
+                    min_hourly = min(total_costs)
+                    avg_hourly = sp_data.get("summary", {}).get("avg_hourly_total", 0.0)
+
+                    if target_type == "profile":
+                        target_dollar = resolve_coverage_profile(
+                            str(raw_target), total_costs, savings_pct
+                        )
+                    else:
+                        target_dollar = (target_numeric / 100) * min_hourly
+
+                    avg_based_pct = (target_dollar / avg_hourly * 100) if avg_hourly > 0 else 90.0
+                    config = config.copy()
+                    config["coverage_target_percent"] = avg_based_pct
+
+        purchase_plans = strategy_func(config, clients, coverage_data)
 
         # Enrich with coverage impact
         enriched = []
@@ -176,7 +217,6 @@ def _calculate_scheduled_purchases(
 
             hourly_commitment = plan["hourly_commitment"]
 
-            # Coverage as percentage of min-hourly
             timeseries = sp_data.get("timeseries", [])
             total_costs = [
                 item.get("total", 0.0) for item in timeseries if item.get("total", 0.0) > 0
@@ -195,24 +235,33 @@ def _calculate_scheduled_purchases(
             current_od_equiv = sp_calculations.coverage_from_commitment(
                 existing_commitment, savings_pct
             )
-            # For follow_aws, use AWS's own estimated discount rate to convert commitment
             new_savings_pct = plan.get("estimated_savings_percentage", savings_pct)
             new_od_equiv = sp_calculations.coverage_from_commitment(
                 hourly_commitment, new_savings_pct
             )
 
-            avg_hourly_total = summary.get("avg_hourly_total", 0.0)
-
             if min_hourly > 0:
                 purchase_percent = (new_od_equiv / min_hourly) * 100.0
                 current_coverage = (current_od_equiv / min_hourly) * 100.0
                 projected_coverage = ((current_od_equiv + new_od_equiv) / min_hourly) * 100.0
-                avg_to_min_ratio = avg_hourly_total / min_hourly if avg_hourly_total > 0 else 1.0
             else:
                 purchase_percent = 0.0
                 current_coverage = 0.0
                 projected_coverage = 0.0
-                avg_to_min_ratio = 1.0
+
+            # Resolve target coverage per SP type for display
+            if strategy_type == "follow_aws":
+                target_coverage_min_hourly = None
+            elif min_hourly > 0 and total_costs:
+                if target_type == "profile":
+                    type_target_dollar = resolve_coverage_profile(
+                        str(raw_target), total_costs, savings_pct
+                    )
+                else:
+                    type_target_dollar = (target_numeric / 100) * min_hourly
+                target_coverage_min_hourly = (type_target_dollar / min_hourly) * 100
+            else:
+                target_coverage_min_hourly = None
 
             has_existing_plans = type_breakdown.get("plans_count", 0) > 0
             entry = {
@@ -227,7 +276,7 @@ def _calculate_scheduled_purchases(
                 "average_utilization": type_breakdown.get("average_utilization", 0.0)
                 if has_existing_plans
                 else None,
-                "avg_to_min_ratio": avg_to_min_ratio,
+                "target_coverage_min_hourly": target_coverage_min_hourly,
             }
             if "estimated_savings_percentage" in plan:
                 entry["estimated_savings_percentage"] = plan["estimated_savings_percentage"]
