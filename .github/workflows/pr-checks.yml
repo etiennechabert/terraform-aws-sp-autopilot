@@ -471,6 +471,9 @@ jobs:
     name: Terraform Integration Tests
     runs-on: ubuntu-latest
     needs: [terraform-validation, tfsec-scan, lint, terraform-unit-tests]
+    concurrency:
+      group: aws-integration-tests
+      cancel-in-progress: false
     timeout-minutes: 30
     permissions:
       contents: read
@@ -559,6 +562,9 @@ jobs:
     name: Cleanup AWS Resources
     runs-on: ubuntu-latest
     needs: terraform-integration-tests
+    concurrency:
+      group: aws-integration-tests
+      cancel-in-progress: false
     if: always()
     timeout-minutes: 15
     permissions:
