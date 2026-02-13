@@ -556,8 +556,9 @@ def _build_breakdown_table_html(
                         <th>Active Plans</th>
                         <th>Utilization</th>
                         <th>Commitment/hr</th>
-                        <th>Would Pay On-Demand/hr</th>
+                        <th>On-Demand Equiv/hr</th>
                         <th>Savings/hr</th>
+                        <th>Avg Discount</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -596,6 +597,7 @@ def _build_breakdown_table_html(
                         <td class="metric">${total_commitment_type:.2f}/hr</td>
                         <td class="metric">${on_demand_coverage_capacity:.2f}/hr</td>
                         <td class="metric" style="color: #28a745;">${potential_savings:.2f}/hr</td>
+                        <td class="metric">{type_savings_pct:.1f}%</td>
                     </tr>
 """
 
@@ -616,6 +618,7 @@ def _build_breakdown_table_html(
                         <td class="metric">${total_commitment:.2f}/hr</td>
                         <td class="metric">${total_coverage_capacity:.2f}/hr</td>
                         <td class="metric" style="color: #28a745;">${total_potential_savings:.2f}/hr</td>
+                        <td class="metric">{overall_savings_percentage:.1f}%</td>
                     </tr>
 """
 
@@ -920,12 +923,25 @@ def generate_html_report(
             background-color: #232f3e;
             color: white;
             padding: 12px;
-            text-align: left;
+            text-align: center;
             font-weight: 600;
+        }}
+        th:first-child {{
+            text-align: left;
+        }}
+        th:last-child {{
+            text-align: right;
         }}
         td {{
             padding: 10px 12px;
             border-bottom: 1px solid #e0e0e0;
+            text-align: center;
+        }}
+        td:first-child {{
+            text-align: left;
+        }}
+        td:last-child {{
+            text-align: right;
         }}
         tr:hover {{
             background-color: #f8f9fa;
@@ -1675,6 +1691,17 @@ def generate_html_report(
                             title: {{
                                 display: true,
                                 text: 'Time Period'
+                            }},
+                            ticks: {{
+                                callback: function(value, index) {{
+                                    const label = this.getLabelForValue(index);
+                                    if (label && label.includes('12:00')) {{
+                                        return label.split(' ')[0];
+                                    }}
+                                    return null;
+                                }},
+                                maxRotation: 0,
+                                minRotation: 0
                             }}
                         }},
                         y: {{
