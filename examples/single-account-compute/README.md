@@ -87,10 +87,14 @@ After enabling:
 
 ```hcl
 purchase_strategy = {
-  coverage_target_percent = 80  # Lower = more conservative
-  max_coverage_cap        = 90  # Hard ceiling
-  fixed = {
-    max_purchase_percent = 5  # Lower = slower commitment growth
+  max_coverage_cap = 90  # Hard ceiling
+
+  target = {
+    fixed = { coverage_percent = 80 }  # Lower = more conservative
+  }
+
+  split = {
+    linear = { step_percent = 5 }  # Lower = slower commitment growth
   }
 }
 ```

@@ -1,59 +1,59 @@
 """
 Scheduler Preview - Simulates scheduler purchase decisions for reporting.
 
-This module calculates what all three scheduler strategies (fixed, dichotomy,
-follow_aws) would purchase if they ran right now, allowing comparison between strategies.
+Shows what different target+split strategy combinations would purchase
+if they ran right now, allowing comparison between strategies.
 """
 
 import logging
+import os
 import sys
-from pathlib import Path
 from typing import Any
+
+from shared import sp_calculations
+
+
+# purchase_calculator lives in the scheduler directory; in Lambda archives both
+# are at the root, but during tests we need to add the scheduler path explicitly.
+_scheduler_dir = os.path.join(
+    os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "scheduler"
+)
+if _scheduler_dir not in sys.path:
+    sys.path.append(_scheduler_dir)
 
 
 logger = logging.getLogger(__name__)
 
 
-def _get_strategy_config(
-    base_config: dict[str, Any], strategy_type: str, is_configured: bool
-) -> dict[str, Any]:
-    """
-    Get configuration for a strategy with appropriate defaults.
+PREVIEW_COMBINATIONS = [
+    {"target": "fixed", "split": "linear", "label": "Fixed + Linear"},
+    {"target": "fixed", "split": "dichotomy", "label": "Fixed + Dichotomy"},
+    {"target": "fixed", "split": "one_shot", "label": "Fixed + One Shot"},
+    {"target": "dynamic", "split": "linear", "label": "Dynamic + Linear"},
+    {"target": "aws", "split": "one_shot", "label": "AWS Recommendation"},
+]
 
-    For the configured strategy, uses actual user config.
-    For non-configured strategies, uses sensible strategy-specific defaults.
 
-    Args:
-        base_config: Base configuration from user
-        strategy_type: Strategy type (fixed, dichotomy, follow_aws)
-        is_configured: Whether this is the user's configured strategy
-
-    Returns:
-        dict: Configuration with strategy-appropriate defaults
-    """
+def _build_preview_config(base_config: dict[str, Any], target: str, split: str) -> dict[str, Any]:
     config = base_config.copy()
+    config["target_strategy_type"] = target
+    config["split_strategy_type"] = split
 
-    # If this is the configured strategy, use actual config as-is
-    if is_configured:
-        return config
-
-    # For non-configured strategies, override with strategy-specific defaults
-    if strategy_type == "fixed":
-        # Fixed strategy defaults: conservative 10% purchases
-        config["max_purchase_percent"] = 10.0
-        config["min_purchase_percent"] = 1.0
+    if target == "fixed" and "coverage_target_percent" not in config:
         config["coverage_target_percent"] = 90.0
-
-    elif strategy_type == "dichotomy":
-        # Dichotomy strategy defaults: more aggressive with halving from 50%
-        config["max_purchase_percent"] = 50.0
-        config["min_purchase_percent"] = 1.0
-        config["coverage_target_percent"] = 90.0
-        config["dichotomy_initial_percent"] = 50.0
-
-    # follow_aws doesn't need these parameters (uses AWS recommendations)
+    if target == "dynamic" and not config.get("dynamic_risk_level"):
+        config["dynamic_risk_level"] = "balanced"
+    if split == "linear" and not config.get("linear_step_percent"):
+        config["linear_step_percent"] = config.get("max_purchase_percent", 10.0)
+    if split == "dichotomy":
+        config.setdefault("max_purchase_percent", 50.0)
+        config.setdefault("min_purchase_percent", 1.0)
 
     return config
+
+
+def _get_configured_key(config: dict[str, Any]) -> str:
+    return f"{config.get('target_strategy_type', 'fixed')}+{config.get('split_strategy_type', 'linear')}"
 
 
 def calculate_scheduler_preview(
@@ -63,53 +63,43 @@ def calculate_scheduler_preview(
     savings_data: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
     """
-    Calculate what each scheduler strategy would purchase right now.
+    Calculate what each strategy combination would purchase right now.
 
-    Each non-configured strategy uses sensible defaults:
-    - Fixed: 10% max purchase, 90% target (conservative)
-    - Dichotomy: 50% max purchase, 1% min, 90% target (aggressive)
-    - Follow AWS: Uses AWS recommendations (no parameters)
-
-    Args:
-        config: Reporter config (includes scheduler strategy params)
-        clients: AWS clients dict (ce, savingsplans, s3, sns)
-        coverage_data: Already-fetched coverage data from SpendingAnalyzer
-        savings_data: Savings plans summary (for discount rates)
-
-    Returns:
-        dict: Preview data with all three strategies' recommendations
+    Returns preview data with all combinations' recommendations.
     """
-    configured_strategy = config.get("purchase_strategy_type", "fixed")
+    from purchase_calculator import calculate_purchase_need
+
+    configured_key = _get_configured_key(config)
 
     try:
-        # Calculate purchases for all three strategies
         all_strategies = {}
 
-        for strategy_type in ["fixed", "dichotomy", "follow_aws"]:
+        for combo in PREVIEW_COMBINATIONS:
+            strategy_key = f"{combo['target']}+{combo['split']}"
             try:
-                # Get strategy-specific config (with defaults for non-configured strategies)
-                strategy_config = _get_strategy_config(
-                    config, strategy_type, is_configured=(strategy_type == configured_strategy)
+                preview_config = _build_preview_config(config, combo["target"], combo["split"])
+                purchases = calculate_purchase_need(preview_config, clients, coverage_data)
+                enriched = _enrich_purchases(
+                    purchases, coverage_data, savings_data, combo["target"]
                 )
 
-                purchases = _calculate_scheduled_purchases(
-                    strategy_config, clients, coverage_data, strategy_type, savings_data
-                )
-                all_strategies[strategy_type] = {
-                    "purchases": purchases,
-                    "has_recommendations": len(purchases) > 0,
+                all_strategies[strategy_key] = {
+                    "label": combo["label"],
+                    "purchases": enriched,
+                    "has_recommendations": len(enriched) > 0,
                     "error": None,
                 }
             except Exception as e:
-                logger.error(f"Failed to calculate {strategy_type} strategy: {e}", exc_info=True)
-                all_strategies[strategy_type] = {
+                logger.error(f"Failed to calculate {strategy_key}: {e}", exc_info=True)
+                all_strategies[strategy_key] = {
+                    "label": combo["label"],
                     "purchases": [],
                     "has_recommendations": False,
                     "error": str(e),
                 }
 
         return {
-            "configured_strategy": configured_strategy,
+            "configured_strategy": configured_key,
             "strategies": all_strategies,
             "error": None,
         }
@@ -117,127 +107,80 @@ def calculate_scheduler_preview(
     except Exception as e:
         logger.error(f"Failed to calculate scheduler preview: {e}", exc_info=True)
         return {
-            "configured_strategy": configured_strategy,
+            "configured_strategy": configured_key,
             "strategies": {},
             "error": str(e),
         }
 
 
-def _calculate_scheduled_purchases(
-    config: dict[str, Any],
-    clients: dict[str, Any],
+def _enrich_purchases(
+    purchase_plans: list[dict[str, Any]],
     coverage_data: dict[str, Any],
-    strategy_type: str,
-    savings_data: dict[str, Any] | None = None,
+    savings_data: dict[str, Any] | None,
+    target_type: str,
 ) -> list[dict[str, Any]]:
-    """
-    Calculate scheduled purchases using the configured strategy.
+    breakdown_by_type = (
+        savings_data.get("actual_savings", {}).get("breakdown_by_type", {}) if savings_data else {}
+    )
 
-    Imports scheduler strategy modules and calls the appropriate function.
-    """
-    # Import scheduler strategy modules
-    scheduler_dir = Path(__file__).parent.parent / "scheduler"
-    if str(scheduler_dir) not in sys.path:
-        sys.path.insert(0, str(scheduler_dir))
+    enriched = []
+    for plan in purchase_plans:
+        sp_type = plan["sp_type"]
+        sp_data = coverage_data.get(sp_type, {})
+        summary = sp_data.get("summary", {})
 
-    try:
-        from dichotomy_strategy import calculate_purchase_need_dichotomy
-        from fixed_strategy import calculate_purchase_need_fixed
-        from follow_aws_strategy import calculate_purchase_need_follow_aws
+        hourly_commitment = plan["hourly_commitment"]
 
-        strategy_functions = {
-            "fixed": calculate_purchase_need_fixed,
-            "dichotomy": calculate_purchase_need_dichotomy,
-            "follow_aws": calculate_purchase_need_follow_aws,
-        }
+        timeseries = sp_data.get("timeseries", [])
+        total_costs = [item.get("total", 0.0) for item in timeseries if item.get("total", 0.0) > 0]
+        min_hourly = min(total_costs) if total_costs else 0.0
 
-        strategy_func = strategy_functions.get(strategy_type)
-        if not strategy_func:
-            logger.warning(f"Unknown strategy type: {strategy_type}, defaulting to fixed")
-            strategy_func = calculate_purchase_need_fixed
+        aws_type_name = {
+            "compute": "Compute",
+            "database": "Database",
+            "sagemaker": "SageMaker",
+        }.get(sp_type, sp_type)
+        type_breakdown = breakdown_by_type.get(aws_type_name, {})
+        savings_pct = type_breakdown.get("savings_percentage", 0.0)
+        existing_commitment = type_breakdown.get("total_commitment", 0.0)
 
-        # Call strategy function (coverage_data structure matches spending_data structure)
-        purchase_plans = strategy_func(config, clients, coverage_data)
-
-        from shared import sp_calculations
-
-        breakdown_by_type = (
-            savings_data.get("actual_savings", {}).get("breakdown_by_type", {})
-            if savings_data
-            else {}
+        current_od_equiv = sp_calculations.coverage_from_commitment(
+            existing_commitment, savings_pct
         )
+        new_savings_pct = plan.get("estimated_savings_percentage", savings_pct)
+        new_od_equiv = sp_calculations.coverage_from_commitment(hourly_commitment, new_savings_pct)
 
-        # Enrich with coverage impact
-        enriched = []
-        for plan in purchase_plans:
-            sp_type = plan["sp_type"]
-            sp_data = coverage_data.get(sp_type, {})
-            summary = sp_data.get("summary", {})
+        avg_hourly_total = summary.get("avg_hourly_total", 0.0)
 
-            hourly_commitment = plan["hourly_commitment"]
+        if min_hourly > 0:
+            purchase_percent = (new_od_equiv / min_hourly) * 100.0
+            current_coverage = (current_od_equiv / min_hourly) * 100.0
+            projected_coverage = ((current_od_equiv + new_od_equiv) / min_hourly) * 100.0
+            avg_to_min_ratio = avg_hourly_total / min_hourly if avg_hourly_total > 0 else 1.0
+        else:
+            purchase_percent = 0.0
+            current_coverage = 0.0
+            projected_coverage = 0.0
+            avg_to_min_ratio = 1.0
 
-            # Coverage as percentage of min-hourly
-            timeseries = sp_data.get("timeseries", [])
-            total_costs = [
-                item.get("total", 0.0) for item in timeseries if item.get("total", 0.0) > 0
-            ]
-            min_hourly = min(total_costs) if total_costs else 0.0
+        has_existing_plans = type_breakdown.get("plans_count", 0) > 0
+        entry = {
+            "sp_type": sp_type,
+            "hourly_commitment": hourly_commitment,
+            "purchase_percent": purchase_percent,
+            "current_coverage": current_coverage,
+            "projected_coverage": projected_coverage,
+            "payment_option": plan["payment_option"],
+            "term": plan["term"],
+            "discount_used": new_savings_pct,
+            "average_utilization": type_breakdown.get("average_utilization", 0.0)
+            if has_existing_plans
+            else None,
+            "avg_to_min_ratio": avg_to_min_ratio,
+            "is_aws_target": target_type == "aws",
+        }
+        if "estimated_savings_percentage" in plan:
+            entry["estimated_savings_percentage"] = plan["estimated_savings_percentage"]
+        enriched.append(entry)
 
-            aws_type_name = {
-                "compute": "Compute",
-                "database": "Database",
-                "sagemaker": "SageMaker",
-            }.get(sp_type, sp_type)
-            type_breakdown = breakdown_by_type.get(aws_type_name, {})
-            savings_pct = type_breakdown.get("savings_percentage", 0.0)
-            existing_commitment = type_breakdown.get("total_commitment", 0.0)
-
-            current_od_equiv = sp_calculations.coverage_from_commitment(
-                existing_commitment, savings_pct
-            )
-            # For follow_aws, use AWS's own estimated discount rate to convert commitment
-            new_savings_pct = plan.get("estimated_savings_percentage", savings_pct)
-            new_od_equiv = sp_calculations.coverage_from_commitment(
-                hourly_commitment, new_savings_pct
-            )
-
-            avg_hourly_total = summary.get("avg_hourly_total", 0.0)
-
-            if min_hourly > 0:
-                purchase_percent = (new_od_equiv / min_hourly) * 100.0
-                current_coverage = (current_od_equiv / min_hourly) * 100.0
-                projected_coverage = ((current_od_equiv + new_od_equiv) / min_hourly) * 100.0
-                avg_to_min_ratio = avg_hourly_total / min_hourly if avg_hourly_total > 0 else 1.0
-            else:
-                purchase_percent = 0.0
-                current_coverage = 0.0
-                projected_coverage = 0.0
-                avg_to_min_ratio = 1.0
-
-            has_existing_plans = type_breakdown.get("plans_count", 0) > 0
-            entry = {
-                "sp_type": sp_type,
-                "hourly_commitment": hourly_commitment,
-                "purchase_percent": purchase_percent,
-                "current_coverage": current_coverage,
-                "projected_coverage": projected_coverage,
-                "payment_option": plan["payment_option"],
-                "term": plan["term"],
-                "discount_used": new_savings_pct,
-                "average_utilization": type_breakdown.get("average_utilization", 0.0)
-                if has_existing_plans
-                else None,
-                "avg_to_min_ratio": avg_to_min_ratio,
-            }
-            if "estimated_savings_percentage" in plan:
-                entry["estimated_savings_percentage"] = plan["estimated_savings_percentage"]
-            enriched.append(entry)
-
-        return enriched
-
-    except ImportError as e:
-        logger.error(f"Failed to import scheduler strategies: {e}")
-        raise
-    except Exception as e:
-        logger.error(f"Error calculating scheduled purchases: {e}", exc_info=True)
-        raise
+    return enriched

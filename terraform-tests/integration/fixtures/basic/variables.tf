@@ -18,7 +18,6 @@ variable "aws_region" {
 variable "purchase_strategy" {
   description = "Purchase strategy configuration"
   type = object({
-    coverage_target_percent = number
     max_coverage_cap        = number
     lookback_days           = optional(number, 13)
     min_data_days           = optional(number, 14)
@@ -26,12 +25,22 @@ variable "purchase_strategy" {
     renewal_window_days     = optional(number, 7)
     min_commitment_per_plan = optional(number, 0.001)
 
-    fixed = optional(object({
-      max_purchase_percent = number
+    target = object({
+      fixed   = optional(object({ coverage_percent = number }))
+      aws     = optional(object({}))
+      dynamic = optional(object({ risk_level = string }))
+    })
+
+    split = optional(object({
+      one_shot  = optional(object({}))
+      linear    = optional(object({ step_percent = number }))
+      dichotomy = optional(object({
+        max_purchase_percent = number
+        min_purchase_percent = number
+      }))
     }))
   })
   default = {
-    coverage_target_percent = 80
     max_coverage_cap        = 90
     lookback_days           = 7
     min_data_days           = 14
@@ -39,8 +48,12 @@ variable "purchase_strategy" {
     renewal_window_days     = 7
     min_commitment_per_plan = 0.001
 
-    fixed = {
-      max_purchase_percent = 10
+    target = {
+      fixed = { coverage_percent = 80 }
+    }
+
+    split = {
+      linear = { step_percent = 10 }
     }
   }
 }

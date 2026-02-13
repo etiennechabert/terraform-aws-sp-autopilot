@@ -73,26 +73,58 @@ locals {
     "NO_UPFRONT"
   ) : "ALL_UPFRONT"
 
-  # Purchase Strategy
+  # Target Strategy
 
-  purchase_strategy_type = (
-    var.purchase_strategy.follow_aws != null ? "follow_aws" :
-    var.purchase_strategy.fixed != null ? "fixed" :
-    var.purchase_strategy.dichotomy != null ? "dichotomy" :
-    "follow_aws" # default
+  target_strategy_type = (
+    var.purchase_strategy.target.fixed != null ? "fixed" :
+    var.purchase_strategy.target.aws != null ? "aws" :
+    var.purchase_strategy.target.dynamic != null ? "dynamic" :
+    "fixed" # default
+  )
+
+  # Split Strategy
+
+  split_strategy_type = (
+    local.target_strategy_type == "aws" ? "one_shot" :
+    try(var.purchase_strategy.split.one_shot, null) != null ? "one_shot" :
+    try(var.purchase_strategy.split.linear, null) != null ? "linear" :
+    try(var.purchase_strategy.split.dichotomy, null) != null ? "dichotomy" :
+    "linear" # default
+  )
+
+  # Coverage target (only for fixed target)
+  coverage_target_percent = (
+    local.target_strategy_type == "fixed" ?
+    var.purchase_strategy.target.fixed.coverage_percent :
+    90.0 # dynamic/aws targets resolve at runtime
+  )
+
+  # Dynamic risk level
+  dynamic_risk_level = (
+    local.target_strategy_type == "dynamic" ?
+    var.purchase_strategy.target.dynamic.risk_level :
+    ""
+  )
+
+  # Split strategy params
+  linear_step_percent = (
+    local.split_strategy_type == "linear" ?
+    try(var.purchase_strategy.split.linear.step_percent, 10.0) :
+    10.0
   )
 
   max_purchase_percent = (
-    local.purchase_strategy_type == "follow_aws" ? 100.0 :
-    local.purchase_strategy_type == "fixed" ?
-    var.purchase_strategy.fixed.max_purchase_percent :
-    var.purchase_strategy.dichotomy.max_purchase_percent
+    local.split_strategy_type == "dichotomy" ?
+    try(var.purchase_strategy.split.dichotomy.max_purchase_percent, 50.0) :
+    local.split_strategy_type == "linear" ?
+    local.linear_step_percent :
+    100.0
   )
 
   min_purchase_percent = (
-    local.purchase_strategy_type == "dichotomy" ?
-    var.purchase_strategy.dichotomy.min_purchase_percent :
-    1.0 # default for other strategies (not used, but included for consistency)
+    local.split_strategy_type == "dichotomy" ?
+    try(var.purchase_strategy.split.dichotomy.min_purchase_percent, 1.0) :
+    1.0
   )
 
   # Scheduler Dry-Run Mode
@@ -147,8 +179,7 @@ locals {
 
   # Purchase Strategy Settings (extract from nested object)
 
-  coverage_target_percent = var.purchase_strategy.coverage_target_percent
-  max_coverage_cap        = var.purchase_strategy.max_coverage_cap
+  max_coverage_cap = var.purchase_strategy.max_coverage_cap
   lookback_days           = try(var.purchase_strategy.lookback_days, 30)
   min_data_days           = try(var.purchase_strategy.min_data_days, 14)
   granularity             = try(var.purchase_strategy.granularity, "HOURLY")

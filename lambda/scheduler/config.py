@@ -45,11 +45,28 @@ CONFIG_SCHEMA = {
         "default": "90",
         "env_var": "COVERAGE_TARGET_PERCENT",
     },
-    "purchase_strategy_type": {
+    "target_strategy_type": {
         "required": False,
         "type": "str",
-        "default": "follow_aws",
-        "env_var": "PURCHASE_STRATEGY_TYPE",
+        "default": "fixed",
+        "env_var": "TARGET_STRATEGY_TYPE",
+    },
+    "split_strategy_type": {
+        "required": False,
+        "type": "str",
+        "default": "linear",
+        "env_var": "SPLIT_STRATEGY_TYPE",
+    },
+    "dynamic_risk_level": {
+        "required": False,
+        "type": "str",
+        "env_var": "DYNAMIC_RISK_LEVEL",
+    },
+    "savings_percentage": {
+        "required": False,
+        "type": "float",
+        "default": "30.0",
+        "env_var": "SAVINGS_PERCENTAGE",
     },
     "max_purchase_percent": {
         "required": False,
@@ -62,6 +79,11 @@ CONFIG_SCHEMA = {
         "type": "float",
         "default": "1",
         "env_var": "MIN_PURCHASE_PERCENT",
+    },
+    "linear_step_percent": {
+        "required": False,
+        "type": "float",
+        "env_var": "LINEAR_STEP_PERCENT",
     },
     "renewal_window_days": {
         "required": False,
