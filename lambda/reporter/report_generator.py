@@ -449,7 +449,7 @@ def _render_purchase_row(
                         <td class="metric" style="color: #28a745;" title="{discount_tooltip}">+{cov_increase:.1f}%</td>
                         <td class="metric {coverage_class}" style="font-weight: bold;" title="{discount_tooltip}">{projected_cov:.1f}%</td>
                         {target_cell}
-                        <td class="metric">{discount_used:.1f}%</td>
+                        <td class="metric">{"N/A" if discount_used == 0.0 else f"{discount_used:.1f}%"}</td>
                         <td>{term}, {payment_option}</td>
                     </tr>
                 """
@@ -730,7 +730,7 @@ def _build_active_plans_table_html(plans: list[dict[str, Any]]) -> str:
                         <th style="width: 16%;">Hourly Commitment</th>
                         <th style="width: 10%;">Term</th>
                         <th style="width: 16%;">Payment Option</th>
-                        <th style="width: 16%;">Days Remaining</th>
+                        <th style="width: 20%;">Expiry in</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -747,7 +747,7 @@ def _build_active_plans_table_html(plans: list[dict[str, Any]]) -> str:
 
         (
             _start_date_display,
-            _end_date_display,
+            end_date_display,
             days_remaining_display,
             expiring_soon,
             tooltip_text,
@@ -762,7 +762,7 @@ def _build_active_plans_table_html(plans: list[dict[str, Any]]) -> str:
                         <td class="metric">${hourly_commitment:.2f}/hr</td>
                         <td>{term_years} year(s)</td>
                         <td>{payment_option}</td>
-                        <td class="metric" title="{tooltip_text}" style="cursor: help;">{days_remaining_display}</td>
+                        <td class="metric" title="{tooltip_text}" style="cursor: help; white-space: nowrap;">{days_remaining_display}<br><span style="font-weight: normal; font-size: 0.8em; color: #6c757d;">{end_date_display}</span></td>
                     </tr>
 """
 
