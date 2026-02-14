@@ -179,7 +179,7 @@ locals {
 
   # Purchase Strategy Settings (extract from nested object)
 
-  max_coverage_cap = var.purchase_strategy.max_coverage_cap
+  max_coverage_cap        = var.purchase_strategy.max_coverage_cap
   lookback_days           = try(var.purchase_strategy.lookback_days, 30)
   min_data_days           = try(var.purchase_strategy.min_data_days, 14)
   granularity             = try(var.purchase_strategy.granularity, "HOURLY")
