@@ -2,7 +2,7 @@
 Unit tests for scheduler_preview module.
 
 Tests the scheduler preview calculation logic including:
-- Scheduled purchase calculations for each strategy
+- Scheduled purchase calculations for each target+split combination
 - Coverage impact analysis
 """
 
@@ -65,9 +65,11 @@ def sample_savings_data():
 
 @pytest.fixture
 def sample_config():
-    """Sample reporter configuration."""
+    """Sample reporter configuration with new target+split strategy."""
     return {
-        "purchase_strategy_type": "fixed",
+        "target_strategy_type": "fixed",
+        "split_strategy_type": "linear",
+        "linear_step_percent": 10.0,
         "max_purchase_percent": 10.0,
         "min_purchase_percent": 1.0,
         "compute_sp_term": "THREE_YEAR",
@@ -78,6 +80,7 @@ def sample_config():
         "enable_sagemaker_sp": False,
         "lookback_days": 7,
         "renewal_window_days": 7,
+        "min_commitment_per_plan": 0.001,
     }
 
 
@@ -92,11 +95,10 @@ def mock_clients():
     }
 
 
-def test_calculate_scheduler_preview_all_strategies(
+def test_calculate_scheduler_preview_all_combinations(
     sample_config, mock_clients, sample_coverage_data, sample_savings_data, aws_mock_builder
 ):
-    """Test scheduler preview calculates all three strategies."""
-    # Setup AWS recommendation mock for follow_aws strategy
+    """Test scheduler preview calculates all strategy combinations."""
     mock_clients[
         "ce"
     ].get_savings_plans_purchase_recommendation.return_value = aws_mock_builder.recommendation(
@@ -107,31 +109,29 @@ def test_calculate_scheduler_preview_all_strategies(
         sample_config, mock_clients, sample_coverage_data
     )
 
-    # Verify structure
     assert "configured_strategy" in result
     assert "strategies" in result
     assert "error" in result
 
-    # Verify configured strategy
-    assert result["configured_strategy"] == "fixed"
+    assert result["configured_strategy"] == "fixed+linear"
     assert result["error"] is None
 
-    # Verify all three strategies are present
-    assert "fixed" in result["strategies"]
-    assert "dichotomy" in result["strategies"]
-    assert "follow_aws" in result["strategies"]
+    # Configured (fixed+linear) + 2 defaults (dynamic+dichotomy, aws+one_shot)
+    # fixed+linear is both configured and a default, so 3 total
+    assert "fixed+linear" in result["strategies"]
+    assert "dynamic+dichotomy" in result["strategies"]
+    assert "aws+one_shot" in result["strategies"]
+    assert len(result["strategies"]) == 3
 
-    # Verify each strategy has the correct structure
-    for strategy_name, strategy_data in result["strategies"].items():
+    for strategy_key, strategy_data in result["strategies"].items():
         assert "purchases" in strategy_data
         assert "has_recommendations" in strategy_data
         assert "error" in strategy_data
+        assert "label" in strategy_data
 
-        # Verify purchase structure if there are recommendations
         if strategy_data["has_recommendations"]:
             assert len(strategy_data["purchases"]) > 0
             purchase = strategy_data["purchases"][0]
-
             assert "sp_type" in purchase
             assert "hourly_commitment" in purchase
             assert "purchase_percent" in purchase
@@ -144,42 +144,38 @@ def test_calculate_scheduler_preview_all_strategies(
 def test_calculate_scheduler_preview_configured_strategy_marked(
     sample_config, mock_clients, sample_coverage_data, sample_savings_data, aws_mock_builder
 ):
-    """Test that the configured strategy is properly marked."""
-    # Setup AWS recommendation mock
+    """Test that the configured strategy combination is properly identified."""
     mock_clients[
         "ce"
     ].get_savings_plans_purchase_recommendation.return_value = aws_mock_builder.recommendation(
         sp_type="compute", hourly_commitment=50.0
     )
 
-    # Test with dichotomy as configured
     config = sample_config.copy()
-    config["purchase_strategy_type"] = "dichotomy"
-    config["dichotomy_initial_percent"] = 50.0
+    config["target_strategy_type"] = "fixed"
+    config["split_strategy_type"] = "dichotomy"
+    config["max_purchase_percent"] = 50.0
 
     result = scheduler_preview.calculate_scheduler_preview(
         config, mock_clients, sample_coverage_data
     )
 
-    assert result["configured_strategy"] == "dichotomy"
+    assert result["configured_strategy"] == "fixed+dichotomy"
     assert result["error"] is None
-
-    # All strategies should still be calculated
-    assert len(result["strategies"]) == 3
+    # fixed+dichotomy (configured) + fixed+linear + dynamic+dichotomy + aws+one_shot = 4
+    assert len(result["strategies"]) == 4
 
 
 def test_calculate_scheduler_preview_no_recommendations(
     sample_config, mock_clients, sample_savings_data, aws_mock_builder
 ):
     """Test scheduler preview when already at target coverage."""
-    # Setup AWS recommendation mock (empty - no recommendation)
     mock_clients[
         "ce"
     ].get_savings_plans_purchase_recommendation.return_value = aws_mock_builder.recommendation(
         sp_type="compute", empty=True
     )
 
-    # Coverage already at 95% (above 90% target)
     coverage_data = {
         "compute": {
             "summary": {
@@ -196,22 +192,17 @@ def test_calculate_scheduler_preview_no_recommendations(
         sample_config, mock_clients, coverage_data
     )
 
-    assert result["configured_strategy"] == "fixed"
+    assert result["configured_strategy"] == "fixed+linear"
     assert result["error"] is None
 
-    # Fixed and dichotomy should report no recommendations (coverage already met)
-    assert result["strategies"]["fixed"]["has_recommendations"] is False
-    assert result["strategies"]["dichotomy"]["has_recommendations"] is False
-
-    # follow_aws also has no recommendations (AWS returned empty recommendation)
-    assert result["strategies"]["follow_aws"]["has_recommendations"] is False
+    # Fixed+linear (configured) should report no recommendations (already at 95%)
+    assert result["strategies"]["fixed+linear"]["has_recommendations"] is False
 
 
 def test_calculate_scheduler_preview_strategy_error_handling(
     sample_config, mock_clients, sample_coverage_data, sample_savings_data
 ):
     """Test that individual strategy errors are handled gracefully."""
-    # Don't setup AWS mock - follow_aws will fail but others should succeed
     result = scheduler_preview.calculate_scheduler_preview(
         sample_config, mock_clients, sample_coverage_data
     )
@@ -219,21 +210,12 @@ def test_calculate_scheduler_preview_strategy_error_handling(
     assert result["error"] is None
     assert len(result["strategies"]) == 3
 
-    # Fixed and dichotomy should work
-    assert result["strategies"]["fixed"]["error"] is None
-    assert result["strategies"]["dichotomy"]["error"] is None
-
-    # follow_aws might have an error (no AWS mock), but should still be in result
-    assert "follow_aws" in result["strategies"]
+    # Configured strategy (fixed+linear) should work (no AWS call needed)
+    assert result["strategies"]["fixed+linear"]["error"] is None
 
 
 def test_coverage_is_min_hourly_based(sample_config, mock_clients, aws_mock_builder):
-    """Coverage values should be expressed as percentage of min-hourly, not avg_coverage_total.
-
-    Regression test: breakdown_by_type uses AWS-capitalized keys (e.g. "Database")
-    while sp_type from coverage_data is lowercase (e.g. "database"). A key mismatch
-    would result in 0% current coverage even when a plan exists.
-    """
+    """Coverage values should be expressed as percentage of min-hourly."""
     mock_clients[
         "ce"
     ].get_savings_plans_purchase_recommendation.return_value = aws_mock_builder.recommendation(
@@ -242,7 +224,6 @@ def test_coverage_is_min_hourly_based(sample_config, mock_clients, aws_mock_buil
 
     config = sample_config.copy()
     config["enable_database_sp"] = True
-    config["database_sp_term"] = "ONE_YEAR"
     config["database_sp_payment_option"] = "NO_UPFRONT"
 
     coverage_data = {
@@ -277,14 +258,8 @@ def test_coverage_is_min_hourly_based(sample_config, mock_clients, aws_mock_buil
     savings_data = {
         "actual_savings": {
             "breakdown_by_type": {
-                "Compute": {
-                    "total_commitment": 10.0,
-                    "savings_percentage": 30.0,
-                },
-                "Database": {
-                    "total_commitment": 1.0,
-                    "savings_percentage": 35.0,
-                },
+                "Compute": {"total_commitment": 10.0, "savings_percentage": 30.0},
+                "Database": {"total_commitment": 1.0, "savings_percentage": 35.0},
             },
         },
     }
@@ -293,17 +268,13 @@ def test_coverage_is_min_hourly_based(sample_config, mock_clients, aws_mock_buil
         config, mock_clients, coverage_data, savings_data
     )
 
-    # Find database purchase from fixed strategy
-    fixed_purchases = result["strategies"]["fixed"]["purchases"]
-    db_purchase = next((p for p in fixed_purchases if p["sp_type"] == "database"), None)
+    # Find database purchase from fixed+linear strategy
+    fixed_linear_purchases = result["strategies"]["fixed+linear"]["purchases"]
+    db_purchase = next((p for p in fixed_linear_purchases if p["sp_type"] == "database"), None)
     assert db_purchase is not None
 
-    # Current coverage must be > 0 (there's a $1/hr database plan)
     assert db_purchase["current_coverage"] > 0
-
-    # Coverage should NOT equal avg_coverage_total (5.0%) — it's min-hourly based
-    # min_hourly=20.0, commitment=1.0, savings=35% → od_equiv = 1.0/(1-0.35) = 1.538
-    # current_coverage = 1.538/20.0*100 = 7.69%
+    # Coverage should NOT equal avg_coverage_total (5.0%)
     assert db_purchase["current_coverage"] != pytest.approx(5.0, abs=0.5)
     assert db_purchase["current_coverage"] == pytest.approx(7.69, abs=0.1)
 

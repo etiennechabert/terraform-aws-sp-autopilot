@@ -72,9 +72,9 @@ func TestExampleSingleAccountCompute(t *testing.T) {
 	t.Logf("Example validation passed: %s", exampleDir)
 }
 
-// TestExampleDichotomyStrategy validates the dichotomy-strategy example
-func TestExampleDichotomyStrategy(t *testing.T) {
-	exampleDir := "../../examples/dichotomy-strategy"
+// TestExampleDynamicStrategy validates the dynamic-strategy example
+func TestExampleDynamicStrategy(t *testing.T) {
+	exampleDir := "../../examples/dynamic-strategy"
 
 	uniquePrefix := fmt.Sprintf("sp-autopilot-test-%s", time.Now().Format("20060102-150405"))
 	testDir := prepareExampleForTesting(t, exampleDir, uniquePrefix)

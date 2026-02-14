@@ -32,7 +32,8 @@ def mock_env_vars(monkeypatch):
     monkeypatch.setenv("ENABLE_DATABASE_SP", "false")
     monkeypatch.setenv("ENABLE_SAGEMAKER_SP", "false")
     monkeypatch.setenv("COVERAGE_TARGET_PERCENT", "90")
-    monkeypatch.setenv("PURCHASE_STRATEGY_TYPE", "follow_aws")
+    monkeypatch.setenv("TARGET_STRATEGY_TYPE", "aws")
+    monkeypatch.setenv("SPLIT_STRATEGY_TYPE", "one_shot")
     monkeypatch.setenv("MAX_PURCHASE_PERCENT", "10")
     monkeypatch.setenv("RENEWAL_WINDOW_DAYS", "7")
     monkeypatch.setenv("LOOKBACK_DAYS", "13")
@@ -146,7 +147,9 @@ def test_handler_follow_aws_strategy(mock_env_vars, mock_clients, aws_mock_build
 
 def test_handler_fixed_strategy(mock_env_vars, mock_clients, aws_mock_builder, monkeypatch):
     """Test fixed strategy analyzes spending and calculates purchases."""
-    monkeypatch.setenv("PURCHASE_STRATEGY_TYPE", "fixed")
+    monkeypatch.setenv("TARGET_STRATEGY_TYPE", "fixed")
+    monkeypatch.setenv("SPLIT_STRATEGY_TYPE", "linear")
+    monkeypatch.setenv("LINEAR_STEP_PERCENT", "10")
     monkeypatch.setenv("MAX_PURCHASE_PERCENT", "5")
 
     mock_clients["sqs"].purge_queue.return_value = {}
@@ -288,7 +291,9 @@ def test_handler_applies_max_purchase_percent(
     mock_env_vars, mock_clients, aws_mock_builder, monkeypatch
 ):
     """Test max_purchase_percent is applied by fixed strategy."""
-    monkeypatch.setenv("PURCHASE_STRATEGY_TYPE", "fixed")
+    monkeypatch.setenv("TARGET_STRATEGY_TYPE", "fixed")
+    monkeypatch.setenv("SPLIT_STRATEGY_TYPE", "linear")
+    monkeypatch.setenv("LINEAR_STEP_PERCENT", "10")
     monkeypatch.setenv("MIN_PURCHASE_PERCENT", "1")
     monkeypatch.setenv("MAX_PURCHASE_PERCENT", "10")
 
@@ -386,7 +391,9 @@ def test_handler_queue_purge_error(mock_env_vars, mock_clients):
 
 def test_handler_term_mix_splitting(mock_env_vars, mock_clients, aws_mock_builder, monkeypatch):
     """Test fixed strategy with custom term configuration."""
-    monkeypatch.setenv("PURCHASE_STRATEGY_TYPE", "fixed")
+    monkeypatch.setenv("TARGET_STRATEGY_TYPE", "fixed")
+    monkeypatch.setenv("SPLIT_STRATEGY_TYPE", "linear")
+    monkeypatch.setenv("LINEAR_STEP_PERCENT", "10")
     monkeypatch.setenv("COMPUTE_SP_TERM", "ONE_YEAR")  # Override default THREE_YEAR
 
     mock_clients["sqs"].purge_queue.return_value = {}
@@ -411,7 +418,9 @@ def test_handler_expiring_plans_excluded_from_coverage(
     mock_env_vars, mock_clients, aws_mock_builder, monkeypatch
 ):
     """Test fixed strategy with existing coverage."""
-    monkeypatch.setenv("PURCHASE_STRATEGY_TYPE", "fixed")
+    monkeypatch.setenv("TARGET_STRATEGY_TYPE", "fixed")
+    monkeypatch.setenv("SPLIT_STRATEGY_TYPE", "linear")
+    monkeypatch.setenv("LINEAR_STEP_PERCENT", "10")
 
     mock_clients["sqs"].purge_queue.return_value = {}
 
@@ -545,7 +554,8 @@ def test_handler_assume_role_error(mock_env_vars, monkeypatch):
 
 def test_handler_dichotomy_strategy(mock_env_vars, mock_clients, aws_mock_builder, monkeypatch):
     """Test dichotomy strategy analyzes spending and uses dichotomy algorithm."""
-    monkeypatch.setenv("PURCHASE_STRATEGY_TYPE", "dichotomy")
+    monkeypatch.setenv("TARGET_STRATEGY_TYPE", "fixed")
+    monkeypatch.setenv("SPLIT_STRATEGY_TYPE", "dichotomy")
 
     mock_clients["sqs"].purge_queue.return_value = {}
 

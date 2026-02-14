@@ -1,9 +1,10 @@
-# Single Account - Compute Savings Plans Only
+# Fixed Target + Linear Split
 #
-# This example demonstrates the simplest deployment scenario:
+# This example demonstrates the fixed target + linear split strategy:
+# - Target: fixed at 100% coverage
+# - Split: linear steps of 10% per cycle
 # - Single AWS account (no Organizations)
 # - Compute Savings Plans only (EC2, Lambda, Fargate)
-# - Conservative coverage targets
 # - Starts in dry-run mode for safety
 
 terraform {
@@ -27,16 +28,18 @@ module "savings_plans" {
   # Resource naming (can be overridden for testing)
   name_prefix = var.name_prefix
 
-  # Purchase strategy - conservative targets
+  # Purchase strategy - fixed target at 100% with linear 10% steps
   purchase_strategy = {
-    coverage_target_percent = 80       # Target 80% coverage
-    max_coverage_cap        = 90       # Never exceed 90% coverage
-    lookback_days           = 13       # Max for HOURLY granularity (recommended)
-    granularity             = "HOURLY" # Recommended for accurate analysis
+    max_coverage_cap = 100      # Allow up to 100% coverage
+    lookback_days    = 13       # Max for HOURLY granularity (recommended)
+    granularity      = "HOURLY" # Recommended for accurate analysis
 
-    # Fixed strategy with gradual commitment growth
-    fixed = {
-      max_purchase_percent = 5 # Max 5% of monthly spend per cycle
+    target = {
+      fixed = { coverage_percent = 100 } # Target 100% coverage
+    }
+
+    split = {
+      linear = { step_percent = 10 } # 10% of spend per cycle
     }
   }
 
