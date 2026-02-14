@@ -68,12 +68,17 @@ def _process_sp_type(
     current_coverage = summary["avg_coverage_total"]
     avg_hourly_total = summary["avg_hourly_total"]
     avg_hourly_covered = summary["avg_hourly_covered"]
+
+    timeseries = data.get("timeseries", [])
+    total_costs = [item.get("total", 0.0) for item in timeseries if item.get("total", 0.0) > 0]
+    min_hourly = min(total_costs) if total_costs else avg_hourly_total
+
     coverage_gap = target_coverage - current_coverage
 
     logger.info(
         f"{sp_type['name']} SP - Current: {current_coverage:.2f}%, "
         f"Target: {target_coverage:.2f}%, Gap: {coverage_gap:.2f}%, "
-        f"Avg hourly spend: ${avg_hourly_total:.4f}/h"
+        f"Avg hourly spend: ${avg_hourly_total:.4f}/h, Min hourly: ${min_hourly:.4f}/h"
     )
 
     if coverage_gap <= 0:
@@ -86,9 +91,7 @@ def _process_sp_type(
 
     purchase_percent = calculate_split(current_coverage, target_coverage, config)
     savings_pct = config.get(f"{key}_savings_percentage", config.get("savings_percentage", 30.0))
-    od_coverage_to_add = (
-        avg_hourly_total * (purchase_percent / 100.0) if purchase_percent > 0 else 0
-    )
+    od_coverage_to_add = min_hourly * (purchase_percent / 100.0) if purchase_percent > 0 else 0
     hourly_commitment = sp_calculations.commitment_from_coverage(od_coverage_to_add, savings_pct)
 
     min_commitment = config.get("min_commitment_per_plan", 0.001)

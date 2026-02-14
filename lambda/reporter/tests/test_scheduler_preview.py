@@ -274,9 +274,13 @@ def test_coverage_is_min_hourly_based(sample_config, mock_clients, aws_mock_buil
     assert db_purchase is not None
 
     assert db_purchase["current_coverage"] > 0
-    # Coverage should NOT equal avg_coverage_total (5.0%)
-    assert db_purchase["current_coverage"] != pytest.approx(5.0, abs=0.5)
+    # current_od_equiv = 1.0 / (1 - 0.35) ≈ 1.5385
+    # min_hourly for database = 20.0
+    # current_coverage = 1.5385 / 20.0 * 100 ≈ 7.69%
     assert db_purchase["current_coverage"] == pytest.approx(7.69, abs=0.1)
+
+    # Step is 10% of min_hourly → added coverage should be 10%
+    assert db_purchase["purchase_percent"] == pytest.approx(10.0, abs=0.1)
 
     # Math consistency: current + purchase = projected
     assert db_purchase["current_coverage"] + db_purchase["purchase_percent"] == pytest.approx(
