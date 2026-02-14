@@ -136,6 +136,33 @@ def _process_sp_type(
     }
 
 
+def _ensure_savings_rates(config: dict[str, Any], clients: dict[str, Any]) -> dict[str, Any]:
+    """Fetch actual per-type savings rates from AWS if not already in config."""
+    from shared.savings_plans_metrics import get_savings_plans_metrics
+
+    config = config.copy()
+    for sp_type in SP_TYPES:
+        key = sp_type["key"]
+        config_key = f"{key}_savings_percentage"
+        if config_key in config or not config.get(sp_type["enabled_config"]):
+            continue
+        try:
+            metrics = get_savings_plans_metrics(
+                clients["ce"],
+                key,
+                config.get("lookback_days", 13),
+                config.get("granularity", "DAILY"),
+            )
+            if metrics["savings_percentage"] > 0:
+                config[config_key] = metrics["savings_percentage"]
+                logger.info(
+                    f"{sp_type['name']} SP actual savings rate: {metrics['savings_percentage']:.1f}%"
+                )
+        except Exception:
+            logger.debug(f"Could not fetch savings rate for {key}, using default")
+    return config
+
+
 def calculate_purchase_need(
     config: dict[str, Any], clients: dict[str, Any], spending_data: dict[str, Any] | None = None
 ) -> list[dict[str, Any]]:
@@ -164,6 +191,9 @@ def calculate_purchase_need(
         return calculate_purchase_need_follow_aws(config, clients, spending_data)
 
     logger.info(f"Resolved target coverage: {target_coverage:.2f}%")
+
+    # Fetch actual savings rates from existing SP plans (skips if already in config)
+    config = _ensure_savings_rates(config, clients)
 
     # Phase 2: Calculate split for each SP type
     if spending_data is None:
