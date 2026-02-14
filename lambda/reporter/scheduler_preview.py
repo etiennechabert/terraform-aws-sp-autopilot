@@ -25,13 +25,21 @@ if _scheduler_dir not in sys.path:
 logger = logging.getLogger(__name__)
 
 
-PREVIEW_COMBINATIONS = [
+DEFAULT_COMPARISONS = [
     {"target": "fixed", "split": "linear", "label": "Fixed + Linear"},
-    {"target": "fixed", "split": "dichotomy", "label": "Fixed + Dichotomy"},
-    {"target": "fixed", "split": "one_shot", "label": "Fixed + One Shot"},
-    {"target": "dynamic", "split": "linear", "label": "Dynamic + Linear"},
+    {"target": "dynamic", "split": "dichotomy", "label": "Dynamic + Dichotomy"},
     {"target": "aws", "split": "one_shot", "label": "AWS Recommendation"},
 ]
+
+STRATEGY_LABELS = {
+    "fixed+linear": "Fixed + Linear",
+    "fixed+dichotomy": "Fixed + Dichotomy",
+    "fixed+one_shot": "Fixed + One Shot",
+    "dynamic+linear": "Dynamic + Linear",
+    "dynamic+dichotomy": "Dynamic + Dichotomy",
+    "dynamic+one_shot": "Dynamic + One Shot",
+    "aws+one_shot": "AWS Recommendation",
+}
 
 
 def _build_preview_config(base_config: dict[str, Any], target: str, split: str) -> dict[str, Any]:
@@ -70,11 +78,25 @@ def calculate_scheduler_preview(
     from purchase_calculator import calculate_purchase_need
 
     configured_key = _get_configured_key(config)
+    configured_target = config.get("target_strategy_type", "fixed")
+    configured_split = config.get("split_strategy_type", "linear")
+
+    combos = [
+        {
+            "target": configured_target,
+            "split": configured_split,
+            "label": STRATEGY_LABELS.get(configured_key, configured_key),
+        }
+    ]
+    for default in DEFAULT_COMPARISONS:
+        key = f"{default['target']}+{default['split']}"
+        if key != configured_key:
+            combos.append(default)
 
     try:
         all_strategies = {}
 
-        for combo in PREVIEW_COMBINATIONS:
+        for combo in combos:
             strategy_key = f"{combo['target']}+{combo['split']}"
             try:
                 preview_config = _build_preview_config(config, combo["target"], combo["split"])
@@ -100,6 +122,7 @@ def calculate_scheduler_preview(
 
         return {
             "configured_strategy": configured_key,
+            "strategy_order": [f"{c['target']}+{c['split']}" for c in combos],
             "strategies": all_strategies,
             "error": None,
         }

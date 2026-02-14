@@ -116,11 +116,12 @@ def test_calculate_scheduler_preview_all_combinations(
     assert result["configured_strategy"] == "fixed+linear"
     assert result["error"] is None
 
-    # Verify strategy combinations are present
+    # Configured (fixed+linear) + 2 defaults (dynamic+dichotomy, aws+one_shot)
+    # fixed+linear is both configured and a default, so 3 total
     assert "fixed+linear" in result["strategies"]
-    assert "fixed+dichotomy" in result["strategies"]
-    assert "fixed+one_shot" in result["strategies"]
+    assert "dynamic+dichotomy" in result["strategies"]
     assert "aws+one_shot" in result["strategies"]
+    assert len(result["strategies"]) == 3
 
     for strategy_key, strategy_data in result["strategies"].items():
         assert "purchases" in strategy_data
@@ -161,7 +162,8 @@ def test_calculate_scheduler_preview_configured_strategy_marked(
 
     assert result["configured_strategy"] == "fixed+dichotomy"
     assert result["error"] is None
-    assert len(result["strategies"]) >= 4
+    # fixed+dichotomy (configured) + fixed+linear + dynamic+dichotomy + aws+one_shot = 4
+    assert len(result["strategies"]) == 4
 
 
 def test_calculate_scheduler_preview_no_recommendations(
@@ -193,10 +195,8 @@ def test_calculate_scheduler_preview_no_recommendations(
     assert result["configured_strategy"] == "fixed+linear"
     assert result["error"] is None
 
-    # Fixed target strategies should report no recommendations
+    # Fixed+linear (configured) should report no recommendations (already at 95%)
     assert result["strategies"]["fixed+linear"]["has_recommendations"] is False
-    assert result["strategies"]["fixed+dichotomy"]["has_recommendations"] is False
-    assert result["strategies"]["fixed+one_shot"]["has_recommendations"] is False
 
 
 def test_calculate_scheduler_preview_strategy_error_handling(
@@ -208,9 +208,9 @@ def test_calculate_scheduler_preview_strategy_error_handling(
     )
 
     assert result["error"] is None
-    assert len(result["strategies"]) >= 4
+    assert len(result["strategies"]) == 3
 
-    # Fixed strategies should work (no AWS call needed)
+    # Configured strategy (fixed+linear) should work (no AWS call needed)
     assert result["strategies"]["fixed+linear"]["error"] is None
 
 

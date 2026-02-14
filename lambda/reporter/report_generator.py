@@ -477,6 +477,8 @@ def _render_sp_type_scheduler_preview(
         "fixed+dichotomy": "Fixed target with exponentially decreasing purchase sizes.",
         "fixed+one_shot": "Fixed target purchased in a single step.",
         "dynamic+linear": "Dynamic target (risk-based) with linear step purchases.",
+        "dynamic+dichotomy": "Dynamic target (risk-based) with exponentially decreasing purchases.",
+        "dynamic+one_shot": "Dynamic target (risk-based) purchased in a single step.",
         "aws+one_shot": "Follows AWS recommendations directly.",
     }
 
@@ -504,13 +506,7 @@ def _render_sp_type_scheduler_preview(
     if not strategy_purchases:
         return ""
 
-    strategy_order = [
-        "fixed+linear",
-        "fixed+dichotomy",
-        "fixed+one_shot",
-        "dynamic+linear",
-        "aws+one_shot",
-    ]
+    strategy_order = preview_data.get("strategy_order", list(strategies.keys()))
 
     html = """
         <div style="margin-top: 30px; padding-top: 20px; border-top: 2px solid #e0e0e0;">
