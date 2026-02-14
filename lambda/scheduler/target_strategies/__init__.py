@@ -13,17 +13,13 @@ TARGET_STRATEGIES = {
 
 
 def resolve_target(
-    config: dict[str, Any], spending_data: dict[str, Any] | None = None
+    config: dict[str, Any],
+    spending_data: dict[str, Any] | None = None,
+    sp_type_key: str | None = None,
 ) -> float | None:
-    """
-    Resolve the target coverage percentage using the configured strategy.
-
-    Returns:
-        Target coverage as a percentage, or None for aws strategy (special path).
-    """
     strategy_type = config["target_strategy_type"]
     strategy_func = TARGET_STRATEGIES.get(strategy_type)
     if not strategy_func:
         available = ", ".join(TARGET_STRATEGIES.keys())
         raise ValueError(f"Unknown target strategy '{strategy_type}'. Available: {available}")
-    return strategy_func(config, spending_data)
+    return strategy_func(config, spending_data, sp_type_key=sp_type_key)

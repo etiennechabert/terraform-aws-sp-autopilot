@@ -183,19 +183,13 @@ def calculate_purchase_need(
 
     logger.info(f"Using target strategy: {target_strategy}, split strategy: {split_strategy}")
 
-    # Phase 1: Resolve target
-    target_coverage = resolve_target(config, spending_data)
-
     # AWS target -> short-circuit to follow_aws special path
-    if target_coverage is None:
+    if target_strategy == "aws":
         return calculate_purchase_need_follow_aws(config, clients, spending_data)
-
-    logger.info(f"Resolved target coverage: {target_coverage:.2f}%")
 
     # Fetch actual savings rates from existing SP plans (skips if already in config)
     config = _ensure_savings_rates(config, clients)
 
-    # Phase 2: Calculate split for each SP type
     if spending_data is None:
         from shared.spending_analyzer import SpendingAnalyzer
 
@@ -205,6 +199,10 @@ def calculate_purchase_need(
 
     purchase_plans = []
     for sp_type in SP_TYPES:
+        target_coverage = resolve_target(config, spending_data, sp_type_key=sp_type["key"])
+        if target_coverage is None:
+            continue
+        logger.info(f"{sp_type['name']} SP resolved target: {target_coverage:.2f}%")
         plan = _process_sp_type(sp_type, config, spending_data, target_coverage)
         if plan:
             purchase_plans.append(plan)

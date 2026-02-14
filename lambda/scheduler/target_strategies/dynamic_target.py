@@ -9,52 +9,52 @@ logger = logging.getLogger()
 VALID_RISK_LEVELS = ["too_prudent", "min_hourly", "balanced", "aggressive"]
 
 
-def resolve_dynamic(config: dict[str, Any], spending_data: dict[str, Any] | None = None) -> float:
-    """
-    Resolve target coverage dynamically based on risk level and spending data.
-
-    Uses the same strategy calculations as the GH-Pages simulator.
-    Returns coverage as a percentage of min-hourly cost.
-
-    Risk levels:
-    - too_prudent: 80% of min-hourly
-    - min_hourly: 100% of min-hourly (always safe)
-    - balanced: Knee-point (where marginal efficiency drops to 30% of peak)
-    - aggressive: Optimal coverage (maximum net savings)
-    """
+def resolve_dynamic(
+    config: dict[str, Any],
+    spending_data: dict[str, Any] | None = None,
+    sp_type_key: str | None = None,
+) -> float:
     risk_level = config["dynamic_risk_level"]
-    savings_percentage = config.get("savings_percentage", 30.0)
 
     if not spending_data:
         raise ValueError("Dynamic target strategy requires spending data")
 
-    all_hourly_costs = []
-    for sp_type_key in ["compute", "database", "sagemaker"]:
-        sp_data = spending_data.get(sp_type_key)
+    types_to_check = [sp_type_key] if sp_type_key else ["compute", "database", "sagemaker"]
+
+    hourly_costs = []
+    for key in types_to_check:
+        sp_data = spending_data.get(key)
         if not sp_data:
             continue
-        timeseries = sp_data.get("timeseries", [])
-        for item in timeseries:
+        for item in sp_data.get("timeseries", []):
             total = item.get("total", 0.0)
             if total > 0:
-                all_hourly_costs.append(total)
+                hourly_costs.append(total)
 
-    if not all_hourly_costs:
-        logger.warning("No hourly cost data available for dynamic target, falling back to 90%")
+    if not hourly_costs:
+        logger.warning(
+            f"No hourly cost data for dynamic target ({sp_type_key or 'all'}), falling back to 90%"
+        )
         return 90.0
 
-    strategies = calculate_strategies(all_hourly_costs, savings_percentage)
+    savings_percentage = (
+        config.get(f"{sp_type_key}_savings_percentage", config.get("savings_percentage", 30.0))
+        if sp_type_key
+        else config.get("savings_percentage", 30.0)
+    )
+
+    strategies = calculate_strategies(hourly_costs, savings_percentage)
     coverage_hourly = strategies[risk_level]
 
-    avg_hourly = sum(all_hourly_costs) / len(all_hourly_costs)
+    avg_hourly = sum(hourly_costs) / len(hourly_costs)
     if avg_hourly <= 0:
         return 90.0
 
     target_percent = (coverage_hourly / avg_hourly) * 100.0
 
     logger.info(
-        f"Dynamic target ({risk_level}): coverage=${coverage_hourly:.4f}/hr, "
-        f"avg_hourly=${avg_hourly:.4f}/hr, target={target_percent:.1f}%"
+        f"Dynamic target ({risk_level}, {sp_type_key or 'all'}): "
+        f"coverage=${coverage_hourly:.4f}/hr, avg=${avg_hourly:.4f}/hr, target={target_percent:.1f}%"
     )
 
     return target_percent
