@@ -22,26 +22,32 @@ mock_provider "aws" {
 }
 
 # ============================================================================
-# Purchase Strategy - Variable Validations
+# Purchase Strategy - Target + Split Validations
 # ============================================================================
 
-# Test: coverage_target_percent - valid minimum value (1)
-run "test_coverage_target_percent_valid_min" {
+# Test: fixed target with linear split - valid
+run "test_fixed_linear_valid" {
   command = plan
 
   variables {
     purchase_strategy = {
-      coverage_target_percent = 1
-      max_coverage_cap        = 2
-      simple = {
-        max_purchase_percent = 5
+      max_coverage_cap = 90
+
+      target = {
+        fixed = { coverage_percent = 80 }
+      }
+
+      split = {
+        linear = { step_percent = 5 }
       }
     }
     sp_plans = {
       compute = {
-        enabled              = true
-        all_upfront_one_year = 1
+        enabled   = true
+        plan_type = "all_upfront_one_year"
       }
+      database  = { enabled = false }
+      sagemaker = { enabled = false }
     }
     notifications = {
       emails = ["test@example.com"]
@@ -49,23 +55,32 @@ run "test_coverage_target_percent_valid_min" {
   }
 }
 
-# Test: coverage_target_percent - valid maximum value (100)
-run "test_coverage_target_percent_valid_max" {
+# Test: fixed target with dichotomy split - valid
+run "test_fixed_dichotomy_valid" {
   command = plan
 
   variables {
     purchase_strategy = {
-      coverage_target_percent = 100
-      max_coverage_cap        = 100
-      simple = {
-        max_purchase_percent = 5
+      max_coverage_cap = 95
+
+      target = {
+        fixed = { coverage_percent = 90 }
+      }
+
+      split = {
+        dichotomy = {
+          max_purchase_percent = 50
+          min_purchase_percent = 1
+        }
       }
     }
     sp_plans = {
       compute = {
-        enabled              = true
-        all_upfront_one_year = 1
+        enabled   = true
+        plan_type = "all_upfront_one_year"
       }
+      database  = { enabled = false }
+      sagemaker = { enabled = false }
     }
     notifications = {
       emails = ["test@example.com"]
@@ -73,23 +88,86 @@ run "test_coverage_target_percent_valid_max" {
   }
 }
 
-# Test: coverage_target_percent - invalid value below minimum
-run "test_coverage_target_percent_invalid_below_min" {
+# Test: aws target - valid (split must be null)
+run "test_aws_target_valid" {
   command = plan
 
   variables {
     purchase_strategy = {
-      coverage_target_percent = 0
-      max_coverage_cap        = 90
-      simple = {
-        max_purchase_percent = 5
+      max_coverage_cap = 90
+
+      target = {
+        aws = {}
       }
     }
     sp_plans = {
       compute = {
-        enabled              = true
-        all_upfront_one_year = 1
+        enabled   = true
+        plan_type = "all_upfront_one_year"
       }
+      database  = { enabled = false }
+      sagemaker = { enabled = false }
+    }
+    notifications = {
+      emails = ["test@example.com"]
+    }
+  }
+}
+
+# Test: dynamic target with linear split - valid
+run "test_dynamic_linear_valid" {
+  command = plan
+
+  variables {
+    purchase_strategy = {
+      max_coverage_cap = 90
+
+      target = {
+        dynamic = { risk_level = "balanced" }
+      }
+
+      split = {
+        linear = { step_percent = 10 }
+      }
+    }
+    sp_plans = {
+      compute = {
+        enabled   = true
+        plan_type = "all_upfront_one_year"
+      }
+      database  = { enabled = false }
+      sagemaker = { enabled = false }
+    }
+    notifications = {
+      emails = ["test@example.com"]
+    }
+  }
+}
+
+# Test: invalid - multiple targets defined
+run "test_invalid_multiple_targets" {
+  command = plan
+
+  variables {
+    purchase_strategy = {
+      max_coverage_cap = 90
+
+      target = {
+        fixed   = { coverage_percent = 80 }
+        dynamic = { risk_level = "balanced" }
+      }
+
+      split = {
+        linear = { step_percent = 5 }
+      }
+    }
+    sp_plans = {
+      compute = {
+        enabled   = true
+        plan_type = "all_upfront_one_year"
+      }
+      database  = { enabled = false }
+      sagemaker = { enabled = false }
     }
     notifications = {
       emails = ["test@example.com"]
@@ -101,23 +179,29 @@ run "test_coverage_target_percent_invalid_below_min" {
   ]
 }
 
-# Test: coverage_target_percent - invalid value above maximum
-run "test_coverage_target_percent_invalid_above_max" {
+# Test: invalid - aws target with split defined
+run "test_invalid_aws_with_split" {
   command = plan
 
   variables {
     purchase_strategy = {
-      coverage_target_percent = 101
-      max_coverage_cap        = 101
-      simple = {
-        max_purchase_percent = 5
+      max_coverage_cap = 90
+
+      target = {
+        aws = {}
+      }
+
+      split = {
+        linear = { step_percent = 5 }
       }
     }
     sp_plans = {
       compute = {
-        enabled              = true
-        all_upfront_one_year = 1
+        enabled   = true
+        plan_type = "all_upfront_one_year"
       }
+      database  = { enabled = false }
+      sagemaker = { enabled = false }
     }
     notifications = {
       emails = ["test@example.com"]
@@ -129,23 +213,25 @@ run "test_coverage_target_percent_invalid_above_max" {
   ]
 }
 
-# Test: coverage_target_percent - invalid negative value
-run "test_coverage_target_percent_invalid_negative" {
+# Test: invalid - fixed target without split
+run "test_invalid_fixed_without_split" {
   command = plan
 
   variables {
     purchase_strategy = {
-      coverage_target_percent = -10
-      max_coverage_cap        = 90
-      simple = {
-        max_purchase_percent = 5
+      max_coverage_cap = 90
+
+      target = {
+        fixed = { coverage_percent = 80 }
       }
     }
     sp_plans = {
       compute = {
-        enabled              = true
-        all_upfront_one_year = 1
+        enabled   = true
+        plan_type = "all_upfront_one_year"
       }
+      database  = { enabled = false }
+      sagemaker = { enabled = false }
     }
     notifications = {
       emails = ["test@example.com"]
@@ -157,28 +243,102 @@ run "test_coverage_target_percent_invalid_negative" {
   ]
 }
 
-# Test: max_coverage_cap - valid at boundary (100)
-run "test_max_coverage_cap_valid_at_100" {
+# Test: invalid - dynamic risk_level
+run "test_invalid_dynamic_risk_level" {
   command = plan
 
   variables {
     purchase_strategy = {
-      coverage_target_percent = 90
-      max_coverage_cap        = 100
-      simple = {
-        max_purchase_percent = 5
+      max_coverage_cap = 90
+
+      target = {
+        dynamic = { risk_level = "invalid_level" }
+      }
+
+      split = {
+        linear = { step_percent = 10 }
       }
     }
     sp_plans = {
       compute = {
-        enabled              = true
-        all_upfront_one_year = 1
+        enabled   = true
+        plan_type = "all_upfront_one_year"
       }
+      database  = { enabled = false }
+      sagemaker = { enabled = false }
     }
     notifications = {
       emails = ["test@example.com"]
     }
   }
+
+  expect_failures = [
+    var.purchase_strategy,
+  ]
+}
+
+# Test: coverage_percent - valid range
+run "test_coverage_percent_valid" {
+  command = plan
+
+  variables {
+    purchase_strategy = {
+      max_coverage_cap = 100
+
+      target = {
+        fixed = { coverage_percent = 1 }
+      }
+
+      split = {
+        linear = { step_percent = 5 }
+      }
+    }
+    sp_plans = {
+      compute = {
+        enabled   = true
+        plan_type = "all_upfront_one_year"
+      }
+      database  = { enabled = false }
+      sagemaker = { enabled = false }
+    }
+    notifications = {
+      emails = ["test@example.com"]
+    }
+  }
+}
+
+# Test: coverage_percent exceeds max_coverage_cap
+run "test_coverage_percent_exceeds_cap" {
+  command = plan
+
+  variables {
+    purchase_strategy = {
+      max_coverage_cap = 85
+
+      target = {
+        fixed = { coverage_percent = 90 }
+      }
+
+      split = {
+        linear = { step_percent = 5 }
+      }
+    }
+    sp_plans = {
+      compute = {
+        enabled   = true
+        plan_type = "all_upfront_one_year"
+      }
+      database  = { enabled = false }
+      sagemaker = { enabled = false }
+    }
+    notifications = {
+      emails = ["test@example.com"]
+    }
+  }
+
+  expect_failures = [
+    var.purchase_strategy,
+  ]
 }
 
 # Test: max_coverage_cap - invalid above 100
@@ -187,17 +347,23 @@ run "test_max_coverage_cap_invalid_above_100" {
 
   variables {
     purchase_strategy = {
-      coverage_target_percent = 90
-      max_coverage_cap        = 101
-      simple = {
-        max_purchase_percent = 5
+      max_coverage_cap = 101
+
+      target = {
+        fixed = { coverage_percent = 90 }
+      }
+
+      split = {
+        linear = { step_percent = 5 }
       }
     }
     sp_plans = {
       compute = {
-        enabled              = true
-        all_upfront_one_year = 1
+        enabled   = true
+        plan_type = "all_upfront_one_year"
       }
+      database  = { enabled = false }
+      sagemaker = { enabled = false }
     }
     notifications = {
       emails = ["test@example.com"]
@@ -209,23 +375,66 @@ run "test_max_coverage_cap_invalid_above_100" {
   ]
 }
 
-# Test: max_coverage_cap - invalid when less than coverage_target_percent
-run "test_max_coverage_cap_invalid_less_than_target" {
+# Test: dichotomy - invalid min >= max
+run "test_dichotomy_invalid_min_gte_max" {
   command = plan
 
   variables {
     purchase_strategy = {
-      coverage_target_percent = 90
-      max_coverage_cap        = 85
-      simple = {
-        max_purchase_percent = 5
+      max_coverage_cap = 90
+
+      target = {
+        fixed = { coverage_percent = 80 }
+      }
+
+      split = {
+        dichotomy = {
+          max_purchase_percent = 5
+          min_purchase_percent = 10
+        }
       }
     }
     sp_plans = {
       compute = {
-        enabled              = true
-        all_upfront_one_year = 1
+        enabled   = true
+        plan_type = "all_upfront_one_year"
       }
+      database  = { enabled = false }
+      sagemaker = { enabled = false }
+    }
+    notifications = {
+      emails = ["test@example.com"]
+    }
+  }
+
+  expect_failures = [
+    var.purchase_strategy,
+  ]
+}
+
+# Test: linear step_percent - invalid above 100
+run "test_linear_step_percent_invalid" {
+  command = plan
+
+  variables {
+    purchase_strategy = {
+      max_coverage_cap = 90
+
+      target = {
+        fixed = { coverage_percent = 80 }
+      }
+
+      split = {
+        linear = { step_percent = 101 }
+      }
+    }
+    sp_plans = {
+      compute = {
+        enabled   = true
+        plan_type = "all_upfront_one_year"
+      }
+      database  = { enabled = false }
+      sagemaker = { enabled = false }
     }
     notifications = {
       emails = ["test@example.com"]
@@ -247,43 +456,24 @@ run "test_min_commitment_per_plan_valid_at_aws_min" {
 
   variables {
     purchase_strategy = {
-      coverage_target_percent = 80
       max_coverage_cap        = 90
       min_commitment_per_plan = 0.001
-      simple = {
-        max_purchase_percent = 5
+
+      target = {
+        fixed = { coverage_percent = 80 }
+      }
+
+      split = {
+        linear = { step_percent = 5 }
       }
     }
     sp_plans = {
       compute = {
-        enabled              = true
-        all_upfront_one_year = 1
+        enabled   = true
+        plan_type = "all_upfront_one_year"
       }
-    }
-    notifications = {
-      emails = ["test@example.com"]
-    }
-  }
-}
-
-# Test: min_commitment_per_plan - valid above AWS minimum
-run "test_min_commitment_per_plan_valid_above_min" {
-  command = plan
-
-  variables {
-    purchase_strategy = {
-      coverage_target_percent = 80
-      max_coverage_cap        = 90
-      min_commitment_per_plan = 1.5
-      simple = {
-        max_purchase_percent = 5
-      }
-    }
-    sp_plans = {
-      compute = {
-        enabled              = true
-        all_upfront_one_year = 1
-      }
+      database  = { enabled = false }
+      sagemaker = { enabled = false }
     }
     notifications = {
       emails = ["test@example.com"]
@@ -297,76 +487,24 @@ run "test_min_commitment_per_plan_invalid_below_min" {
 
   variables {
     purchase_strategy = {
-      coverage_target_percent = 80
       max_coverage_cap        = 90
       min_commitment_per_plan = 0.0009
-      simple = {
-        max_purchase_percent = 5
+
+      target = {
+        fixed = { coverage_percent = 80 }
+      }
+
+      split = {
+        linear = { step_percent = 5 }
       }
     }
     sp_plans = {
       compute = {
-        enabled              = true
-        all_upfront_one_year = 1
+        enabled   = true
+        plan_type = "all_upfront_one_year"
       }
-    }
-    notifications = {
-      emails = ["test@example.com"]
-    }
-  }
-
-  expect_failures = [
-    var.purchase_strategy,
-  ]
-}
-
-# Test: min_commitment_per_plan - invalid at zero
-run "test_min_commitment_per_plan_invalid_zero" {
-  command = plan
-
-  variables {
-    purchase_strategy = {
-      coverage_target_percent = 80
-      max_coverage_cap        = 90
-      min_commitment_per_plan = 0
-      simple = {
-        max_purchase_percent = 5
-      }
-    }
-    sp_plans = {
-      compute = {
-        enabled              = true
-        all_upfront_one_year = 1
-      }
-    }
-    notifications = {
-      emails = ["test@example.com"]
-    }
-  }
-
-  expect_failures = [
-    var.purchase_strategy,
-  ]
-}
-
-# Test: min_commitment_per_plan - invalid negative
-run "test_min_commitment_per_plan_invalid_negative" {
-  command = plan
-
-  variables {
-    purchase_strategy = {
-      coverage_target_percent = 80
-      max_coverage_cap        = 90
-      min_commitment_per_plan = -0.001
-      simple = {
-        max_purchase_percent = 5
-      }
-    }
-    sp_plans = {
-      compute = {
-        enabled              = true
-        all_upfront_one_year = 1
-      }
+      database  = { enabled = false }
+      sagemaker = { enabled = false }
     }
     notifications = {
       emails = ["test@example.com"]
@@ -382,140 +520,136 @@ run "test_min_commitment_per_plan_invalid_negative" {
 # Savings Plans Configuration - Variable Validations
 # ============================================================================
 
-# Test: Compute SP percentages must sum to 1.0
-run "test_compute_sp_percentages_valid_sum" {
-  command = plan
-
-  variables {
-    purchase_strategy = {
-      coverage_target_percent = 80
-      max_coverage_cap        = 90
-      simple = {
-        max_purchase_percent = 5
-      }
-    }
-    sp_plans = {
-      compute = {
-        enabled                = true
-        all_upfront_three_year = 0.5
-        no_upfront_one_year    = 0.5
-      }
-    }
-    notifications = {
-      emails = ["test@example.com"]
-    }
-  }
-}
-
-# Test: Compute SP percentages invalid sum (less than 1.0)
-run "test_compute_sp_percentages_invalid_sum_less" {
-  command = plan
-
-  variables {
-    purchase_strategy = {
-      coverage_target_percent = 80
-      max_coverage_cap        = 90
-      simple = {
-        max_purchase_percent = 5
-      }
-    }
-    sp_plans = {
-      compute = {
-        enabled                = true
-        all_upfront_three_year = 0.4
-        no_upfront_one_year    = 0.4
-      }
-    }
-    notifications = {
-      emails = ["test@example.com"]
-    }
-  }
-
-  expect_failures = [
-    var.sp_plans,
-  ]
-}
-
-# Test: Compute SP percentages invalid sum (greater than 1.0)
-run "test_compute_sp_percentages_invalid_sum_greater" {
-  command = plan
-
-  variables {
-    purchase_strategy = {
-      coverage_target_percent = 80
-      max_coverage_cap        = 90
-      simple = {
-        max_purchase_percent = 5
-      }
-    }
-    sp_plans = {
-      compute = {
-        enabled                = true
-        all_upfront_three_year = 0.6
-        no_upfront_one_year    = 0.6
-      }
-    }
-    notifications = {
-      emails = ["test@example.com"]
-    }
-  }
-
-  expect_failures = [
-    var.sp_plans,
-  ]
-}
-
-# Test: Compute SP negative percentage
-run "test_compute_sp_negative_percentage" {
-  command = plan
-
-  variables {
-    purchase_strategy = {
-      coverage_target_percent = 80
-      max_coverage_cap        = 90
-      simple = {
-        max_purchase_percent = 5
-      }
-    }
-    sp_plans = {
-      compute = {
-        enabled                = true
-        all_upfront_three_year = -0.5
-        no_upfront_one_year    = 1.5
-      }
-    }
-    notifications = {
-      emails = ["test@example.com"]
-    }
-  }
-
-  expect_failures = [
-    var.sp_plans,
-  ]
-}
-
 # Test: At least one SP type must be enabled
 run "test_at_least_one_sp_enabled" {
   command = plan
 
   variables {
     purchase_strategy = {
-      coverage_target_percent = 80
-      max_coverage_cap        = 90
-      simple = {
-        max_purchase_percent = 5
+      max_coverage_cap = 90
+
+      target = {
+        fixed = { coverage_percent = 80 }
+      }
+
+      split = {
+        linear = { step_percent = 5 }
       }
     }
     sp_plans = {
-      compute = {
-        enabled              = true
-        all_upfront_one_year = 1
-      }
+      compute   = { enabled = false }
+      database  = { enabled = false }
+      sagemaker = { enabled = false }
     }
     notifications = {
       emails = ["test@example.com"]
     }
   }
+
+  expect_failures = [
+    var.sp_plans,
+  ]
+}
+
+# Test: Compute plan_type required when enabled
+run "test_compute_plan_type_required" {
+  command = plan
+
+  variables {
+    purchase_strategy = {
+      max_coverage_cap = 90
+
+      target = {
+        fixed = { coverage_percent = 80 }
+      }
+
+      split = {
+        linear = { step_percent = 5 }
+      }
+    }
+    sp_plans = {
+      compute   = { enabled = true }
+      database  = { enabled = false }
+      sagemaker = { enabled = false }
+    }
+    notifications = {
+      emails = ["test@example.com"]
+    }
+  }
+
+  expect_failures = [
+    var.sp_plans,
+  ]
+}
+
+# Test: Database plan_type must be no_upfront_one_year
+run "test_database_plan_type_valid" {
+  command = plan
+
+  variables {
+    purchase_strategy = {
+      max_coverage_cap = 90
+
+      target = {
+        fixed = { coverage_percent = 80 }
+      }
+
+      split = {
+        linear = { step_percent = 5 }
+      }
+    }
+    sp_plans = {
+      compute = {
+        enabled   = true
+        plan_type = "all_upfront_one_year"
+      }
+      database = {
+        enabled   = true
+        plan_type = "no_upfront_one_year"
+      }
+      sagemaker = { enabled = false }
+    }
+    notifications = {
+      emails = ["test@example.com"]
+    }
+  }
+}
+
+# Test: Database plan_type invalid
+run "test_database_plan_type_invalid" {
+  command = plan
+
+  variables {
+    purchase_strategy = {
+      max_coverage_cap = 90
+
+      target = {
+        fixed = { coverage_percent = 80 }
+      }
+
+      split = {
+        linear = { step_percent = 5 }
+      }
+    }
+    sp_plans = {
+      compute = {
+        enabled   = true
+        plan_type = "all_upfront_one_year"
+      }
+      database = {
+        enabled   = true
+        plan_type = "all_upfront_three_year"
+      }
+      sagemaker = { enabled = false }
+    }
+    notifications = {
+      emails = ["test@example.com"]
+    }
+  }
+
+  expect_failures = [
+    var.sp_plans,
+  ]
 }
 
 # ============================================================================
@@ -528,17 +662,23 @@ run "test_report_format_valid_html" {
 
   variables {
     purchase_strategy = {
-      coverage_target_percent = 80
-      max_coverage_cap        = 90
-      simple = {
-        max_purchase_percent = 5
+      max_coverage_cap = 90
+
+      target = {
+        fixed = { coverage_percent = 80 }
+      }
+
+      split = {
+        linear = { step_percent = 5 }
       }
     }
     sp_plans = {
       compute = {
-        enabled              = true
-        all_upfront_one_year = 1
+        enabled   = true
+        plan_type = "all_upfront_one_year"
       }
+      database  = { enabled = false }
+      sagemaker = { enabled = false }
     }
     notifications = {
       emails = ["test@example.com"]
@@ -549,77 +689,29 @@ run "test_report_format_valid_html" {
   }
 }
 
-# Test: report_format - valid pdf
-run "test_report_format_valid_pdf" {
-  command = plan
-
-  variables {
-    purchase_strategy = {
-      coverage_target_percent = 80
-      max_coverage_cap        = 90
-      simple = {
-        max_purchase_percent = 5
-      }
-    }
-    sp_plans = {
-      compute = {
-        enabled              = true
-        all_upfront_one_year = 1
-      }
-    }
-    notifications = {
-      emails = ["test@example.com"]
-    }
-    reporting = {
-      format = "pdf"
-    }
-  }
-}
-
-# Test: report_format - valid json
-run "test_report_format_valid_json" {
-  command = plan
-
-  variables {
-    purchase_strategy = {
-      coverage_target_percent = 80
-      max_coverage_cap        = 90
-      simple = {
-        max_purchase_percent = 5
-      }
-    }
-    sp_plans = {
-      compute = {
-        enabled              = true
-        all_upfront_one_year = 1
-      }
-    }
-    notifications = {
-      emails = ["test@example.com"]
-    }
-    reporting = {
-      format = "json"
-    }
-  }
-}
-
 # Test: report_format - invalid value
 run "test_report_format_invalid" {
   command = plan
 
   variables {
     purchase_strategy = {
-      coverage_target_percent = 80
-      max_coverage_cap        = 90
-      simple = {
-        max_purchase_percent = 5
+      max_coverage_cap = 90
+
+      target = {
+        fixed = { coverage_percent = 80 }
+      }
+
+      split = {
+        linear = { step_percent = 5 }
       }
     }
     sp_plans = {
       compute = {
-        enabled              = true
-        all_upfront_one_year = 1
+        enabled   = true
+        plan_type = "all_upfront_one_year"
       }
+      database  = { enabled = false }
+      sagemaker = { enabled = false }
     }
     notifications = {
       emails = ["test@example.com"]
@@ -634,113 +726,29 @@ run "test_report_format_invalid" {
   ]
 }
 
-# Test: retention_days - valid minimum value (1)
-run "test_retention_days_valid_min" {
-  command = plan
-
-  variables {
-    purchase_strategy = {
-      coverage_target_percent = 80
-      max_coverage_cap        = 90
-      simple = {
-        max_purchase_percent = 5
-      }
-    }
-    sp_plans = {
-      compute = {
-        enabled              = true
-        all_upfront_one_year = 1
-      }
-    }
-    notifications = {
-      emails = ["test@example.com"]
-    }
-    reporting = {
-      retention_days = 1
-    }
-  }
-}
-
-# Test: retention_days - invalid zero
-run "test_retention_days_invalid_zero" {
-  command = plan
-
-  variables {
-    purchase_strategy = {
-      coverage_target_percent = 80
-      max_coverage_cap        = 90
-      simple = {
-        max_purchase_percent = 5
-      }
-    }
-    sp_plans = {
-      compute = {
-        enabled              = true
-        all_upfront_one_year = 1
-      }
-    }
-    notifications = {
-      emails = ["test@example.com"]
-    }
-    reporting = {
-      retention_days = 0
-    }
-  }
-
-  expect_failures = [
-    var.reporting,
-  ]
-}
-
-# Test: s3_lifecycle - valid configuration
-run "test_s3_lifecycle_valid" {
-  command = plan
-
-  variables {
-    purchase_strategy = {
-      coverage_target_percent = 80
-      max_coverage_cap        = 90
-      simple = {
-        max_purchase_percent = 5
-      }
-    }
-    sp_plans = {
-      compute = {
-        enabled              = true
-        all_upfront_one_year = 1
-      }
-    }
-    notifications = {
-      emails = ["test@example.com"]
-    }
-    reporting = {
-      s3_lifecycle = {
-        transition_ia_days         = 90
-        transition_glacier_days    = 180
-        expiration_days            = 365
-        noncurrent_expiration_days = 90
-      }
-    }
-  }
-}
-
 # Test: s3_lifecycle - invalid glacier days less than IA days
 run "test_s3_lifecycle_glacier_invalid_less_than_ia" {
   command = plan
 
   variables {
     purchase_strategy = {
-      coverage_target_percent = 80
-      max_coverage_cap        = 90
-      simple = {
-        max_purchase_percent = 5
+      max_coverage_cap = 90
+
+      target = {
+        fixed = { coverage_percent = 80 }
+      }
+
+      split = {
+        linear = { step_percent = 5 }
       }
     }
     sp_plans = {
       compute = {
-        enabled              = true
-        all_upfront_one_year = 1
+        enabled   = true
+        plan_type = "all_upfront_one_year"
       }
+      database  = { enabled = false }
+      sagemaker = { enabled = false }
     }
     notifications = {
       emails = ["test@example.com"]
@@ -758,151 +766,6 @@ run "test_s3_lifecycle_glacier_invalid_less_than_ia" {
   ]
 }
 
-# Test: s3_lifecycle - invalid expiration days less than glacier days
-run "test_s3_lifecycle_expiration_invalid_less_than_glacier" {
-  command = plan
-
-  variables {
-    purchase_strategy = {
-      coverage_target_percent = 80
-      max_coverage_cap        = 90
-      simple = {
-        max_purchase_percent = 5
-      }
-    }
-    sp_plans = {
-      compute = {
-        enabled              = true
-        all_upfront_one_year = 1
-      }
-    }
-    notifications = {
-      emails = ["test@example.com"]
-    }
-    reporting = {
-      s3_lifecycle = {
-        transition_ia_days      = 90
-        transition_glacier_days = 180
-        expiration_days         = 150
-      }
-    }
-  }
-
-  expect_failures = [
-    var.reporting,
-  ]
-}
-
-# ============================================================================
-# Purchase Strategy Type - Variable Validations
-# ============================================================================
-
-# Test: simple strategy - valid
-run "test_simple_strategy_valid" {
-  command = plan
-
-  variables {
-    purchase_strategy = {
-      coverage_target_percent = 80
-      max_coverage_cap        = 90
-      simple = {
-        max_purchase_percent = 5
-      }
-    }
-    sp_plans = {
-      compute = {
-        enabled              = true
-        all_upfront_one_year = 1
-      }
-    }
-    notifications = {
-      emails = ["test@example.com"]
-    }
-  }
-}
-
-# Test: dichotomy strategy - valid
-run "test_dichotomy_strategy_valid" {
-  command = plan
-
-  variables {
-    purchase_strategy = {
-      coverage_target_percent = 80
-      max_coverage_cap        = 90
-      dichotomy = {
-        max_purchase_percent = 10
-        min_purchase_percent = 2
-      }
-    }
-    sp_plans = {
-      compute = {
-        enabled              = true
-        all_upfront_one_year = 1
-      }
-    }
-    notifications = {
-      emails = ["test@example.com"]
-    }
-  }
-}
-
-# Test: simple strategy - invalid max_purchase_percent above 100
-run "test_simple_strategy_invalid_max_above_100" {
-  command = plan
-
-  variables {
-    purchase_strategy = {
-      coverage_target_percent = 80
-      max_coverage_cap        = 90
-      simple = {
-        max_purchase_percent = 101
-      }
-    }
-    sp_plans = {
-      compute = {
-        enabled              = true
-        all_upfront_one_year = 1
-      }
-    }
-    notifications = {
-      emails = ["test@example.com"]
-    }
-  }
-
-  expect_failures = [
-    var.purchase_strategy,
-  ]
-}
-
-# Test: dichotomy strategy - invalid min >= max
-run "test_dichotomy_strategy_invalid_min_gte_max" {
-  command = plan
-
-  variables {
-    purchase_strategy = {
-      coverage_target_percent = 80
-      max_coverage_cap        = 90
-      dichotomy = {
-        max_purchase_percent = 5
-        min_purchase_percent = 10
-      }
-    }
-    sp_plans = {
-      compute = {
-        enabled              = true
-        all_upfront_one_year = 1
-      }
-    }
-    notifications = {
-      emails = ["test@example.com"]
-    }
-  }
-
-  expect_failures = [
-    var.purchase_strategy,
-  ]
-}
-
 # ============================================================================
 # Notifications - Variable Validations
 # ============================================================================
@@ -913,17 +776,23 @@ run "test_notifications_valid_emails" {
 
   variables {
     purchase_strategy = {
-      coverage_target_percent = 80
-      max_coverage_cap        = 90
-      simple = {
-        max_purchase_percent = 5
+      max_coverage_cap = 90
+
+      target = {
+        fixed = { coverage_percent = 80 }
+      }
+
+      split = {
+        linear = { step_percent = 5 }
       }
     }
     sp_plans = {
       compute = {
-        enabled              = true
-        all_upfront_one_year = 1
+        enabled   = true
+        plan_type = "all_upfront_one_year"
       }
+      database  = { enabled = false }
+      sagemaker = { enabled = false }
     }
     notifications = {
       emails = ["test@example.com"]
@@ -937,17 +806,23 @@ run "test_notifications_valid_slack" {
 
   variables {
     purchase_strategy = {
-      coverage_target_percent = 80
-      max_coverage_cap        = 90
-      simple = {
-        max_purchase_percent = 5
+      max_coverage_cap = 90
+
+      target = {
+        fixed = { coverage_percent = 80 }
+      }
+
+      split = {
+        linear = { step_percent = 5 }
       }
     }
     sp_plans = {
       compute = {
-        enabled              = true
-        all_upfront_one_year = 1
+        enabled   = true
+        plan_type = "all_upfront_one_year"
       }
+      database  = { enabled = false }
+      sagemaker = { enabled = false }
     }
     notifications = {
       emails        = []
@@ -962,17 +837,23 @@ run "test_notifications_invalid_no_method" {
 
   variables {
     purchase_strategy = {
-      coverage_target_percent = 80
-      max_coverage_cap        = 90
-      simple = {
-        max_purchase_percent = 5
+      max_coverage_cap = 90
+
+      target = {
+        fixed = { coverage_percent = 80 }
+      }
+
+      split = {
+        linear = { step_percent = 5 }
       }
     }
     sp_plans = {
       compute = {
-        enabled              = true
-        all_upfront_one_year = 1
+        enabled   = true
+        plan_type = "all_upfront_one_year"
       }
+      database  = { enabled = false }
+      sagemaker = { enabled = false }
     }
     notifications = {
       emails = []
@@ -982,4 +863,164 @@ run "test_notifications_invalid_no_method" {
   expect_failures = [
     var.notifications,
   ]
+}
+
+# ============================================================================
+# Granularity - Variable Validations
+# ============================================================================
+
+# Test: HOURLY granularity with lookback_days at max (13)
+run "test_hourly_granularity_max_lookback" {
+  command = plan
+
+  variables {
+    purchase_strategy = {
+      max_coverage_cap = 90
+      lookback_days    = 13
+      granularity      = "HOURLY"
+
+      target = {
+        fixed = { coverage_percent = 80 }
+      }
+
+      split = {
+        linear = { step_percent = 5 }
+      }
+    }
+    sp_plans = {
+      compute = {
+        enabled   = true
+        plan_type = "all_upfront_one_year"
+      }
+      database  = { enabled = false }
+      sagemaker = { enabled = false }
+    }
+    notifications = {
+      emails = ["test@example.com"]
+    }
+  }
+}
+
+# Test: DAILY granularity with higher lookback_days
+run "test_daily_granularity_higher_lookback" {
+  command = plan
+
+  variables {
+    purchase_strategy = {
+      max_coverage_cap = 90
+      lookback_days    = 30
+      granularity      = "DAILY"
+
+      target = {
+        fixed = { coverage_percent = 80 }
+      }
+
+      split = {
+        linear = { step_percent = 5 }
+      }
+    }
+    sp_plans = {
+      compute = {
+        enabled   = true
+        plan_type = "all_upfront_one_year"
+      }
+      database  = { enabled = false }
+      sagemaker = { enabled = false }
+    }
+    notifications = {
+      emails = ["test@example.com"]
+    }
+  }
+}
+
+# Test: one_shot split - valid
+run "test_one_shot_split_valid" {
+  command = plan
+
+  variables {
+    purchase_strategy = {
+      max_coverage_cap = 90
+
+      target = {
+        fixed = { coverage_percent = 80 }
+      }
+
+      split = {
+        one_shot = {}
+      }
+    }
+    sp_plans = {
+      compute = {
+        enabled   = true
+        plan_type = "all_upfront_one_year"
+      }
+      database  = { enabled = false }
+      sagemaker = { enabled = false }
+    }
+    notifications = {
+      emails = ["test@example.com"]
+    }
+  }
+}
+
+# Test: all dynamic risk levels are valid
+run "test_dynamic_risk_too_prudent" {
+  command = plan
+
+  variables {
+    purchase_strategy = {
+      max_coverage_cap = 90
+
+      target = {
+        dynamic = { risk_level = "too_prudent" }
+      }
+
+      split = {
+        linear = { step_percent = 10 }
+      }
+    }
+    sp_plans = {
+      compute = {
+        enabled   = true
+        plan_type = "all_upfront_one_year"
+      }
+      database  = { enabled = false }
+      sagemaker = { enabled = false }
+    }
+    notifications = {
+      emails = ["test@example.com"]
+    }
+  }
+}
+
+run "test_dynamic_risk_aggressive" {
+  command = plan
+
+  variables {
+    purchase_strategy = {
+      max_coverage_cap = 90
+
+      target = {
+        dynamic = { risk_level = "aggressive" }
+      }
+
+      split = {
+        dichotomy = {
+          max_purchase_percent = 50
+          min_purchase_percent = 1
+        }
+      }
+    }
+    sp_plans = {
+      compute = {
+        enabled   = true
+        plan_type = "all_upfront_one_year"
+      }
+      database  = { enabled = false }
+      sagemaker = { enabled = false }
+    }
+    notifications = {
+      emails = ["test@example.com"]
+    }
+  }
 }

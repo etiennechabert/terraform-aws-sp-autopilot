@@ -62,12 +62,12 @@ def handler(event: dict[str, Any], context: Any) -> dict[str, Any]:
 
     queue_module.purge_queue(clients["sqs"], config["queue_url"])
 
-    # Conditionally analyze spending based on strategy
-    # - fixed/dichotomy strategies need spending analysis for purchase calculations
-    # - follow_aws strategy doesn't need it (uses AWS recommendations only)
-    strategy_type = config["purchase_strategy_type"]
+    # Conditionally analyze spending based on target strategy
+    # - aws target doesn't need spending analysis (uses AWS recommendations only)
+    # - fixed/dynamic targets need spending analysis for purchase calculations
+    target_strategy = config["target_strategy_type"]
 
-    if strategy_type in ["fixed", "dichotomy"]:
+    if target_strategy != "aws":
         analyzer = SpendingAnalyzer(clients["savingsplans"], clients["ce"])
         spending_data = analyzer.analyze_current_spending(config)
 
@@ -78,7 +78,7 @@ def handler(event: dict[str, Any], context: Any) -> dict[str, Any]:
             for sp_type, data in spending_data.items()
         }
     else:
-        # follow_aws strategy - no spending analysis needed
+        # aws target strategy - no spending analysis needed
         spending_data = None
         unknown_services = None
         coverage = None

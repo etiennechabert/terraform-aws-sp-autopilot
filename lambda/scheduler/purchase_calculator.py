@@ -1,97 +1,211 @@
 """
-Purchase Calculator Module - Strategy dispatcher and shared utilities.
+Purchase Calculator Module - Two-phase strategy pipeline.
 
-This module contains:
-1. Strategy registry and dispatcher (calculate_purchase_need)
+Phase 1: Resolve target coverage (fixed/dynamic/aws)
+Phase 2: Calculate split for each SP type (one_shot/linear/dichotomy)
 
-Strategy Pattern:
-- Each strategy is implemented in its own module (fixed_strategy.py, dichotomy_strategy.py, follow_aws_strategy.py)
-- Each strategy handles its own purchase limits (max_purchase_percent, min_commitment_per_plan)
-- Strategies are registered in PURCHASE_STRATEGIES registry
-- Contributors can add new strategies by:
-  1. Creating a new strategy module (e.g., aggressive_strategy.py)
-  2. Implementing the strategy function: (config, clients, spending_data?) -> purchase_plans
-  3. Strategy handles its own data fetching and limit enforcement
-  4. Importing and registering in PURCHASE_STRATEGIES below
+AWS target short-circuits to follow_aws_strategy.py (special path).
 """
 
 import logging
-from collections.abc import Callable
 from typing import Any
 
-from dichotomy_strategy import calculate_purchase_need_dichotomy
-from fixed_strategy import calculate_purchase_need_fixed
 from follow_aws_strategy import calculate_purchase_need_follow_aws
+from split_strategies import calculate_split
+from target_strategies import resolve_target
+
+from shared import sp_calculations
 
 
-# Configure logging
 logger = logging.getLogger()
 
-
-# ============================================================================
-# Strategy Registry - Add new strategies here
-# ============================================================================
-
-# Type alias for strategy functions
-# Strategies receive optional spending_data - handler pre-fetches if strategy needs it
-StrategyFunction = Callable[
-    [dict[str, Any], dict[str, Any], dict[str, Any] | None], list[dict[str, Any]]
+SP_TYPES = [
+    {
+        "key": "compute",
+        "enabled_config": "enable_compute_sp",
+        "payment_option_config": "compute_sp_payment_option",
+        "name": "Compute",
+    },
+    {
+        "key": "database",
+        "enabled_config": "enable_database_sp",
+        "payment_option_config": "database_sp_payment_option",
+        "name": "Database",
+    },
+    {
+        "key": "sagemaker",
+        "enabled_config": "enable_sagemaker_sp",
+        "payment_option_config": "sagemaker_sp_payment_option",
+        "name": "SageMaker",
+    },
 ]
 
 
-# Registry mapping strategy names to their implementation functions
-# Contributors: Add new strategies by importing and registering here
-PURCHASE_STRATEGIES: dict[str, StrategyFunction] = {
-    "fixed": calculate_purchase_need_fixed,
-    "dichotomy": calculate_purchase_need_dichotomy,
-    "follow_aws": calculate_purchase_need_follow_aws,
-}
+def _get_term(key: str, config: dict[str, Any]) -> str:
+    if key == "compute":
+        return config.get("compute_sp_term", "THREE_YEAR")
+    if key == "sagemaker":
+        return config.get("sagemaker_sp_term", "THREE_YEAR")
+    return "ONE_YEAR"
+
+
+def _process_sp_type(
+    sp_type: dict[str, Any],
+    config: dict[str, Any],
+    spending_data: dict[str, Any],
+    target_coverage: float,
+) -> dict[str, Any] | None:
+    if not config[sp_type["enabled_config"]]:
+        return None
+
+    key = sp_type["key"]
+    data = spending_data.get(key)
+    if not data:
+        logger.info(f"{sp_type['name']} SP - No spending data available")
+        return None
+
+    summary = data["summary"]
+    current_coverage = summary["avg_coverage_total"]
+    avg_hourly_total = summary["avg_hourly_total"]
+    avg_hourly_covered = summary["avg_hourly_covered"]
+    coverage_gap = target_coverage - current_coverage
+
+    logger.info(
+        f"{sp_type['name']} SP - Current: {current_coverage:.2f}%, "
+        f"Target: {target_coverage:.2f}%, Gap: {coverage_gap:.2f}%, "
+        f"Avg hourly spend: ${avg_hourly_total:.4f}/h"
+    )
+
+    if coverage_gap <= 0:
+        logger.info(f"{sp_type['name']} SP coverage already meets or exceeds target")
+        return None
+
+    if avg_hourly_total <= 0:
+        logger.info(f"{sp_type['name']} SP has zero spend - skipping")
+        return None
+
+    purchase_percent = calculate_split(current_coverage, target_coverage, config)
+    savings_pct = config.get(f"{key}_savings_percentage", config.get("savings_percentage", 30.0))
+    od_coverage_to_add = (
+        avg_hourly_total * (purchase_percent / 100.0) if purchase_percent > 0 else 0
+    )
+    hourly_commitment = sp_calculations.commitment_from_coverage(od_coverage_to_add, savings_pct)
+
+    min_commitment = config.get("min_commitment_per_plan", 0.001)
+    if purchase_percent <= 0 or hourly_commitment < min_commitment:
+        if hourly_commitment > 0:
+            logger.info(
+                f"{sp_type['name']} SP calculated commitment ${hourly_commitment:.4f}/h "
+                f"is below minimum ${min_commitment:.4f}/h - skipping"
+            )
+        return None
+
+    split_type = config["split_strategy_type"]
+
+    logger.info(
+        f"{sp_type['name']} SP purchase planned: ${hourly_commitment:.4f}/h "
+        f"({purchase_percent:.2f}% of spend, gap: {coverage_gap:.2f}%)"
+    )
+
+    return {
+        "strategy": f"{config['target_strategy_type']}+{split_type}",
+        "sp_type": key,
+        "hourly_commitment": hourly_commitment,
+        "purchase_percent": purchase_percent,
+        "estimated_savings_percentage": savings_pct,
+        "payment_option": config[sp_type["payment_option_config"]],
+        "term": _get_term(key, config),
+        "details": {
+            "coverage": {
+                "current": current_coverage,
+                "target": target_coverage,
+                "gap": coverage_gap,
+            },
+            "spending": {
+                "total": avg_hourly_total,
+                "covered": avg_hourly_covered,
+                "uncovered": avg_hourly_total - avg_hourly_covered,
+            },
+            "strategy_params": {
+                "target_strategy": config["target_strategy_type"],
+                "split_strategy": split_type,
+                "max_purchase_percent": config.get("max_purchase_percent"),
+                "min_purchase_percent": config.get("min_purchase_percent"),
+            },
+        },
+    }
+
+
+def _ensure_savings_rates(config: dict[str, Any], clients: dict[str, Any]) -> dict[str, Any]:
+    """Fetch actual per-type savings rates from AWS if not already in config."""
+    from shared.savings_plans_metrics import get_savings_plans_metrics
+
+    config = config.copy()
+    for sp_type in SP_TYPES:
+        key = sp_type["key"]
+        config_key = f"{key}_savings_percentage"
+        if config_key in config or not config.get(sp_type["enabled_config"]):
+            continue
+        try:
+            metrics = get_savings_plans_metrics(
+                clients["ce"],
+                key,
+                config.get("lookback_days", 13),
+                config.get("granularity", "DAILY"),
+            )
+            if metrics["savings_percentage"] > 0:
+                config[config_key] = metrics["savings_percentage"]
+                logger.info(
+                    f"{sp_type['name']} SP actual savings rate: {metrics['savings_percentage']:.1f}%"
+                )
+        except Exception:
+            logger.debug(f"Could not fetch savings rate for {key}, using default")
+    return config
 
 
 def calculate_purchase_need(
     config: dict[str, Any], clients: dict[str, Any], spending_data: dict[str, Any] | None = None
 ) -> list[dict[str, Any]]:
     """
-    Calculate required purchases to reach target coverage using configured strategy.
+    Calculate required purchases using configured target + split strategy.
 
-    This function acts as a dispatcher to the appropriate strategy implementation.
-    Handler pre-fetches spending_data for strategies that need it (fixed/dichotomy).
+    Two-phase pipeline:
+    1. resolve_target() -> coverage target %
+    2. For each SP type: calculate_split() -> purchase %
 
-    Args:
-        config: Configuration dictionary (must include "purchase_strategy_type")
-        clients: Dictionary of AWS clients (ce, savingsplans, etc.)
-        spending_data: Optional pre-fetched spending analysis (for fixed/dichotomy strategies)
-
-    Returns:
-        list: Purchase plans to execute
-
-    Raises:
-        ValueError: If configured strategy is not registered
+    AWS target short-circuits to follow_aws_strategy.py.
     """
-    strategy_type = config.get("purchase_strategy_type")
+    target_strategy = config.get("target_strategy_type")
+    split_strategy = config.get("split_strategy_type")
 
-    if not strategy_type:
-        available_strategies = ", ".join(PURCHASE_STRATEGIES.keys())
-        raise ValueError(
-            f"Missing required configuration 'purchase_strategy_type'. "
-            f"Available strategies: {available_strategies}"
-        )
+    if not target_strategy:
+        raise ValueError("Missing required configuration 'target_strategy_type'")
 
-    logger.info(f"Using purchase strategy: {strategy_type}")
+    logger.info(f"Using target strategy: {target_strategy}, split strategy: {split_strategy}")
 
-    # Lookup strategy function from registry
-    strategy_func = PURCHASE_STRATEGIES.get(strategy_type)
+    # AWS target -> short-circuit to follow_aws special path
+    if target_strategy == "aws":
+        return calculate_purchase_need_follow_aws(config, clients, spending_data)
 
-    if not strategy_func:
-        available_strategies = ", ".join(PURCHASE_STRATEGIES.keys())
-        raise ValueError(
-            f"Unknown purchase strategy '{strategy_type}'. "
-            f"Available strategies: {available_strategies}"
-        )
+    # Fetch actual savings rates from existing SP plans (skips if already in config)
+    config = _ensure_savings_rates(config, clients)
 
-    # Call strategy function with optional spending_data
-    return strategy_func(config, clients, spending_data)
+    if spending_data is None:
+        from shared.spending_analyzer import SpendingAnalyzer
 
+        analyzer = SpendingAnalyzer(clients["savingsplans"], clients["ce"])
+        spending_data = analyzer.analyze_current_spending(config)
+        spending_data.pop("_unknown_services", None)
 
-# apply_purchase_limits function removed - deprecated and unused
-# Strategies now handle their own limits internally
+    purchase_plans = []
+    for sp_type in SP_TYPES:
+        target_coverage = resolve_target(config, spending_data, sp_type_key=sp_type["key"])
+        if target_coverage is None:
+            continue
+        logger.info(f"{sp_type['name']} SP resolved target: {target_coverage:.2f}%")
+        plan = _process_sp_type(sp_type, config, spending_data, target_coverage)
+        if plan:
+            purchase_plans.append(plan)
+
+    logger.info(f"Purchase need calculated: {len(purchase_plans)} plans")
+    return purchase_plans

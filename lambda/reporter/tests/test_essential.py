@@ -530,7 +530,9 @@ def test_handler_local_mode_auto_open(monkeypatch, mock_clients, aws_mock_builde
 def test_handler_with_scheduler_preview_fixed_strategy(monkeypatch, mock_clients, aws_mock_builder):
     """Test scheduler preview with fixed strategy integration."""
     # Set scheduler strategy environment variables
-    monkeypatch.setenv("PURCHASE_STRATEGY_TYPE", "fixed")
+    monkeypatch.setenv("TARGET_STRATEGY_TYPE", "fixed")
+    monkeypatch.setenv("SPLIT_STRATEGY_TYPE", "linear")
+    monkeypatch.setenv("LINEAR_STEP_PERCENT", "10")
     monkeypatch.setenv("MAX_PURCHASE_PERCENT", "10")
     monkeypatch.setenv("MIN_PURCHASE_PERCENT", "1")
     monkeypatch.setenv("COMPUTE_SP_TERM", "THREE_YEAR")
@@ -591,7 +593,7 @@ def test_handler_with_scheduler_preview_fixed_strategy(monkeypatch, mock_clients
     # Verify all three strategies are shown in the comparison
     assert "Fixed" in report_html, "Preview should show Fixed strategy"
     assert "Dichotomy" in report_html, "Preview should show Dichotomy strategy"
-    assert "Follow AWS" in report_html, "Preview should show Follow AWS strategy"
+    assert "AWS Recommendation" in report_html, "Preview should show AWS Recommendation strategy"
 
     # Verify configured strategy is highlighted
     assert "CONFIGURED" in report_html, "Preview should mark configured strategy"
@@ -605,8 +607,10 @@ def test_handler_with_scheduler_preview_dichotomy_strategy(
 ):
     """Test scheduler preview with dichotomy strategy integration."""
     # Set scheduler strategy environment variables for dichotomy
-    monkeypatch.setenv("PURCHASE_STRATEGY_TYPE", "dichotomy")
-    monkeypatch.setenv("DICHOTOMY_INITIAL_PERCENT", "50")
+    monkeypatch.setenv("TARGET_STRATEGY_TYPE", "fixed")
+    monkeypatch.setenv("SPLIT_STRATEGY_TYPE", "dichotomy")
+    monkeypatch.setenv("MAX_PURCHASE_PERCENT", "50")
+    monkeypatch.setenv("MIN_PURCHASE_PERCENT", "1")
     monkeypatch.setenv("COMPUTE_SP_TERM", "THREE_YEAR")
     monkeypatch.setenv("COMPUTE_SP_PAYMENT_OPTION", "NO_UPFRONT")
     monkeypatch.setenv("REPORT_FORMAT", "html")
@@ -663,7 +667,7 @@ def test_handler_with_scheduler_preview_dichotomy_strategy(
     # Verify all three strategies are shown in the comparison
     assert "Fixed" in report_html
     assert "Dichotomy" in report_html
-    assert "Follow AWS" in report_html
+    assert "AWS Recommendation" in report_html
 
     # Verify configured strategy (dichotomy) is highlighted
     assert "CONFIGURED" in report_html
@@ -674,7 +678,8 @@ def test_handler_with_scheduler_preview_follow_aws_strategy(
 ):
     """Test scheduler preview with follow_aws strategy integration."""
     # Set scheduler strategy environment variables for follow_aws
-    monkeypatch.setenv("PURCHASE_STRATEGY_TYPE", "follow_aws")
+    monkeypatch.setenv("TARGET_STRATEGY_TYPE", "aws")
+    monkeypatch.setenv("SPLIT_STRATEGY_TYPE", "one_shot")
     monkeypatch.setenv("COMPUTE_SP_TERM", "THREE_YEAR")
     monkeypatch.setenv("COMPUTE_SP_PAYMENT_OPTION", "ALL_UPFRONT")
     monkeypatch.setenv("REPORT_FORMAT", "html")
@@ -731,7 +736,7 @@ def test_handler_with_scheduler_preview_follow_aws_strategy(
     # Verify all three strategies are shown in the comparison
     assert "Fixed" in report_html
     assert "Dichotomy" in report_html
-    assert "Follow AWS" in report_html
+    assert "AWS Recommendation" in report_html
 
     # Verify configured strategy (follow_aws) is highlighted
     assert "CONFIGURED" in report_html

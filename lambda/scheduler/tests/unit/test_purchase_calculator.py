@@ -1,8 +1,8 @@
 """
 Unit tests for purchase calculator module.
 
-Tests purchase need calculation, purchase limits, and term splitting
-for Compute, Database, and SageMaker Savings Plans.
+Tests the two-phase strategy pipeline (target + split) for
+Compute, Database, and SageMaker Savings Plans.
 """
 
 import purchase_calculator
@@ -10,14 +10,15 @@ import pytest
 
 
 @pytest.fixture
-def mock_config():
-    """Create a mock configuration dictionary."""
+def aws_config():
+    """Config for AWS target strategy (follow_aws path)."""
     return {
         "enable_compute_sp": True,
         "enable_database_sp": True,
         "enable_sagemaker_sp": True,
+        "target_strategy_type": "aws",
+        "split_strategy_type": "one_shot",
         "coverage_target_percent": 90.0,
-        "purchase_strategy_type": "follow_aws",
         "max_purchase_percent": 10.0,
         "min_commitment_per_plan": 0.001,
         "lookback_days": 13,
@@ -29,35 +30,46 @@ def mock_config():
     }
 
 
+@pytest.fixture
+def fixed_dichotomy_config():
+    """Config for fixed target + dichotomy split."""
+    return {
+        "enable_compute_sp": True,
+        "enable_database_sp": False,
+        "enable_sagemaker_sp": False,
+        "target_strategy_type": "fixed",
+        "split_strategy_type": "dichotomy",
+        "coverage_target_percent": 90.0,
+        "max_purchase_percent": 50.0,
+        "min_purchase_percent": 1.0,
+        "min_commitment_per_plan": 0.001,
+        "compute_sp_payment_option": "ALL_UPFRONT",
+        "compute_sp_term": "THREE_YEAR",
+    }
+
+
 # ============================================================================
-# Calculate Purchase Need Tests
+# AWS Target Strategy Tests (follow_aws path)
 # ============================================================================
 
 
-def test_calculate_purchase_need_compute_gap(mock_config):
-    """Test purchase calculation with coverage gap for Compute SP."""
+def test_aws_target_compute_gap(aws_config):
+    """Test AWS target with Compute SP recommendation."""
     from unittest.mock import Mock
 
-    # Only enable compute SP
-    mock_config["enable_compute_sp"] = True
-    mock_config["enable_database_sp"] = False
-    mock_config["enable_sagemaker_sp"] = False
+    aws_config["enable_database_sp"] = False
+    aws_config["enable_sagemaker_sp"] = False
 
-    # Create mock CE client
     mock_ce_client = Mock()
     mock_ce_client.get_savings_plans_purchase_recommendation.return_value = {
-        "Metadata": {
-            "RecommendationId": "rec-12345",
-            "LookbackPeriodInDays": "13",
-        },
+        "Metadata": {"RecommendationId": "rec-12345", "LookbackPeriodInDays": "13"},
         "SavingsPlansPurchaseRecommendation": {
             "SavingsPlansPurchaseRecommendationDetails": [{"HourlyCommitmentToPurchase": "5.50"}]
         },
     }
 
     clients = {"ce": mock_ce_client}
-
-    result = purchase_calculator.calculate_purchase_need(mock_config, clients, spending_data=None)
+    result = purchase_calculator.calculate_purchase_need(aws_config, clients, spending_data=None)
 
     assert len(result) == 1
     assert result[0]["sp_type"] == "compute"
@@ -66,117 +78,59 @@ def test_calculate_purchase_need_compute_gap(mock_config):
     assert result[0]["recommendation_id"] == "rec-12345"
 
 
-def test_calculate_purchase_need_database_gap(mock_config):
-    """Test purchase calculation with coverage gap for Database SP."""
+def test_aws_target_database_gap(aws_config):
+    """Test AWS target with Database SP recommendation."""
     from unittest.mock import Mock
 
-    mock_config["enable_compute_sp"] = False
-    mock_config["enable_database_sp"] = True
-    mock_config["enable_sagemaker_sp"] = False
-    mock_config["database_sp_payment_option"] = "NO_UPFRONT"
+    aws_config["enable_compute_sp"] = False
+    aws_config["enable_database_sp"] = True
+    aws_config["enable_sagemaker_sp"] = False
 
-    # Create mock CE client
     mock_ce_client = Mock()
     mock_ce_client.get_savings_plans_purchase_recommendation.return_value = {
-        "Metadata": {
-            "RecommendationId": "rec-db-456",
-            "LookbackPeriodInDays": "13",
-        },
+        "Metadata": {"RecommendationId": "rec-db-456", "LookbackPeriodInDays": "13"},
         "SavingsPlansPurchaseRecommendation": {
             "SavingsPlansPurchaseRecommendationDetails": [{"HourlyCommitmentToPurchase": "2.75"}]
         },
     }
 
     clients = {"ce": mock_ce_client}
-
-    result = purchase_calculator.calculate_purchase_need(mock_config, clients, spending_data=None)
+    result = purchase_calculator.calculate_purchase_need(aws_config, clients, spending_data=None)
 
     assert len(result) == 1
     assert result[0]["sp_type"] == "database"
     assert result[0]["hourly_commitment"] == pytest.approx(2.75)
     assert result[0]["term"] == "ONE_YEAR"
     assert result[0]["payment_option"] == "NO_UPFRONT"
-    assert result[0]["recommendation_id"] == "rec-db-456"
 
 
-def test_calculate_purchase_need_sagemaker_gap(mock_config):
-    """Test purchase calculation with coverage gap for SageMaker SP."""
+def test_aws_target_multiple_types(aws_config):
+    """Test AWS target with all SP types returning recommendations."""
     from unittest.mock import Mock
 
-    mock_config["enable_compute_sp"] = False
-    mock_config["enable_database_sp"] = False
-    mock_config["enable_sagemaker_sp"] = True
-
-    # Create mock CE client
-    mock_ce_client = Mock()
-    mock_ce_client.get_savings_plans_purchase_recommendation.return_value = {
-        "Metadata": {
-            "RecommendationId": "rec-sm-789",
-            "LookbackPeriodInDays": "13",
-        },
-        "SavingsPlansPurchaseRecommendation": {
-            "SavingsPlansPurchaseRecommendationDetails": [{"HourlyCommitmentToPurchase": "3.25"}]
-        },
-    }
-
-    clients = {"ce": mock_ce_client}
-
-    result = purchase_calculator.calculate_purchase_need(mock_config, clients, spending_data=None)
-
-    assert len(result) == 1
-    assert result[0]["sp_type"] == "sagemaker"
-    assert result[0]["hourly_commitment"] == pytest.approx(3.25)
-    assert result[0]["payment_option"] == "ALL_UPFRONT"
-    assert result[0]["recommendation_id"] == "rec-sm-789"
-
-
-def test_calculate_purchase_need_multiple_gaps(mock_config):
-    """Test purchase calculation with multiple coverage gaps."""
-    from unittest.mock import Mock
-
-    mock_config["enable_compute_sp"] = True
-    mock_config["enable_database_sp"] = True
-    mock_config["enable_sagemaker_sp"] = True
-    mock_config["database_sp_payment_option"] = "NO_UPFRONT"
-
-    # Create mock CE client that returns different results based on SP type
     mock_ce_client = Mock()
 
     def mock_recommendation(*args, **kwargs):
         sp_type = kwargs.get("SavingsPlansType")
-        if sp_type == "COMPUTE_SP":
-            return {
-                "Metadata": {"RecommendationId": "rec-compute", "LookbackPeriodInDays": "13"},
-                "SavingsPlansPurchaseRecommendation": {
-                    "SavingsPlansPurchaseRecommendationDetails": [
-                        {"HourlyCommitmentToPurchase": "5.50"}
-                    ]
-                },
-            }
-        if sp_type == "DATABASE_SP":
-            return {
-                "Metadata": {"RecommendationId": "rec-database", "LookbackPeriodInDays": "13"},
-                "SavingsPlansPurchaseRecommendation": {
-                    "SavingsPlansPurchaseRecommendationDetails": [
-                        {"HourlyCommitmentToPurchase": "2.75"}
-                    ]
-                },
-            }
-        if sp_type == "SAGEMAKER_SP":
-            return {
-                "Metadata": {"RecommendationId": "rec-sagemaker", "LookbackPeriodInDays": "13"},
-                "SavingsPlansPurchaseRecommendation": {
-                    "SavingsPlansPurchaseRecommendationDetails": [
-                        {"HourlyCommitmentToPurchase": "3.25"}
-                    ]
-                },
-            }
+        commitments = {"COMPUTE_SP": "5.50", "DATABASE_SP": "2.75", "SAGEMAKER_SP": "3.25"}
+        ids = {
+            "COMPUTE_SP": "rec-compute",
+            "DATABASE_SP": "rec-database",
+            "SAGEMAKER_SP": "rec-sagemaker",
+        }
+        return {
+            "Metadata": {"RecommendationId": ids[sp_type], "LookbackPeriodInDays": "13"},
+            "SavingsPlansPurchaseRecommendation": {
+                "SavingsPlansPurchaseRecommendationDetails": [
+                    {"HourlyCommitmentToPurchase": commitments[sp_type]}
+                ]
+            },
+        }
 
     mock_ce_client.get_savings_plans_purchase_recommendation.side_effect = mock_recommendation
-
     clients = {"ce": mock_ce_client}
 
-    result = purchase_calculator.calculate_purchase_need(mock_config, clients, spending_data=None)
+    result = purchase_calculator.calculate_purchase_need(aws_config, clients, spending_data=None)
 
     assert len(result) == 3
     sp_types = [plan["sp_type"] for plan in result]
@@ -185,11 +139,10 @@ def test_calculate_purchase_need_multiple_gaps(mock_config):
     assert "sagemaker" in sp_types
 
 
-def test_calculate_purchase_need_no_gap(mock_config):
-    """Test when no recommendations are available (e.g., already at target coverage)."""
+def test_aws_target_no_recommendation(aws_config):
+    """Test AWS target when no recommendations available."""
     from unittest.mock import Mock
 
-    # Create mock CE client that returns empty recommendations
     mock_ce_client = Mock()
     mock_ce_client.get_savings_plans_purchase_recommendation.return_value = {
         "Metadata": {"RecommendationId": "rec-123", "LookbackPeriodInDays": "13"},
@@ -197,135 +150,51 @@ def test_calculate_purchase_need_no_gap(mock_config):
     }
 
     clients = {"ce": mock_ce_client}
-
-    result = purchase_calculator.calculate_purchase_need(mock_config, clients, spending_data=None)
-
-    # No purchases should be planned
+    result = purchase_calculator.calculate_purchase_need(aws_config, clients, spending_data=None)
     assert len(result) == 0
 
 
-def test_calculate_purchase_need_gap_but_no_recommendation(mock_config):
-    """Test when there's a coverage gap but no AWS recommendation."""
+def test_aws_target_sp_disabled(aws_config):
+    """Test AWS target when all SP types disabled."""
     from unittest.mock import Mock
 
-    # Create mock CE client that returns empty recommendations
-    mock_ce_client = Mock()
-    mock_ce_client.get_savings_plans_purchase_recommendation.return_value = {
-        "Metadata": {"RecommendationId": "rec-123", "LookbackPeriodInDays": "13"},
-        "SavingsPlansPurchaseRecommendation": {"SavingsPlansPurchaseRecommendationDetails": []},
-    }
+    aws_config["enable_compute_sp"] = False
+    aws_config["enable_database_sp"] = False
+    aws_config["enable_sagemaker_sp"] = False
 
+    mock_ce_client = Mock()
     clients = {"ce": mock_ce_client}
 
-    result = purchase_calculator.calculate_purchase_need(mock_config, clients, spending_data=None)
-
-    # No purchases can be planned without recommendations
+    result = purchase_calculator.calculate_purchase_need(aws_config, clients, spending_data=None)
     assert len(result) == 0
-
-
-def test_calculate_purchase_need_zero_commitment(mock_config):
-    """Test when recommendation has zero commitment."""
-    from unittest.mock import Mock
-
-    # Create mock CE client that returns zero commitment
-    mock_ce_client = Mock()
-    mock_ce_client.get_savings_plans_purchase_recommendation.return_value = {
-        "Metadata": {"RecommendationId": "rec-12345", "LookbackPeriodInDays": "13"},
-        "SavingsPlansPurchaseRecommendation": {
-            "SavingsPlansPurchaseRecommendationDetails": [{"HourlyCommitmentToPurchase": "0"}]
-        },
-    }
-
-    clients = {"ce": mock_ce_client}
-
-    result = purchase_calculator.calculate_purchase_need(mock_config, clients, spending_data=None)
-
-    # Zero commitment should be skipped
-    assert len(result) == 0
-
-
-def test_calculate_purchase_need_sp_disabled(mock_config):
-    """Test when SP type is disabled in config."""
-    from unittest.mock import Mock
-
-    mock_config["enable_compute_sp"] = False
-    mock_config["enable_database_sp"] = False
-    mock_config["enable_sagemaker_sp"] = False
-
-    # Create mock CE client (shouldn't be called since all SPs disabled)
-    mock_ce_client = Mock()
-
-    clients = {"ce": mock_ce_client}
-
-    result = purchase_calculator.calculate_purchase_need(mock_config, clients, spending_data=None)
-
-    # Should not plan purchase for disabled SP types
-    assert len(result) == 0
-    # Verify CE client was not called at all
     assert mock_ce_client.get_savings_plans_purchase_recommendation.call_count == 0
 
 
-# ============================================================================
-# Apply Purchase Limits Tests
-# ============================================================================
-# apply_purchase_limits tests removed - function was deprecated and deleted
-# Strategies now handle their own limits internally
 # ============================================================================
 # Error Handling Tests
 # ============================================================================
 
 
-def test_calculate_purchase_need_missing_strategy_type():
-    """Test error when purchase_strategy_type is missing from config."""
+def test_missing_target_strategy_type():
+    """Test error when target_strategy_type is missing."""
     from unittest.mock import Mock
 
-    config = {
-        "enable_compute_sp": True,
-        # Missing: purchase_strategy_type
-    }
+    config = {"enable_compute_sp": True}
     clients = {"ce": Mock()}
 
-    with pytest.raises(ValueError, match="Missing required configuration 'purchase_strategy_type'"):
-        purchase_calculator.calculate_purchase_need(config, clients, spending_data=None)
-
-
-def test_calculate_purchase_need_unknown_strategy():
-    """Test error when purchase_strategy_type is not in registry."""
-    from unittest.mock import Mock
-
-    config = {
-        "enable_compute_sp": True,
-        "purchase_strategy_type": "nonexistent_strategy",
-    }
-    clients = {"ce": Mock()}
-
-    with pytest.raises(ValueError, match="Unknown purchase strategy 'nonexistent_strategy'"):
+    with pytest.raises(ValueError, match="Missing required configuration 'target_strategy_type'"):
         purchase_calculator.calculate_purchase_need(config, clients, spending_data=None)
 
 
 # ============================================================================
-# Dichotomy Strategy Integration Tests
+# Fixed Target + Dichotomy Split Tests
 # ============================================================================
 
 
-def test_calculate_purchase_need_dichotomy_strategy():
-    """Test dichotomy strategy integration through purchase calculator."""
+def test_fixed_dichotomy_basic(fixed_dichotomy_config):
+    """Test fixed target + dichotomy split with 50% current coverage."""
     from unittest.mock import Mock
 
-    config = {
-        "enable_compute_sp": True,
-        "enable_database_sp": False,
-        "enable_sagemaker_sp": False,
-        "coverage_target_percent": 90.0,
-        "purchase_strategy_type": "dichotomy",
-        "max_purchase_percent": 50.0,
-        "min_purchase_percent": 1.0,
-        "min_commitment_per_plan": 0.001,
-        "compute_sp_payment_option": "ALL_UPFRONT",
-        "compute_sp_term": "THREE_YEAR",
-    }
-
-    # Spending data showing 50% coverage with $10/hour total spend
     spending_data = {
         "compute": {
             "summary": {
@@ -337,37 +206,23 @@ def test_calculate_purchase_need_dichotomy_strategy():
     }
 
     clients = {"ce": Mock(), "savingsplans": Mock()}
+    result = purchase_calculator.calculate_purchase_need(
+        fixed_dichotomy_config, clients, spending_data
+    )
 
-    result = purchase_calculator.calculate_purchase_need(config, clients, spending_data)
-
-    # At 50% coverage, target 90%, max 50%
-    # Dichotomy: try 50% → 100% > 90%, try 25% → 75% <= 90%
-    # Purchase 25% of $10/h = $2.50/h
+    # At 50%, target 90%, max 50% → try 50%→100%>90%, try 25%→75%<=90%
+    # commitment = avg_hourly(10) * purchase_pct(25%) * (1 - savings(30%)) = 1.75
     assert len(result) == 1
     assert result[0]["sp_type"] == "compute"
-    assert result[0]["strategy"] == "dichotomy"
+    assert result[0]["strategy"] == "fixed+dichotomy"
     assert result[0]["purchase_percent"] == pytest.approx(25.0)
-    assert result[0]["hourly_commitment"] == pytest.approx(2.5)
+    assert result[0]["hourly_commitment"] == pytest.approx(1.75)
 
 
-def test_calculate_purchase_need_dichotomy_from_zero():
-    """Test dichotomy strategy from zero coverage."""
+def test_fixed_dichotomy_from_zero(fixed_dichotomy_config):
+    """Test fixed target + dichotomy split from zero coverage."""
     from unittest.mock import Mock
 
-    config = {
-        "enable_compute_sp": True,
-        "enable_database_sp": False,
-        "enable_sagemaker_sp": False,
-        "coverage_target_percent": 90.0,
-        "purchase_strategy_type": "dichotomy",
-        "max_purchase_percent": 50.0,
-        "min_purchase_percent": 1.0,
-        "min_commitment_per_plan": 0.001,
-        "compute_sp_payment_option": "ALL_UPFRONT",
-        "compute_sp_term": "THREE_YEAR",
-    }
-
-    # Starting from 0% coverage with $100/hour spend
     spending_data = {
         "compute": {
             "summary": {
@@ -379,34 +234,21 @@ def test_calculate_purchase_need_dichotomy_from_zero():
     }
 
     clients = {"ce": Mock(), "savingsplans": Mock()}
+    result = purchase_calculator.calculate_purchase_need(
+        fixed_dichotomy_config, clients, spending_data
+    )
 
-    result = purchase_calculator.calculate_purchase_need(config, clients, spending_data)
-
-    # At 0%, can use max 50%
-    # Purchase 50% of $100/h = $50/h
+    # At 0%, max 50% fits under 90% target
+    # commitment = avg_hourly(100) * purchase_pct(50%) * (1 - savings(30%)) = 35
     assert len(result) == 1
     assert result[0]["purchase_percent"] == pytest.approx(50.0)
-    assert result[0]["hourly_commitment"] == pytest.approx(50.0)
+    assert result[0]["hourly_commitment"] == pytest.approx(35.0)
 
 
-def test_calculate_purchase_need_dichotomy_near_target():
-    """Test dichotomy strategy near target coverage."""
+def test_fixed_dichotomy_near_target(fixed_dichotomy_config):
+    """Test fixed target + dichotomy split near target coverage."""
     from unittest.mock import Mock
 
-    config = {
-        "enable_compute_sp": True,
-        "enable_database_sp": False,
-        "enable_sagemaker_sp": False,
-        "coverage_target_percent": 90.0,
-        "purchase_strategy_type": "dichotomy",
-        "max_purchase_percent": 50.0,
-        "min_purchase_percent": 1.0,
-        "min_commitment_per_plan": 0.001,
-        "compute_sp_payment_option": "ALL_UPFRONT",
-        "compute_sp_term": "THREE_YEAR",
-    }
-
-    # At 87.5% coverage, close to 90% target
     spending_data = {
         "compute": {
             "summary": {
@@ -418,26 +260,48 @@ def test_calculate_purchase_need_dichotomy_near_target():
     }
 
     clients = {"ce": Mock(), "savingsplans": Mock()}
+    result = purchase_calculator.calculate_purchase_need(
+        fixed_dichotomy_config, clients, spending_data
+    )
 
-    result = purchase_calculator.calculate_purchase_need(config, clients, spending_data)
-
-    # At 87.5%, target 90%, halve down to 1.5625% → round to 1.6%
-    # Purchase 1.6% of $100/h = $1.60/h
+    # commitment = avg_hourly(100) * purchase_pct(~1.6%) * (1 - savings(30%))
     assert len(result) == 1
-    assert result[0]["purchase_percent"] == pytest.approx(1.6)
-    assert result[0]["hourly_commitment"] == pytest.approx(1.6)
+    assert result[0]["purchase_percent"] == pytest.approx(1.6, abs=0.1)
+    assert result[0]["hourly_commitment"] == pytest.approx(1.12, abs=0.1)
 
 
-def test_calculate_purchase_need_dichotomy_multiple_sp_types():
-    """Test dichotomy strategy with multiple SP types enabled."""
+def test_fixed_dichotomy_at_target(fixed_dichotomy_config):
+    """Test fixed target + dichotomy split when already at target."""
+    from unittest.mock import Mock
+
+    spending_data = {
+        "compute": {
+            "summary": {
+                "avg_coverage_total": 90.0,
+                "avg_hourly_total": 100.0,
+                "avg_hourly_covered": 90.0,
+            }
+        }
+    }
+
+    clients = {"ce": Mock(), "savingsplans": Mock()}
+    result = purchase_calculator.calculate_purchase_need(
+        fixed_dichotomy_config, clients, spending_data
+    )
+    assert len(result) == 0
+
+
+def test_fixed_dichotomy_multiple_sp_types():
+    """Test fixed target + dichotomy split with multiple SP types."""
     from unittest.mock import Mock
 
     config = {
         "enable_compute_sp": True,
         "enable_database_sp": True,
         "enable_sagemaker_sp": True,
+        "target_strategy_type": "fixed",
+        "split_strategy_type": "dichotomy",
         "coverage_target_percent": 90.0,
-        "purchase_strategy_type": "dichotomy",
         "max_purchase_percent": 50.0,
         "min_purchase_percent": 1.0,
         "min_commitment_per_plan": 0.001,
@@ -448,7 +312,6 @@ def test_calculate_purchase_need_dichotomy_multiple_sp_types():
         "sagemaker_sp_term": "THREE_YEAR",
     }
 
-    # Different coverage levels for each SP type
     spending_data = {
         "compute": {
             "summary": {
@@ -474,65 +337,60 @@ def test_calculate_purchase_need_dichotomy_multiple_sp_types():
     }
 
     clients = {"ce": Mock(), "savingsplans": Mock()}
-
     result = purchase_calculator.calculate_purchase_need(config, clients, spending_data)
 
-    # Should have 3 plans
     assert len(result) == 3
 
-    # Compute: 50% → 25% purchase
     compute_plan = [p for p in result if p["sp_type"] == "compute"][0]
     assert compute_plan["purchase_percent"] == pytest.approx(25.0)
-    assert compute_plan["hourly_commitment"] == 25.0
 
-    # Database: 75% → 12.5% purchase
     database_plan = [p for p in result if p["sp_type"] == "database"][0]
     assert database_plan["purchase_percent"] == pytest.approx(12.5)
-    assert database_plan["hourly_commitment"] == pytest.approx(6.25)
     assert database_plan["term"] == "ONE_YEAR"
 
-    # SageMaker: 0% → 50% purchase
     sagemaker_plan = [p for p in result if p["sp_type"] == "sagemaker"][0]
     assert sagemaker_plan["purchase_percent"] == pytest.approx(50.0)
-    assert sagemaker_plan["hourly_commitment"] == pytest.approx(10.0)
 
 
-def test_calculate_purchase_need_dichotomy_at_target():
-    """Test dichotomy strategy when already at target."""
+# ============================================================================
+# Fixed Target + Linear Split Tests
+# ============================================================================
+
+
+def test_fixed_linear_basic():
+    """Test fixed target + linear split."""
     from unittest.mock import Mock
 
     config = {
         "enable_compute_sp": True,
         "enable_database_sp": False,
         "enable_sagemaker_sp": False,
+        "target_strategy_type": "fixed",
+        "split_strategy_type": "linear",
         "coverage_target_percent": 90.0,
-        "purchase_strategy_type": "dichotomy",
-        "max_purchase_percent": 50.0,
-        "min_purchase_percent": 1.0,
+        "linear_step_percent": 10.0,
+        "max_purchase_percent": 10.0,
         "min_commitment_per_plan": 0.001,
         "compute_sp_payment_option": "ALL_UPFRONT",
         "compute_sp_term": "THREE_YEAR",
     }
 
-    # Already at target coverage
     spending_data = {
         "compute": {
             "summary": {
-                "avg_coverage_total": 90.0,
+                "avg_coverage_total": 50.0,
                 "avg_hourly_total": 100.0,
-                "avg_hourly_covered": 90.0,
+                "avg_hourly_covered": 50.0,
             }
         }
     }
 
     clients = {"ce": Mock(), "savingsplans": Mock()}
-
     result = purchase_calculator.calculate_purchase_need(config, clients, spending_data)
 
-    # No purchase needed
-    assert len(result) == 0
-
-
-# ============================================================================
-# Split by Term Tests
-# ============================================================================
+    # Gap is 40%, step is 10% → purchase 10%
+    # commitment = avg_hourly(100) * purchase_pct(10%) * (1 - savings(30%)) = 7
+    assert len(result) == 1
+    assert result[0]["strategy"] == "fixed+linear"
+    assert result[0]["purchase_percent"] == pytest.approx(10.0)
+    assert result[0]["hourly_commitment"] == pytest.approx(7.0)

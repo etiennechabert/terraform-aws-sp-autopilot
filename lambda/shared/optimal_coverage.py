@@ -206,3 +206,136 @@ def coverage_as_percentage_of_min(hourly_coverage: float, min_hourly: float) -> 
         return 0.0
 
     return (hourly_coverage / min_hourly) * 100
+
+
+def calculate_knee_point(
+    hourly_costs: list[float],
+    savings_percentage: float,
+    min_cost: float,
+    optimal_coverage: float,
+) -> float:
+    """
+    Calculate the knee point on the savings curve.
+
+    This is the "balanced" strategy — where marginal efficiency drops to 30%
+    of its peak. Direct port of docs/js/main.js calculateKneePoint().
+
+    CROSS-LANGUAGE SYNCHRONIZATION: Keep in sync with docs/js/main.js:696-776.
+
+    Args:
+        hourly_costs: List of hourly costs
+        savings_percentage: Savings plan discount percentage (e.g., 30 for 30%)
+        min_cost: Minimum hourly cost (baseline)
+        optimal_coverage: Optimal coverage from calculate_optimal_coverage()
+
+    Returns:
+        Knee point coverage in $/hour
+    """
+    baseline_cost = sum(hourly_costs)
+    discount_factor = 1 - (savings_percentage / 100)
+
+    max_coverage = optimal_coverage * 1.2
+    num_points = 200
+    step = (max_coverage - min_cost) / num_points
+    curve_points = []
+
+    for i in range(num_points + 1):
+        coverage = min_cost + (i * step)
+
+        commitment_cost = 0.0
+        spillover_cost = 0.0
+
+        for hour_cost in hourly_costs:
+            commitment_cost += coverage * discount_factor
+            spillover_cost += max(0, hour_cost - coverage)
+
+        total_cost = commitment_cost + spillover_cost
+        net_savings = baseline_cost - total_cost
+        savings_pct = (net_savings / baseline_cost) * 100 if baseline_cost > 0 else 0
+
+        curve_points.append(
+            {
+                "coverage": coverage,
+                "savings_percent": savings_pct,
+                "net_savings": net_savings,
+            }
+        )
+
+    marginal_rates = []
+    for i in range(1, len(curve_points)):
+        if (
+            curve_points[i]["coverage"] > min_cost
+            and curve_points[i]["coverage"] <= optimal_coverage
+        ):
+            coverage_delta = curve_points[i]["coverage"] - curve_points[i - 1]["coverage"]
+            savings_delta = (
+                curve_points[i]["savings_percent"] - curve_points[i - 1]["savings_percent"]
+            )
+            marginal_rate = savings_delta / coverage_delta if coverage_delta > 0 else 0
+
+            marginal_rates.append(
+                {
+                    "index": i,
+                    "coverage": curve_points[i]["coverage"],
+                    "marginal_rate": marginal_rate,
+                    "savings_percent": curve_points[i]["savings_percent"],
+                }
+            )
+
+    if not marginal_rates:
+        return min_cost
+
+    max_marginal_rate = max(r["marginal_rate"] for r in marginal_rates)
+
+    threshold = max_marginal_rate * 0.30
+
+    knee_index = 0
+    for i, rate in enumerate(marginal_rates):
+        if rate["marginal_rate"] < threshold:
+            knee_index = marginal_rates[i - 1]["index"] if i > 0 else marginal_rates[0]["index"]
+            break
+
+    if knee_index == 0:
+        return min_cost + (optimal_coverage - min_cost) * 0.60
+
+    return curve_points[knee_index]["coverage"]
+
+
+def calculate_strategies(hourly_costs: list[float], savings_percentage: float) -> dict[str, float]:
+    """
+    Calculate all dynamic target strategy levels.
+
+    Direct port of docs/js/main.js calculateStrategies().
+
+    CROSS-LANGUAGE SYNCHRONIZATION: Keep in sync with docs/js/main.js:635-687.
+
+    Args:
+        hourly_costs: List of hourly costs
+        savings_percentage: Savings plan discount percentage (e.g., 30 for 30%)
+
+    Returns:
+        Dict with keys: too_prudent, min_hourly, balanced, aggressive (all in $/hour)
+    """
+    if not hourly_costs:
+        return {
+            "too_prudent": 0.0,
+            "min_hourly": 0.0,
+            "balanced": 0.0,
+            "aggressive": 0.0,
+        }
+
+    min_hourly = min(hourly_costs)
+    too_prudent = min_hourly * 0.80
+
+    optimal_result = calculate_optimal_coverage(hourly_costs, savings_percentage)
+    optimal = optimal_result["coverage_hourly"]
+
+    balanced = calculate_knee_point(hourly_costs, savings_percentage, min_hourly, optimal)
+    aggressive = optimal
+
+    return {
+        "too_prudent": too_prudent,
+        "min_hourly": min_hourly,
+        "balanced": balanced,
+        "aggressive": aggressive,
+    }

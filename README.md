@@ -44,13 +44,16 @@ module "savings_plans" {
   version = "~> 1.0"
 
   purchase_strategy = {
-    coverage_target_percent = 90
-    max_coverage_cap        = 95
-    lookback_days           = 14      # Max for HOURLY granularity
-    granularity             = "HOURLY" # Recommended (requires Cost Explorer hourly data)
+    max_coverage_cap = 95
+    lookback_days    = 13       # Max for HOURLY granularity
+    granularity      = "HOURLY" # Recommended (requires Cost Explorer hourly data)
 
-    fixed = {
-      max_purchase_percent = 10 # Purchase 10% of monthly spend per cycle
+    target = {
+      fixed = { coverage_percent = 90 }
+    }
+
+    split = {
+      linear = { step_percent = 10 }
     }
   }
 
@@ -82,61 +85,66 @@ See the [`examples/`](examples/) directory for complete, working examples:
 
 - **[single-account-compute](examples/single-account-compute/)** — Basic single-account Compute SP deployment
 - **[organizations](examples/organizations/)** — AWS Organizations multi-account setup
-- **[dichotomy-strategy](examples/dichotomy-strategy/)** — Adaptive purchase strategy
+- **[dynamic-strategy](examples/dynamic-strategy/)** — Dynamic target with dichotomy split
 
 ## Configuration
 
 ### Purchase Strategies
 
-#### Fixed Strategy (Default)
+Strategy is configured with two orthogonal dimensions: **target** (what coverage to aim for) and **split** (how to reach the target).
 
-Applies a fixed percentage to AWS recommendations. Best for stable workloads.
+#### Fixed Target + Linear Split (Default)
+
+Target a fixed coverage percentage, purchasing a fixed step each cycle.
 
 ```hcl
 purchase_strategy = {
-  coverage_target_percent = 90
-  max_coverage_cap        = 95
+  max_coverage_cap = 100
 
-  fixed = {
-    max_purchase_percent = 10 # Purchase 10% of AWS recommendation each cycle
+  target = {
+    fixed = { coverage_percent = 100 }
+  }
+
+  split = {
+    linear = { step_percent = 10 }
   }
 }
 ```
 
-#### Dichotomy Strategy
+#### Dynamic Target + Dichotomy Split
 
-Adaptively sizes purchases using exponential halving. Best for new deployments and variable workloads.
+Automatically determines the optimal coverage target based on usage patterns, using exponentially decreasing purchase sizes.
 
 ```hcl
 purchase_strategy = {
-  coverage_target_percent = 90
-  max_coverage_cap        = 95
+  max_coverage_cap = 95
 
-  dichotomy = {
-    max_purchase_percent = 50 # Maximum purchase size
-    min_purchase_percent = 1  # Minimum purchase granularity
+  target = {
+    dynamic = { risk_level = "balanced" }
+  }
+
+  split = {
+    dichotomy = {
+      max_purchase_percent = 50
+      min_purchase_percent = 1
+    }
   }
 }
 ```
 
-**How it works:** Always starts with `max_purchase_percent`, halves until purchase doesn't exceed target.
+Risk levels: `too_prudent`, `min_hourly`, `balanced`, `aggressive`.
 
-Example progression (max 50%, target 90%):
-- Month 1: 0% → Purchase 50% → Reaches 50%
-- Month 2: 50% → Purchase 25% → Reaches 75%
-- Month 3: 75% → Purchase 12.5% → Reaches 87.5%
-- Month 4: 87.5% → Purchase 1.5625% → Reaches 89%
-
-#### Follow-AWS Strategy
+#### AWS Target
 
 Uses AWS Cost Explorer recommendations directly without modification.
 
 ```hcl
 purchase_strategy = {
-  coverage_target_percent = 90 # Used for validation only
-  max_coverage_cap        = 95
+  max_coverage_cap = 95
 
-  follow_aws = {}
+  target = {
+    aws = {}
+  }
 }
 ```
 
