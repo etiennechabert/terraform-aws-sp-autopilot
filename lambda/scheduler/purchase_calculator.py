@@ -85,7 +85,7 @@ def _process_sp_type(
         return None
 
     purchase_percent = calculate_split(current_coverage, target_coverage, config)
-    savings_pct = config.get("savings_percentage", 30.0)
+    savings_pct = config.get(f"{key}_savings_percentage", config.get("savings_percentage", 30.0))
     od_coverage_to_add = (
         avg_hourly_total * (purchase_percent / 100.0) if purchase_percent > 0 else 0
     )

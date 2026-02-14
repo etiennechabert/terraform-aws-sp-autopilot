@@ -64,6 +64,25 @@ def _get_configured_key(config: dict[str, Any]) -> str:
     return f"{config.get('target_strategy_type', 'fixed')}+{config.get('split_strategy_type', 'linear')}"
 
 
+_AWS_TYPE_TO_KEY = {"Compute": "compute", "Database": "database", "SageMaker": "sagemaker"}
+
+
+def _inject_actual_savings_rates(
+    config: dict[str, Any], savings_data: dict[str, Any] | None
+) -> dict[str, Any]:
+    if not savings_data:
+        return config
+    breakdown = savings_data.get("actual_savings", {}).get("breakdown_by_type", {})
+    if not breakdown:
+        return config
+    config = config.copy()
+    for aws_name, key in _AWS_TYPE_TO_KEY.items():
+        pct = breakdown.get(aws_name, {}).get("savings_percentage")
+        if pct is not None:
+            config[f"{key}_savings_percentage"] = pct
+    return config
+
+
 def calculate_scheduler_preview(
     config: dict[str, Any],
     clients: dict[str, Any],
@@ -76,6 +95,8 @@ def calculate_scheduler_preview(
     Returns preview data with all combinations' recommendations.
     """
     from purchase_calculator import calculate_purchase_need
+
+    config = _inject_actual_savings_rates(config, savings_data)
 
     configured_key = _get_configured_key(config)
     configured_target = config.get("target_strategy_type", "fixed")
