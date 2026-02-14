@@ -211,11 +211,12 @@ def test_fixed_dichotomy_basic(fixed_dichotomy_config):
     )
 
     # At 50%, target 90%, max 50% → try 50%→100%>90%, try 25%→75%<=90%
+    # commitment = avg_hourly(10) * purchase_pct(25%) * (1 - savings(30%)) = 1.75
     assert len(result) == 1
     assert result[0]["sp_type"] == "compute"
     assert result[0]["strategy"] == "fixed+dichotomy"
     assert result[0]["purchase_percent"] == pytest.approx(25.0)
-    assert result[0]["hourly_commitment"] == pytest.approx(2.5)
+    assert result[0]["hourly_commitment"] == pytest.approx(1.75)
 
 
 def test_fixed_dichotomy_from_zero(fixed_dichotomy_config):
@@ -238,9 +239,10 @@ def test_fixed_dichotomy_from_zero(fixed_dichotomy_config):
     )
 
     # At 0%, max 50% fits under 90% target
+    # commitment = avg_hourly(100) * purchase_pct(50%) * (1 - savings(30%)) = 35
     assert len(result) == 1
     assert result[0]["purchase_percent"] == pytest.approx(50.0)
-    assert result[0]["hourly_commitment"] == pytest.approx(50.0)
+    assert result[0]["hourly_commitment"] == pytest.approx(35.0)
 
 
 def test_fixed_dichotomy_near_target(fixed_dichotomy_config):
@@ -262,9 +264,10 @@ def test_fixed_dichotomy_near_target(fixed_dichotomy_config):
         fixed_dichotomy_config, clients, spending_data
     )
 
+    # commitment = avg_hourly(100) * purchase_pct(~1.6%) * (1 - savings(30%))
     assert len(result) == 1
     assert result[0]["purchase_percent"] == pytest.approx(1.6, abs=0.1)
-    assert result[0]["hourly_commitment"] == pytest.approx(1.6, abs=0.1)
+    assert result[0]["hourly_commitment"] == pytest.approx(1.12, abs=0.1)
 
 
 def test_fixed_dichotomy_at_target(fixed_dichotomy_config):
@@ -386,7 +389,8 @@ def test_fixed_linear_basic():
     result = purchase_calculator.calculate_purchase_need(config, clients, spending_data)
 
     # Gap is 40%, step is 10% → purchase 10%
+    # commitment = avg_hourly(100) * purchase_pct(10%) * (1 - savings(30%)) = 7
     assert len(result) == 1
     assert result[0]["strategy"] == "fixed+linear"
     assert result[0]["purchase_percent"] == pytest.approx(10.0)
-    assert result[0]["hourly_commitment"] == pytest.approx(10.0)
+    assert result[0]["hourly_commitment"] == pytest.approx(7.0)

@@ -14,6 +14,8 @@ from follow_aws_strategy import calculate_purchase_need_follow_aws
 from split_strategies import calculate_split
 from target_strategies import resolve_target
 
+from shared import sp_calculations
+
 
 logger = logging.getLogger()
 
@@ -83,7 +85,11 @@ def _process_sp_type(
         return None
 
     purchase_percent = calculate_split(current_coverage, target_coverage, config)
-    hourly_commitment = avg_hourly_total * (purchase_percent / 100.0) if purchase_percent > 0 else 0
+    savings_pct = config.get("savings_percentage", 30.0)
+    od_coverage_to_add = (
+        avg_hourly_total * (purchase_percent / 100.0) if purchase_percent > 0 else 0
+    )
+    hourly_commitment = sp_calculations.commitment_from_coverage(od_coverage_to_add, savings_pct)
 
     min_commitment = config.get("min_commitment_per_plan", 0.001)
     if purchase_percent <= 0 or hourly_commitment < min_commitment:
@@ -106,6 +112,7 @@ def _process_sp_type(
         "sp_type": key,
         "hourly_commitment": hourly_commitment,
         "purchase_percent": purchase_percent,
+        "estimated_savings_percentage": savings_pct,
         "payment_option": config[sp_type["payment_option_config"]],
         "term": _get_term(key, config),
         "details": {
