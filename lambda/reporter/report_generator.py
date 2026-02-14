@@ -449,8 +449,10 @@ def _render_purchase_row(
         target_cell = '<td class="metric" style="color: #6c757d;">N/A</td>'
         coverage_class = ""
     else:
-        coverage_class = "green" if projected_cov >= target_coverage else "orange"
-        target_cell = f'<td class="metric">{target_coverage:.1f}%</td>'
+        avg_to_min_ratio = purchase.get("avg_to_min_ratio", 1.0)
+        target_min_hourly = target_coverage * avg_to_min_ratio
+        coverage_class = "green" if projected_cov >= target_min_hourly else "orange"
+        target_cell = f'<td class="metric">{target_min_hourly:.1f}%</td>'
 
     return f"""
                     <tr {row_style} data-tooltip="{tooltip}">
