@@ -214,8 +214,8 @@ def test_calculate_scheduler_preview_strategy_error_handling(
     assert result["strategies"]["fixed+linear"]["error"] is None
 
 
-def test_coverage_is_min_hourly_based(sample_config, mock_clients, aws_mock_builder):
-    """Coverage values should be expressed as percentage of min-hourly."""
+def test_coverage_is_avg_hourly_based(sample_config, mock_clients, aws_mock_builder):
+    """Coverage values should be expressed as percentage of avg-hourly."""
     mock_clients[
         "ce"
     ].get_savings_plans_purchase_recommendation.return_value = aws_mock_builder.recommendation(
@@ -273,10 +273,7 @@ def test_coverage_is_min_hourly_based(sample_config, mock_clients, aws_mock_buil
     db_purchase = next((p for p in fixed_linear_purchases if p["sp_type"] == "database"), None)
     assert db_purchase is not None
 
-    assert db_purchase["current_coverage"] > 0
-    # Coverage should NOT equal avg_coverage_total (5.0%)
-    assert db_purchase["current_coverage"] != pytest.approx(5.0, abs=0.5)
-    assert db_purchase["current_coverage"] == pytest.approx(7.69, abs=0.1)
+    assert db_purchase["current_coverage"] == pytest.approx(5.0, abs=0.1)
 
     # Math consistency: current + purchase = projected
     assert db_purchase["current_coverage"] + db_purchase["purchase_percent"] == pytest.approx(
