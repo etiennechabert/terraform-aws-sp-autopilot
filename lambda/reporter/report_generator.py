@@ -445,14 +445,13 @@ def _render_purchase_row(
     discount_tooltip = f"Computed with {discount_used:.1f}% discount rate"
 
     is_aws = purchase.get("is_aws_target", strategy_type.startswith("aws"))
-    if is_aws:
+    actual_target = purchase.get("target_coverage")
+    if is_aws or actual_target is None:
         target_cell = '<td class="metric" style="color: #6c757d;">N/A</td>'
         coverage_class = ""
     else:
-        avg_to_min_ratio = purchase.get("avg_to_min_ratio", 1.0)
-        target_min_hourly = target_coverage * avg_to_min_ratio
-        coverage_class = "green" if projected_cov >= target_min_hourly else "orange"
-        target_cell = f'<td class="metric">{target_min_hourly:.1f}%</td>'
+        coverage_class = "green" if projected_cov >= actual_target else "orange"
+        target_cell = f'<td class="metric">{actual_target:.1f}%</td>'
 
     return f"""
                     <tr {row_style} data-tooltip="{tooltip}">

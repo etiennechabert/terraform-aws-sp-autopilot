@@ -207,6 +207,10 @@ def _enrich_purchases(
             projected_coverage = 0.0
             avg_to_min_ratio = 1.0
 
+        details = plan.get("details", {})
+        target_avg = details.get("coverage", {}).get("target")
+        target_min_hourly = target_avg * avg_to_min_ratio if target_avg is not None else None
+
         has_existing_plans = type_breakdown.get("plans_count", 0) > 0
         entry = {
             "sp_type": sp_type,
@@ -214,6 +218,7 @@ def _enrich_purchases(
             "purchase_percent": purchase_percent,
             "current_coverage": current_coverage,
             "projected_coverage": projected_coverage,
+            "target_coverage": target_min_hourly,
             "payment_option": plan["payment_option"],
             "term": plan["term"],
             "discount_used": new_savings_pct,
