@@ -30,7 +30,10 @@ resource "aws_lambda_function" "scheduler" {
       ENABLE_DATABASE_SP          = tostring(local.database_enabled)
       ENABLE_SAGEMAKER_SP         = tostring(local.sagemaker_enabled)
       COVERAGE_TARGET_PERCENT     = tostring(local.coverage_target_percent)
-      PURCHASE_STRATEGY_TYPE      = local.purchase_strategy_type
+      TARGET_STRATEGY_TYPE        = local.target_strategy_type
+      SPLIT_STRATEGY_TYPE         = local.split_strategy_type
+      DYNAMIC_RISK_LEVEL          = local.dynamic_risk_level
+      LINEAR_STEP_PERCENT         = tostring(local.linear_step_percent)
       MAX_PURCHASE_PERCENT        = tostring(local.max_purchase_percent)
       MIN_PURCHASE_PERCENT        = tostring(local.min_purchase_percent)
       RENEWAL_WINDOW_DAYS         = tostring(local.renewal_window_days)
@@ -124,7 +127,10 @@ resource "aws_lambda_function" "reporter" {
       ENABLE_DATABASE_SP          = tostring(local.database_enabled)
       ENABLE_SAGEMAKER_SP         = tostring(local.sagemaker_enabled)
       COVERAGE_TARGET_PERCENT     = tostring(local.coverage_target_percent)
-      PURCHASE_STRATEGY_TYPE      = local.purchase_strategy_type
+      TARGET_STRATEGY_TYPE        = local.target_strategy_type
+      SPLIT_STRATEGY_TYPE         = local.split_strategy_type
+      DYNAMIC_RISK_LEVEL          = local.dynamic_risk_level
+      LINEAR_STEP_PERCENT         = tostring(local.linear_step_percent)
       MAX_PURCHASE_PERCENT        = tostring(local.max_purchase_percent)
       MIN_PURCHASE_PERCENT        = tostring(local.min_purchase_percent)
       COMPUTE_SP_TERM             = local.compute_term
@@ -172,16 +178,44 @@ data "archive_file" "scheduler" {
     filename = "recommendations.py"
   }
   source {
-    content  = file("${path.module}/lambda/scheduler/dichotomy_strategy.py")
-    filename = "dichotomy_strategy.py"
-  }
-  source {
-    content  = file("${path.module}/lambda/scheduler/fixed_strategy.py")
-    filename = "fixed_strategy.py"
-  }
-  source {
     content  = file("${path.module}/lambda/scheduler/follow_aws_strategy.py")
     filename = "follow_aws_strategy.py"
+  }
+
+  # Target strategy modules
+  source {
+    content  = file("${path.module}/lambda/scheduler/target_strategies/__init__.py")
+    filename = "target_strategies/__init__.py"
+  }
+  source {
+    content  = file("${path.module}/lambda/scheduler/target_strategies/fixed_target.py")
+    filename = "target_strategies/fixed_target.py"
+  }
+  source {
+    content  = file("${path.module}/lambda/scheduler/target_strategies/aws_target.py")
+    filename = "target_strategies/aws_target.py"
+  }
+  source {
+    content  = file("${path.module}/lambda/scheduler/target_strategies/dynamic_target.py")
+    filename = "target_strategies/dynamic_target.py"
+  }
+
+  # Split strategy modules
+  source {
+    content  = file("${path.module}/lambda/scheduler/split_strategies/__init__.py")
+    filename = "split_strategies/__init__.py"
+  }
+  source {
+    content  = file("${path.module}/lambda/scheduler/split_strategies/one_shot_split.py")
+    filename = "split_strategies/one_shot_split.py"
+  }
+  source {
+    content  = file("${path.module}/lambda/scheduler/split_strategies/linear_split.py")
+    filename = "split_strategies/linear_split.py"
+  }
+  source {
+    content  = file("${path.module}/lambda/scheduler/split_strategies/dichotomy_split.py")
+    filename = "split_strategies/dichotomy_split.py"
   }
 
   # Include shared module
@@ -224,6 +258,10 @@ data "archive_file" "scheduler" {
   source {
     content  = file("${path.module}/lambda/shared/constants.py")
     filename = "shared/constants.py"
+  }
+  source {
+    content  = file("${path.module}/lambda/shared/optimal_coverage.py")
+    filename = "shared/optimal_coverage.py"
   }
   source {
     content  = file("${path.module}/lambda/shared/__init__.py")
@@ -318,20 +356,52 @@ data "archive_file" "reporter" {
 
   # Include scheduler strategy modules (needed by scheduler_preview.py)
   source {
-    content  = file("${path.module}/lambda/scheduler/fixed_strategy.py")
-    filename = "fixed_strategy.py"
-  }
-  source {
-    content  = file("${path.module}/lambda/scheduler/dichotomy_strategy.py")
-    filename = "dichotomy_strategy.py"
-  }
-  source {
     content  = file("${path.module}/lambda/scheduler/follow_aws_strategy.py")
     filename = "follow_aws_strategy.py"
   }
   source {
     content  = file("${path.module}/lambda/scheduler/recommendations.py")
     filename = "recommendations.py"
+  }
+  source {
+    content  = file("${path.module}/lambda/scheduler/purchase_calculator.py")
+    filename = "purchase_calculator.py"
+  }
+
+  # Target strategy modules
+  source {
+    content  = file("${path.module}/lambda/scheduler/target_strategies/__init__.py")
+    filename = "target_strategies/__init__.py"
+  }
+  source {
+    content  = file("${path.module}/lambda/scheduler/target_strategies/fixed_target.py")
+    filename = "target_strategies/fixed_target.py"
+  }
+  source {
+    content  = file("${path.module}/lambda/scheduler/target_strategies/aws_target.py")
+    filename = "target_strategies/aws_target.py"
+  }
+  source {
+    content  = file("${path.module}/lambda/scheduler/target_strategies/dynamic_target.py")
+    filename = "target_strategies/dynamic_target.py"
+  }
+
+  # Split strategy modules
+  source {
+    content  = file("${path.module}/lambda/scheduler/split_strategies/__init__.py")
+    filename = "split_strategies/__init__.py"
+  }
+  source {
+    content  = file("${path.module}/lambda/scheduler/split_strategies/one_shot_split.py")
+    filename = "split_strategies/one_shot_split.py"
+  }
+  source {
+    content  = file("${path.module}/lambda/scheduler/split_strategies/linear_split.py")
+    filename = "split_strategies/linear_split.py"
+  }
+  source {
+    content  = file("${path.module}/lambda/scheduler/split_strategies/dichotomy_split.py")
+    filename = "split_strategies/dichotomy_split.py"
   }
 
   # Include shared module

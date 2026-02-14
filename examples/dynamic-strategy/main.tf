@@ -1,18 +1,23 @@
-# Dichotomy Purchase Strategy Example
+# Dynamic Target + Dichotomy Split
 #
-# This example demonstrates the dichotomy purchase strategy, which uses
-# exponentially decreasing purchase sizes based on coverage gap:
+# This example demonstrates the dynamic target + dichotomy split strategy:
+# - Target: dynamically calculated based on usage patterns (balanced risk level)
+# - Split: dichotomy (binary search) for adaptive purchase sizing
 #
-# Strategy Behavior (max_purchase_percent = 50%, target = 90%, min = 1%):
-# - Month 1: At 0% → Try 50% (0+50=50% ✓) → Purchase 50%
-# - Month 2: At 50% → Try 50% (100%) ✗ → Try 25% (75% ✓) → Purchase 25%
-# - Month 3: At 75% → Try 50% ✗ → Try 25% (100%) ✗ → Try 12.5% (87.5% ✓) → Purchase 12.5%
-# - Month 4: At 87.5% → Keep halving until fits → Purchase 1.6% (rounded from 1.5625%)
+# Dynamic Target (balanced):
+# Uses the knee-point algorithm to find the optimal coverage target where
+# marginal savings efficiency starts dropping significantly. This adapts
+# automatically to your workload patterns.
+#
+# Dichotomy Split Behavior (max_purchase_percent = 50%, min = 1%):
+# - Month 1: At 0% → Try 50% (fits under target) → Purchase 50%
+# - Month 2: At 50% → Try 50% (exceeds target) → Try 25% (fits) → Purchase 25%
+# - Month 3: At 75% → Keep halving until it fits under target
+# - ...continues until target reached
 #
 # Benefits:
-# - Adaptive purchase sizing based on coverage gap
-# - Creates stable, distributed commitments over time
-# - Natural replacement of large expiring plans with smaller purchases
+# - Target adapts to actual workload patterns (no manual tuning)
+# - Dichotomy creates stable, distributed commitments over time
 # - Prevents over-commitment through exponential halving
 
 terraform {
@@ -36,17 +41,21 @@ module "savings_plans" {
   # Resource naming (can be overridden for testing)
   name_prefix = var.name_prefix
 
-  # Purchase strategy - DICHOTOMY for adaptive sizing
+  # Purchase strategy - dynamic target with dichotomy split
   purchase_strategy = {
-    coverage_target_percent = 90       # Target 90% coverage
-    max_coverage_cap        = 95       # Safety cap at 95%
-    lookback_days           = 13       # Max for HOURLY granularity (recommended)
-    granularity             = "HOURLY" # Recommended for accurate analysis
+    max_coverage_cap = 95       # Safety cap at 95%
+    lookback_days    = 13       # Max for HOURLY granularity (recommended)
+    granularity      = "HOURLY" # Recommended for accurate analysis
 
-    # Dichotomy strategy - exponentially decreasing purchase sizes
-    dichotomy = {
-      max_purchase_percent = 50 # Start at 50% of AWS recommendation
-      min_purchase_percent = 1  # Minimum purchase granularity (never buy less)
+    target = {
+      dynamic = { risk_level = "balanced" } # Knee-point algorithm
+    }
+
+    split = {
+      dichotomy = {
+        max_purchase_percent = 50 # Start at 50%
+        min_purchase_percent = 1  # Minimum purchase granularity
+      }
     }
   }
 
@@ -59,12 +68,10 @@ module "savings_plans" {
 
     database = {
       enabled = false
-      # plan_type not needed when disabled
     }
 
     sagemaker = {
       enabled = false
-      # plan_type not needed when disabled
     }
   }
 
@@ -115,7 +122,7 @@ module "savings_plans" {
   tags = {
     Environment = "production"
     ManagedBy   = "terraform"
-    Strategy    = "dichotomy"
+    Strategy    = "dynamic-dichotomy"
     Purpose     = "savings-plans-automation"
   }
 }
@@ -145,37 +152,3 @@ output "module_configuration" {
   description = "Summary of module configuration"
   value       = module.savings_plans.module_configuration
 }
-
-# Example progression simulation
-# ===============================
-# Assuming $100/hour on-demand spend:
-#
-# Month 1:
-# - Current coverage: 0%
-# - Try: 50% → 0+50=50% ✓
-# - AWS recommendation: $90/hour
-# - Purchase: $45/hour (50% of $90)
-# - New coverage: 50%
-#
-# Month 2:
-# - Current coverage: 50%
-# - Try: 50% (100%) ✗ → 25% (75%) ✓
-# - AWS recommendation: $40/hour
-# - Purchase: $10/hour (25% of $40)
-# - New coverage: 75%
-#
-# Month 3:
-# - Current coverage: 75%
-# - Try: 50% ✗ → 25% (100%) ✗ → 12.5% (87.5%) ✓
-# - AWS recommendation: $13.50/hour
-# - Purchase: $1.69/hour (12.5% of $13.50)
-# - New coverage: 87.5%
-#
-# Month 4:
-# - Current coverage: 87.5%
-# - Try: Keep halving → 1.5625% → round to 1.6% ✓
-# - AWS recommendation: $2.50/hour
-# - Purchase: $0.04/hour (1.6% of $2.50)
-# - New coverage: 89.1%
-#
-# ...continues until 90% target reached

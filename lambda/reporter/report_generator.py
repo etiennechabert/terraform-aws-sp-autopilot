@@ -362,27 +362,37 @@ def _calculate_optimal_coverage(
 
 
 def _build_strategy_tooltip(
-    strategy_type: str,
+    strategy_key: str,
     strategy_desc: str,
     config: dict[str, Any],
     is_configured: bool,
 ) -> str:
-    """Build tooltip text for a strategy."""
-    if strategy_type == "fixed":
-        if is_configured:
-            params = f"max purchase: {config.get('max_purchase_percent', 10.0):.0f}%"
-        else:
-            params = "default: max purchase 10%"
-        return f"{strategy_desc} ({params}) | Configure: PURCHASE_STRATEGY_TYPE=fixed, MAX_PURCHASE_PERCENT"
-    if strategy_type == "dichotomy":
-        if is_configured:
-            max_p = config.get("max_purchase_percent", 50.0)
-            min_p = config.get("min_purchase_percent", 1.0)
-            params = f"max: {max_p:.0f}%, min: {min_p:.0f}%"
-        else:
-            params = "default: max 50%, min 1%"
-        return f"{strategy_desc} ({params}) | Configure: PURCHASE_STRATEGY_TYPE=dichotomy, MAX_PURCHASE_PERCENT, MIN_PURCHASE_PERCENT"
-    return f"{strategy_desc} | Configure: PURCHASE_STRATEGY_TYPE=follow_aws"
+    """Build tooltip text for a strategy combination."""
+    parts = strategy_key.split("+")
+    target = parts[0] if parts else ""
+    split = parts[1] if len(parts) > 1 else ""
+
+    if target == "aws":
+        return f"{strategy_desc} | Configure: target {{ aws = {{}} }}"
+
+    params_parts = []
+    if target == "fixed":
+        cov = config.get("coverage_target_percent", 90.0)
+        params_parts.append(f"target: {cov:.0f}%")
+    elif target == "dynamic":
+        risk = config.get("dynamic_risk_level", "balanced")
+        params_parts.append(f"risk: {risk}")
+
+    if split == "linear":
+        step = config.get("linear_step_percent", config.get("max_purchase_percent", 10.0))
+        params_parts.append(f"step: {step:.0f}%")
+    elif split == "dichotomy":
+        max_p = config.get("max_purchase_percent", 50.0)
+        min_p = config.get("min_purchase_percent", 1.0)
+        params_parts.append(f"max: {max_p:.0f}%, min: {min_p:.0f}%")
+
+    params = ", ".join(params_parts) if params_parts else ""
+    return f"{strategy_desc} ({params})" if params else strategy_desc
 
 
 def _render_no_purchase_row(strategy_display: str, is_configured: bool, tooltip: str) -> str:
@@ -434,14 +444,14 @@ def _render_purchase_row(
     discount_used = purchase.get("discount_used", 0.0)
     discount_tooltip = f"Computed with {discount_used:.1f}% discount rate"
 
-    if strategy_type == "follow_aws":
+    is_aws = purchase.get("is_aws_target", strategy_type.startswith("aws"))
+    actual_target = purchase.get("target_coverage")
+    if is_aws or actual_target is None:
         target_cell = '<td class="metric" style="color: #6c757d;">N/A</td>'
         coverage_class = ""
     else:
-        avg_to_min_ratio = purchase.get("avg_to_min_ratio", 1.0)
-        target_min_hourly = target_coverage * avg_to_min_ratio
-        coverage_class = "green" if projected_cov >= target_min_hourly else "orange"
-        target_cell = f'<td class="metric">{target_min_hourly:.1f}%</td>'
+        coverage_class = "green" if projected_cov >= actual_target else "orange"
+        target_cell = f'<td class="metric">{actual_target:.1f}%</td>'
 
     return f"""
                     <tr {row_style} data-tooltip="{tooltip}">
@@ -461,16 +471,14 @@ def _render_sp_type_scheduler_preview(
     sp_type: str, preview_data: dict[str, Any] | None, config: dict[str, Any]
 ) -> str:
     """Render scheduler preview comparison for a specific SP type."""
-    strategy_names = {
-        "fixed": "Fixed",
-        "dichotomy": "Dichotomy",
-        "follow_aws": "Follow AWS",
-    }
-
     strategy_descriptions = {
-        "fixed": "Purchases a fixed percentage of uncovered spend at a time.",
-        "dichotomy": "Uses exponentially decreasing purchase sizes based on coverage gap.",
-        "follow_aws": "Follows AWS Cost Explorer recommendations. Tends to aim for 100% coverage to min-hourly in a single purchase (no ramp-up, high risk of waste if workload decreases).",
+        "fixed+linear": "Fixed target with linear step-based purchases.",
+        "fixed+dichotomy": "Fixed target with exponentially decreasing purchase sizes.",
+        "fixed+one_shot": "Fixed target purchased in a single step.",
+        "dynamic+linear": "Dynamic target (risk-based) with linear step purchases.",
+        "dynamic+dichotomy": "Dynamic target (risk-based) with exponentially decreasing purchases.",
+        "dynamic+one_shot": "Dynamic target (risk-based) purchased in a single step.",
+        "aws+one_shot": "Follows AWS recommendations directly.",
     }
 
     if not preview_data:
@@ -484,18 +492,20 @@ def _render_sp_type_scheduler_preview(
         """
 
     strategies = preview_data.get("strategies", {})
-    configured_strategy = preview_data.get("configured_strategy", "fixed")
+    configured_strategy = preview_data.get("configured_strategy", "fixed+linear")
     target_coverage = config.get("coverage_target_percent", 90.0)
 
     strategy_purchases = {}
-    for strategy_name, strategy_data in strategies.items():
+    for strategy_key, strategy_data in strategies.items():
         for purchase in strategy_data.get("purchases", []):
             if purchase.get("sp_type") == sp_type:
-                strategy_purchases[strategy_name] = purchase
+                strategy_purchases[strategy_key] = purchase
                 break
 
     if not strategy_purchases:
         return ""
+
+    strategy_order = preview_data.get("strategy_order", list(strategies.keys()))
 
     html = """
         <div style="margin-top: 30px; padding-top: 20px; border-top: 2px solid #e0e0e0;">
@@ -516,19 +526,22 @@ def _render_sp_type_scheduler_preview(
                     <tbody>
     """
 
-    for strategy_type in ["fixed", "dichotomy", "follow_aws"]:
-        purchase = strategy_purchases.get(strategy_type)
-        strategy_display = strategy_names.get(strategy_type, strategy_type)
-        is_configured = strategy_type == configured_strategy
-        strategy_desc = strategy_descriptions[strategy_type]
+    for strategy_key in strategy_order:
+        strategy_data = strategies.get(strategy_key)
+        if not strategy_data:
+            continue
+        purchase = strategy_purchases.get(strategy_key)
+        strategy_display = strategy_data.get("label", strategy_key)
+        is_configured = strategy_key == configured_strategy
+        strategy_desc = strategy_descriptions.get(strategy_key, "")
 
-        tooltip = _build_strategy_tooltip(strategy_type, strategy_desc, config, is_configured)
+        tooltip = _build_strategy_tooltip(strategy_key, strategy_desc, config, is_configured)
 
         if not purchase:
             html += _render_no_purchase_row(strategy_display, is_configured, tooltip)
         else:
             html += _render_purchase_row(
-                strategy_type, strategy_display, is_configured, tooltip, purchase, target_coverage
+                strategy_key, strategy_display, is_configured, tooltip, purchase, target_coverage
             )
 
     html += """

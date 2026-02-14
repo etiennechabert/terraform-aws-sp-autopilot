@@ -36,38 +36,30 @@ variable "lambda_config" {
 # Purchase Strategy Configuration
 
 variable "purchase_strategy" {
-  description = "Purchase strategy configuration including coverage targets and risk management"
+  description = "Purchase strategy configuration with orthogonal target + split dimensions"
   type = object({
-    # Coverage targets
-    coverage_target_percent = number
     max_coverage_cap        = number
-
-    # Historical data settings
-    lookback_days = optional(number, 13)
-    min_data_days = optional(number, 14)
-    granularity   = optional(string, "HOURLY")
-
-    # Renewal and commitment settings
+    lookback_days           = optional(number, 13)
+    min_data_days           = optional(number, 14)
+    granularity             = optional(string, "HOURLY")
     renewal_window_days     = optional(number, 7)
     min_commitment_per_plan = optional(number, 0.001)
 
-    # Strategy type - exactly one must be defined
-    follow_aws = optional(object({}))
+    target = object({
+      fixed   = optional(object({ coverage_percent = number }))
+      aws     = optional(object({}))
+      dynamic = optional(object({ risk_level = string }))
+    })
 
-    fixed = optional(object({
-      max_purchase_percent = number
-    }))
-
-    dichotomy = optional(object({
-      max_purchase_percent = number
-      min_purchase_percent = number
+    split = optional(object({
+      one_shot = optional(object({}))
+      linear   = optional(object({ step_percent = number }))
+      dichotomy = optional(object({
+        max_purchase_percent = number
+        min_purchase_percent = number
+      }))
     }))
   })
-
-  validation {
-    condition     = var.purchase_strategy.coverage_target_percent >= 1 && var.purchase_strategy.coverage_target_percent <= 100
-    error_message = "coverage_target_percent must be between 1 and 100."
-  }
 
   validation {
     condition     = var.purchase_strategy.max_coverage_cap <= 100
@@ -75,42 +67,82 @@ variable "purchase_strategy" {
   }
 
   validation {
-    condition     = var.purchase_strategy.coverage_target_percent <= var.purchase_strategy.max_coverage_cap
-    error_message = "coverage_target_percent must be <= max_coverage_cap."
-  }
-
-  validation {
     condition     = try(var.purchase_strategy.min_commitment_per_plan >= 0.001, true)
     error_message = "min_commitment_per_plan must be at least 0.001 (AWS minimum)."
   }
 
+  # Exactly one target must be defined
   validation {
     condition = (
-      (var.purchase_strategy.follow_aws != null && var.purchase_strategy.fixed == null && var.purchase_strategy.dichotomy == null) ||
-      (var.purchase_strategy.follow_aws == null && var.purchase_strategy.fixed != null && var.purchase_strategy.dichotomy == null) ||
-      (var.purchase_strategy.follow_aws == null && var.purchase_strategy.fixed == null && var.purchase_strategy.dichotomy != null)
+      (var.purchase_strategy.target.fixed != null && var.purchase_strategy.target.aws == null && var.purchase_strategy.target.dynamic == null) ||
+      (var.purchase_strategy.target.fixed == null && var.purchase_strategy.target.aws != null && var.purchase_strategy.target.dynamic == null) ||
+      (var.purchase_strategy.target.fixed == null && var.purchase_strategy.target.aws == null && var.purchase_strategy.target.dynamic != null)
     )
-    error_message = "Exactly one purchase strategy (follow_aws, fixed, or dichotomy) must be defined."
+    error_message = "Exactly one target strategy (fixed, aws, or dynamic) must be defined."
   }
 
+  # If target=aws, split must be null (implies one_shot)
   validation {
     condition = (
-      var.purchase_strategy.fixed != null ?
-      var.purchase_strategy.fixed.max_purchase_percent > 0 && var.purchase_strategy.fixed.max_purchase_percent <= 100 :
-      true
+      var.purchase_strategy.target.aws != null ? var.purchase_strategy.split == null : true
     )
-    error_message = "fixed.max_purchase_percent must be between 0 and 100."
+    error_message = "AWS target strategy does not use split (purchases follow AWS recommendations directly)."
   }
 
+  # If target=fixed or dynamic, exactly one split must be defined
   validation {
     condition = (
-      var.purchase_strategy.dichotomy != null ?
-      (var.purchase_strategy.dichotomy.min_purchase_percent > 0 &&
-        var.purchase_strategy.dichotomy.max_purchase_percent <= 100 &&
-      var.purchase_strategy.dichotomy.min_purchase_percent < var.purchase_strategy.dichotomy.max_purchase_percent) :
+      var.purchase_strategy.target.aws != null ? true :
+      var.purchase_strategy.split != null && (
+        (var.purchase_strategy.split.one_shot != null && var.purchase_strategy.split.linear == null && var.purchase_strategy.split.dichotomy == null) ||
+        (var.purchase_strategy.split.one_shot == null && var.purchase_strategy.split.linear != null && var.purchase_strategy.split.dichotomy == null) ||
+        (var.purchase_strategy.split.one_shot == null && var.purchase_strategy.split.linear == null && var.purchase_strategy.split.dichotomy != null)
+      )
+    )
+    error_message = "For fixed/dynamic targets, exactly one split strategy (one_shot, linear, or dichotomy) must be defined."
+  }
+
+  # fixed.coverage_percent validation
+  validation {
+    condition = (
+      var.purchase_strategy.target.fixed != null ?
+      var.purchase_strategy.target.fixed.coverage_percent >= 1 && var.purchase_strategy.target.fixed.coverage_percent <= 300 &&
+      var.purchase_strategy.target.fixed.coverage_percent <= var.purchase_strategy.max_coverage_cap :
       true
     )
-    error_message = "For dichotomy strategy: 0 < min_purchase_percent < max_purchase_percent <= 100."
+    error_message = "fixed.coverage_percent must be between 1 and 300 and <= max_coverage_cap."
+  }
+
+  # dynamic.risk_level validation
+  validation {
+    condition = (
+      var.purchase_strategy.target.dynamic != null ?
+      contains(["too_prudent", "min_hourly", "balanced", "aggressive"], var.purchase_strategy.target.dynamic.risk_level) :
+      true
+    )
+    error_message = "dynamic.risk_level must be one of: too_prudent, min_hourly, balanced, aggressive."
+  }
+
+  # linear.step_percent validation
+  validation {
+    condition = (
+      try(var.purchase_strategy.split.linear, null) != null ?
+      var.purchase_strategy.split.linear.step_percent > 0 && var.purchase_strategy.split.linear.step_percent <= 100 :
+      true
+    )
+    error_message = "linear.step_percent must be between 0 and 100."
+  }
+
+  # dichotomy min < max validation
+  validation {
+    condition = (
+      try(var.purchase_strategy.split.dichotomy, null) != null ?
+      (var.purchase_strategy.split.dichotomy.min_purchase_percent > 0 &&
+        var.purchase_strategy.split.dichotomy.max_purchase_percent <= 100 &&
+      var.purchase_strategy.split.dichotomy.min_purchase_percent < var.purchase_strategy.split.dichotomy.max_purchase_percent) :
+      true
+    )
+    error_message = "For dichotomy split: 0 < min_purchase_percent < max_purchase_percent <= 100."
   }
 
   validation {

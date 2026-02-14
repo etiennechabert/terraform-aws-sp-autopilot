@@ -89,11 +89,28 @@ CONFIG_SCHEMA = {
         "env_var": "COVERAGE_TARGET_PERCENT",
     },
     # Scheduler strategy parameters (for preview simulation)
-    "purchase_strategy_type": {
+    "target_strategy_type": {
         "required": False,
         "type": "str",
         "default": "fixed",
-        "env_var": "PURCHASE_STRATEGY_TYPE",
+        "env_var": "TARGET_STRATEGY_TYPE",
+    },
+    "split_strategy_type": {
+        "required": False,
+        "type": "str",
+        "default": "linear",
+        "env_var": "SPLIT_STRATEGY_TYPE",
+    },
+    "dynamic_risk_level": {
+        "required": False,
+        "type": "str",
+        "env_var": "DYNAMIC_RISK_LEVEL",
+    },
+    "savings_percentage": {
+        "required": False,
+        "type": "float",
+        "default": "30.0",
+        "env_var": "SAVINGS_PERCENTAGE",
     },
     "max_purchase_percent": {
         "required": False,
@@ -106,6 +123,11 @@ CONFIG_SCHEMA = {
         "type": "float",
         "default": "1.0",
         "env_var": "MIN_PURCHASE_PERCENT",
+    },
+    "linear_step_percent": {
+        "required": False,
+        "type": "float",
+        "env_var": "LINEAR_STEP_PERCENT",
     },
     "compute_sp_term": {
         "required": False,

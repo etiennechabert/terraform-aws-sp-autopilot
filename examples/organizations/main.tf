@@ -1,10 +1,10 @@
-# AWS Organizations - Enterprise Deployment
+# AWS Target + One Shot (Organizations)
 #
-# This example demonstrates deploying Savings Plans automation across an
-# AWS Organization:
+# This example demonstrates the AWS target strategy (one_shot implied):
+# - Target: follows AWS Cost Explorer recommendations directly
+# - Split: one_shot (implicit - purchases the full AWS recommendation)
 # - Organization-wide Savings Plans (management account role)
 # - Both Compute and Database Savings Plans
-# - Production-grade coverage targets
 # - Comprehensive monitoring and notifications
 # - Deployed from a delegated administrator or management account
 
@@ -26,17 +26,17 @@ provider "aws" {
 module "savings_plans" {
   source = "etiennechabert/sp-autopilot/aws"
 
-  # Purchase strategy - production targets for organization
+  # Purchase strategy - follow AWS recommendations directly
   purchase_strategy = {
-    coverage_target_percent = 85       # Target 85% coverage across organization
-    max_coverage_cap        = 95       # Hard cap at 95% to maintain flexibility
-    lookback_days           = 13       # Max for HOURLY granularity (recommended)
-    granularity             = "HOURLY" # Recommended for accurate analysis
+    max_coverage_cap = 95       # Hard cap at 95% to maintain flexibility
+    lookback_days    = 13       # Max for HOURLY granularity (recommended)
+    granularity      = "HOURLY" # Recommended for accurate analysis
 
-    # Moderate commitment growth for organization
-    fixed = {
-      max_purchase_percent = 8 # Max 8% of monthly org spend per cycle
+    target = {
+      aws = {} # Follow AWS Cost Explorer recommendations
     }
+
+    # No split needed - aws target purchases the full recommendation
   }
 
   # Savings Plans configuration - both Compute and Database for comprehensive coverage

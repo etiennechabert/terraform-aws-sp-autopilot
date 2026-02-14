@@ -1,4 +1,4 @@
-# Variables for dichotomy-strategy example
+# Variables for dynamic-strategy example
 # These can be overridden for testing or customization
 
 variable "name_prefix" {

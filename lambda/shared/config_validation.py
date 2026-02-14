@@ -14,8 +14,11 @@ VALID_PAYMENT_OPTIONS = ["NO_UPFRONT", "ALL_UPFRONT", "PARTIAL_UPFRONT"]
 # Valid values for term field
 VALID_TERMS = ["ONE_YEAR", "THREE_YEAR"]
 
-# Valid values for purchase_strategy_type field
-VALID_PURCHASE_STRATEGIES = ["follow_aws", "fixed", "dichotomy"]
+VALID_TARGET_STRATEGIES = ["fixed", "aws", "dynamic"]
+
+VALID_SPLIT_STRATEGIES = ["one_shot", "linear", "dichotomy"]
+
+VALID_RISK_LEVELS = ["too_prudent", "min_hourly", "balanced", "aggressive"]
 
 # Valid values for report_format field
 VALID_REPORT_FORMATS = ["html", "json", "csv"]
@@ -228,13 +231,45 @@ def _validate_sp_payment_options(config: dict[str, Any]) -> None:
 
 
 def _validate_strategy_and_granularity(config: dict[str, Any]) -> None:
-    """Validate purchase strategy type and granularity."""
-    if "purchase_strategy_type" in config:
-        strategy_type = config["purchase_strategy_type"]
-        if strategy_type not in VALID_PURCHASE_STRATEGIES:
+    """Validate target/split strategy types and granularity."""
+    if "target_strategy_type" in config:
+        target_type = config["target_strategy_type"]
+        if target_type not in VALID_TARGET_STRATEGIES:
             raise ValueError(
-                f"Invalid purchase_strategy_type: '{strategy_type}'. "
-                f"Must be one of: {', '.join(VALID_PURCHASE_STRATEGIES)}"
+                f"Invalid target_strategy_type: '{target_type}'. "
+                f"Must be one of: {', '.join(VALID_TARGET_STRATEGIES)}"
+            )
+
+    if "split_strategy_type" in config:
+        split_type = config["split_strategy_type"]
+        if split_type not in VALID_SPLIT_STRATEGIES:
+            raise ValueError(
+                f"Invalid split_strategy_type: '{split_type}'. "
+                f"Must be one of: {', '.join(VALID_SPLIT_STRATEGIES)}"
+            )
+
+    # Cross-validation: aws target -> split must be one_shot
+    if config.get("target_strategy_type") == "aws" and config.get("split_strategy_type") not in (
+        None,
+        "one_shot",
+    ):
+        raise ValueError(
+            "AWS target strategy requires split_strategy_type='one_shot' "
+            f"(got '{config.get('split_strategy_type')}')"
+        )
+
+    # Cross-validation: dynamic target -> risk_level required
+    if config.get("target_strategy_type") == "dynamic":
+        risk_level = config.get("dynamic_risk_level")
+        if not risk_level:
+            raise ValueError(
+                "Dynamic target strategy requires 'dynamic_risk_level'. "
+                f"Must be one of: {', '.join(VALID_RISK_LEVELS)}"
+            )
+        if risk_level not in VALID_RISK_LEVELS:
+            raise ValueError(
+                f"Invalid dynamic_risk_level: '{risk_level}'. "
+                f"Must be one of: {', '.join(VALID_RISK_LEVELS)}"
             )
 
     if "granularity" in config:

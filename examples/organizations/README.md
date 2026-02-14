@@ -213,10 +213,10 @@ notifications = {
 }
 
 purchase_strategy = {
-  coverage_target_percent = 85
-  max_coverage_cap        = 95
-  fixed = {
-    max_purchase_percent = 8
+  max_coverage_cap = 95
+
+  target = {
+    aws = {}  # Follow AWS recommendations
   }
 }
 ```
@@ -292,10 +292,10 @@ After enabling:
 
 ```hcl
 purchase_strategy = {
-  coverage_target_percent = 85  # Higher for stable orgs
-  max_coverage_cap        = 95  # Hard ceiling
-  fixed = {
-    max_purchase_percent = 8  # % of monthly on-demand spend
+  max_coverage_cap = 95  # Hard ceiling
+
+  target = {
+    aws = {}  # Follow AWS Cost Explorer recommendations
   }
 }
 ```
