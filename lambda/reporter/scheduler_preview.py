@@ -208,8 +208,7 @@ def _enrich_purchases(
             avg_to_min_ratio = 1.0
 
         details = plan.get("details", {})
-        target_avg = details.get("coverage", {}).get("target")
-        target_min_hourly = target_avg * avg_to_min_ratio if target_avg is not None else None
+        target_min_hourly = details.get("coverage", {}).get("target")
 
         has_existing_plans = type_breakdown.get("plans_count", 0) > 0
         entry = {

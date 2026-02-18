@@ -217,7 +217,7 @@ def calculate_knee_point(
     """
     Calculate the knee point on the savings curve.
 
-    This is the "balanced" strategy — where marginal efficiency drops to 30%
+    This is the "balanced" strategy — where marginal efficiency drops to 40%
     of its peak. Direct port of docs/js/main.js calculateKneePoint().
 
     CROSS-LANGUAGE SYNCHRONIZATION: Keep in sync with docs/js/main.js:696-776.
@@ -287,7 +287,7 @@ def calculate_knee_point(
 
     max_marginal_rate = max(r["marginal_rate"] for r in marginal_rates)
 
-    threshold = max_marginal_rate * 0.30
+    threshold = max_marginal_rate * 0.40
 
     knee_index = 0
     for i, rate in enumerate(marginal_rates):

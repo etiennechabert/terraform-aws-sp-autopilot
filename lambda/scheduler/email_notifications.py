@@ -54,7 +54,7 @@ def _format_plans_block(purchase_plans: list[dict[str, Any]]) -> list[str]:
         lines.extend(
             [
                 f"{i}. {sp_type.upper()} Savings Plan",
-                f"   Hourly Commitment: ${hourly_commitment:.4f}/hour",
+                f"   Added Commitment: ${hourly_commitment:.4f}/hour",
                 f"   Term: {term}",
                 f"   Payment Option: {payment_option}",
                 f"   Estimated Annual Cost: ${annual_cost:,.2f}",
