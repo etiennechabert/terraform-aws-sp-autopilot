@@ -65,13 +65,19 @@ def _process_sp_type(
         return None
 
     summary = data["summary"]
-    current_coverage = summary["avg_coverage_total"]
+    current_coverage_avg = summary["avg_coverage_total"]
     avg_hourly_total = summary["avg_hourly_total"]
     avg_hourly_covered = summary["avg_hourly_covered"]
 
     timeseries = data.get("timeseries", [])
     total_costs = [item.get("total", 0.0) for item in timeseries if item.get("total", 0.0) > 0]
     min_hourly = min(total_costs) if total_costs else avg_hourly_total
+
+    avg_to_min_ratio = (
+        avg_hourly_total / min_hourly if min_hourly > 0 and avg_hourly_total > 0 else 1.0
+    )
+    current_coverage = current_coverage_avg * avg_to_min_ratio
+    target_coverage = target_coverage * avg_to_min_ratio
 
     coverage_gap = target_coverage - current_coverage
 
