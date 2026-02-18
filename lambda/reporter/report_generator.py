@@ -514,7 +514,7 @@ def _render_sp_type_scheduler_preview(
                     <thead>
                         <tr>
                             <th>Strategy</th>
-                            <th>Hourly Commitment</th>
+                            <th>Added Commitment</th>
                             <th>Current Coverage</th>
                             <th>Added Coverage</th>
                             <th>Projected Coverage</th>
