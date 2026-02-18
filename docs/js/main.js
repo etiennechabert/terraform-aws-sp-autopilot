@@ -753,9 +753,9 @@
         // Find the peak marginal rate (usually early in the curve)
         const maxMarginalRate = Math.max(...marginalRates.map(r => r.marginalRate));
 
-        // Find where marginal rate drops to 30% of its peak
+        // Find where marginal rate drops to 40% of its peak
         // This is the "knee" - still good returns but not peak efficiency
-        const threshold = maxMarginalRate * 0.30;
+        const threshold = maxMarginalRate * 0.40;
 
         let kneeIndex = 0;
         for (let i = 0; i < marginalRates.length; i++) {
