@@ -26,8 +26,8 @@ const URLState = (function() {
         return null;
     }
 
-    const VALID_PATTERNS = ['ecommerce', 'flat', 'batch', 'business-hours', 'random', 'custom', 'custom-paste', 'custom-url'];
-    const CUSTOM_PATTERNS = ['custom', 'custom-paste', 'custom-url'];
+    const VALID_PATTERNS = new Set(['ecommerce', 'flat', 'batch', 'business-hours', 'random', 'custom', 'custom-paste', 'custom-url']);
+    const CUSTOM_PATTERNS = new Set(['custom', 'custom-paste', 'custom-url']);
 
     /**
      * Encode current application state to URL
@@ -59,7 +59,7 @@ const URLState = (function() {
             params.set('contrast', state.contrast.toString());
         }
 
-        if (CUSTOM_PATTERNS.includes(state.pattern) && state.customCurve) {
+        if (CUSTOM_PATTERNS.has(state.pattern) && state.customCurve) {
             const compressed = compressCurve(state.customCurve);
             params.set('curve', compressed);
         }
@@ -173,7 +173,7 @@ const URLState = (function() {
     }
 
     function decodeCustomCurve(params, state) {
-        if (!CUSTOM_PATTERNS.includes(state.pattern)) return;
+        if (!CUSTOM_PATTERNS.has(state.pattern)) return;
 
         const curve = params.get('curve');
         if (!curve) return;
@@ -205,7 +205,7 @@ const URLState = (function() {
         decodeAwsRecommendation(params, state);
 
         const pattern = params.get('pattern');
-        if (pattern && VALID_PATTERNS.includes(pattern)) {
+        if (pattern && VALID_PATTERNS.has(pattern)) {
             state.pattern = pattern;
         }
 
