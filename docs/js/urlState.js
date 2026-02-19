@@ -26,6 +26,9 @@ const URLState = (function() {
         return null;
     }
 
+    const VALID_PATTERNS = ['ecommerce', 'flat', 'batch', 'business-hours', 'random', 'custom', 'custom-paste', 'custom-url'];
+    const CUSTOM_PATTERNS = ['custom', 'custom-paste', 'custom-url'];
+
     /**
      * Encode current application state to URL
      * @param {Object} state - Application state
@@ -56,7 +59,7 @@ const URLState = (function() {
             params.set('contrast', state.contrast.toString());
         }
 
-        if ((state.pattern === 'custom' || state.pattern === 'custom-paste' || state.pattern === 'custom-url') && state.customCurve) {
+        if (CUSTOM_PATTERNS.includes(state.pattern) && state.customCurve) {
             const compressed = compressCurve(state.customCurve);
             params.set('curve', compressed);
         }
@@ -100,7 +103,7 @@ const URLState = (function() {
                 const pct = (arr, p) => arr[Math.max(0, Math.ceil(arr.length * p / 100) - 1)];
                 data.stats = {
                     min: sorted[0],
-                    max: sorted[sorted.length - 1],
+                    max: sorted.at(-1),
                     p50: pct(sorted, 50),
                     p75: pct(sorted, 75),
                     p90: pct(sorted, 90),
@@ -118,55 +121,38 @@ const URLState = (function() {
         }
     }
 
-    /**
-     * Decode state from current URL
-     * @returns {Object|null} Decoded state or null if no parameters
-     */
-    function decodeState() {
-        const params = new URLSearchParams(globalThis.location.search);
-
-        if (params.toString() === '') {
-            return null;
-        }
-
-        const state = {};
-
+    function decodeCompressedParams(params, state) {
         const usageParam = params.get('usage');
         if (usageParam) {
             const usageData = decompressUsageData(usageParam);
-            if (usageData) {
-                state.usageData = usageData;
-            }
+            if (usageData) state.usageData = usageData;
         }
 
         const pasteParam = params.get('paste');
         if (pasteParam) {
             const pasteData = decompressUsageData(pasteParam);
-            if (pasteData) {
-                state.pasteData = pasteData;
-            }
+            if (pasteData) state.pasteData = pasteData;
         }
+    }
 
+    function decodeAwsRecommendation(params, state) {
         const awsParam = params.get('aws');
-        if (awsParam) {
-            const parts = awsParam.split(',');
-            if (parts.length === 2) {
-                const commitment = Number.parseFloat(parts[0]);
-                const savingsPct = Number.parseFloat(parts[1]);
-                if (!Number.isNaN(commitment) && !Number.isNaN(savingsPct) && commitment > 0) {
-                    state.awsRecommendation = {
-                        hourly_commitment: commitment,
-                        estimated_savings_percentage: savingsPct
-                    };
-                }
-            }
-        }
+        if (!awsParam) return;
 
-        const pattern = params.get('pattern');
-        if (pattern && ['ecommerce', 'flat', 'batch', 'business-hours', 'random', 'custom', 'custom-paste', 'custom-url'].includes(pattern)) {
-            state.pattern = pattern;
-        }
+        const parts = awsParam.split(',');
+        if (parts.length !== 2) return;
 
+        const commitment = Number.parseFloat(parts[0]);
+        const savingsPct = Number.parseFloat(parts[1]);
+        if (!Number.isNaN(commitment) && !Number.isNaN(savingsPct) && commitment > 0) {
+            state.awsRecommendation = {
+                hourly_commitment: commitment,
+                estimated_savings_percentage: savingsPct
+            };
+        }
+    }
+
+    function decodeNumericParams(params, state) {
         const minValue = parseNumericParam(params, 'min', 0, 10000, Number.parseFloat);
         if (minValue !== null) state.minCost = minValue;
 
@@ -184,20 +170,47 @@ const URLState = (function() {
 
         const contrastValue = parseNumericParam(params, 'contrast', 0, 200, (v) => Number.parseInt(v, 10));
         if (contrastValue !== null) state.contrast = contrastValue;
+    }
 
-        if (state.pattern === 'custom' || state.pattern === 'custom-paste' || state.pattern === 'custom-url') {
-            const curve = params.get('curve');
-            if (curve) {
-                try {
-                    const decompressed = decompressCurve(curve);
-                    if (decompressed?.length === 168) {
-                        state.customCurve = decompressed;
-                    }
-                } catch (error) {
-                    console.warn('Failed to decode custom curve:', error);
-                }
+    function decodeCustomCurve(params, state) {
+        if (!CUSTOM_PATTERNS.includes(state.pattern)) return;
+
+        const curve = params.get('curve');
+        if (!curve) return;
+
+        try {
+            const decompressed = decompressCurve(curve);
+            if (decompressed?.length === 168) {
+                state.customCurve = decompressed;
             }
+        } catch (error) {
+            console.warn('Failed to decode custom curve:', error);
         }
+    }
+
+    /**
+     * Decode state from current URL
+     * @returns {Object|null} Decoded state or null if no parameters
+     */
+    function decodeState() {
+        const params = new URLSearchParams(globalThis.location.search);
+
+        if (params.toString() === '') {
+            return null;
+        }
+
+        const state = {};
+
+        decodeCompressedParams(params, state);
+        decodeAwsRecommendation(params, state);
+
+        const pattern = params.get('pattern');
+        if (pattern && VALID_PATTERNS.includes(pattern)) {
+            state.pattern = pattern;
+        }
+
+        decodeNumericParams(params, state);
+        decodeCustomCurve(params, state);
 
         return Object.keys(state).length > 0 ? state : null;
     }
@@ -290,20 +303,8 @@ const URLState = (function() {
         const url = globalThis.location.href;
 
         try {
-            if (navigator.clipboard?.writeText) {
-                await navigator.clipboard.writeText(url);
-                return true;
-            } else {
-                const textarea = document.createElement('textarea');
-                textarea.value = url;
-                textarea.style.position = 'fixed';
-                textarea.style.opacity = '0';
-                document.body.appendChild(textarea);
-                textarea.select();
-                const success = document.execCommand('copy');
-                textarea.remove();
-                return success;
-            }
+            await navigator.clipboard.writeText(url);
+            return true;
         } catch (error) {
             console.error('Failed to copy URL:', error);
             return false;

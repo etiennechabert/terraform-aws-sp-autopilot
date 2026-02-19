@@ -230,6 +230,31 @@ def _validate_sp_payment_options(config: dict[str, Any]) -> None:
     _validate_payment_option(config, "database_sp_payment_option")
 
 
+def _validate_strategy_cross_rules(config: dict[str, Any]) -> None:
+    """Validate cross-dependencies between target and split strategies."""
+    if config.get("target_strategy_type") == "aws" and config.get("split_strategy_type") not in (
+        None,
+        "one_shot",
+    ):
+        raise ValueError(
+            "AWS target strategy requires split_strategy_type='one_shot' "
+            f"(got '{config.get('split_strategy_type')}')"
+        )
+
+    if config.get("target_strategy_type") == "dynamic":
+        risk_level = config.get("dynamic_risk_level")
+        if not risk_level:
+            raise ValueError(
+                "Dynamic target strategy requires 'dynamic_risk_level'. "
+                f"Must be one of: {', '.join(VALID_RISK_LEVELS)}"
+            )
+        if risk_level not in VALID_RISK_LEVELS:
+            raise ValueError(
+                f"Invalid dynamic_risk_level: '{risk_level}'. "
+                f"Must be one of: {', '.join(VALID_RISK_LEVELS)}"
+            )
+
+
 def _validate_strategy_and_granularity(config: dict[str, Any]) -> None:
     """Validate target/split strategy types and granularity."""
     if "target_strategy_type" in config:
@@ -248,29 +273,7 @@ def _validate_strategy_and_granularity(config: dict[str, Any]) -> None:
                 f"Must be one of: {', '.join(VALID_SPLIT_STRATEGIES)}"
             )
 
-    # Cross-validation: aws target -> split must be one_shot
-    if config.get("target_strategy_type") == "aws" and config.get("split_strategy_type") not in (
-        None,
-        "one_shot",
-    ):
-        raise ValueError(
-            "AWS target strategy requires split_strategy_type='one_shot' "
-            f"(got '{config.get('split_strategy_type')}')"
-        )
-
-    # Cross-validation: dynamic target -> risk_level required
-    if config.get("target_strategy_type") == "dynamic":
-        risk_level = config.get("dynamic_risk_level")
-        if not risk_level:
-            raise ValueError(
-                "Dynamic target strategy requires 'dynamic_risk_level'. "
-                f"Must be one of: {', '.join(VALID_RISK_LEVELS)}"
-            )
-        if risk_level not in VALID_RISK_LEVELS:
-            raise ValueError(
-                f"Invalid dynamic_risk_level: '{risk_level}'. "
-                f"Must be one of: {', '.join(VALID_RISK_LEVELS)}"
-            )
+    _validate_strategy_cross_rules(config)
 
     if "granularity" in config:
         granularity = config["granularity"]

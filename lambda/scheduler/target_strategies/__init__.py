@@ -22,4 +22,4 @@ def resolve_target(
     if not strategy_func:
         available = ", ".join(TARGET_STRATEGIES.keys())
         raise ValueError(f"Unknown target strategy '{strategy_type}'. Available: {available}")
-    return strategy_func(config, spending_data, sp_type_key=sp_type_key)
+    return strategy_func(config, spending_data, sp_type_key)

@@ -365,7 +365,7 @@ def _build_strategy_tooltip(
     strategy_key: str,
     strategy_desc: str,
     config: dict[str, Any],
-    is_configured: bool,
+    _is_configured: bool,
 ) -> str:
     """Build tooltip text for a strategy combination."""
     parts = strategy_key.split("+")
