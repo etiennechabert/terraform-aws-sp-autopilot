@@ -37,8 +37,8 @@ jobs:
               console.log('Skipping reviewer assignment (PR author is the same as reviewer)');
             }
 
-            // For Dependabot PRs, also assign as assignee
-            if (context.actor === 'dependabot[bot]') {
+            // For bot PRs, also assign as assignee
+            if (context.actor === 'dependabot[bot]' || context.actor === 'renovate[bot]') {
               try {
                 await github.rest.issues.addAssignees({
                   owner: context.repo.owner,
@@ -46,7 +46,7 @@ jobs:
                   issue_number: context.issue.number,
                   assignees: [reviewer]
                 });
-                console.log(`Assigned ${reviewer} as assignee for Dependabot PR`);
+                console.log(`Assigned ${reviewer} as assignee for bot PR`);
               } catch (error) {
                 console.log(`Failed to assign assignee: ${error.message}`);
               }
