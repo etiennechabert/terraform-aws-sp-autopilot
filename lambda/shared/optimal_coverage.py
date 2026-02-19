@@ -186,34 +186,15 @@ def coverage_as_percentage_of_min(hourly_coverage: float, min_hourly: float) -> 
     return (hourly_coverage / min_hourly) * 100
 
 
-def calculate_knee_point(
+def _build_savings_curve(
     hourly_costs: list[float],
-    savings_percentage: float,
+    discount_factor: float,
     min_cost: float,
-    optimal_coverage: float,
-) -> float:
-    """
-    Calculate the knee point on the savings curve.
-
-    This is the "balanced" strategy — where marginal efficiency drops to 40%
-    of its peak. Direct port of docs/js/main.js calculateKneePoint().
-
-    CROSS-LANGUAGE SYNCHRONIZATION: Keep in sync with docs/js/main.js:696-776.
-
-    Args:
-        hourly_costs: List of hourly costs
-        savings_percentage: Savings plan discount percentage (e.g., 30 for 30%)
-        min_cost: Minimum hourly cost (baseline)
-        optimal_coverage: Optimal coverage from calculate_optimal_coverage()
-
-    Returns:
-        Knee point coverage in $/hour
-    """
+    max_coverage: float,
+    num_points: int = 200,
+) -> list[dict]:
+    """Build the savings curve by simulating coverage at different levels."""
     baseline_cost = sum(hourly_costs)
-    discount_factor = 1 - (savings_percentage / 100)
-
-    max_coverage = optimal_coverage * 1.2
-    num_points = 200
     step = (max_coverage - min_cost) / num_points
     curve_points = []
 
@@ -239,32 +220,68 @@ def calculate_knee_point(
             }
         )
 
+    return curve_points
+
+
+def _compute_marginal_rates(
+    curve_points: list[dict], min_cost: float, optimal_coverage: float
+) -> list[dict]:
+    """Compute marginal savings rates between curve points."""
     marginal_rates = []
     for i in range(1, len(curve_points)):
         if (
-            curve_points[i]["coverage"] > min_cost
-            and curve_points[i]["coverage"] <= optimal_coverage
+            curve_points[i]["coverage"] <= min_cost
+            or curve_points[i]["coverage"] > optimal_coverage
         ):
-            coverage_delta = curve_points[i]["coverage"] - curve_points[i - 1]["coverage"]
-            savings_delta = (
-                curve_points[i]["savings_percent"] - curve_points[i - 1]["savings_percent"]
-            )
-            marginal_rate = savings_delta / coverage_delta if coverage_delta > 0 else 0
+            continue
+        coverage_delta = curve_points[i]["coverage"] - curve_points[i - 1]["coverage"]
+        savings_delta = curve_points[i]["savings_percent"] - curve_points[i - 1]["savings_percent"]
+        marginal_rate = savings_delta / coverage_delta if coverage_delta > 0 else 0
 
-            marginal_rates.append(
-                {
-                    "index": i,
-                    "coverage": curve_points[i]["coverage"],
-                    "marginal_rate": marginal_rate,
-                    "savings_percent": curve_points[i]["savings_percent"],
-                }
-            )
+        marginal_rates.append(
+            {
+                "index": i,
+                "coverage": curve_points[i]["coverage"],
+                "marginal_rate": marginal_rate,
+                "savings_percent": curve_points[i]["savings_percent"],
+            }
+        )
+    return marginal_rates
+
+
+def calculate_knee_point(
+    hourly_costs: list[float],
+    savings_percentage: float,
+    min_cost: float,
+    optimal_coverage: float,
+) -> float:
+    """
+    Calculate the knee point on the savings curve.
+
+    This is the "balanced" strategy — where marginal efficiency drops to 40%
+    of its peak. Direct port of docs/js/main.js calculateKneePoint().
+
+    CROSS-LANGUAGE SYNCHRONIZATION: Keep in sync with docs/js/main.js:696-776.
+
+    Args:
+        hourly_costs: List of hourly costs
+        savings_percentage: Savings plan discount percentage (e.g., 30 for 30%)
+        min_cost: Minimum hourly cost (baseline)
+        optimal_coverage: Optimal coverage from calculate_optimal_coverage()
+
+    Returns:
+        Knee point coverage in $/hour
+    """
+    discount_factor = 1 - (savings_percentage / 100)
+    max_coverage = optimal_coverage * 1.2
+
+    curve_points = _build_savings_curve(hourly_costs, discount_factor, min_cost, max_coverage)
+    marginal_rates = _compute_marginal_rates(curve_points, min_cost, optimal_coverage)
 
     if not marginal_rates:
         return min_cost
 
     max_marginal_rate = max(r["marginal_rate"] for r in marginal_rates)
-
     threshold = max_marginal_rate * 0.40
 
     knee_index = 0

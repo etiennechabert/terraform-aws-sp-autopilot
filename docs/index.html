@@ -7,7 +7,7 @@
     <title>AWS Savings Plan Simulator | Interactive Cost Optimizer</title>
     <script async src="https://www.googletagmanager.com/gtag/js?id=G-ED5L4MR99H"></script>
     <script>
-        window.dataLayer = window.dataLayer || [];
+        globalThis.dataLayer = globalThis.dataLayer || [];
         function gtag(){dataLayer.push(arguments);}
         gtag('js', new Date());
         gtag('config', 'G-ED5L4MR99H');
@@ -456,7 +456,7 @@
     </div>
 
     <!-- Custom Data Modal -->
-    <div id="custom-data-modal" class="modal-backdrop hidden" role="dialog" aria-modal="true" aria-labelledby="modal-title">
+    <dialog id="custom-data-modal" class="modal-backdrop hidden" aria-labelledby="modal-title">
         <div class="modal-content">
             <h3 id="modal-title" class="modal-title">Load Real Usage Data</h3>
             <p class="modal-description">Run this AWS CLI command to export your Savings Plans coverage data, then paste the output below.</p>
@@ -482,10 +482,10 @@
                 <button id="modal-load-btn" class="modal-btn modal-btn-load" type="button">Load Data</button>
             </div>
         </div>
-    </div>
+    </dialog>
 
     <!-- No URL Data Modal -->
-    <div id="no-url-data-modal" class="modal-backdrop hidden" role="dialog" aria-modal="true">
+    <dialog id="no-url-data-modal" class="modal-backdrop hidden">
         <div class="modal-content">
             <h3 class="modal-title">No Usage Data in URL</h3>
             <p class="modal-description">
@@ -501,7 +501,7 @@
                 <button id="no-url-data-close-btn" class="modal-btn modal-btn-load" type="button">OK</button>
             </div>
         </div>
-    </div>
+    </dialog>
 
     <!-- Toast Notification -->
     <div id="toast" class="toast" role="alert" aria-live="polite"></div>
