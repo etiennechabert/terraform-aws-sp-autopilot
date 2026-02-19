@@ -93,38 +93,35 @@ def _prepare_html_report_data(
     data_end_date = now.date()
     data_start_date = data_end_date - timedelta(days=lookback_days)
 
-    # Extract coverage summaries
-    compute_summary = coverage_data.get("compute", {}).get("summary", {})
-    database_summary = coverage_data.get("database", {}).get("summary", {})
-    sagemaker_summary = coverage_data.get("sagemaker", {}).get("summary", {})
+    compute_summary = coverage_data["compute"]["summary"]
+    database_summary = coverage_data["database"]["summary"]
+    sagemaker_summary = coverage_data["sagemaker"]["summary"]
 
-    compute_coverage = compute_summary.get("avg_coverage_total", 0.0)
-    database_coverage = database_summary.get("avg_coverage_total", 0.0)
-    sagemaker_coverage = sagemaker_summary.get("avg_coverage_total", 0.0)
+    compute_coverage = compute_summary["avg_coverage_total"]
+    database_coverage = database_summary["avg_coverage_total"]
+    sagemaker_coverage = sagemaker_summary["avg_coverage_total"]
 
-    # Calculate overall coverage
     total_hourly_spend = (
-        compute_summary.get("avg_hourly_total", 0.0)
-        + database_summary.get("avg_hourly_total", 0.0)
-        + sagemaker_summary.get("avg_hourly_total", 0.0)
+        compute_summary["avg_hourly_total"]
+        + database_summary["avg_hourly_total"]
+        + sagemaker_summary["avg_hourly_total"]
     )
     total_hourly_covered = (
-        compute_summary.get("avg_hourly_covered", 0.0)
-        + database_summary.get("avg_hourly_covered", 0.0)
-        + sagemaker_summary.get("avg_hourly_covered", 0.0)
+        compute_summary["avg_hourly_covered"]
+        + database_summary["avg_hourly_covered"]
+        + sagemaker_summary["avg_hourly_covered"]
     )
 
-    compute_min = _get_min_hourly_from_timeseries_data(coverage_data.get("compute", {}))
-    database_min = _get_min_hourly_from_timeseries_data(coverage_data.get("database", {}))
-    sagemaker_min = _get_min_hourly_from_timeseries_data(coverage_data.get("sagemaker", {}))
-    total_min_hourly = compute_min + database_min + sagemaker_min
+    total_min_hourly = sum(
+        _get_min_hourly_from_timeseries_data(coverage_data[key])
+        for key in ("compute", "database", "sagemaker")
+    )
 
     overall_coverage = (
         (total_hourly_covered / total_min_hourly * 100) if total_min_hourly > 0 else 0.0
     )
 
-    # Extract savings data
-    actual_savings = savings_data.get("actual_savings", {})
+    actual_savings = savings_data["actual_savings"]
 
     return {
         "report_timestamp": now.strftime("%Y-%m-%d %H:%M:%S UTC"),
@@ -193,11 +190,11 @@ def _build_timeseries_maps(coverage_data: dict[str, Any]) -> tuple[dict, set]:
     all_timestamps = set()
 
     for sp_type in ["compute", "database", "sagemaker"]:
-        timeseries = coverage_data.get(sp_type, {}).get("timeseries", [])
+        timeseries = coverage_data[sp_type].get("timeseries", [])
         for item in timeseries:
-            timestamp = item.get("timestamp", "")
-            covered = item.get("covered", 0.0)
-            total = item.get("total", 0.0)
+            timestamp = item["timestamp"]
+            covered = item["covered"]
+            total = item["total"]
             ondemand = total - covered
 
             all_timestamps.add(timestamp)
@@ -333,7 +330,7 @@ def _calculate_optimal_coverage(
     docs/js/costCalculator.js::calculateOptimalCoverage()
     Any changes to the algorithm must be applied to both implementations.
     """
-    actual_savings = savings_data.get("actual_savings", {})
+    actual_savings = savings_data["actual_savings"]
     breakdown_by_type = actual_savings.get("breakdown_by_type", {})
     type_mapping = {"compute": "Compute", "database": "Database", "sagemaker": "SageMaker"}
     optimal_results = {}
@@ -716,8 +713,7 @@ def _parse_plan_dates(
 
         if end_date_parsed <= three_months_from_now:
             expiring_soon = True
-    except Exception:
-        # Catches ValueError, AttributeError, TypeError from date parsing
+    except (ValueError, TypeError):
         pass
 
     return start_date_display, end_date_display, days_remaining_display, expiring_soon, tooltip_text
@@ -1429,13 +1425,11 @@ def generate_html_report(
     # Prepare chart data from coverage timeseries and calculate optimal coverage
     chart_data, optimal_coverage_results = _prepare_chart_data(coverage_data, savings_data, config)
 
-    # Extract per-type metrics
-    compute_summary = coverage_data.get("compute", {}).get("summary", {})
-    database_summary = coverage_data.get("database", {}).get("summary", {})
-    sagemaker_summary = coverage_data.get("sagemaker", {}).get("summary", {})
+    compute_summary = coverage_data["compute"]["summary"]
+    database_summary = coverage_data["database"]["summary"]
+    sagemaker_summary = coverage_data["sagemaker"]["summary"]
 
-    # Extract savings breakdown by type
-    breakdown_by_type = savings_data.get("actual_savings", {}).get("breakdown_by_type", {})
+    breakdown_by_type = savings_data["actual_savings"]["breakdown_by_type"]
 
     compute_metrics = _get_type_metrics_for_report(compute_summary, "Compute", breakdown_by_type)
     database_metrics = _get_type_metrics_for_report(database_summary, "Database", breakdown_by_type)
@@ -1453,9 +1447,8 @@ def generate_html_report(
 
     follow_aws_by_type = {}
     if preview_data:
-        for purchase in (
-            preview_data.get("strategies", {}).get("follow_aws", {}).get("purchases", [])
-        ):
+        aws_strategy = preview_data["strategies"].get("aws+one_shot", {})
+        for purchase in aws_strategy.get("purchases", []):
             sp = purchase["sp_type"]
             follow_aws_by_type[sp] = {
                 "hourly_commitment": purchase["hourly_commitment"],
@@ -2040,12 +2033,12 @@ def generate_json_report(
     report_timestamp = datetime.now(UTC).isoformat()
 
     # Extract coverage summary
-    compute_summary = coverage_data.get("compute", {}).get("summary", {})
-    database_summary = coverage_data.get("database", {}).get("summary", {})
-    sagemaker_summary = coverage_data.get("sagemaker", {}).get("summary", {})
+    compute_summary = coverage_data["compute"]["summary"]
+    database_summary = coverage_data["database"]["summary"]
+    sagemaker_summary = coverage_data["sagemaker"]["summary"]
 
     # Extract savings data
-    actual_savings = savings_data.get("actual_savings", {})
+    actual_savings = savings_data["actual_savings"]
     breakdown_by_type = actual_savings.get("breakdown_by_type", {})
 
     # Format breakdown as array
@@ -2134,10 +2127,10 @@ def generate_csv_report(
     report_timestamp = datetime.now(UTC).strftime("%Y-%m-%d %H:%M:%S UTC")
 
     # Extract summaries
-    compute_summary = coverage_data.get("compute", {}).get("summary", {})
-    database_summary = coverage_data.get("database", {}).get("summary", {})
-    sagemaker_summary = coverage_data.get("sagemaker", {}).get("summary", {})
-    actual_savings = savings_data.get("actual_savings", {})
+    compute_summary = coverage_data["compute"]["summary"]
+    database_summary = coverage_data["database"]["summary"]
+    sagemaker_summary = coverage_data["sagemaker"]["summary"]
+    actual_savings = savings_data["actual_savings"]
 
     csv_parts = [
         "# Savings Plans Coverage & Savings Report",

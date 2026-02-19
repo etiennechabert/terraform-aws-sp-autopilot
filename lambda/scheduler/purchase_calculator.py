@@ -10,7 +10,9 @@ AWS target short-circuits to follow_aws_strategy.py (special path).
 import logging
 from typing import Any
 
+from botocore.exceptions import ClientError
 from follow_aws_strategy import calculate_purchase_need_follow_aws
+from sp_types import SP_TYPES, get_term
 from split_strategies import calculate_split
 from target_strategies import resolve_target
 
@@ -18,35 +20,6 @@ from shared import sp_calculations
 
 
 logger = logging.getLogger()
-
-SP_TYPES = [
-    {
-        "key": "compute",
-        "enabled_config": "enable_compute_sp",
-        "payment_option_config": "compute_sp_payment_option",
-        "name": "Compute",
-    },
-    {
-        "key": "database",
-        "enabled_config": "enable_database_sp",
-        "payment_option_config": "database_sp_payment_option",
-        "name": "Database",
-    },
-    {
-        "key": "sagemaker",
-        "enabled_config": "enable_sagemaker_sp",
-        "payment_option_config": "sagemaker_sp_payment_option",
-        "name": "SageMaker",
-    },
-]
-
-
-def _get_term(key: str, config: dict[str, Any]) -> str:
-    if key == "compute":
-        return config.get("compute_sp_term", "THREE_YEAR")
-    if key == "sagemaker":
-        return config.get("sagemaker_sp_term", "THREE_YEAR")
-    return "ONE_YEAR"
 
 
 def _process_sp_type(
@@ -70,7 +43,7 @@ def _process_sp_type(
     avg_hourly_covered = summary["avg_hourly_covered"]
 
     timeseries = data.get("timeseries", [])
-    total_costs = [item.get("total", 0.0) for item in timeseries if item.get("total", 0.0) > 0]
+    total_costs = [item["total"] for item in timeseries if item["total"] > 0]
     min_hourly = min(total_costs) if total_costs else avg_hourly_total
 
     avg_to_min_ratio = (
@@ -123,7 +96,7 @@ def _process_sp_type(
         "purchase_percent": purchase_percent,
         "estimated_savings_percentage": savings_pct,
         "payment_option": config[sp_type["payment_option_config"]],
-        "term": _get_term(key, config),
+        "term": get_term(key, config),
         "details": {
             "coverage": {
                 "current": current_coverage,
@@ -158,7 +131,7 @@ def _ensure_savings_rates(config: dict[str, Any], clients: dict[str, Any]) -> di
         try:
             metrics = get_savings_plans_metrics(
                 clients["ce"],
-                key,
+                sp_type["name"],
                 config.get("lookback_days", 13),
                 config.get("granularity", "DAILY"),
             )
@@ -167,7 +140,7 @@ def _ensure_savings_rates(config: dict[str, Any], clients: dict[str, Any]) -> di
                 logger.info(
                     f"{sp_type['name']} SP actual savings rate: {metrics['savings_percentage']:.1f}%"
                 )
-        except Exception:
+        except (ClientError, ValueError, TypeError):
             logger.debug(f"Could not fetch savings rate for {key}, using default")
     return config
 

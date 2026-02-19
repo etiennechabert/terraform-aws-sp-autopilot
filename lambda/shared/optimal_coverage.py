@@ -1,29 +1,7 @@
 """
-Optimal Savings Plan Coverage Calculator
+Optimal Savings Plan Coverage Calculator.
 
-Pure Python implementation of the coverage optimization algorithm.
-This module is a direct port of docs/js/costCalculator.js to ensure
-consistent results across Python lambdas and JavaScript GH-Page.
-
-The algorithm finds the optimal hourly commitment level that maximizes
-net savings by testing 100 different coverage levels and calculating
-total cost (commitment + spillover) for each.
-
-CRITICAL - CROSS-LANGUAGE SYNCHRONIZATION:
-===========================================
-WARNING: This algorithm is implemented in BOTH Python and JavaScript:
-    - Python: lambda/shared/optimal_coverage.py (this file)
-    - JavaScript: docs/js/costCalculator.js
-
-Changes to this algorithm MUST be synchronized across both languages!
-
-The cross-platform parity is verified by:
-    - lambda/tests/cross_platform/test_algorithm_parity.py
-
-If you modify the algorithm, you MUST:
-    1. Update both Python and JavaScript implementations
-    2. Run cross-platform tests to verify parity
-    3. Document any intentional differences in behavior
+KEEP IN SYNC with docs/js/costCalculator.js — verified by tests/cross_platform/test_algorithm_parity.py.
 """
 
 from typing import TypedDict
