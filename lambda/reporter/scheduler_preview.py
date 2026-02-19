@@ -72,7 +72,7 @@ def _inject_actual_savings_rates(
 ) -> dict[str, Any]:
     if not savings_data:
         return config
-    breakdown = savings_data.get("actual_savings", {}).get("breakdown_by_type", {})
+    breakdown = savings_data["actual_savings"].get("breakdown_by_type", {})
     if not breakdown:
         return config
     config = config.copy()
@@ -164,19 +164,19 @@ def _enrich_purchases(
     target_type: str,
 ) -> list[dict[str, Any]]:
     breakdown_by_type = (
-        savings_data.get("actual_savings", {}).get("breakdown_by_type", {}) if savings_data else {}
+        savings_data["actual_savings"].get("breakdown_by_type", {}) if savings_data else {}
     )
 
     enriched = []
     for plan in purchase_plans:
         sp_type = plan["sp_type"]
-        sp_data = coverage_data.get(sp_type, {})
-        summary = sp_data.get("summary", {})
+        sp_data = coverage_data[sp_type]
+        summary = sp_data["summary"]
 
         hourly_commitment = plan["hourly_commitment"]
 
         timeseries = sp_data.get("timeseries", [])
-        total_costs = [item.get("total", 0.0) for item in timeseries if item.get("total", 0.0) > 0]
+        total_costs = [item["total"] for item in timeseries if item["total"] > 0]
         min_hourly = min(total_costs) if total_costs else 0.0
 
         aws_type_name = {
@@ -194,7 +194,7 @@ def _enrich_purchases(
         new_savings_pct = plan.get("estimated_savings_percentage", savings_pct)
         new_od_equiv = sp_calculations.coverage_from_commitment(hourly_commitment, new_savings_pct)
 
-        avg_hourly_total = summary.get("avg_hourly_total", 0.0)
+        avg_hourly_total = summary["avg_hourly_total"]
 
         if min_hourly > 0:
             purchase_percent = (new_od_equiv / min_hourly) * 100.0

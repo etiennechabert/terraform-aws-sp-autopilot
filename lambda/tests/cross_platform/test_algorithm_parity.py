@@ -27,7 +27,7 @@ def is_node_available():
             timeout=5,
         )
         return True
-    except subprocess.CalledProcessError, FileNotFoundError, subprocess.TimeoutExpired:
+    except (subprocess.CalledProcessError, FileNotFoundError, subprocess.TimeoutExpired):
         return False
 
 
