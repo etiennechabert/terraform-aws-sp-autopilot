@@ -151,6 +151,18 @@ const LoadPatterns = (function() {
         return pattern;
     }
 
+    function getBusinessHourUsage(hour) {
+        if (hour >= 8 && hour < 20) {
+            if (hour < 9) return 0.6;
+            if (hour === 12) return 0.75;
+            if (hour >= 18) return 0.7 - (hour - 18) * 0.15;
+            return 0.9 + Math.sin((hour - 8) * 0.25) * 0.1;
+        }
+        if (hour >= 6 && hour < 8) return 0.05 + (hour - 6) * 0.25;
+        if (hour >= 20 && hour < 22) return 0.4 - (hour - 20) * 0.17;
+        return 0.05;
+    }
+
     /**
      * Generate Business Hours load pattern
      * High during 9-18, low evenings/nights, minimal weekends
@@ -162,21 +174,7 @@ const LoadPatterns = (function() {
             const isWeekend = day === 5 || day === 6;
 
             for (let hour = 0; hour < 24; hour++) {
-                let usage;
-                if (isWeekend) {
-                    usage = 0.08;
-                } else if (hour >= 8 && hour < 20) {
-                    if (hour < 9) usage = 0.6;
-                    else if (hour === 12) usage = 0.75;
-                    else if (hour >= 18) usage = 0.7 - (hour - 18) * 0.15;
-                    else usage = 0.9 + Math.sin((hour - 8) * 0.25) * 0.1;
-                } else if (hour >= 6 && hour < 8) {
-                    usage = 0.05 + (hour - 6) * 0.25;
-                } else if (hour >= 20 && hour < 22) {
-                    usage = 0.4 - (hour - 20) * 0.17;
-                } else {
-                    usage = 0.05;
-                }
+                const usage = isWeekend ? 0.08 : getBusinessHourUsage(hour);
                 pattern.push(Math.min(1, Math.max(0, usage)));
             }
         }
@@ -268,6 +266,12 @@ const LoadPatterns = (function() {
         return pattern;
     }
 
+    function isInPlateau(hour, startHour, endHour, duration) {
+        if (duration >= 24) return true;
+        if (startHour < endHour) return hour >= startHour && hour < endHour;
+        return hour >= startHour || hour < endHour;
+    }
+
     // Plateau: flat high period with sharp ramp up/down
     function randomPlateau() {
         const startHour = 4 + Math.floor(Math.random() * 8);
@@ -281,10 +285,7 @@ const LoadPatterns = (function() {
         for (let day = 0; day < 7; day++) {
             const isWeekend = day === 5 || day === 6;
             for (let hour = 0; hour < 24; hour++) {
-                const inPlateau = duration < 24
-                    ? (startHour < endHour ? hour >= startHour && hour < endHour : hour >= startHour || hour < endHour)
-                    : true;
-                let usage = inPlateau ? highLevel : lowLevel;
+                let usage = isInPlateau(hour, startHour, endHour, duration) ? highLevel : lowLevel;
                 usage *= isWeekend ? weekendFactor : 1;
                 usage += (Math.random() - 0.5) * 0.06;
                 pattern.push(Math.min(1, Math.max(0, usage)));
@@ -571,7 +572,9 @@ const LoadPatterns = (function() {
         const dayName = getDayName(hour);
         const hourOfDay = hour % 24;
         const period = hourOfDay >= 12 ? 'pm' : 'am';
-        const displayHour = hourOfDay === 0 ? 12 : (hourOfDay > 12 ? hourOfDay - 12 : hourOfDay);
+        let displayHour = hourOfDay;
+        if (hourOfDay === 0) displayHour = 12;
+        else if (hourOfDay > 12) displayHour = hourOfDay - 12;
         return `${dayName} ${displayHour}${period}`;
     }
 
