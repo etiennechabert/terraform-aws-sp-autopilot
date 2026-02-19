@@ -167,7 +167,7 @@ def calculate_purchase_need(
 
     # AWS target -> short-circuit to follow_aws special path
     if target_strategy == "aws":
-        return calculate_purchase_need_follow_aws(config, clients, spending_data)
+        return calculate_purchase_need_follow_aws(config, clients)
 
     # Fetch actual savings rates from existing SP plans (skips if already in config)
     config = _ensure_savings_rates(config, clients)
