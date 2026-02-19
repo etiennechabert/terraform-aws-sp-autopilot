@@ -32,30 +32,25 @@ def _generate_s3_url(storage_adapter: Any, s3_object_key: str, bucket_name: str)
         return f"https://{bucket_name}.s3.amazonaws.com/{s3_object_key}"
 
 
+SP_TYPE_KEYS = ["compute", "database", "sagemaker"]
+
+
 def _get_min_hourly_from_timeseries(type_data: dict[str, Any]) -> float:
-    """Extract minimum hourly on-demand spend from timeseries."""
+    """Extract minimum hourly total spend from timeseries."""
     timeseries = type_data.get("timeseries", [])
-    if not timeseries:
-        return 0.0
-    on_demand_values = [point.get("on_demand_spend", 0.0) for point in timeseries]
-    return min(on_demand_values) if on_demand_values else 0.0
+    total_costs = [point["total"] for point in timeseries if point["total"] > 0]
+    return min(total_costs) if total_costs else 0.0
 
 
 def _calculate_overall_coverage(coverage_data: dict[str, Any]) -> float:
     """Calculate overall coverage across all plan types."""
-    compute_data = coverage_data.get("compute", {})
-    database_data = coverage_data.get("database", {})
-    sagemaker_data = coverage_data.get("sagemaker", {})
+    total_hourly_covered = 0.0
+    total_min_hourly = 0.0
 
-    compute_covered = compute_data.get("summary", {}).get("total_hourly_covered", 0.0)
-    database_covered = database_data.get("summary", {}).get("total_hourly_covered", 0.0)
-    sagemaker_covered = sagemaker_data.get("summary", {}).get("total_hourly_covered", 0.0)
-    total_hourly_covered = compute_covered + database_covered + sagemaker_covered
-
-    compute_min = _get_min_hourly_from_timeseries(compute_data)
-    database_min = _get_min_hourly_from_timeseries(database_data)
-    sagemaker_min = _get_min_hourly_from_timeseries(sagemaker_data)
-    total_min_hourly = compute_min + database_min + sagemaker_min
+    for key in SP_TYPE_KEYS:
+        type_data = coverage_data[key]
+        total_hourly_covered += type_data["summary"]["avg_hourly_covered"]
+        total_min_hourly += _get_min_hourly_from_timeseries(type_data)
 
     return (total_hourly_covered / total_min_hourly * 100) if total_min_hourly > 0 else 0.0
 
@@ -100,8 +95,8 @@ def check_and_alert_low_utilization(
         savings_data: Savings Plans summary data
     """
     threshold = config["low_utilization_threshold"]
-    average_utilization = savings_data.get("average_utilization", 0.0)
-    plans_count = savings_data.get("plans_count", 0)
+    average_utilization = savings_data["average_utilization"]
+    plans_count = savings_data["plans_count"]
 
     if plans_count == 0:
         logger.info("No active Savings Plans - skipping low utilization check")
@@ -128,7 +123,7 @@ def check_and_alert_low_utilization(
         f"Current Utilization: {average_utilization:.2f}%",
         f"Alert Threshold: {threshold:.2f}%",
         f"Active Plans: {plans_count}",
-        f"Total Commitment: ${savings_data.get('total_commitment', 0.0):.4f}/hour",
+        f"Total Commitment: ${savings_data['total_commitment']:.4f}/hour",
         "",
         "This may indicate:",
         "• Decreased compute usage requiring plan adjustment",
@@ -202,13 +197,13 @@ def send_report_email(
         f"https://s3.console.aws.amazon.com/s3/object/{bucket_name}?prefix={s3_object_key}"
     )
 
-    actual_savings = savings_data.get("actual_savings", {})
+    actual_savings = savings_data["actual_savings"]
     overall_coverage = _calculate_overall_coverage(coverage_data)
 
-    net_savings_hourly = actual_savings.get("net_savings_hourly", 0.0)
-    savings_percentage = actual_savings.get("savings_percentage", 0.0)
-    average_utilization = savings_data.get("average_utilization", 0.0)
-    plans_count = savings_data.get("plans_count", 0)
+    net_savings_hourly = actual_savings["net_savings_hourly"]
+    savings_percentage = actual_savings["savings_percentage"]
+    average_utilization = savings_data["average_utilization"]
+    plans_count = savings_data["plans_count"]
 
     subject = f"Savings Plans Report Available - {overall_coverage:.1f}% Coverage"
     report_date = datetime.now(UTC).strftime("%B %d, %Y")
