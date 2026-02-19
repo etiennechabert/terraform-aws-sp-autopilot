@@ -1,14 +1,7 @@
-# AWS SDK for Python
-boto3>=1.34.0
-
-# AWS CLI tools (included in Lambda runtime, but specified for local development)
-botocore>=1.34.0
-
-# Type stubs for boto3 services
-boto3-stubs[ce,s3,savingsplans,sns]>=1.34.0
-
-# Testing dependencies
-pytest>=7.4.0
-pytest-cov>=4.1.0
-pytest-mock>=3.11.0
-moto>=4.1.0
+boto3~=1.42
+botocore~=1.42
+boto3-stubs[ce,s3,savingsplans,sns]~=1.42
+pytest~=9.0
+pytest-cov~=7.0
+pytest-mock~=3.15
+moto~=5.1

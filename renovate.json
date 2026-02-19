@@ -1,0 +1,22 @@
+{
+  "$schema": "https://docs.renovatebot.com/renovate-schema.json",
+  "enabledManagers": ["pip_requirements"],
+  "rangeStrategy": "widen",
+  "assignees": ["etiennechabert"],
+  "commitMessagePrefix": "chore(deps):",
+  "packageRules": [
+    {
+      "groupName": "AWS SDK",
+      "matchPackageNames": ["boto3", "botocore", "boto3-stubs"],
+      "schedule": ["before 9am on monday"]
+    },
+    {
+      "groupName": "pytest",
+      "matchPackageNames": ["pytest", "pytest-cov", "pytest-mock"]
+    },
+    {
+      "groupName": "dev tools",
+      "matchPackageNames": ["black", "flake8", "mypy"]
+    }
+  ]
+}
