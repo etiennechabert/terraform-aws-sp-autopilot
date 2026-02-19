@@ -11,7 +11,7 @@ logger = logging.getLogger()
 
 
 def calculate_purchase_need_follow_aws(
-    config: dict[str, Any], clients: dict[str, Any], spending_data: dict[str, Any] | None = None
+    config: dict[str, Any], clients: dict[str, Any]
 ) -> list[dict[str, Any]]:
     logger.info("Calculating purchase need using FOLLOW_AWS strategy")
 
