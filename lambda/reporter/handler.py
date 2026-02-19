@@ -92,9 +92,9 @@ def handler(event: dict[str, Any], context: Any) -> dict[str, Any]:
     )
 
     logger.info(
-        f"Data collected - Coverage: {coverage_data.get('compute', {}).get('summary', {}).get('avg_coverage_total', 0):.1f}%, "
-        f"Active plans: {savings_data.get('plans_count', 0)}, "
-        f"Net savings: ${savings_data.get('actual_savings', {}).get('net_savings', 0):,.0f}"
+        f"Data collected - Coverage: {coverage_data['compute']['summary']['avg_coverage_total']:.1f}%, "
+        f"Active plans: {savings_data['plans_count']}, "
+        f"Net savings: ${savings_data['actual_savings']['net_savings_hourly']:,.2f}/h"
     )
 
     # Check for low utilization and alert if needed
