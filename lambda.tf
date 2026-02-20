@@ -152,132 +152,39 @@ data "archive_file" "scheduler" {
   output_path      = "${path.module}/scheduler.zip"
   output_file_mode = "0666"
 
-  # Include function code at root
-  source {
-    content  = file("${path.module}/lambda/scheduler/handler.py")
-    filename = "handler.py"
-  }
-  source {
-    content  = file("${path.module}/lambda/scheduler/config.py")
-    filename = "config.py"
-  }
-  source {
-    content  = file("${path.module}/lambda/scheduler/email_notifications.py")
-    filename = "email_notifications.py"
-  }
-  source {
-    content  = file("${path.module}/lambda/scheduler/purchase_calculator.py")
-    filename = "purchase_calculator.py"
-  }
-  source {
-    content  = file("${path.module}/lambda/scheduler/queue_manager.py")
-    filename = "queue_manager.py"
-  }
-  source {
-    content  = file("${path.module}/lambda/scheduler/recommendations.py")
-    filename = "recommendations.py"
-  }
-  source {
-    content  = file("${path.module}/lambda/scheduler/follow_aws_strategy.py")
-    filename = "follow_aws_strategy.py"
+  # Scheduler function code
+  dynamic "source" {
+    for_each = fileset("${path.module}/lambda/scheduler", "*.py")
+    content {
+      content  = file("${path.module}/lambda/scheduler/${source.value}")
+      filename = source.value
+    }
   }
 
-  # Target strategy modules
-  source {
-    content  = file("${path.module}/lambda/scheduler/target_strategies/__init__.py")
-    filename = "target_strategies/__init__.py"
-  }
-  source {
-    content  = file("${path.module}/lambda/scheduler/target_strategies/fixed_target.py")
-    filename = "target_strategies/fixed_target.py"
-  }
-  source {
-    content  = file("${path.module}/lambda/scheduler/target_strategies/aws_target.py")
-    filename = "target_strategies/aws_target.py"
-  }
-  source {
-    content  = file("${path.module}/lambda/scheduler/target_strategies/dynamic_target.py")
-    filename = "target_strategies/dynamic_target.py"
+  # Strategy sub-packages
+  dynamic "source" {
+    for_each = fileset("${path.module}/lambda/scheduler/target_strategies", "*.py")
+    content {
+      content  = file("${path.module}/lambda/scheduler/target_strategies/${source.value}")
+      filename = "target_strategies/${source.value}"
+    }
   }
 
-  # Split strategy modules
-  source {
-    content  = file("${path.module}/lambda/scheduler/split_strategies/__init__.py")
-    filename = "split_strategies/__init__.py"
-  }
-  source {
-    content  = file("${path.module}/lambda/scheduler/split_strategies/one_shot_split.py")
-    filename = "split_strategies/one_shot_split.py"
-  }
-  source {
-    content  = file("${path.module}/lambda/scheduler/split_strategies/linear_split.py")
-    filename = "split_strategies/linear_split.py"
-  }
-  source {
-    content  = file("${path.module}/lambda/scheduler/split_strategies/dichotomy_split.py")
-    filename = "split_strategies/dichotomy_split.py"
+  dynamic "source" {
+    for_each = fileset("${path.module}/lambda/scheduler/split_strategies", "*.py")
+    content {
+      content  = file("${path.module}/lambda/scheduler/split_strategies/${source.value}")
+      filename = "split_strategies/${source.value}"
+    }
   }
 
-  # Include shared module
-  source {
-    content  = file("${path.module}/lambda/shared/handler_utils.py")
-    filename = "shared/handler_utils.py"
-  }
-  source {
-    content  = file("${path.module}/lambda/shared/aws_utils.py")
-    filename = "shared/aws_utils.py"
-  }
-  source {
-    content  = file("${path.module}/lambda/shared/local_mode.py")
-    filename = "shared/local_mode.py"
-  }
-  source {
-    content  = file("${path.module}/lambda/shared/queue_adapter.py")
-    filename = "shared/queue_adapter.py"
-  }
-  source {
-    content  = file("${path.module}/lambda/shared/storage_adapter.py")
-    filename = "shared/storage_adapter.py"
-  }
-  source {
-    content  = file("${path.module}/lambda/shared/notifications.py")
-    filename = "shared/notifications.py"
-  }
-  source {
-    content  = file("${path.module}/lambda/shared/config_validation.py")
-    filename = "shared/config_validation.py"
-  }
-  source {
-    content  = file("${path.module}/lambda/shared/spending_analyzer.py")
-    filename = "shared/spending_analyzer.py"
-  }
-  source {
-    content  = file("${path.module}/lambda/shared/sp_calculations.py")
-    filename = "shared/sp_calculations.py"
-  }
-  source {
-    content  = file("${path.module}/lambda/shared/savings_plans_metrics.py")
-    filename = "shared/savings_plans_metrics.py"
-  }
-  source {
-    content  = file("${path.module}/lambda/shared/config_schemas.py")
-    filename = "shared/config_schemas.py"
-  }
-  source {
-    content  = file("${path.module}/lambda/shared/aws_debug.py")
-    filename = "shared/aws_debug.py"
-  }
-  source {
-    content  = file("${path.module}/lambda/shared/constants.py")
-    filename = "shared/constants.py"
-  }
-  source {
-    content  = file("${path.module}/lambda/shared/optimal_coverage.py")
-    filename = "shared/optimal_coverage.py"
-  }
-  source {
-    content  = file("${path.module}/lambda/shared/__init__.py")
-    filename = "shared/__init__.py"
+  # Shared module
+  dynamic "source" {
+    for_each = fileset("${path.module}/lambda/shared", "*.py")
+    content {
+      content  = file("${path.module}/lambda/shared/${source.value}")
+      filename = "shared/${source.value}"
+    }
   }
 }
 
@@ -286,56 +193,22 @@ data "archive_file" "purchaser" {
   output_path      = "${path.module}/purchaser.zip"
   output_file_mode = "0666"
 
-  # Include function code at root
-  source {
-    content  = file("${path.module}/lambda/purchaser/handler.py")
-    filename = "handler.py"
-  }
-  source {
-    content  = file("${path.module}/lambda/purchaser/config.py")
-    filename = "config.py"
-  }
-  source {
-    content  = file("${path.module}/lambda/purchaser/validation.py")
-    filename = "validation.py"
+  # Purchaser function code
+  dynamic "source" {
+    for_each = fileset("${path.module}/lambda/purchaser", "*.py")
+    content {
+      content  = file("${path.module}/lambda/purchaser/${source.value}")
+      filename = source.value
+    }
   }
 
-  # Include shared module
-  source {
-    content  = file("${path.module}/lambda/shared/handler_utils.py")
-    filename = "shared/handler_utils.py"
-  }
-  source {
-    content  = file("${path.module}/lambda/shared/aws_utils.py")
-    filename = "shared/aws_utils.py"
-  }
-  source {
-    content  = file("${path.module}/lambda/shared/local_mode.py")
-    filename = "shared/local_mode.py"
-  }
-  source {
-    content  = file("${path.module}/lambda/shared/queue_adapter.py")
-    filename = "shared/queue_adapter.py"
-  }
-  source {
-    content  = file("${path.module}/lambda/shared/storage_adapter.py")
-    filename = "shared/storage_adapter.py"
-  }
-  source {
-    content  = file("${path.module}/lambda/shared/notifications.py")
-    filename = "shared/notifications.py"
-  }
-  source {
-    content  = file("${path.module}/lambda/shared/config_validation.py")
-    filename = "shared/config_validation.py"
-  }
-  source {
-    content  = file("${path.module}/lambda/shared/constants.py")
-    filename = "shared/constants.py"
-  }
-  source {
-    content  = file("${path.module}/lambda/shared/__init__.py")
-    filename = "shared/__init__.py"
+  # Shared module
+  dynamic "source" {
+    for_each = fileset("${path.module}/lambda/shared", "*.py")
+    content {
+      content  = file("${path.module}/lambda/shared/${source.value}")
+      filename = "shared/${source.value}"
+    }
   }
 }
 
@@ -344,138 +217,53 @@ data "archive_file" "reporter" {
   output_path      = "${path.module}/reporter.zip"
   output_file_mode = "0666"
 
-  # Include function code at root
-  source {
-    content  = file("${path.module}/lambda/reporter/handler.py")
-    filename = "handler.py"
-  }
-  source {
-    content  = file("${path.module}/lambda/reporter/config.py")
-    filename = "config.py"
-  }
-  source {
-    content  = file("${path.module}/lambda/reporter/report_generator.py")
-    filename = "report_generator.py"
-  }
-  source {
-    content  = file("${path.module}/lambda/reporter/notifications.py")
-    filename = "notifications.py"
-  }
-  source {
-    content  = file("${path.module}/lambda/reporter/scheduler_preview.py")
-    filename = "scheduler_preview.py"
+  # Reporter function code
+  dynamic "source" {
+    for_each = fileset("${path.module}/lambda/reporter", "*.py")
+    content {
+      content  = file("${path.module}/lambda/reporter/${source.value}")
+      filename = source.value
+    }
   }
 
-  # Include scheduler strategy modules (needed by scheduler_preview.py)
-  source {
-    content  = file("${path.module}/lambda/scheduler/follow_aws_strategy.py")
-    filename = "follow_aws_strategy.py"
-  }
-  source {
-    content  = file("${path.module}/lambda/scheduler/recommendations.py")
-    filename = "recommendations.py"
-  }
-  source {
-    content  = file("${path.module}/lambda/scheduler/purchase_calculator.py")
-    filename = "purchase_calculator.py"
-  }
-
-  # Target strategy modules
-  source {
-    content  = file("${path.module}/lambda/scheduler/target_strategies/__init__.py")
-    filename = "target_strategies/__init__.py"
-  }
-  source {
-    content  = file("${path.module}/lambda/scheduler/target_strategies/fixed_target.py")
-    filename = "target_strategies/fixed_target.py"
-  }
-  source {
-    content  = file("${path.module}/lambda/scheduler/target_strategies/aws_target.py")
-    filename = "target_strategies/aws_target.py"
-  }
-  source {
-    content  = file("${path.module}/lambda/scheduler/target_strategies/dynamic_target.py")
-    filename = "target_strategies/dynamic_target.py"
+  # Scheduler modules needed by scheduler_preview.py
+  dynamic "source" {
+    for_each = toset([
+      "sp_types.py",
+      "follow_aws_strategy.py",
+      "recommendations.py",
+      "purchase_calculator.py",
+    ])
+    content {
+      content  = file("${path.module}/lambda/scheduler/${source.value}")
+      filename = source.value
+    }
   }
 
-  # Split strategy modules
-  source {
-    content  = file("${path.module}/lambda/scheduler/split_strategies/__init__.py")
-    filename = "split_strategies/__init__.py"
-  }
-  source {
-    content  = file("${path.module}/lambda/scheduler/split_strategies/one_shot_split.py")
-    filename = "split_strategies/one_shot_split.py"
-  }
-  source {
-    content  = file("${path.module}/lambda/scheduler/split_strategies/linear_split.py")
-    filename = "split_strategies/linear_split.py"
-  }
-  source {
-    content  = file("${path.module}/lambda/scheduler/split_strategies/dichotomy_split.py")
-    filename = "split_strategies/dichotomy_split.py"
+  # Strategy sub-packages
+  dynamic "source" {
+    for_each = fileset("${path.module}/lambda/scheduler/target_strategies", "*.py")
+    content {
+      content  = file("${path.module}/lambda/scheduler/target_strategies/${source.value}")
+      filename = "target_strategies/${source.value}"
+    }
   }
 
-  # Include shared module
-  source {
-    content  = file("${path.module}/lambda/shared/handler_utils.py")
-    filename = "shared/handler_utils.py"
+  dynamic "source" {
+    for_each = fileset("${path.module}/lambda/scheduler/split_strategies", "*.py")
+    content {
+      content  = file("${path.module}/lambda/scheduler/split_strategies/${source.value}")
+      filename = "split_strategies/${source.value}"
+    }
   }
-  source {
-    content  = file("${path.module}/lambda/shared/aws_utils.py")
-    filename = "shared/aws_utils.py"
-  }
-  source {
-    content  = file("${path.module}/lambda/shared/local_mode.py")
-    filename = "shared/local_mode.py"
-  }
-  source {
-    content  = file("${path.module}/lambda/shared/queue_adapter.py")
-    filename = "shared/queue_adapter.py"
-  }
-  source {
-    content  = file("${path.module}/lambda/shared/storage_adapter.py")
-    filename = "shared/storage_adapter.py"
-  }
-  source {
-    content  = file("${path.module}/lambda/shared/notifications.py")
-    filename = "shared/notifications.py"
-  }
-  source {
-    content  = file("${path.module}/lambda/shared/config_validation.py")
-    filename = "shared/config_validation.py"
-  }
-  source {
-    content  = file("${path.module}/lambda/shared/spending_analyzer.py")
-    filename = "shared/spending_analyzer.py"
-  }
-  source {
-    content  = file("${path.module}/lambda/shared/savings_plans_metrics.py")
-    filename = "shared/savings_plans_metrics.py"
-  }
-  source {
-    content  = file("${path.module}/lambda/shared/sp_calculations.py")
-    filename = "shared/sp_calculations.py"
-  }
-  source {
-    content  = file("${path.module}/lambda/shared/config_schemas.py")
-    filename = "shared/config_schemas.py"
-  }
-  source {
-    content  = file("${path.module}/lambda/shared/aws_debug.py")
-    filename = "shared/aws_debug.py"
-  }
-  source {
-    content  = file("${path.module}/lambda/shared/constants.py")
-    filename = "shared/constants.py"
-  }
-  source {
-    content  = file("${path.module}/lambda/shared/optimal_coverage.py")
-    filename = "shared/optimal_coverage.py"
-  }
-  source {
-    content  = file("${path.module}/lambda/shared/__init__.py")
-    filename = "shared/__init__.py"
+
+  # Shared module
+  dynamic "source" {
+    for_each = fileset("${path.module}/lambda/shared", "*.py")
+    content {
+      content  = file("${path.module}/lambda/shared/${source.value}")
+      filename = "shared/${source.value}"
+    }
   }
 }
 
