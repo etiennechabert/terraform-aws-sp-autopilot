@@ -480,6 +480,7 @@ jobs:
     name: Terraform Integration Tests
     runs-on: ubuntu-latest
     needs: [approve-aws-access, terraform-validation, tfsec-scan, lint, terraform-unit-tests]
+    environment: aws-integration
     concurrency:
       group: aws-integration-tests
       cancel-in-progress: false
