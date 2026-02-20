@@ -183,6 +183,15 @@ jobs:
               body: output
             });
 
+  # Approval gate - runs immediately (parallel with Stage 1) to prompt early
+  approve-aws-access:
+    name: Approve AWS Access
+    if: github.actor != 'dependabot[bot]' && github.actor != 'renovate[bot]'
+    runs-on: ubuntu-latest
+    environment: aws-integration
+    steps:
+      - run: echo "AWS access approved for this workflow run"
+
   # Stage 2: Lambda tests (runs after Stage 1 passes)
   scheduler-tests:
     needs: [terraform-validation, tfsec-scan, lint]
@@ -470,7 +479,7 @@ jobs:
   terraform-integration-tests:
     name: Terraform Integration Tests
     runs-on: ubuntu-latest
-    needs: [terraform-validation, tfsec-scan, lint, terraform-unit-tests]
+    needs: [approve-aws-access, terraform-validation, tfsec-scan, lint, terraform-unit-tests]
     environment: aws-integration
     concurrency:
       group: aws-integration-tests
