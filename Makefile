@@ -1,4 +1,4 @@
-.PHONY: help lint lint-check format test coverage install-hooks
+.PHONY: help lint lint-check format test test-packaging coverage install-hooks
 
 help:
 	@echo "Available targets:"
@@ -32,7 +32,7 @@ format:
 	@echo "✓ Formatting complete"
 
 # Run all tests
-test:
+test: test-packaging
 	@echo "Running scheduler tests..."
 	cd lambda/scheduler && python3 -m pytest tests/ -v
 	@echo "Running purchaser tests..."
@@ -40,6 +40,12 @@ test:
 	@echo "Running reporter tests..."
 	cd lambda/reporter && python3 -m pytest tests/ -v
 	@echo "✓ All tests passed"
+
+# Validate lambda ZIP archives include all shared module dependencies
+test-packaging:
+	@echo "Validating lambda packaging..."
+	python3 -m pytest lambda/tests/test_lambda_packaging.py -v
+	@echo "✓ Packaging validation passed"
 
 # Run all tests with aggregated coverage and open HTML report
 # Usage: make coverage

@@ -252,6 +252,18 @@ data "archive_file" "scheduler" {
     filename = "shared/spending_analyzer.py"
   }
   source {
+    content  = file("${path.module}/lambda/shared/sp_calculations.py")
+    filename = "shared/sp_calculations.py"
+  }
+  source {
+    content  = file("${path.module}/lambda/shared/savings_plans_metrics.py")
+    filename = "shared/savings_plans_metrics.py"
+  }
+  source {
+    content  = file("${path.module}/lambda/shared/config_schemas.py")
+    filename = "shared/config_schemas.py"
+  }
+  source {
     content  = file("${path.module}/lambda/shared/aws_debug.py")
     filename = "shared/aws_debug.py"
   }
@@ -440,6 +452,14 @@ data "archive_file" "reporter" {
   source {
     content  = file("${path.module}/lambda/shared/savings_plans_metrics.py")
     filename = "shared/savings_plans_metrics.py"
+  }
+  source {
+    content  = file("${path.module}/lambda/shared/sp_calculations.py")
+    filename = "shared/sp_calculations.py"
+  }
+  source {
+    content  = file("${path.module}/lambda/shared/config_schemas.py")
+    filename = "shared/config_schemas.py"
   }
   source {
     content  = file("${path.module}/lambda/shared/aws_debug.py")
