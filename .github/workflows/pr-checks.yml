@@ -471,7 +471,7 @@ jobs:
     name: Terraform Integration Tests
     runs-on: ubuntu-latest
     needs: [terraform-validation, tfsec-scan, lint, terraform-unit-tests]
-    if: github.actor != 'dependabot[bot]' && github.actor != 'renovate[bot]'
+    environment: aws-integration
     concurrency:
       group: aws-integration-tests
       cancel-in-progress: false
@@ -563,10 +563,11 @@ jobs:
     name: Cleanup AWS Resources
     runs-on: ubuntu-latest
     needs: terraform-integration-tests
+    environment: aws-integration
     concurrency:
       group: aws-integration-tests
       cancel-in-progress: false
-    if: always() && github.actor != 'dependabot[bot]' && github.actor != 'renovate[bot]'
+    if: always()
     timeout-minutes: 15
     permissions:
       contents: read
