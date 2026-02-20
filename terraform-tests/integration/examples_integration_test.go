@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"regexp"
 	"strings"
 	"testing"
 	"time"
@@ -142,6 +143,9 @@ func transformExampleContent(content string) string {
     }
   }
 }`)
+
+	emailListRe := regexp.MustCompile(`emails\s*=\s*\[[^\]]*\]`)
+	result = emailListRe.ReplaceAllString(result, `emails = ["e2e-test@example.com"]`)
 
 	return result
 }
