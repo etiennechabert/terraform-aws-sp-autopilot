@@ -1,8 +1,8 @@
 """
-Validates that Terraform lambda archives include all required shared modules.
+Validates that Terraform lambda archives include all required local modules.
 
 Parses lambda.tf to find which files are packaged into each lambda ZIP,
-then uses AST to verify that every shared module imported by packaged code
+then uses AST to verify that every local module imported by packaged code
 is itself included in the archive.
 """
 
@@ -48,24 +48,44 @@ def parse_archive_sources(tf_content: str) -> dict[str, dict[str, Path]]:
     return archives
 
 
-def get_shared_imports(python_source: str) -> set[str]:
-    """Extract shared module names from import statements using AST."""
+def get_local_imports(python_source: str) -> set[str]:
+    """Extract candidate local module filenames from import statements using AST.
+
+    Returns possible filenames like 'sp_types.py' or 'shared/handler_utils.py'.
+    Only includes imports that look like they could be local project modules.
+    """
     try:
         tree = ast.parse(python_source)
     except SyntaxError:
         return set()
 
-    modules = set()
+    candidates = set()
     for node in ast.walk(tree):
         if isinstance(node, ast.ImportFrom) and node.module:
+            parts = node.module.split(".")
             if node.module == "shared":
                 for alias in node.names:
-                    modules.add(f"shared/{alias.name}.py")
-            elif node.module.startswith("shared."):
-                parts = node.module.split(".")
-                modules.add(f"shared/{parts[1]}.py")
+                    candidates.add(f"shared/{alias.name}.py")
+            elif parts[0] == "shared":
+                candidates.add(f"shared/{parts[1]}.py")
+            elif len(parts) == 1:
+                # Simple import like `from sp_types import X`
+                candidates.add(f"{parts[0]}.py")
 
-    return modules
+        elif isinstance(node, ast.Import):
+            for alias in node.names:
+                if "." not in alias.name:
+                    candidates.add(f"{alias.name}.py")
+
+    return candidates
+
+
+def _find_in_lambda_dirs(filename: str) -> bool:
+    """Check if a module file exists anywhere in the lambda source tree."""
+    for subdir in ["scheduler", "reporter", "purchaser", "shared"]:
+        if (LAMBDA_DIR / subdir / filename).exists():
+            return True
+    return False
 
 
 LAMBDA_ARCHIVES = ["scheduler", "purchaser", "reporter"]
@@ -77,7 +97,7 @@ def archives():
 
 
 @pytest.mark.parametrize("archive_name", LAMBDA_ARCHIVES)
-def test_archive_includes_all_shared_dependencies(archives, archive_name):
+def test_archive_includes_all_local_dependencies(archives, archive_name):
     if archive_name not in archives:
         pytest.skip(f"No archive_file '{archive_name}' found in lambda.tf")
 
@@ -89,11 +109,13 @@ def test_archive_includes_all_shared_dependencies(archives, archive_name):
         if not zip_filename.endswith(".py") or not source_path.exists():
             continue
 
-        needed = get_shared_imports(source_path.read_text())
-        for dep in needed:
-            if dep not in packaged_filenames:
+        candidates = get_local_imports(source_path.read_text())
+        for dep in candidates:
+            if dep in packaged_filenames:
+                continue
+            if _find_in_lambda_dirs(dep):
                 missing.add((zip_filename, dep))
 
     if missing:
         details = "\n".join(f"  {src} imports {dep}" for src, dep in sorted(missing))
-        pytest.fail(f"archive_file.{archive_name} is missing shared modules:\n{details}")
+        pytest.fail(f"archive_file.{archive_name} is missing local modules:\n{details}")
