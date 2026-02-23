@@ -380,13 +380,12 @@ def _build_strategy_tooltip(
         risk = config.get("dynamic_risk_level", "balanced")
         params_parts.append(f"risk: {risk}")
 
-    if split == "linear":
-        step = config.get("linear_step_percent", config.get("max_purchase_percent", 10.0))
+    if split == "fixed_step":
+        step = config.get("fixed_step_percent", config.get("max_purchase_percent", 10.0))
         params_parts.append(f"step: {step:.0f}%")
-    elif split == "dichotomy":
-        max_p = config.get("max_purchase_percent", 50.0)
-        min_p = config.get("min_purchase_percent", 1.0)
-        params_parts.append(f"max: {max_p:.0f}%, min: {min_p:.0f}%")
+    elif split == "gap_split":
+        divider = config.get("gap_split_divider", 2.0)
+        params_parts.append(f"divider: {divider:.0f}")
 
     params = ", ".join(params_parts) if params_parts else ""
     return f"{strategy_desc} ({params})" if params else strategy_desc
@@ -469,11 +468,11 @@ def _render_sp_type_scheduler_preview(
 ) -> str:
     """Render scheduler preview comparison for a specific SP type."""
     strategy_descriptions = {
-        "fixed+linear": "Fixed target with linear step-based purchases.",
-        "fixed+dichotomy": "Fixed target with exponentially decreasing purchase sizes.",
+        "fixed+fixed_step": "Fixed target with fixed step-based purchases.",
+        "fixed+gap_split": "Fixed target with gap-divided purchase sizes.",
         "fixed+one_shot": "Fixed target purchased in a single step.",
-        "dynamic+linear": "Dynamic target (risk-based) with linear step purchases.",
-        "dynamic+dichotomy": "Dynamic target (risk-based) with exponentially decreasing purchases.",
+        "dynamic+fixed_step": "Dynamic target (risk-based) with fixed step purchases.",
+        "dynamic+gap_split": "Dynamic target (risk-based) with gap-divided purchases.",
         "dynamic+one_shot": "Dynamic target (risk-based) purchased in a single step.",
         "aws+one_shot": "Follows AWS recommendations directly.",
     }
@@ -489,7 +488,7 @@ def _render_sp_type_scheduler_preview(
         """
 
     strategies = preview_data.get("strategies", {})
-    configured_strategy = preview_data.get("configured_strategy", "fixed+linear")
+    configured_strategy = preview_data.get("configured_strategy", "fixed+fixed_step")
     target_coverage = config.get("coverage_target_percent", 90.0)
 
     strategy_purchases = {}

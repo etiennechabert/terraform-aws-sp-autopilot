@@ -16,7 +16,7 @@ VALID_TERMS = ["ONE_YEAR", "THREE_YEAR"]
 
 VALID_TARGET_STRATEGIES = ["fixed", "aws", "dynamic"]
 
-VALID_SPLIT_STRATEGIES = ["one_shot", "linear", "dichotomy"]
+VALID_SPLIT_STRATEGIES = ["one_shot", "fixed_step", "gap_split"]
 
 VALID_RISK_LEVELS = ["too_prudent", "min_hourly", "balanced", "aggressive"]
 
@@ -193,16 +193,14 @@ def _validate_tags_field(config: dict[str, Any]) -> None:
 
 
 def _validate_purchase_percent_constraints(config: dict[str, Any]) -> None:
-    """Validate min_purchase_percent < max_purchase_percent."""
-    if (
-        "min_purchase_percent" in config
-        and "max_purchase_percent" in config
-        and config["min_purchase_percent"] >= config["max_purchase_percent"]
-    ):
+    """Validate min_purchase_percent > 0 and gap_split_divider > 0 when present."""
+    if "min_purchase_percent" in config and config["min_purchase_percent"] <= 0:
         raise ValueError(
-            f"Field 'min_purchase_percent' ({config['min_purchase_percent']}) "
-            f"must be less than 'max_purchase_percent' ({config['max_purchase_percent']})"
+            f"Field 'min_purchase_percent' must be greater than 0, "
+            f"got {config['min_purchase_percent']}"
         )
+    if "gap_split_divider" in config:
+        _validate_positive_number(config["gap_split_divider"], "gap_split_divider")
 
 
 def _validate_renewal_window_days(config: dict[str, Any]) -> None:

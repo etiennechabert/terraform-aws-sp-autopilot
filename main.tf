@@ -87,9 +87,9 @@ locals {
   split_strategy_type = (
     local.target_strategy_type == "aws" ? "one_shot" :
     try(var.purchase_strategy.split.one_shot, null) != null ? "one_shot" :
-    try(var.purchase_strategy.split.linear, null) != null ? "linear" :
-    try(var.purchase_strategy.split.dichotomy, null) != null ? "dichotomy" :
-    "linear" # default
+    try(var.purchase_strategy.split.fixed_step, null) != null ? "fixed_step" :
+    try(var.purchase_strategy.split.gap_split, null) != null ? "gap_split" :
+    "fixed_step" # default
   )
 
   # Coverage target (only for fixed target)
@@ -107,24 +107,31 @@ locals {
   )
 
   # Split strategy params
-  linear_step_percent = (
-    local.split_strategy_type == "linear" ?
-    try(var.purchase_strategy.split.linear.step_percent, 10.0) :
+  fixed_step_percent = (
+    local.split_strategy_type == "fixed_step" ?
+    try(var.purchase_strategy.split.fixed_step.step_percent, 10.0) :
     10.0
   )
 
   max_purchase_percent = (
-    local.split_strategy_type == "dichotomy" ?
-    try(var.purchase_strategy.split.dichotomy.max_purchase_percent, 50.0) :
-    local.split_strategy_type == "linear" ?
-    local.linear_step_percent :
+    local.split_strategy_type == "fixed_step" ?
+    local.fixed_step_percent :
+    local.split_strategy_type == "gap_split" ?
+    try(var.purchase_strategy.split.gap_split.max_purchase_percent, null) != null ?
+    var.purchase_strategy.split.gap_split.max_purchase_percent : 100.0 :
     100.0
   )
 
   min_purchase_percent = (
-    local.split_strategy_type == "dichotomy" ?
-    try(var.purchase_strategy.split.dichotomy.min_purchase_percent, 1.0) :
+    local.split_strategy_type == "gap_split" ?
+    try(var.purchase_strategy.split.gap_split.min_purchase_percent, 1.0) :
     1.0
+  )
+
+  gap_split_divider = (
+    local.split_strategy_type == "gap_split" ?
+    try(var.purchase_strategy.split.gap_split.divider, 2.0) :
+    2.0
   )
 
   # Scheduler Dry-Run Mode

@@ -12,7 +12,7 @@ First component in the automation workflow. Runs on schedule (default: 1st of mo
 2. Calculate current coverage (excluding expiring plans)
 3. Fetch AWS purchase recommendations
 4. Calculate purchase need based on coverage gap
-5. Apply `max_purchase_percent` limit
+5. Apply split strategy (one_shot, fixed_step, or gap_split)
 6. Split by term mix (Compute SP only)
 7. Queue purchase intents OR send dry-run email
 8. Send notification email with results

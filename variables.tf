@@ -53,10 +53,11 @@ variable "purchase_strategy" {
 
     split = optional(object({
       one_shot = optional(object({}))
-      linear   = optional(object({ step_percent = number }))
-      dichotomy = optional(object({
-        max_purchase_percent = number
-        min_purchase_percent = number
+      fixed_step = optional(object({ step_percent = number }))
+      gap_split = optional(object({
+        divider              = number
+        min_purchase_percent = optional(number, 1)
+        max_purchase_percent = optional(number)
       }))
     }))
   })
@@ -94,12 +95,12 @@ variable "purchase_strategy" {
     condition = (
       var.purchase_strategy.target.aws != null ? true :
       var.purchase_strategy.split != null && (
-        (var.purchase_strategy.split.one_shot != null && var.purchase_strategy.split.linear == null && var.purchase_strategy.split.dichotomy == null) ||
-        (var.purchase_strategy.split.one_shot == null && var.purchase_strategy.split.linear != null && var.purchase_strategy.split.dichotomy == null) ||
-        (var.purchase_strategy.split.one_shot == null && var.purchase_strategy.split.linear == null && var.purchase_strategy.split.dichotomy != null)
+        (var.purchase_strategy.split.one_shot != null && var.purchase_strategy.split.fixed_step == null && var.purchase_strategy.split.gap_split == null) ||
+        (var.purchase_strategy.split.one_shot == null && var.purchase_strategy.split.fixed_step != null && var.purchase_strategy.split.gap_split == null) ||
+        (var.purchase_strategy.split.one_shot == null && var.purchase_strategy.split.fixed_step == null && var.purchase_strategy.split.gap_split != null)
       )
     )
-    error_message = "For fixed/dynamic targets, exactly one split strategy (one_shot, linear, or dichotomy) must be defined."
+    error_message = "For fixed/dynamic targets, exactly one split strategy (one_shot, fixed_step, or gap_split) must be defined."
   }
 
   # fixed.coverage_percent validation
@@ -123,26 +124,33 @@ variable "purchase_strategy" {
     error_message = "dynamic.risk_level must be one of: too_prudent, min_hourly, balanced, aggressive."
   }
 
-  # linear.step_percent validation
+  # fixed_step.step_percent validation
   validation {
     condition = (
-      try(var.purchase_strategy.split.linear, null) != null ?
-      var.purchase_strategy.split.linear.step_percent > 0 && var.purchase_strategy.split.linear.step_percent <= 100 :
+      try(var.purchase_strategy.split.fixed_step, null) != null ?
+      var.purchase_strategy.split.fixed_step.step_percent > 0 && var.purchase_strategy.split.fixed_step.step_percent <= 100 :
       true
     )
-    error_message = "linear.step_percent must be between 0 and 100."
+    error_message = "fixed_step.step_percent must be between 0 and 100."
   }
 
-  # dichotomy min < max validation
+  # gap_split validation
   validation {
     condition = (
-      try(var.purchase_strategy.split.dichotomy, null) != null ?
-      (var.purchase_strategy.split.dichotomy.min_purchase_percent > 0 &&
-        var.purchase_strategy.split.dichotomy.max_purchase_percent <= 100 &&
-      var.purchase_strategy.split.dichotomy.min_purchase_percent < var.purchase_strategy.split.dichotomy.max_purchase_percent) :
+      try(var.purchase_strategy.split.gap_split, null) != null ?
+      var.purchase_strategy.split.gap_split.divider > 0 :
       true
     )
-    error_message = "For dichotomy split: 0 < min_purchase_percent < max_purchase_percent <= 100."
+    error_message = "For gap_split split: divider must be greater than 0."
+  }
+
+  validation {
+    condition = (
+      try(var.purchase_strategy.split.gap_split, null) != null ?
+      try(var.purchase_strategy.split.gap_split.min_purchase_percent, 1) > 0 :
+      true
+    )
+    error_message = "For gap_split split: min_purchase_percent must be greater than 0."
   }
 
   validation {

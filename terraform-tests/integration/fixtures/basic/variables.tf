@@ -33,10 +33,11 @@ variable "purchase_strategy" {
 
     split = optional(object({
       one_shot = optional(object({}))
-      linear   = optional(object({ step_percent = number }))
-      dichotomy = optional(object({
-        max_purchase_percent = number
-        min_purchase_percent = number
+      fixed_step = optional(object({ step_percent = number }))
+      gap_split = optional(object({
+        divider              = number
+        min_purchase_percent = optional(number, 1)
+        max_purchase_percent = optional(number)
       }))
     }))
   })
@@ -53,7 +54,7 @@ variable "purchase_strategy" {
     }
 
     split = {
-      linear = { step_percent = 10 }
+      fixed_step = { step_percent = 10 }
     }
   }
 }

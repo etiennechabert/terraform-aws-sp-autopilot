@@ -2,7 +2,7 @@
     "version": "0.2.0",
     "configurations": [
         {
-            "name": "Scheduler - Fixed + Linear",
+            "name": "Scheduler - Fixed + Fixed Step",
             "type": "debugpy",
             "request": "launch",
             "module": "lambda.scheduler.handler",
@@ -24,10 +24,10 @@
                 "ENABLE_COMPUTE_SP": "true",
                 "ENABLE_SAGEMAKER_SP": "true",
                 "COVERAGE_TARGET_PERCENT": "100",
-                // Fixed target + Linear split (matches single-account-compute example)
+                // Fixed target + Fixed Step split (matches single-account-compute example)
                 "TARGET_STRATEGY_TYPE": "fixed",
-                "SPLIT_STRATEGY_TYPE": "linear",
-                "LINEAR_STEP_PERCENT": "10",
+                "SPLIT_STRATEGY_TYPE": "fixed_step",
+                "FIXED_STEP_PERCENT": "10",
                 "COMPUTE_SP_TERM": "THREE_YEAR",
                 "RENEWAL_WINDOW_DAYS": "7",
                 "LOOKBACK_DAYS": "13",
@@ -38,7 +38,7 @@
             "cwd": "${workspaceFolder}/lambda/scheduler"
         },
         {
-            "name": "Scheduler - Dynamic + Dichotomy",
+            "name": "Scheduler - Dynamic + Gap Split",
             "type": "debugpy",
             "request": "launch",
             "module": "lambda.scheduler.handler",
@@ -59,10 +59,11 @@
                 "DRY_RUN": "true",
                 "ENABLE_COMPUTE_SP": "true",
                 "ENABLE_SAGEMAKER_SP": "true",
-                // Dynamic target + Dichotomy split (matches dynamic-strategy example)
+                // Dynamic target + Gap Split split (matches dynamic-strategy example)
                 "TARGET_STRATEGY_TYPE": "dynamic",
-                "SPLIT_STRATEGY_TYPE": "dichotomy",
+                "SPLIT_STRATEGY_TYPE": "gap_split",
                 "DYNAMIC_RISK_LEVEL": "balanced",
+                "GAP_SPLIT_DIVIDER": "2",
                 "MAX_PURCHASE_PERCENT": "50",
                 "MIN_PURCHASE_PERCENT": "1",
                 "COMPUTE_SP_TERM": "THREE_YEAR",
@@ -168,8 +169,8 @@
                 "INCLUDE_DEBUG_DATA": "true",
                 // Scheduler strategy (for preview simulation)
                 "TARGET_STRATEGY_TYPE": "fixed",
-                "SPLIT_STRATEGY_TYPE": "linear",
-                "LINEAR_STEP_PERCENT": "10",
+                "SPLIT_STRATEGY_TYPE": "fixed_step",
+                "FIXED_STEP_PERCENT": "10",
                 "COVERAGE_TARGET_PERCENT": "90",
                 "COMPUTE_SP_TERM": "THREE_YEAR",
                 "COMPUTE_SP_PAYMENT_OPTION": "ALL_UPFRONT",
