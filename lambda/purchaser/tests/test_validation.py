@@ -16,7 +16,6 @@ def test_valid_purchase_intent():
         "sp_type": "ComputeSavingsPlans",
         "term_seconds": 94608000,
         "payment_option": "NO_UPFRONT",
-        "projected_coverage_after": 85.5,
     }
     validate_purchase_intent(purchase_intent)
 
@@ -30,7 +29,6 @@ def test_missing_required_field():
         "sp_type": "ComputeSavingsPlans",
         "term_seconds": 94608000,
         # Missing: payment_option
-        "projected_coverage_after": 85.5,
     }
     with pytest.raises(ValueError, match="Missing required fields"):
         validate_purchase_intent(purchase_intent)
@@ -45,7 +43,6 @@ def test_invalid_sp_type():
         "sp_type": "InvalidType",
         "term_seconds": 94608000,
         "payment_option": "NO_UPFRONT",
-        "projected_coverage_after": 85.5,
     }
     with pytest.raises(ValueError, match="Invalid sp_type"):
         validate_purchase_intent(purchase_intent)
@@ -60,7 +57,6 @@ def test_invalid_payment_option():
         "sp_type": "ComputeSavingsPlans",
         "term_seconds": 94608000,
         "payment_option": "INVALID_OPTION",
-        "projected_coverage_after": 85.5,
     }
     with pytest.raises(ValueError, match="Invalid payment_option"):
         validate_purchase_intent(purchase_intent)
@@ -75,7 +71,6 @@ def test_empty_client_token():
         "sp_type": "ComputeSavingsPlans",
         "term_seconds": 94608000,
         "payment_option": "NO_UPFRONT",
-        "projected_coverage_after": 85.5,
     }
     with pytest.raises(ValueError, match=r"client_token.*non-empty string"):
         validate_purchase_intent(purchase_intent)
@@ -90,7 +85,6 @@ def test_invalid_commitment_type():
         "sp_type": "ComputeSavingsPlans",
         "term_seconds": 94608000,
         "payment_option": "NO_UPFRONT",
-        "projected_coverage_after": 85.5,
     }
     with pytest.raises(ValueError, match="Field 'commitment' must be numeric"):
         validate_purchase_intent(purchase_intent)
@@ -111,24 +105,8 @@ def test_invalid_term_seconds_type():
         "sp_type": "ComputeSavingsPlans",
         "term_seconds": "94608000",  # String instead of int
         "payment_option": "NO_UPFRONT",
-        "projected_coverage_after": 85.5,
     }
     with pytest.raises(ValueError, match=r"term_seconds.*must be an integer"):
-        validate_purchase_intent(purchase_intent)
-
-
-def test_invalid_projected_coverage_type():
-    """Test that invalid projected_coverage_after type raises ValueError."""
-    purchase_intent = {
-        "client_token": "test-token-123",
-        "offering_id": "offering-abc-456",
-        "commitment": "10.50",
-        "sp_type": "ComputeSavingsPlans",
-        "term_seconds": 94608000,
-        "payment_option": "NO_UPFRONT",
-        "projected_coverage_after": "85.5",  # String instead of number
-    }
-    with pytest.raises(ValueError, match=r"projected_coverage_after.*must be a number"):
         validate_purchase_intent(purchase_intent)
 
 
@@ -141,7 +119,6 @@ def test_empty_offering_id():
         "sp_type": "ComputeSavingsPlans",
         "term_seconds": 94608000,
         "payment_option": "NO_UPFRONT",
-        "projected_coverage_after": 85.5,
     }
     with pytest.raises(ValueError, match=r"offering_id.*non-empty string"):
         validate_purchase_intent(purchase_intent)
@@ -156,7 +133,6 @@ def test_invalid_upfront_amount():
         "sp_type": "ComputeSavingsPlans",
         "term_seconds": 94608000,
         "payment_option": "ALL_UPFRONT",
-        "projected_coverage_after": 85.5,
         "upfront_amount": "invalid",  # Invalid type
     }
     with pytest.raises(ValueError, match=r"upfront_amount.*must be numeric"):
@@ -172,7 +148,6 @@ def test_client_token_too_long():
         "sp_type": "ComputeSavingsPlans",
         "term_seconds": 94608000,
         "payment_option": "NO_UPFRONT",
-        "projected_coverage_after": 85.5,
     }
     with pytest.raises(ValueError, match=r"client_token.*exceeds maximum length"):
         validate_purchase_intent(purchase_intent)
@@ -187,7 +162,6 @@ def test_offering_id_too_long():
         "sp_type": "ComputeSavingsPlans",
         "term_seconds": 94608000,
         "payment_option": "NO_UPFRONT",
-        "projected_coverage_after": 85.5,
     }
     with pytest.raises(ValueError, match=r"offering_id.*exceeds maximum length"):
         validate_purchase_intent(purchase_intent)

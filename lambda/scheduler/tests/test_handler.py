@@ -11,6 +11,7 @@ All tests follow these guidelines:
 import json
 import os
 import sys
+from datetime import UTC, datetime, timedelta
 from unittest.mock import Mock, patch
 
 import pytest
@@ -49,7 +50,10 @@ def mock_env_vars(monkeypatch):
 @pytest.fixture
 def mock_clients():
     """Mock AWS clients at the initialization boundary."""
-    with patch("handler.initialize_clients") as mock_init:
+    with (
+        patch("handler.initialize_clients") as mock_init,
+        patch("shared.savings_plans_metrics.has_recent_purchase", return_value=False),
+    ):
         mock_ce = Mock()
         mock_sqs = Mock()
         mock_sns = Mock()
@@ -68,6 +72,84 @@ def mock_clients():
             "sns": mock_sns,
             "savingsplans": mock_sp,
         }
+
+
+def test_handler_cooldown_skips_scheduling(mock_env_vars, monkeypatch):
+    """Test handler skips scheduling when a recent purchase is within cooldown window."""
+    monkeypatch.setenv("PURCHASE_COOLDOWN_DAYS", "7")
+
+    with (
+        patch("handler.initialize_clients") as mock_init,
+        patch("shared.savings_plans_metrics.has_recent_purchase", return_value=True),
+    ):
+        mock_sns = Mock()
+        mock_sns.publish.return_value = {"MessageId": "test-msg"}
+        mock_init.return_value = {
+            "ce": Mock(),
+            "sqs": Mock(),
+            "sns": mock_sns,
+            "savingsplans": Mock(),
+        }
+
+        response = handler.handler({}, None)
+
+    assert response["statusCode"] == 200
+    body = json.loads(response["body"])
+    assert body["purchases_planned"] == 0
+    assert "cooldown" in body["message"]
+    mock_sns.publish.assert_called_once()
+    assert "cooldown" in mock_sns.publish.call_args[1]["Subject"].lower()
+
+
+def test_has_recent_purchase_detects_recent_plan():
+    """Test has_recent_purchase returns True when a plan was started within cooldown."""
+    from shared.savings_plans_metrics import has_recent_purchase
+
+    recent_start = (datetime.now(UTC) - timedelta(days=2)).isoformat()
+    mock_client = Mock()
+    mock_client.describe_savings_plans.return_value = {
+        "savingsPlans": [
+            {
+                "savingsPlanId": "sp-123",
+                "savingsPlanType": "Compute",
+                "commitment": "1.0",
+                "start": recent_start,
+                "end": "2029-01-01T00:00:00Z",
+                "paymentOption": "ALL_UPFRONT",
+                "termDurationInSeconds": 94608000,
+            }
+        ]
+    }
+    assert has_recent_purchase(mock_client, cooldown_days=7) is True
+
+
+def test_has_recent_purchase_ignores_old_plan():
+    """Test has_recent_purchase returns False when all plans are older than cooldown."""
+    from shared.savings_plans_metrics import has_recent_purchase
+
+    old_start = (datetime.now(UTC) - timedelta(days=30)).isoformat()
+    mock_client = Mock()
+    mock_client.describe_savings_plans.return_value = {
+        "savingsPlans": [
+            {
+                "savingsPlanId": "sp-456",
+                "savingsPlanType": "Compute",
+                "commitment": "1.0",
+                "start": old_start,
+                "end": "2029-01-01T00:00:00Z",
+                "paymentOption": "ALL_UPFRONT",
+                "termDurationInSeconds": 94608000,
+            }
+        ]
+    }
+    assert has_recent_purchase(mock_client, cooldown_days=7) is False
+
+
+def test_has_recent_purchase_zero_cooldown():
+    """Test has_recent_purchase returns False when cooldown is 0 (disabled)."""
+    from shared.savings_plans_metrics import has_recent_purchase
+
+    assert has_recent_purchase(Mock(), cooldown_days=0) is False
 
 
 def test_handler_dry_run_mode(mock_env_vars, mock_clients, aws_mock_builder):

@@ -41,6 +41,12 @@ CONFIG_SCHEMA = {
         "default": "7",
         "env_var": "RENEWAL_WINDOW_DAYS",
     },
+    "purchase_cooldown_days": {
+        "required": False,
+        "type": "int",
+        "default": "7",
+        "env_var": "PURCHASE_COOLDOWN_DAYS",
+    },
     "lookback_days": {
         "required": False,
         "type": "int",

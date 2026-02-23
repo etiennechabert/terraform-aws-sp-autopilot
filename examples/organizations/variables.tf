@@ -1,7 +1,7 @@
 # Variables for organizations example
 # These can be overridden for testing or customization
 
-variable "scheduler" {
+variable "cron_schedules" {
   description = "EventBridge schedule configuration (can be overridden for testing)"
   type = object({
     scheduler = optional(string, "cron(0 8 1 * ? *)")  # 1st of month

@@ -32,7 +32,6 @@ run "test_sqs_queue_policy_created" {
   variables {
     purchase_strategy = {
       coverage_target_percent = 80
-      max_coverage_cap        = 90
       simple = {
         max_purchase_percent = 5
       }
@@ -61,7 +60,6 @@ run "test_sqs_queue_policy_with_database_sp" {
   variables {
     purchase_strategy = {
       coverage_target_percent = 80
-      max_coverage_cap        = 90
       simple = {
         max_purchase_percent = 5
       }

@@ -87,8 +87,6 @@ After enabling:
 
 ```hcl
 purchase_strategy = {
-  max_coverage_cap = 90  # Hard ceiling
-
   target = {
     fixed = { coverage_percent = 80 }  # Lower = more conservative
   }
@@ -114,7 +112,7 @@ sp_plans = {
 ### Adjust Review Window
 
 ```hcl
-scheduler = {
+cron_schedules = {
   scheduler = "cron(0 8 1 * ? *)"   # 1st of month
   purchaser = "cron(0 8 10 * ? *)"  # 10th = 9-day window
 }

@@ -4,11 +4,10 @@ Integration tests for Purchaser Lambda.
 Tests verify all required behaviors:
 1. Empty queue exits silently
 2. Valid purchases execute correctly
-3. Cap enforcement works
-4. Messages deleted appropriately
-5. Emails sent correctly
-6. Input validation rejects malformed messages
-7. API errors are handled properly
+3. Messages deleted appropriately
+4. Emails sent correctly
+5. Input validation rejects malformed messages
+6. API errors are handled properly
 """
 
 import json
@@ -39,7 +38,6 @@ def mock_env_vars(monkeypatch):
     monkeypatch.setenv("AWS_DEFAULT_REGION", "us-east-1")
     monkeypatch.setenv("QUEUE_URL", "https://sqs.us-east-1.amazonaws.com/123456789012/test-queue")
     monkeypatch.setenv("SNS_TOPIC_ARN", "arn:aws:sns:us-east-1:123456789012:test-topic")
-    monkeypatch.setenv("MAX_COVERAGE_CAP", "95")
     monkeypatch.setenv("RENEWAL_WINDOW_DAYS", "7")
 
 
@@ -94,7 +92,6 @@ def test_valid_purchase_success(aws_mock_builder, mock_env_vars, mock_clients):
         "term_seconds": 94608000,  # 3 years
         "payment_option": "NO_UPFRONT",
         "upfront_amount": None,
-        "projected_coverage_after": 75.0,
     }
 
     mock_clients["sqs"].receive_message.return_value = {
@@ -140,60 +137,6 @@ def test_valid_purchase_success(aws_mock_builder, mock_env_vars, mock_clients):
     assert "Successful Purchases: 1" in email_call[1]["Message"]
 
 
-def test_cap_enforcement(mock_env_vars, mock_clients):
-    """Purchase exceeding max coverage cap should be skipped."""
-    # Mock SQS message with purchase that would exceed cap
-    purchase_intent = {
-        "client_token": "test-token-456",
-        "offering_id": "sp-offering-456",
-        "commitment": "5.00",
-        "sp_type": "ComputeSavingsPlans",
-        "term_seconds": 94608000,
-        "payment_option": "NO_UPFRONT",
-        "upfront_amount": None,
-        "projected_coverage_after": 98.0,  # Exceeds 95% cap
-    }
-
-    mock_clients["sqs"].receive_message.return_value = {
-        "Messages": [{"Body": json.dumps(purchase_intent), "ReceiptHandle": "receipt-handle-456"}]
-    }
-
-    # Mock current coverage
-    mock_clients["ce"].get_savings_plans_coverage.return_value = {
-        "SavingsPlansCoverages": [
-            {
-                "Groups": [
-                    {
-                        "Attributes": {"SAVINGS_PLANS_TYPE": "ComputeSavingsPlans"},
-                        "Coverage": {"CoveragePercentage": "85.0"},
-                    }
-                ]
-            }
-        ]
-    }
-
-    # Mock no expiring plans
-    mock_clients["savingsplans"].describe_savings_plans.return_value = {"savingsPlans": []}
-
-    # Execute handler
-    response = handler.handler({}, {})
-
-    # Verify
-    assert response["statusCode"] == 200
-    assert not mock_clients["savingsplans"].create_savings_plan.called, (
-        "CreateSavingsPlan should NOT be called when exceeding cap"
-    )
-    assert mock_clients["sqs"].delete_message.called, (
-        "Message should still be deleted even when skipped"
-    )
-    assert mock_clients["sns"].publish.called, "Summary email should be sent"
-
-    # Verify email content mentions skip
-    email_call = mock_clients["sns"].publish.call_args
-    assert "Skipped Purchases: 1" in email_call[1]["Message"]
-    assert "Would exceed max_coverage_cap" in email_call[1]["Message"]
-
-
 def test_api_error_handling(mock_env_vars, mock_clients):
     """API error should send error email and raise exception."""
     with patch("boto3.client") as mock_boto_client:
@@ -209,7 +152,6 @@ def test_api_error_handling(mock_env_vars, mock_clients):
             "term_seconds": 94608000,
             "payment_option": "NO_UPFRONT",
             "upfront_amount": None,
-            "projected_coverage_after": 60.0,
         }
 
         mock_clients["sqs"].receive_message.return_value = {
@@ -248,7 +190,6 @@ def test_database_sp_purchase(mock_env_vars, mock_clients):
         "term_seconds": 94608000,  # 3 years
         "payment_option": "NO_UPFRONT",
         "upfront_amount": None,
-        "projected_coverage_after": 80.0,
     }
 
     mock_clients["sqs"].receive_message.return_value = {
@@ -317,7 +258,6 @@ def test_validation_errors(mock_env_vars, mock_clients):
         "sp_type": "ComputeSavingsPlans",
         "term_seconds": 94608000,
         "payment_option": "NO_UPFRONT",
-        "projected_coverage_after": 75.0,
     }
 
     mock_clients["sqs"].receive_message.return_value = {
@@ -370,7 +310,6 @@ def test_validation_errors(mock_env_vars, mock_clients):
         "term_seconds": 94608000,
         "payment_option": "NO_UPFRONT",
         "upfront_amount": None,
-        "projected_coverage_after": 75.0,
     }
 
     mock_clients["sqs"].receive_message.return_value = {
@@ -410,7 +349,6 @@ def test_upfront_payment_purchase(mock_env_vars, mock_clients):
         "term_seconds": 94608000,  # 3 years
         "payment_option": "ALL_UPFRONT",
         "upfront_amount": "262800.00",  # 3 years * $10/hr * 8760 hrs/year
-        "projected_coverage_after": 70.0,
     }
 
     mock_clients["sqs"].receive_message.return_value = {
@@ -467,7 +405,6 @@ def test_sagemaker_sp_purchase(mock_env_vars, mock_clients):
         "term_seconds": 31536000,  # 1 year
         "payment_option": "NO_UPFRONT",
         "upfront_amount": None,
-        "projected_coverage_after": 65.0,
     }
 
     mock_clients["sqs"].receive_message.return_value = {
@@ -525,7 +462,6 @@ def test_purchase_api_error(mock_env_vars, mock_clients):
         "term_seconds": 94608000,
         "payment_option": "NO_UPFRONT",
         "upfront_amount": None,
-        "projected_coverage_after": 60.0,
     }
 
     mock_clients["sqs"].receive_message.return_value = {
@@ -582,7 +518,6 @@ def test_expiring_plans_renewal(mock_env_vars, mock_clients):
         "term_seconds": 94608000,
         "payment_option": "NO_UPFRONT",
         "upfront_amount": None,
-        "projected_coverage_after": 80.0,
     }
 
     mock_clients["sqs"].receive_message.return_value = {
@@ -647,7 +582,6 @@ def test_expiring_database_plans(mock_env_vars, mock_clients):
         "term_seconds": 94608000,
         "payment_option": "NO_UPFRONT",
         "upfront_amount": None,
-        "projected_coverage_after": 75.0,
     }
 
     mock_clients["sqs"].receive_message.return_value = {
@@ -710,7 +644,6 @@ def test_general_exception_handling(mock_env_vars, mock_clients):
         "term_seconds": 94608000,
         "payment_option": "NO_UPFRONT",
         "upfront_amount": None,
-        "projected_coverage_after": 60.0,
     }
 
     mock_clients["sqs"].receive_message.return_value = {
@@ -765,7 +698,6 @@ def test_expiring_sagemaker_plans(mock_env_vars, mock_clients):
         "term_seconds": 31536000,
         "payment_option": "NO_UPFRONT",
         "upfront_amount": None,
-        "projected_coverage_after": 70.0,
     }
 
     mock_clients["sqs"].receive_message.return_value = {

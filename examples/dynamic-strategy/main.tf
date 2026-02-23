@@ -37,9 +37,8 @@ module "savings_plans" {
 
   # Purchase strategy - dynamic target with gap split
   purchase_strategy = {
-    max_coverage_cap = 95       # Safety cap at 95%
-    lookback_days    = 13       # Max for HOURLY granularity (recommended)
-    granularity      = "HOURLY" # Recommended for accurate analysis
+    lookback_days = 13       # Max for HOURLY granularity (recommended)
+    granularity   = "HOURLY" # Recommended for accurate analysis
 
     target = {
       dynamic = { risk_level = "optimal" } # Knee-point algorithm
@@ -69,10 +68,10 @@ module "savings_plans" {
   }
 
   # Scheduling - monthly automation cycle (can be overridden for testing)
-  scheduler = {
-    scheduler = try(var.scheduler.scheduler, "cron(0 8 1 * ? *)") # 1st of month - analyze usage
-    purchaser = try(var.scheduler.purchaser, "cron(0 8 4 * ? *)") # 4th of month - execute purchases (3-day review)
-    reporter  = try(var.scheduler.reporter, "cron(0 9 1 * ? *)")  # 1st of month - generate reports
+  cron_schedules = {
+    scheduler = try(var.cron_schedules.scheduler, "cron(0 8 1 * ? *)") # 1st of month - analyze usage
+    purchaser = try(var.cron_schedules.purchaser, "cron(0 8 4 * ? *)") # 4th of month - execute purchases (3-day review)
+    reporter  = try(var.cron_schedules.reporter, "cron(0 9 1 * ? *)")  # 1st of month - generate reports
   }
 
   # Notifications

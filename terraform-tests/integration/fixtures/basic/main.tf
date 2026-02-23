@@ -38,7 +38,7 @@ module "sp_autopilot" {
   name_prefix       = var.name_prefix
   purchase_strategy = var.purchase_strategy
   sp_plans          = var.sp_plans
-  scheduler         = var.scheduler
+  cron_schedules    = var.cron_schedules
   notifications     = var.notifications
   reporting         = var.reporting
   monitoring        = var.monitoring

@@ -38,6 +38,7 @@ resource "aws_lambda_function" "scheduler" {
       MIN_PURCHASE_PERCENT        = tostring(local.min_purchase_percent)
       GAP_SPLIT_DIVIDER           = tostring(local.gap_split_divider)
       RENEWAL_WINDOW_DAYS         = tostring(local.renewal_window_days)
+      PURCHASE_COOLDOWN_DAYS      = tostring(local.purchase_cooldown_days)
       LOOKBACK_DAYS               = tostring(local.lookback_days)
       GRANULARITY                 = local.granularity
       MIN_COMMITMENT_PER_PLAN     = tostring(local.min_commitment_per_plan)
@@ -78,7 +79,6 @@ resource "aws_lambda_function" "purchaser" {
     variables = {
       QUEUE_URL                   = aws_sqs_queue.purchase_intents.url
       SNS_TOPIC_ARN               = aws_sns_topic.notifications.arn
-      MAX_COVERAGE_CAP            = tostring(local.max_coverage_cap)
       RENEWAL_WINDOW_DAYS         = tostring(local.renewal_window_days)
       LOOKBACK_DAYS               = tostring(local.lookback_days)
       GRANULARITY                 = local.granularity

@@ -32,7 +32,6 @@ run "test_scheduler_log_group_naming" {
   variables {
     purchase_strategy = {
       coverage_target_percent = 80
-      max_coverage_cap        = 90
       simple = {
         max_purchase_percent = 5
       }
@@ -66,7 +65,6 @@ run "test_purchaser_log_group_naming" {
   variables {
     purchase_strategy = {
       coverage_target_percent = 80
-      max_coverage_cap        = 90
       simple = {
         max_purchase_percent = 5
       }
@@ -100,7 +98,6 @@ run "test_reporter_log_group_naming" {
   variables {
     purchase_strategy = {
       coverage_target_percent = 80
-      max_coverage_cap        = 90
       simple = {
         max_purchase_percent = 5
       }
@@ -134,7 +131,6 @@ run "test_log_groups_retention" {
   variables {
     purchase_strategy = {
       coverage_target_percent = 80
-      max_coverage_cap        = 90
       simple = {
         max_purchase_percent = 5
       }
@@ -173,7 +169,6 @@ run "test_log_groups_tags" {
   variables {
     purchase_strategy = {
       coverage_target_percent = 80
-      max_coverage_cap        = 90
       simple = {
         max_purchase_percent = 5
       }
@@ -235,7 +230,6 @@ run "test_lambda_error_alarms_enabled" {
   variables {
     purchase_strategy = {
       coverage_target_percent = 80
-      max_coverage_cap        = 90
       simple = {
         max_purchase_percent = 5
       }
@@ -279,7 +273,6 @@ run "test_lambda_error_alarms_disabled" {
   variables {
     purchase_strategy = {
       coverage_target_percent = 80
-      max_coverage_cap        = 90
       simple = {
         max_purchase_percent = 5
       }
@@ -323,7 +316,6 @@ run "test_scheduler_error_alarm_naming" {
   variables {
     purchase_strategy = {
       coverage_target_percent = 80
-      max_coverage_cap        = 90
       simple = {
         max_purchase_percent = 5
       }
@@ -362,7 +354,6 @@ run "test_purchaser_error_alarm_naming" {
   variables {
     purchase_strategy = {
       coverage_target_percent = 80
-      max_coverage_cap        = 90
       simple = {
         max_purchase_percent = 5
       }
@@ -401,7 +392,6 @@ run "test_reporter_error_alarm_naming" {
   variables {
     purchase_strategy = {
       coverage_target_percent = 80
-      max_coverage_cap        = 90
       simple = {
         max_purchase_percent = 5
       }
@@ -440,7 +430,6 @@ run "test_error_alarms_metric_configuration" {
   variables {
     purchase_strategy = {
       coverage_target_percent = 80
-      max_coverage_cap        = 90
       simple = {
         max_purchase_percent = 5
       }
@@ -494,7 +483,6 @@ run "test_error_alarms_threshold_configuration" {
   variables {
     purchase_strategy = {
       coverage_target_percent = 80
-      max_coverage_cap        = 90
       simple = {
         max_purchase_percent = 5
       }
@@ -541,7 +529,6 @@ run "test_error_alarms_custom_threshold" {
   variables {
     purchase_strategy = {
       coverage_target_percent = 80
-      max_coverage_cap        = 90
       simple = {
         max_purchase_percent = 5
       }
@@ -588,7 +575,6 @@ run "test_error_alarms_dimensions" {
   variables {
     purchase_strategy = {
       coverage_target_percent = 80
-      max_coverage_cap        = 90
       simple = {
         max_purchase_percent = 5
       }
@@ -632,7 +618,6 @@ run "test_error_alarms_alarm_actions" {
   variables {
     purchase_strategy = {
       coverage_target_percent = 80
-      max_coverage_cap        = 90
       simple = {
         max_purchase_percent = 5
       }
@@ -672,7 +657,6 @@ run "test_error_alarms_tags" {
   variables {
     purchase_strategy = {
       coverage_target_percent = 80
-      max_coverage_cap        = 90
       simple = {
         max_purchase_percent = 5
       }
