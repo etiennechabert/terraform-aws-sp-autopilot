@@ -963,17 +963,39 @@ def generate_html_report(
         }}
         .chart-container {{
             position: relative;
-            height: 400px;
+            height: 280px;
             margin: 20px 0;
             padding: 20px;
             background-color: #f8f9fa;
             border-radius: 8px;
         }}
+        .chart-header {{
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 4px;
+        }}
         .chart-title {{
             font-weight: bold;
             font-size: 14px;
             color: #666;
-            margin-bottom: 4px;
+        }}
+        .chart-legend {{
+            text-align: right;
+            font-size: 13px;
+            color: #666;
+        }}
+        .chart-legend-item {{
+            margin-left: 16px;
+        }}
+        .chart-legend-color {{
+            display: inline-block;
+            width: 14px;
+            height: 14px;
+            margin-right: 4px;
+            vertical-align: middle;
+            border: 1px solid;
+            border-radius: 2px;
         }}
         .tabs {{
             display: flex;
@@ -1562,20 +1584,25 @@ def generate_html_report(
         }}
 
         // Function to create chart for a specific type
-        function _injectChartTitle(canvasId, title) {{
+        function _injectChartHeader(canvasId, title) {{
             const canvas = document.getElementById(canvasId);
             const container = canvas.parentElement;
-            if (!container.querySelector('.chart-title')) {{
-                const titleEl = document.createElement('div');
-                titleEl.className = 'chart-title';
-                titleEl.textContent = title;
-                container.insertBefore(titleEl, canvas);
+            if (!container.querySelector('.chart-header')) {{
+                const header = document.createElement('div');
+                header.className = 'chart-header';
+                header.innerHTML = `
+                    <div class="chart-title">${{title}}</div>
+                    <div class="chart-legend">
+                        <span class="chart-legend-item"><span class="chart-legend-color" style="background:#5b9bd5;border-color:#4a8bc2;"></span>Covered by Savings Plans</span>
+                        <span class="chart-legend-item"><span class="chart-legend-color" style="background:#f0ad4e;border-color:#ec971f;"></span>On-Demand Cost</span>
+                    </div>`;
+                container.insertBefore(header, canvas);
             }}
         }}
 
         function createChart(canvasId, chartData, title, spType, showCoverageLine) {{
             const ctx = document.getElementById(canvasId);
-            _injectChartTitle(canvasId, title);
+            _injectChartHeader(canvasId, title);
 
             // Initialize color mode for this chart
             chartColorModes[canvasId] = 'palette1';
@@ -1679,11 +1706,7 @@ def generate_html_report(
                     }},
                     plugins: {{
                         title: {{ display: false }},
-                        legend: {{
-                            display: true,
-                            position: 'top',
-                            align: 'end'
-                        }},
+                        legend: {{ display: false }},
                         tooltip: {{
                             callbacks: {{
                                 title: function(tooltipItems) {{
@@ -1759,7 +1782,7 @@ def generate_html_report(
         // Function to create daily chart (simplified - no annotation lines)
         function createDailyChart(canvasId, chartData, title) {{
             const ctx = document.getElementById(canvasId);
-            _injectChartTitle(canvasId, title);
+            _injectChartHeader(canvasId, title);
             const palette = colorPalettes['palette1'];
 
             chartInstances[canvasId] = new Chart(ctx, {{
@@ -1794,11 +1817,7 @@ def generate_html_report(
                     }},
                     plugins: {{
                         title: {{ display: false }},
-                        legend: {{
-                            display: true,
-                            position: 'top',
-                            align: 'end'
-                        }},
+                        legend: {{ display: false }},
                         tooltip: {{
                             callbacks: {{
                                 title: function(tooltipItems) {{
