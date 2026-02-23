@@ -1671,6 +1671,21 @@ def generate_html_report(
                             title: {{
                                 display: true,
                                 text: 'Time Period'
+                            }},
+                            ticks: {{
+                                autoSkip: false,
+                                maxRotation: 0,
+                                callback: function(value, index) {{
+                                    const label = chartData.labels[index];
+                                    if (!label) return '';
+                                    const parts = label.split(' ');
+                                    if (parts.length < 2) return '';
+                                    if (parts[1] === '12:00') {{
+                                        const dp = parts[0].split('-');
+                                        return dp[1] + '/' + dp[0];
+                                    }}
+                                    return '';
+                                }}
                             }}
                         }},
                         y: {{
