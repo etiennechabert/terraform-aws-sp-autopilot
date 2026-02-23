@@ -1655,11 +1655,13 @@ def generate_html_report(
                         title: {{
                             display: true,
                             text: title,
-                            font: {{ size: 16 }}
+                            font: {{ size: 16 }},
+                            align: 'start'
                         }},
                         legend: {{
                             display: true,
-                            position: 'top'
+                            position: 'top',
+                            align: 'end'
                         }},
                         tooltip: {{
                             callbacks: {{
@@ -1700,10 +1702,7 @@ def generate_html_report(
                     scales: {{
                         x: {{
                             stacked: true,
-                            title: {{
-                                display: true,
-                                text: 'Time Period'
-                            }},
+                            title: {{ display: false }},
                             ticks: {{
                                 autoSkip: false,
                                 maxRotation: 0,
@@ -1722,10 +1721,7 @@ def generate_html_report(
                         }},
                         y: {{
                             stacked: true,
-                            title: {{
-                                display: true,
-                                text: 'Cost (USD)'
-                            }},
+                            title: {{ display: false }},
                             ticks: {{
                                 callback: function(value) {{
                                     return '$' + value.toFixed(2);
@@ -1778,11 +1774,13 @@ def generate_html_report(
                         title: {{
                             display: true,
                             text: title,
-                            font: {{ size: 14 }}
+                            font: {{ size: 14 }},
+                            align: 'start'
                         }},
                         legend: {{
                             display: true,
-                            position: 'top'
+                            position: 'top',
+                            align: 'end'
                         }},
                         tooltip: {{
                             callbacks: {{
@@ -1819,10 +1817,7 @@ def generate_html_report(
                     scales: {{
                         x: {{
                             stacked: true,
-                            title: {{
-                                display: true,
-                                text: 'Date'
-                            }},
+                            title: {{ display: false }},
                             ticks: {{
                                 autoSkip: false,
                                 maxRotation: 0,
@@ -1840,10 +1835,7 @@ def generate_html_report(
                         }},
                         y: {{
                             stacked: true,
-                            title: {{
-                                display: true,
-                                text: 'Daily Cost (USD)'
-                            }},
+                            title: {{ display: false }},
                             ticks: {{
                                 callback: function(value) {{
                                     return '$' + value.toFixed(0);
