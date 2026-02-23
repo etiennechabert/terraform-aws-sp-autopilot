@@ -38,11 +38,11 @@ variable "lambda_config" {
 variable "purchase_strategy" {
   description = "Purchase strategy configuration with orthogonal target + split dimensions"
   type = object({
-    max_coverage_cap        = number
     lookback_days           = optional(number, 13)
     min_data_days           = optional(number, 14)
     granularity             = optional(string, "HOURLY")
     renewal_window_days     = optional(number, 7)
+    purchase_cooldown_days  = optional(number, 7)
     min_commitment_per_plan = optional(number, 0.001)
 
     target = object({
@@ -63,13 +63,13 @@ variable "purchase_strategy" {
   })
 
   validation {
-    condition     = var.purchase_strategy.max_coverage_cap <= 100
-    error_message = "max_coverage_cap must be less than or equal to 100."
+    condition     = try(var.purchase_strategy.min_commitment_per_plan >= 0.001, true)
+    error_message = "min_commitment_per_plan must be at least 0.001 (AWS minimum)."
   }
 
   validation {
-    condition     = try(var.purchase_strategy.min_commitment_per_plan >= 0.001, true)
-    error_message = "min_commitment_per_plan must be at least 0.001 (AWS minimum)."
+    condition     = try(var.purchase_strategy.purchase_cooldown_days >= 0, true)
+    error_message = "purchase_cooldown_days must be >= 0."
   }
 
   # Exactly one target must be defined
@@ -96,11 +96,10 @@ variable "purchase_strategy" {
   validation {
     condition = (
       var.purchase_strategy.target.fixed != null ?
-      var.purchase_strategy.target.fixed.coverage_percent >= 1 && var.purchase_strategy.target.fixed.coverage_percent <= 300 &&
-      var.purchase_strategy.target.fixed.coverage_percent <= var.purchase_strategy.max_coverage_cap :
+      var.purchase_strategy.target.fixed.coverage_percent >= 1 && var.purchase_strategy.target.fixed.coverage_percent <= 300 :
       true
     )
-    error_message = "fixed.coverage_percent must be between 1 and 300 and <= max_coverage_cap."
+    error_message = "fixed.coverage_percent must be between 1 and 300."
   }
 
   # dynamic.risk_level validation
@@ -253,7 +252,7 @@ variable "sp_plans" {
 
 # Scheduling
 
-variable "scheduler" {
+variable "cron_schedules" {
   description = "EventBridge cron schedules for each Lambda function. Set to null to disable a schedule."
   type = object({
     scheduler = optional(string) # Set to null to disable, defaults to "cron(0 8 1 * ? *)"
@@ -261,9 +260,9 @@ variable "scheduler" {
     reporter  = optional(string) # Set to null to disable, defaults to "cron(0 9 20 * ? *)"
   })
   default = {
-    scheduler = "cron(0 8 1 * ? *)"  # 1st of month at 8am UTC
-    purchaser = "cron(0 8 10 * ? *)" # 10th of month at 8am UTC
-    reporter  = "cron(0 9 20 * ? *)" # 20th of month at 9am UTC
+    scheduler = "cron(0 8 1-7 * MON *)"   # 1st of month at 8am UTC
+    purchaser = "cron(0 8 10-17 * MON *)" # 10th of month at 8am UTC
+    reporter  = "cron(0 8 20-27 * MON *)" # 20th of month at 8am UTC
   }
 }
 
@@ -404,14 +403,7 @@ variable "encryption" {
       kms_key = optional(string)     # null = AES256 (SSE-S3, free), set to KMS key ARN for SSE-KMS
     }), {})
   })
-  default = {
-    sns_kms_key = "alias/aws/sns"
-    sqs_kms_key = "alias/aws/sqs"
-    s3 = {
-      enabled = true
-      kms_key = null # AES256 by default
-    }
-  }
+  default = {}
 }
 
 variable "s3_access_logging" {
@@ -421,9 +413,7 @@ variable "s3_access_logging" {
     target_prefix   = optional(string, "access-logs/")
     expiration_days = optional(number, 90)
   })
-  default = {
-    enabled = false
-  }
+  default = {}
 
   validation {
     condition     = var.s3_access_logging.expiration_days >= 1

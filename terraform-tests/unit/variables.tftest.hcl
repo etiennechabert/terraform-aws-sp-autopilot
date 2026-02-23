@@ -31,8 +31,6 @@ run "test_fixed_fixed_step_valid" {
 
   variables {
     purchase_strategy = {
-      max_coverage_cap = 90
-
       target = {
         fixed = { coverage_percent = 80 }
       }
@@ -61,8 +59,6 @@ run "test_fixed_gap_split_valid" {
 
   variables {
     purchase_strategy = {
-      max_coverage_cap = 95
-
       target = {
         fixed = { coverage_percent = 90 }
       }
@@ -93,8 +89,6 @@ run "test_aws_target_valid" {
 
   variables {
     purchase_strategy = {
-      max_coverage_cap = 90
-
       target = {
         aws = {}
       }
@@ -123,8 +117,6 @@ run "test_dynamic_fixed_step_valid" {
 
   variables {
     purchase_strategy = {
-      max_coverage_cap = 90
-
       target = {
         dynamic = { risk_level = "optimal" }
       }
@@ -153,8 +145,6 @@ run "test_invalid_multiple_targets" {
 
   variables {
     purchase_strategy = {
-      max_coverage_cap = 90
-
       target = {
         fixed   = { coverage_percent = 80 }
         dynamic = { risk_level = "optimal" }
@@ -188,8 +178,6 @@ run "test_invalid_fixed_without_split" {
 
   variables {
     purchase_strategy = {
-      max_coverage_cap = 90
-
       target = {
         fixed = { coverage_percent = 80 }
       }
@@ -218,8 +206,6 @@ run "test_invalid_dynamic_risk_level" {
 
   variables {
     purchase_strategy = {
-      max_coverage_cap = 90
-
       target = {
         dynamic = { risk_level = "invalid_level" }
       }
@@ -252,8 +238,6 @@ run "test_coverage_percent_valid" {
 
   variables {
     purchase_strategy = {
-      max_coverage_cap = 100
-
       target = {
         fixed = { coverage_percent = 1 }
       }
@@ -276,82 +260,12 @@ run "test_coverage_percent_valid" {
   }
 }
 
-# Test: coverage_percent exceeds max_coverage_cap
-run "test_coverage_percent_exceeds_cap" {
-  command = plan
-
-  variables {
-    purchase_strategy = {
-      max_coverage_cap = 85
-
-      target = {
-        fixed = { coverage_percent = 90 }
-      }
-
-      split = {
-        fixed_step = { step_percent = 5 }
-      }
-    }
-    sp_plans = {
-      compute = {
-        enabled   = true
-        plan_type = "all_upfront_one_year"
-      }
-      database  = { enabled = false }
-      sagemaker = { enabled = false }
-    }
-    notifications = {
-      emails = ["test@example.com"]
-    }
-  }
-
-  expect_failures = [
-    var.purchase_strategy,
-  ]
-}
-
-# Test: max_coverage_cap - invalid above 100
-run "test_max_coverage_cap_invalid_above_100" {
-  command = plan
-
-  variables {
-    purchase_strategy = {
-      max_coverage_cap = 101
-
-      target = {
-        fixed = { coverage_percent = 90 }
-      }
-
-      split = {
-        fixed_step = { step_percent = 5 }
-      }
-    }
-    sp_plans = {
-      compute = {
-        enabled   = true
-        plan_type = "all_upfront_one_year"
-      }
-      database  = { enabled = false }
-      sagemaker = { enabled = false }
-    }
-    notifications = {
-      emails = ["test@example.com"]
-    }
-  }
-
-  expect_failures = [
-    var.purchase_strategy,
-  ]
-}
-
 # Test: gap_split - invalid divider <= 0
 run "test_gap_split_invalid_divider_zero" {
   command = plan
 
   variables {
     purchase_strategy = {
-      max_coverage_cap = 90
-
       target = {
         fixed = { coverage_percent = 80 }
       }
@@ -386,8 +300,6 @@ run "test_fixed_step_step_percent_invalid" {
 
   variables {
     purchase_strategy = {
-      max_coverage_cap = 90
-
       target = {
         fixed = { coverage_percent = 80 }
       }
@@ -424,7 +336,6 @@ run "test_min_commitment_per_plan_valid_at_aws_min" {
 
   variables {
     purchase_strategy = {
-      max_coverage_cap        = 90
       min_commitment_per_plan = 0.001
 
       target = {
@@ -455,7 +366,6 @@ run "test_min_commitment_per_plan_invalid_below_min" {
 
   variables {
     purchase_strategy = {
-      max_coverage_cap        = 90
       min_commitment_per_plan = 0.0009
 
       target = {
@@ -494,8 +404,6 @@ run "test_at_least_one_sp_enabled" {
 
   variables {
     purchase_strategy = {
-      max_coverage_cap = 90
-
       target = {
         fixed = { coverage_percent = 80 }
       }
@@ -525,8 +433,6 @@ run "test_compute_plan_type_required" {
 
   variables {
     purchase_strategy = {
-      max_coverage_cap = 90
-
       target = {
         fixed = { coverage_percent = 80 }
       }
@@ -556,8 +462,6 @@ run "test_database_plan_type_valid" {
 
   variables {
     purchase_strategy = {
-      max_coverage_cap = 90
-
       target = {
         fixed = { coverage_percent = 80 }
       }
@@ -589,8 +493,6 @@ run "test_database_plan_type_invalid" {
 
   variables {
     purchase_strategy = {
-      max_coverage_cap = 90
-
       target = {
         fixed = { coverage_percent = 80 }
       }
@@ -630,8 +532,6 @@ run "test_report_format_valid_html" {
 
   variables {
     purchase_strategy = {
-      max_coverage_cap = 90
-
       target = {
         fixed = { coverage_percent = 80 }
       }
@@ -663,8 +563,6 @@ run "test_report_format_invalid" {
 
   variables {
     purchase_strategy = {
-      max_coverage_cap = 90
-
       target = {
         fixed = { coverage_percent = 80 }
       }
@@ -700,8 +598,6 @@ run "test_s3_lifecycle_glacier_invalid_less_than_ia" {
 
   variables {
     purchase_strategy = {
-      max_coverage_cap = 90
-
       target = {
         fixed = { coverage_percent = 80 }
       }
@@ -744,8 +640,6 @@ run "test_notifications_valid_emails" {
 
   variables {
     purchase_strategy = {
-      max_coverage_cap = 90
-
       target = {
         fixed = { coverage_percent = 80 }
       }
@@ -774,8 +668,6 @@ run "test_notifications_valid_slack" {
 
   variables {
     purchase_strategy = {
-      max_coverage_cap = 90
-
       target = {
         fixed = { coverage_percent = 80 }
       }
@@ -805,8 +697,6 @@ run "test_notifications_invalid_no_method" {
 
   variables {
     purchase_strategy = {
-      max_coverage_cap = 90
-
       target = {
         fixed = { coverage_percent = 80 }
       }
@@ -843,9 +733,8 @@ run "test_hourly_granularity_max_lookback" {
 
   variables {
     purchase_strategy = {
-      max_coverage_cap = 90
-      lookback_days    = 13
-      granularity      = "HOURLY"
+      lookback_days = 13
+      granularity   = "HOURLY"
 
       target = {
         fixed = { coverage_percent = 80 }
@@ -875,9 +764,8 @@ run "test_daily_granularity_higher_lookback" {
 
   variables {
     purchase_strategy = {
-      max_coverage_cap = 90
-      lookback_days    = 30
-      granularity      = "DAILY"
+      lookback_days = 30
+      granularity   = "DAILY"
 
       target = {
         fixed = { coverage_percent = 80 }
@@ -907,8 +795,6 @@ run "test_one_shot_split_valid" {
 
   variables {
     purchase_strategy = {
-      max_coverage_cap = 90
-
       target = {
         fixed = { coverage_percent = 80 }
       }
@@ -937,8 +823,6 @@ run "test_dynamic_risk_prudent" {
 
   variables {
     purchase_strategy = {
-      max_coverage_cap = 90
-
       target = {
         dynamic = { risk_level = "prudent" }
       }
@@ -966,8 +850,6 @@ run "test_dynamic_risk_maximum" {
 
   variables {
     purchase_strategy = {
-      max_coverage_cap = 90
-
       target = {
         dynamic = { risk_level = "maximum" }
       }

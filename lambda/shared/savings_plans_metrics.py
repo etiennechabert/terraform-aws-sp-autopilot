@@ -103,6 +103,47 @@ def _calculate_weighted_utilization(breakdown_by_type: dict[str, Any]) -> float:
     )
 
 
+def has_recent_purchase(
+    savingsplans_client: SavingsPlansClient,
+    cooldown_days: int = 7,
+) -> bool:
+    """
+    Check if any Savings Plan was purchased within the cooldown period.
+
+    Cost Explorer data lags 24-48h, so recent purchases make coverage
+    calculations unreliable. This prevents double-purchasing.
+
+    Args:
+        savingsplans_client: Boto3 Savings Plans client
+        cooldown_days: Number of days to look back for recent purchases
+
+    Returns:
+        True if any plan was started within the cooldown window
+    """
+    if cooldown_days <= 0:
+        return False
+
+    cutoff = datetime.now(UTC) - timedelta(days=cooldown_days)
+    plans = get_active_savings_plans(savingsplans_client)
+
+    for plan in plans:
+        start_str = plan.get("start_date", "")
+        if not start_str or start_str == "Unknown":
+            continue
+        try:
+            start_date = datetime.fromisoformat(start_str.replace("Z", "+00:00"))
+            if start_date >= cutoff:
+                logger.info(
+                    f"Recent purchase detected: plan {plan['plan_id']} started {start_str} "
+                    f"(within {cooldown_days}-day cooldown)"
+                )
+                return True
+        except (ValueError, TypeError):
+            continue
+
+    return False
+
+
 def get_active_savings_plans(
     savingsplans_client: SavingsPlansClient,
 ) -> list[dict[str, Any]]:

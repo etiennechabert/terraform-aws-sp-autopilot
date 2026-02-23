@@ -1,6 +1,6 @@
 # Purchaser Lambda
 
-Executes queued Savings Plan purchases from SQS, validates coverage caps, and sends consolidated purchase summaries.
+Executes queued Savings Plan purchases from SQS and sends consolidated purchase summaries.
 
 ## Overview
 
@@ -11,7 +11,6 @@ Second component in the automation workflow. Runs on schedule (default: 4th of m
 1. Receive messages from SQS queue
 2. Get current coverage (excluding expiring plans)
 3. For each message:
-   - Validate against `max_coverage_cap`
    - Execute purchase via CreateSavingsPlan API
    - Delete message on success
 4. Send aggregated email with all results
@@ -23,21 +22,10 @@ Second component in the automation workflow. Runs on schedule (default: 4th of m
 |----------|---------|-------------|
 | `QUEUE_URL` | — | SQS queue URL (required) |
 | `SNS_TOPIC_ARN` | — | SNS topic ARN (required) |
-| `MAX_COVERAGE_CAP` | `95` | Hard coverage ceiling |
 | `RENEWAL_WINDOW_DAYS` | `7` | Days before expiry to exclude |
 | `MANAGEMENT_ACCOUNT_ROLE_ARN` | — | Cross-account role ARN |
 
 See [main README](../../README.md#configuration-variables) for complete variable reference.
-
-## Coverage Cap Validation
-
-Before executing each purchase:
-
-```
-projected_coverage_after <= max_coverage_cap
-```
-
-If exceeded, purchase is skipped and message deleted (no retry).
 
 ## Idempotency
 

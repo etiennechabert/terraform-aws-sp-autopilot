@@ -60,6 +60,33 @@ def handler(event: dict[str, Any], context: Any) -> dict[str, Any]:
         lambda msg: _send_error_notification(config["sns_topic_arn"], msg),
     )
 
+    # Check purchase cooldown — skip if any SP was purchased recently
+    cooldown_days = config.get("purchase_cooldown_days", 7)
+    if cooldown_days > 0:
+        from shared.savings_plans_metrics import has_recent_purchase
+
+        if has_recent_purchase(clients["savingsplans"], cooldown_days):
+            msg = (
+                f"Savings Plan purchased within last {cooldown_days} days — "
+                "skipping scheduling to let Cost Explorer data settle"
+            )
+            logger.warning(msg)
+            clients["sns"].publish(
+                TopicArn=config["sns_topic_arn"],
+                Subject="SP Autopilot Scheduler — Skipped (cooldown)",
+                Message=msg,
+            )
+            return {
+                "statusCode": 200,
+                "body": json.dumps(
+                    {
+                        "message": "Skipped — recent purchase within cooldown window",
+                        "dry_run": config["dry_run"],
+                        "purchases_planned": 0,
+                    }
+                ),
+            }
+
     queue_module.purge_queue(clients["sqs"], config["queue_url"])
 
     # Conditionally analyze spending based on target strategy

@@ -15,12 +15,6 @@ from shared.handler_utils import load_config_from_env
 CONFIG_SCHEMA = {
     "queue_url": {"required": True, "type": "str", "env_var": "QUEUE_URL"},
     "sns_topic_arn": {"required": True, "type": "str", "env_var": "SNS_TOPIC_ARN"},
-    "max_coverage_cap": {
-        "required": False,
-        "type": "float",
-        "default": "95",
-        "env_var": "MAX_COVERAGE_CAP",
-    },
     "renewal_window_days": {
         "required": False,
         "type": "int",

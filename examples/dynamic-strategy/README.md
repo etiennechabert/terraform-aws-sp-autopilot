@@ -32,8 +32,6 @@ The gap split divides the remaining coverage gap by the configured divider each 
 
 ```hcl
 purchase_strategy = {
-  max_coverage_cap = 95
-
   target = {
     dynamic = { risk_level = "optimal" }
   }

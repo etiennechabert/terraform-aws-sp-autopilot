@@ -213,8 +213,6 @@ notifications = {
 }
 
 purchase_strategy = {
-  max_coverage_cap = 95
-
   target = {
     aws = {}  # Follow AWS recommendations
   }
@@ -296,8 +294,6 @@ After enabling:
 
 ```hcl
 purchase_strategy = {
-  max_coverage_cap = 95  # Hard ceiling
-
   target = {
     aws = {}  # Follow AWS Cost Explorer recommendations
   }
@@ -311,7 +307,7 @@ purchase_strategy = {
 ### Review Window
 
 ```hcl
-scheduler = {
+cron_schedules = {
   scheduler = "cron(0 8 1 * ? *)"   # 1st of month
   purchaser = "cron(0 8 10 * ? *)"  # 10th = 9-day window
 }

@@ -49,8 +49,7 @@ func TestFullDeploymentAndCleanup(t *testing.T) {
 			"name_prefix": uniquePrefix,
 			// Purchase strategy configuration
 			"purchase_strategy": map[string]interface{}{
-				"max_coverage_cap": 95,
-				"granularity":     "DAILY", // Use DAILY for test compatibility
+				"granularity": "DAILY", // Use DAILY for test compatibility
 				"target": map[string]interface{}{
 					"fixed": map[string]interface{}{
 						"coverage_percent": 80,
@@ -77,7 +76,7 @@ func TestFullDeploymentAndCleanup(t *testing.T) {
 				},
 			},
 			// EventBridge schedules - SAFETY: far future to prevent accidental triggers
-			"scheduler": map[string]interface{}{
+			"cron_schedules": map[string]interface{}{
 				"scheduler": disabledCronSchedule, // Jan 1, 2099 - will never trigger
 				"purchaser": disabledCronSchedule, // Jan 1, 2099 - will never trigger
 				"reporter":  disabledCronSchedule, // Jan 1, 2099 - will never trigger

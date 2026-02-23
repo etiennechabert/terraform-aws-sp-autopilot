@@ -32,7 +32,6 @@ run "test_scheduler_role_naming" {
   variables {
     purchase_strategy = {
       coverage_target_percent = 80
-      max_coverage_cap        = 90
       simple = {
         max_purchase_percent = 5
       }
@@ -66,7 +65,6 @@ run "test_scheduler_role_assume_policy" {
   variables {
     purchase_strategy = {
       coverage_target_percent = 80
-      max_coverage_cap        = 90
       simple = {
         max_purchase_percent = 5
       }
@@ -105,7 +103,6 @@ run "test_scheduler_role_tags" {
   variables {
     purchase_strategy = {
       coverage_target_percent = 80
-      max_coverage_cap        = 90
       simple = {
         max_purchase_percent = 5
       }
@@ -153,7 +150,6 @@ run "test_scheduler_cloudwatch_logs_policy" {
   variables {
     purchase_strategy = {
       coverage_target_percent = 80
-      max_coverage_cap        = 90
       simple = {
         max_purchase_percent = 5
       }
@@ -189,7 +185,6 @@ run "test_scheduler_cost_explorer_policy" {
   variables {
     purchase_strategy = {
       coverage_target_percent = 80
-      max_coverage_cap        = 90
       simple = {
         max_purchase_percent = 5
       }
@@ -224,7 +219,6 @@ run "test_scheduler_sqs_policy" {
   variables {
     purchase_strategy = {
       coverage_target_percent = 80
-      max_coverage_cap        = 90
       simple = {
         max_purchase_percent = 5
       }
@@ -259,7 +253,6 @@ run "test_scheduler_sns_policy" {
   variables {
     purchase_strategy = {
       coverage_target_percent = 80
-      max_coverage_cap        = 90
       simple = {
         max_purchase_percent = 5
       }
@@ -294,7 +287,6 @@ run "test_scheduler_savingsplans_policy" {
   variables {
     purchase_strategy = {
       coverage_target_percent = 80
-      max_coverage_cap        = 90
       simple = {
         max_purchase_percent = 5
       }
@@ -329,7 +321,6 @@ run "test_scheduler_assume_role_policy_not_created" {
   variables {
     purchase_strategy = {
       coverage_target_percent = 80
-      max_coverage_cap        = 90
       simple = {
         max_purchase_percent = 5
       }
@@ -369,7 +360,6 @@ run "test_scheduler_assume_role_policy_created" {
   variables {
     purchase_strategy = {
       coverage_target_percent = 80
-      max_coverage_cap        = 90
       simple = {
         max_purchase_percent = 5
       }
@@ -433,7 +423,6 @@ run "test_purchaser_role_naming" {
   variables {
     purchase_strategy = {
       coverage_target_percent = 80
-      max_coverage_cap        = 90
       simple = {
         max_purchase_percent = 5
       }
@@ -467,7 +456,6 @@ run "test_purchaser_role_assume_policy" {
   variables {
     purchase_strategy = {
       coverage_target_percent = 80
-      max_coverage_cap        = 90
       simple = {
         max_purchase_percent = 5
       }
@@ -506,7 +494,6 @@ run "test_purchaser_role_tags" {
   variables {
     purchase_strategy = {
       coverage_target_percent = 80
-      max_coverage_cap        = 90
       simple = {
         max_purchase_percent = 5
       }
@@ -554,7 +541,6 @@ run "test_purchaser_cloudwatch_logs_policy" {
   variables {
     purchase_strategy = {
       coverage_target_percent = 80
-      max_coverage_cap        = 90
       simple = {
         max_purchase_percent = 5
       }
@@ -609,7 +595,6 @@ run "test_purchaser_cost_explorer_policy" {
   variables {
     purchase_strategy = {
       coverage_target_percent = 80
-      max_coverage_cap        = 90
       simple = {
         max_purchase_percent = 5
       }
@@ -648,7 +633,6 @@ run "test_purchaser_sqs_policy" {
   variables {
     purchase_strategy = {
       coverage_target_percent = 80
-      max_coverage_cap        = 90
       simple = {
         max_purchase_percent = 5
       }
@@ -681,7 +665,6 @@ run "test_purchaser_sns_policy" {
   variables {
     purchase_strategy = {
       coverage_target_percent = 80
-      max_coverage_cap        = 90
       simple = {
         max_purchase_percent = 5
       }
@@ -713,7 +696,6 @@ run "test_purchaser_savingsplans_policy" {
   variables {
     purchase_strategy = {
       coverage_target_percent = 80
-      max_coverage_cap        = 90
       simple = {
         max_purchase_percent = 5
       }
@@ -757,7 +739,6 @@ run "test_purchaser_assume_role_policy_not_created" {
   variables {
     purchase_strategy = {
       coverage_target_percent = 80
-      max_coverage_cap        = 90
       simple = {
         max_purchase_percent = 5
       }
@@ -797,7 +778,6 @@ run "test_purchaser_assume_role_policy_created" {
   variables {
     purchase_strategy = {
       coverage_target_percent = 80
-      max_coverage_cap        = 90
       simple = {
         max_purchase_percent = 5
       }
@@ -861,7 +841,6 @@ run "test_reporter_role_naming" {
   variables {
     purchase_strategy = {
       coverage_target_percent = 80
-      max_coverage_cap        = 90
       simple = {
         max_purchase_percent = 5
       }
@@ -895,7 +874,6 @@ run "test_reporter_role_assume_policy" {
   variables {
     purchase_strategy = {
       coverage_target_percent = 80
-      max_coverage_cap        = 90
       simple = {
         max_purchase_percent = 5
       }
@@ -934,7 +912,6 @@ run "test_reporter_role_tags" {
   variables {
     purchase_strategy = {
       coverage_target_percent = 80
-      max_coverage_cap        = 90
       simple = {
         max_purchase_percent = 5
       }
@@ -982,7 +959,6 @@ run "test_reporter_cloudwatch_logs_policy" {
   variables {
     purchase_strategy = {
       coverage_target_percent = 80
-      max_coverage_cap        = 90
       simple = {
         max_purchase_percent = 5
       }
@@ -1014,7 +990,6 @@ run "test_reporter_cost_explorer_policy" {
   variables {
     purchase_strategy = {
       coverage_target_percent = 80
-      max_coverage_cap        = 90
       simple = {
         max_purchase_percent = 5
       }
@@ -1053,7 +1028,6 @@ run "test_reporter_s3_policy" {
   variables {
     purchase_strategy = {
       coverage_target_percent = 80
-      max_coverage_cap        = 90
       simple = {
         max_purchase_percent = 5
       }
@@ -1085,7 +1059,6 @@ run "test_reporter_sns_policy" {
   variables {
     purchase_strategy = {
       coverage_target_percent = 80
-      max_coverage_cap        = 90
       simple = {
         max_purchase_percent = 5
       }
@@ -1117,7 +1090,6 @@ run "test_reporter_savingsplans_policy" {
   variables {
     purchase_strategy = {
       coverage_target_percent = 80
-      max_coverage_cap        = 90
       simple = {
         max_purchase_percent = 5
       }
@@ -1156,7 +1128,6 @@ run "test_reporter_assume_role_policy_not_created" {
   variables {
     purchase_strategy = {
       coverage_target_percent = 80
-      max_coverage_cap        = 90
       simple = {
         max_purchase_percent = 5
       }
@@ -1196,7 +1167,6 @@ run "test_reporter_assume_role_policy_created" {
   variables {
     purchase_strategy = {
       coverage_target_percent = 80
-      max_coverage_cap        = 90
       simple = {
         max_purchase_percent = 5
       }

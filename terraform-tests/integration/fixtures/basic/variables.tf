@@ -18,11 +18,11 @@ variable "aws_region" {
 variable "purchase_strategy" {
   description = "Purchase strategy configuration"
   type = object({
-    max_coverage_cap        = number
     lookback_days           = optional(number, 13)
     min_data_days           = optional(number, 14)
     granularity             = optional(string, "HOURLY")
     renewal_window_days     = optional(number, 7)
+    purchase_cooldown_days  = optional(number, 7)
     min_commitment_per_plan = optional(number, 0.001)
 
     target = object({
@@ -42,7 +42,6 @@ variable "purchase_strategy" {
     }))
   })
   default = {
-    max_coverage_cap        = 90
     lookback_days           = 7
     min_data_days           = 14
     granularity             = "DAILY"
@@ -99,7 +98,7 @@ variable "sp_plans" {
 # Scheduling
 # ============================================================================
 
-variable "scheduler" {
+variable "cron_schedules" {
   description = "EventBridge schedule configuration"
   type = object({
     scheduler = optional(string, "cron(0 8 1 * ? *)")

@@ -657,18 +657,14 @@ def _build_raw_data_section_html(
         </div>
 """
 
-    coffee_count = int(monthly_savings * 0.01 / 6)
     if monthly_savings > 0:
         coffee_html = f"""
-            <div style="margin: 20px auto 0; padding: 10px 18px; background: linear-gradient(135deg, #fff8e1 0%, #fff3cd 100%); border-radius: 10px; max-width: 420px; border: 1px solid #ffe082; font-size: 0.85em;">
+            <div style="margin: 20px auto 0; padding: 10px 18px; background: linear-gradient(135deg, #fff8e1 0%, #fff3cd 100%); border-radius: 10px; max-width: 520px; border: 1px solid #ffe082; font-size: 0.85em;">
                 <p style="margin: 0 0 6px; color: #5d4037;">
                     Savings Plans Autopilot helped you save <strong style="color: #2e7d32;">${monthly_savings:,.2f}</strong> this month.
                 </p>
                 <p style="margin: 0 0 6px; color: #6d4c41;">
-                    That could pay for {coffee_count} overpriced Berlin hipster flat whites at the 1% tax bracket.
-                </p>
-                <p style="margin: 0 0 6px; color: #6d4c41;">
-                    The human behind the machine runs on caffeine — consider fueling it?
+                    The human behind this tool is fueled by overpriced Berlin coffees — maybe you can help?
                 </p>
                 <a href="https://buymeacoffee.com/etiennechak" target="_blank"
                    style="display: inline-block; margin-top: 6px; padding: 6px 16px; background-color: #ffdd00; color: #000; font-weight: bold; border-radius: 6px; text-decoration: none; font-size: 0.9em; transition: transform 0.2s;"
@@ -693,11 +689,9 @@ def _build_raw_data_section_html(
 
     html += f"""
         <div class="footer">
-            <p><strong>Savings Plans Autopilot</strong> - Generated: {report_timestamp}</p>
 {coffee_html}
-            <p>
-                <a href="https://github.com/etiennechabert/terraform-aws-sp-autopilot" target="_blank" style="color: #2196f3; text-decoration: none;">terraform-aws-sp-autopilot</a>
-                <span style="opacity: 0.6;">| Open source | Apache 2.0</span>
+            <p style="margin-top: 20px;">
+                Generated: {report_timestamp} | <a href="https://github.com/etiennechabert/terraform-aws-sp-autopilot" target="_blank" style="color: #2196f3; text-decoration: none;">terraform-aws-sp-autopilot</a> <span style="opacity: 0.6;">| Open source | Apache 2.0</span>
             </p>
         </div>
     </div>
@@ -938,6 +932,9 @@ def generate_html_report(
             margin-bottom: 40px;
             padding-top: 30px;
             border-top: 3px solid #e8e8e8;
+        }}
+        .section:last-of-type {{
+            margin-bottom: 0;
         }}
         .section:first-of-type {{
             border-top: none;
@@ -1324,6 +1321,7 @@ def generate_html_report(
         .strategy-name {{
             position: relative;
             display: inline-block;
+            white-space: nowrap;
             text-decoration: underline dotted;
             text-decoration-color: rgba(0, 0, 0, 0.3);
             text-underline-offset: 3px;
@@ -1367,6 +1365,7 @@ def generate_html_report(
             <div class="summary-card green">
                 <h3>Hourly Savings</h3>
                 <div class="value">${net_savings_hourly:.2f}</div>
+                <div style="font-size: 0.7em; opacity: 0.85; margin-top: 4px; text-align: right;">${net_savings_hourly * 24 * 30:,.0f}/mo</div>
             </div>
             <div class="summary-card blue">
                 <h3>Average Discount</h3>

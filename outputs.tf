@@ -149,7 +149,6 @@ output "module_configuration" {
     sagemaker_sp_term    = local.sagemaker_term
     sagemaker_sp_payment = local.sagemaker_payment_option
     coverage_target      = local.coverage_target_percent
-    max_coverage_cap     = local.max_coverage_cap
     dry_run              = local.dry_run
     scheduler_schedule   = local.scheduler_schedule
     purchaser_schedule   = local.purchaser_schedule

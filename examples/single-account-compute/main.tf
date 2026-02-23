@@ -30,9 +30,8 @@ module "savings_plans" {
 
   # Purchase strategy - fixed target at 100% with fixed 10% steps
   purchase_strategy = {
-    max_coverage_cap = 100      # Allow up to 100% coverage
-    lookback_days    = 13       # Max for HOURLY granularity (recommended)
-    granularity      = "HOURLY" # Recommended for accurate analysis
+    lookback_days = 13       # Max for HOURLY granularity (recommended)
+    granularity   = "HOURLY" # Recommended for accurate analysis
 
     target = {
       fixed = { coverage_percent = 100 } # Target 100% coverage
@@ -62,10 +61,10 @@ module "savings_plans" {
   }
 
   # Scheduling - spread evenly across the month (can be overridden for testing)
-  scheduler = {
-    scheduler = try(var.scheduler.scheduler, "cron(0 8 1 * ? *)")  # 1st of month at 8:00 AM UTC
-    purchaser = try(var.scheduler.purchaser, "cron(0 8 10 * ? *)") # 10th of month at 8:00 AM UTC (9-day review window)
-    reporter  = try(var.scheduler.reporter, "cron(0 9 20 * ? *)")  # 20th of month at 9:00 AM UTC
+  cron_schedules = {
+    scheduler = try(var.cron_schedules.scheduler, "cron(0 8 1 * ? *)")  # 1st of month at 8:00 AM UTC
+    purchaser = try(var.cron_schedules.purchaser, "cron(0 8 10 * ? *)") # 10th of month at 8:00 AM UTC (9-day review window)
+    reporter  = try(var.cron_schedules.reporter, "cron(0 9 20 * ? *)")  # 20th of month at 9:00 AM UTC
   }
 
   # Notifications
