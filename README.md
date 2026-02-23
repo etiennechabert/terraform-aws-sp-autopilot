@@ -44,13 +44,8 @@ module "savings_plans" {
     lookback_days    = 13       # Max for HOURLY granularity
     granularity      = "HOURLY" # Recommended (requires Cost Explorer hourly data)
 
-    target = {
-      fixed = { coverage_percent = 90 }
-    }
-
-    split = {
-      fixed_step = { step_percent = 10 }
-    }
+    target = { fixed = { coverage_percent = 90 } }
+    split  = { fixed_step = { step_percent = 10 } }
   }
 
   sp_plans = {
@@ -109,15 +104,8 @@ Automatically determines the optimal coverage target based on usage patterns, di
 
 ```hcl
 purchase_strategy = {
-  target = {
-    dynamic = { risk_level = "min_hourly" }
-  }
-
-  split = {
-    gap_split = {
-      divider = 2
-    }
-  }
+  target = { dynamic = { risk_level = "min_hourly" } }
+  split  = { gap_split = { divider = 2 } }
 }
 ```
 
@@ -127,13 +115,8 @@ Target a fixed coverage percentage, purchasing a fixed step each cycle.
 
 ```hcl
 purchase_strategy = {
-  target = {
-    fixed = { coverage_percent = 100 }
-  }
-
-  split = {
-    fixed_step = { step_percent = 10 }
-  }
+  target = { fixed = { coverage_percent = 100 } }
+  split  = { fixed_step = { step_percent = 10 } }
 }
 ```
 
@@ -143,13 +126,8 @@ Uses AWS Cost Explorer recommendations directly without modification.
 
 ```hcl
 purchase_strategy = {
-  target = {
-    aws = {}
-  }
-
-  split = {
-    one_shot = {}
-  }
+  target = { aws = {} }
+  split  = { one_shot = {} }
 }
 ```
 
