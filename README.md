@@ -290,6 +290,8 @@ Start with **1-year No Upfront** commitments to validate the automation with min
 | **Year 1** | `no_upfront_one_year` | `false` | Validate with low-risk commitments |
 | **Year 2+** | `all_upfront_three_year` | `false` | Maximize savings as 1Y plans expire |
 
+When switching to 3Y, consider slowing down purchases since each commitment lasts longer: increase the `divider` with gap_split (though it naturally purchases less as coverage grows, as long as `min_purchase_percent` isn't set too high), or reduce `step_percent` with fixed_step.
+
 ### Canceling Purchases
 
 To cancel scheduled purchases before execution:
