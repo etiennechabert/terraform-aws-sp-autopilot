@@ -584,7 +584,7 @@ h1, h2, h3, h4, h5, h6 {
 }
 .net-savings-hint {
     font-weight: 600;
-    color: var(--accent-green, #00e676);
+    color: var(--accent-cyan, #00e5ff);
 }
 .savings-source {
     text-align: right;

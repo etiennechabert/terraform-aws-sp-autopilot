@@ -1551,7 +1551,7 @@
         if (sliderNetSavings) {
             const pct = results.savingsPercentageActual;
             sliderNetSavings.textContent = `Net Savings: ${pct.toFixed(1)}%`;
-            sliderNetSavings.style.color = pct < 0 ? 'var(--accent-red, #ff5252)' : 'var(--accent-green, #00e676)';
+            sliderNetSavings.style.color = pct < 0 ? 'var(--accent-red, #ff5252)' : '';
         }
 
         // SP Commitment - show actual commitment cost (what user needs to pay)
