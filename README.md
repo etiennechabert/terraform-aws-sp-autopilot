@@ -11,8 +11,11 @@
 
 [![PR Checks](https://github.com/etiennechabert/terraform-aws-sp-autopilot/actions/workflows/pr-checks.yml/badge.svg)](https://github.com/etiennechabert/terraform-aws-sp-autopilot/actions/workflows/pr-checks.yml)
 [![codecov](https://codecov.io/gh/etiennechabert/terraform-aws-sp-autopilot/branch/main/graph/badge.svg)](https://codecov.io/gh/etiennechabert/terraform-aws-sp-autopilot)
+[![Buy Me A Coffee](https://img.shields.io/badge/Buy%20Me%20A%20Coffee-support-yellow?logo=buymeacoffee&logoColor=white)](https://buymeacoffee.com/etiennechak)
 
 Automates AWS Savings Plans purchases based on usage analysis, maintaining consistent coverage while limiting financial exposure through incremental commitments.
+
+[**Try the interactive simulator**](https://etiennechabert.github.io/terraform-aws-sp-autopilot/) — Visualize strategies and find the optimal Savings Plan for your workload before deploying.
 
 ## Key Features
 
@@ -77,6 +80,12 @@ See the [`examples/`](examples/) directory for complete, working examples:
 - **[single-account-compute](examples/single-account-compute/)** — Basic single-account Compute SP deployment
 - **[organizations](examples/organizations/)** — AWS Organizations multi-account setup
 - **[dynamic-strategy](examples/dynamic-strategy/)** — Dynamic target with gap split
+
+## Interactive Simulator
+
+The module includes an interactive **[Savings Plan Simulator](https://etiennechabert.github.io/terraform-aws-sp-autopilot/)** to visualize coverage strategies and their cost impact before deploying anything. Generated reports link to the simulator pre-loaded with your data, allowing stakeholders to explore "what-if" scenarios across different target/split combinations.
+
+[![AWS Savings Plan Simulator](docs/images/simulator-preview.png)](https://etiennechabert.github.io/terraform-aws-sp-autopilot/)
 
 ## Configuration
 
@@ -214,12 +223,6 @@ The module consists of three Lambda functions with SQS queue coordination:
    - Generates HTML spending reports
    - Stores in S3
    - Optionally emails stakeholders
-
-## GitHub Pages — Savings Plan Simulator
-
-The module includes an interactive **[Savings Plan Simulator](https://etiennechabert.github.io/terraform-aws-sp-autopilot/)** hosted on GitHub Pages. It visualizes coverage strategies and their cost impact using your actual spending data.
-
-Generated reports (from the Reporter Lambda) link to this simulator pre-loaded with your data, allowing stakeholders to explore "what-if" scenarios across different target/split combinations.
 
 ## Advanced Topics
 
