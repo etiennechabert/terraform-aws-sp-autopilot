@@ -577,6 +577,15 @@ h1, h2, h3, h4, h5, h6 {
     color: var(--text-hint);
     margin-top: 2px;
 }
+.slider-hints {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+.net-savings-hint {
+    font-weight: 600;
+    color: var(--accent-green, #00e676);
+}
 .savings-source {
     text-align: right;
     font-size: 0.7rem;

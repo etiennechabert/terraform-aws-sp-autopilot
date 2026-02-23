@@ -1547,6 +1547,13 @@
             savingsPctElement.textContent = CostCalculator.formatPercentage(results.savingsPercentageActual);
         }
 
+        const sliderNetSavings = document.getElementById('slider-net-savings');
+        if (sliderNetSavings) {
+            const pct = results.savingsPercentageActual;
+            sliderNetSavings.textContent = `Net Savings: ${pct.toFixed(1)}%`;
+            sliderNetSavings.style.color = pct < 0 ? 'var(--accent-red, #ff5252)' : 'var(--accent-green, #00e676)';
+        }
+
         // SP Commitment - show actual commitment cost (what user needs to pay)
         const commitmentElement = document.getElementById('metric-commitment');
         if (commitmentElement) {
