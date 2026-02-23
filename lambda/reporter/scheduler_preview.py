@@ -28,7 +28,7 @@ logger = logging.getLogger(__name__)
 DEFAULT_COMPARISONS = [
     {"target": "fixed", "split": "fixed_step", "label": "Fixed + Fixed Step"},
     {"target": "dynamic", "split": "gap_split", "label": "Dynamic + Gap Split"},
-    {"target": "aws", "split": "one_shot", "label": "AWS Recommendation"},
+    {"target": "aws", "split": "one_shot", "label": "AWS Reco + One Shot"},
 ]
 
 STRATEGY_LABELS = {
@@ -38,7 +38,7 @@ STRATEGY_LABELS = {
     "dynamic+fixed_step": "Dynamic + Fixed Step",
     "dynamic+gap_split": "Dynamic + Gap Split",
     "dynamic+one_shot": "Dynamic + One Shot",
-    "aws+one_shot": "AWS Recommendation",
+    "aws+one_shot": "AWS Reco + One Shot",
 }
 
 

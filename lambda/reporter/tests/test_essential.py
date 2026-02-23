@@ -593,7 +593,7 @@ def test_handler_with_scheduler_preview_fixed_strategy(monkeypatch, mock_clients
     # Verify all three strategies are shown in the comparison
     assert "Fixed" in report_html, "Preview should show Fixed strategy"
     assert "Gap Split" in report_html, "Preview should show Gap Split strategy"
-    assert "AWS Recommendation" in report_html, "Preview should show AWS Recommendation strategy"
+    assert "AWS Reco + One Shot" in report_html, "Preview should show AWS Recommendation strategy"
 
     # Verify configured strategy is highlighted
     assert "CONFIGURED" in report_html, "Preview should mark configured strategy"
@@ -667,7 +667,7 @@ def test_handler_with_scheduler_preview_gap_split_strategy(
     # Verify all three strategies are shown in the comparison
     assert "Fixed" in report_html
     assert "Gap Split" in report_html
-    assert "AWS Recommendation" in report_html
+    assert "AWS Reco + One Shot" in report_html
 
     # Verify configured strategy (gap_split) is highlighted
     assert "CONFIGURED" in report_html
@@ -736,7 +736,7 @@ def test_handler_with_scheduler_preview_follow_aws_strategy(
     # Verify all three strategies are shown in the comparison
     assert "Fixed" in report_html
     assert "Gap Split" in report_html
-    assert "AWS Recommendation" in report_html
+    assert "AWS Reco + One Shot" in report_html
 
     # Verify configured strategy (follow_aws) is highlighted
     assert "CONFIGURED" in report_html
