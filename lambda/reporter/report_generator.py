@@ -152,6 +152,7 @@ def generate_report(
     config: dict[str, Any] | None = None,
     raw_data: dict[str, Any] | None = None,
     preview_data: dict[str, Any] | None = None,
+    daily_coverage_data: dict[str, Any] | None = None,
 ) -> str:
     """
     Generate report in specified format.
@@ -163,6 +164,7 @@ def generate_report(
         config: Configuration parameters used for the report
         raw_data: Optional raw AWS API responses to include in the report
         preview_data: Optional scheduler preview data
+        daily_coverage_data: Optional daily granularity coverage data for trend chart
 
     Returns:
         str: Generated report content
@@ -175,7 +177,9 @@ def generate_report(
     if report_format == "csv":
         return generate_csv_report(coverage_data, savings_data)
     if report_format == "html":
-        return generate_html_report(coverage_data, savings_data, config, raw_data, preview_data)
+        return generate_html_report(
+            coverage_data, savings_data, config, raw_data, preview_data, daily_coverage_data
+        )
     raise ValueError(f"Invalid report format: {report_format}")
 
 
@@ -776,6 +780,7 @@ def generate_html_report(
     config: dict[str, Any] | None = None,
     raw_data: dict[str, Any] | None = None,
     preview_data: dict[str, Any] | None = None,
+    daily_coverage_data: dict[str, Any] | None = None,
 ) -> str:
     """
     Generate HTML report with coverage trends and savings metrics.
@@ -785,6 +790,7 @@ def generate_html_report(
         savings_data: Savings Plans summary from savings_plans_metrics
         config: Configuration parameters used for the report
         raw_data: Optional raw AWS API responses to include in the report
+        daily_coverage_data: Optional daily granularity coverage data for trend chart
 
     Returns:
         str: HTML report content
@@ -1112,24 +1118,19 @@ def generate_html_report(
             color: #856404;
         }}
         .color-toggle {{
-            position: absolute;
-            top: 10px;
-            right: 10px;
-            background: rgba(255, 255, 255, 0.9);
-            border: 2px solid #ddd;
-            border-radius: 6px;
-            padding: 6px 12px;
+            padding: 12px 24px;
             cursor: pointer;
-            font-size: 0.85em;
-            font-weight: 600;
-            color: #333;
-            transition: all 0.2s;
-            z-index: 10;
+            background: none;
+            border: none;
+            border-bottom: 3px solid transparent;
+            font-size: 14px;
+            font-weight: 500;
+            color: #6c757d;
+            transition: all 0.3s ease;
         }}
         .color-toggle:hover {{
-            background: white;
-            border-color: #007bff;
-            color: #007bff;
+            color: #232f3e;
+            background-color: #f8f9fa;
         }}
         .chart-container {{
             position: relative;
@@ -1341,23 +1342,26 @@ def generate_html_report(
                 <button class="tab" onclick="switchTab('compute')">Compute</button>
                 <button class="tab" onclick="switchTab('database')">Database</button>
                 <button class="tab" onclick="switchTab('sagemaker')">SageMaker</button>
+                <button class="color-toggle" onclick="toggleActiveTabColors()" title="Toggle color-blind friendly mode" style="margin-left: auto;">
+                    🎨 Toggle Colors
+                </button>
             </div>
 
             <div id="global-tab" class="tab-content active">
+                <div class="chart-container" id="global-daily-container" style="display: none;">
+                    <canvas id="globalDailyChart"></canvas>
+                </div>
                 <div class="chart-container">
-                    <button class="color-toggle" onclick="toggleChartColors('globalChart')" title="Toggle color-blind friendly mode">
-                        🎨 Toggle Colors
-                    </button>
                     <canvas id="globalChart"></canvas>
                 </div>
             </div>
 
             <div id="compute-tab" class="tab-content">
                 <div id="compute-metrics"></div>
+                <div class="chart-container" id="compute-daily-container" style="display: none;">
+                    <canvas id="computeDailyChart"></canvas>
+                </div>
                 <div class="chart-container">
-                    <button class="color-toggle" onclick="toggleChartColors('computeChart')" title="Toggle color-blind friendly mode">
-                        🎨 Toggle Colors
-                    </button>
                     <canvas id="computeChart"></canvas>
                 </div>
                 {_render_sp_type_scheduler_preview("compute", preview_data, config or {})}
@@ -1365,10 +1369,10 @@ def generate_html_report(
 
             <div id="database-tab" class="tab-content">
                 <div id="database-metrics"></div>
+                <div class="chart-container" id="database-daily-container" style="display: none;">
+                    <canvas id="databaseDailyChart"></canvas>
+                </div>
                 <div class="chart-container">
-                    <button class="color-toggle" onclick="toggleChartColors('databaseChart')" title="Toggle color-blind friendly mode">
-                        🎨 Toggle Colors
-                    </button>
                     <canvas id="databaseChart"></canvas>
                 </div>
                 {_render_sp_type_scheduler_preview("database", preview_data, config or {})}
@@ -1376,10 +1380,10 @@ def generate_html_report(
 
             <div id="sagemaker-tab" class="tab-content">
                 <div id="sagemaker-metrics"></div>
+                <div class="chart-container" id="sagemaker-daily-container" style="display: none;">
+                    <canvas id="sagemakerDailyChart"></canvas>
+                </div>
                 <div class="chart-container">
-                    <button class="color-toggle" onclick="toggleChartColors('sagemakerChart')" title="Toggle color-blind friendly mode">
-                        🎨 Toggle Colors
-                    </button>
                     <canvas id="sagemakerChart"></canvas>
                 </div>
                 {_render_sp_type_scheduler_preview("sagemaker", preview_data, config or {})}
@@ -1411,6 +1415,10 @@ def generate_html_report(
 
     # Prepare chart data from coverage timeseries and calculate optimal coverage
     chart_data, optimal_coverage_results = _prepare_chart_data(coverage_data, savings_data, config)
+
+    daily_chart_data = "null"
+    if daily_coverage_data:
+        daily_chart_data, _ = _prepare_chart_data(daily_coverage_data, savings_data, config)
 
     compute_summary = coverage_data["compute"]["summary"]
     database_summary = coverage_data["database"]["summary"]
@@ -1446,6 +1454,7 @@ def generate_html_report(
     html += f"""
     <script>
         const allChartData = {chart_data};
+        const dailyChartData = {daily_chart_data};
         const metricsData = {metrics_json};
         const optimalCoverageFromPython = {optimal_coverage_json};
         const followAwsData = {follow_aws_json};
@@ -1489,6 +1498,29 @@ def generate_html_report(
             chart.data.datasets[1].borderColor = palette.ondemandBorder;
 
             chart.update();
+        }}
+
+        // Toggle colors for all charts in the currently active tab
+        function toggleActiveTabColors() {{
+            const activeTab = document.querySelector('.tab-content.active');
+            if (!activeTab) return;
+            const tabType = activeTab.id.replace('-tab', '');
+            const hourlyId = tabType + 'Chart';
+            const dailyId = tabType + 'DailyChart';
+            const currentMode = chartColorModes[hourlyId] || 'palette1';
+            const newMode = currentMode === 'palette2' ? 'palette1' : 'palette2';
+            const palette = colorPalettes[newMode];
+
+            [hourlyId, dailyId].forEach(function(id) {{
+                const chart = chartInstances[id];
+                if (!chart) return;
+                chartColorModes[id] = newMode;
+                chart.data.datasets[0].backgroundColor = palette.covered;
+                chart.data.datasets[0].borderColor = palette.coveredBorder;
+                chart.data.datasets[1].backgroundColor = palette.ondemand;
+                chart.data.datasets[1].borderColor = palette.ondemandBorder;
+                chart.update();
+            }});
         }}
 
         // Tab switching function (scoped to parent section)
@@ -1707,6 +1739,124 @@ def generate_html_report(
             return chartInstances[canvasId];
         }}
 
+        // Function to create daily chart (simplified - no annotation lines)
+        function createDailyChart(canvasId, chartData, title) {{
+            const ctx = document.getElementById(canvasId);
+            const palette = colorPalettes['palette1'];
+
+            chartInstances[canvasId] = new Chart(ctx, {{
+                type: 'bar',
+                data: {{
+                    labels: chartData.labels,
+                    datasets: [
+                        {{
+                            label: 'Covered by Savings Plans',
+                            data: chartData.covered,
+                            backgroundColor: palette.covered,
+                            borderColor: palette.coveredBorder,
+                            borderWidth: 1,
+                            stack: 'stack0'
+                        }},
+                        {{
+                            label: 'On-Demand Cost',
+                            data: chartData.ondemand,
+                            backgroundColor: palette.ondemand,
+                            borderColor: palette.ondemandBorder,
+                            borderWidth: 1,
+                            stack: 'stack0'
+                        }}
+                    ]
+                }},
+                options: {{
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    interaction: {{
+                        mode: 'index',
+                        intersect: false
+                    }},
+                    plugins: {{
+                        title: {{
+                            display: true,
+                            text: title,
+                            font: {{ size: 14 }}
+                        }},
+                        legend: {{
+                            display: true,
+                            position: 'top'
+                        }},
+                        tooltip: {{
+                            callbacks: {{
+                                title: function(tooltipItems) {{
+                                    const index = tooltipItems[0].dataIndex;
+                                    const timestamp = chartData.timestamps[index];
+                                    // Timestamps are period END dates, subtract 1 day to show actual date
+                                    const date = new Date(timestamp + 'T00:00:00');
+                                    date.setDate(date.getDate() - 1);
+                                    const days = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+                                    const dayName = days[date.getDay()];
+                                    const yy = date.getFullYear();
+                                    const mm = String(date.getMonth() + 1).padStart(2, '0');
+                                    const dd = String(date.getDate()).padStart(2, '0');
+                                    return yy + '-' + mm + '-' + dd + ' (' + dayName + ')';
+                                }},
+                                footer: function(tooltipItems) {{
+                                    let covered = 0;
+                                    let ondemand = 0;
+                                    tooltipItems.forEach(function(item) {{
+                                        if (item.dataset.label.includes('Covered')) {{
+                                            covered = item.parsed.y;
+                                        }} else {{
+                                            ondemand = item.parsed.y;
+                                        }}
+                                    }});
+                                    const total = covered + ondemand;
+                                    const coveragePercent = total > 0 ? (covered / total * 100).toFixed(1) : 0;
+                                    return 'Total: $' + total.toFixed(2) + '\\nCoverage: ' + coveragePercent + '%';
+                                }}
+                            }}
+                        }}
+                    }},
+                    scales: {{
+                        x: {{
+                            stacked: true,
+                            title: {{
+                                display: true,
+                                text: 'Date'
+                            }},
+                            ticks: {{
+                                autoSkip: false,
+                                maxRotation: 0,
+                                callback: function(value, index) {{
+                                    const ts = chartData.timestamps[index];
+                                    if (!ts) return '';
+                                    // Timestamps are period END dates; subtract 1 day to get actual date
+                                    const date = new Date(ts + 'T00:00:00');
+                                    date.setDate(date.getDate() - 1);
+                                    if (date.getDate() !== 1) return '';
+                                    const months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+                                    return months[date.getMonth()] + ' ' + date.getFullYear();
+                                }}
+                            }}
+                        }},
+                        y: {{
+                            stacked: true,
+                            title: {{
+                                display: true,
+                                text: 'Daily Cost (USD)'
+                            }},
+                            ticks: {{
+                                callback: function(value) {{
+                                    return '$' + value.toFixed(0);
+                                }}
+                            }}
+                        }}
+                    }}
+                }}
+            }});
+
+            return chartInstances[canvasId];
+        }}
+
         // Function to render metrics for a specific type
         function renderMetrics(containerId, metrics, typeName, stats, typeKey) {{
             const container = document.getElementById(containerId);
@@ -1834,10 +1984,23 @@ def generate_html_report(
         }}
 
         // Create all charts
-        createChart('globalChart', allChartData.global, 'Hourly Usage: On-Demand vs Covered (All Types)', null, false);
-        createChart('computeChart', allChartData.compute, 'Compute Savings Plans - Hourly Usage', 'compute', true);
-        createChart('databaseChart', allChartData.database, 'Database Savings Plans - Hourly Usage', 'database', true);
-        createChart('sagemakerChart', allChartData.sagemaker, 'SageMaker Savings Plans - Hourly Usage', 'sagemaker', true);
+        createChart('globalChart', allChartData.global, 'Hourly Usage: On-Demand vs Covered (All Types) - ' + lookbackDays + ' days', null, false);
+        createChart('computeChart', allChartData.compute, 'Compute Savings Plans - Hourly Usage (' + lookbackDays + ' days)', 'compute', true);
+        createChart('databaseChart', allChartData.database, 'Database Savings Plans - Hourly Usage (' + lookbackDays + ' days)', 'database', true);
+        createChart('sagemakerChart', allChartData.sagemaker, 'SageMaker Savings Plans - Hourly Usage (' + lookbackDays + ' days)', 'sagemaker', true);
+
+        // Create daily charts if data is available
+        if (dailyChartData) {{
+            const dailyDays = dailyChartData.global.labels.length;
+            createDailyChart('globalDailyChart', dailyChartData.global, 'Daily Usage: On-Demand vs Covered (All Types) - ' + dailyDays + ' days');
+            document.getElementById('global-daily-container').style.display = '';
+            createDailyChart('computeDailyChart', dailyChartData.compute, 'Compute Savings Plans - Daily Usage (' + dailyDays + ' days)');
+            document.getElementById('compute-daily-container').style.display = '';
+            createDailyChart('databaseDailyChart', dailyChartData.database, 'Database Savings Plans - Daily Usage (' + dailyDays + ' days)');
+            document.getElementById('database-daily-container').style.display = '';
+            createDailyChart('sagemakerDailyChart', dailyChartData.sagemaker, 'SageMaker Savings Plans - Daily Usage (' + dailyDays + ' days)');
+            document.getElementById('sagemaker-daily-container').style.display = '';
+        }}
 
         // Render metrics for each type
         renderMetrics('compute-metrics', metricsData.compute, 'Compute', allChartData.compute.stats, 'compute');
