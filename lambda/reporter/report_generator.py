@@ -843,7 +843,7 @@ def generate_html_report(
             background-color: white;
             border-radius: 8px;
             box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-            padding: 30px;
+            padding: 30px 30px 0 30px;
         }}
         h1 {{
             color: #232f3e;
