@@ -85,11 +85,10 @@ locals {
   # Split Strategy
 
   split_strategy_type = (
-    local.target_strategy_type == "aws" ? "one_shot" :
-    try(var.purchase_strategy.split.one_shot, null) != null ? "one_shot" :
-    try(var.purchase_strategy.split.fixed_step, null) != null ? "fixed_step" :
-    try(var.purchase_strategy.split.gap_split, null) != null ? "gap_split" :
-    "fixed_step" # default
+    var.purchase_strategy.split.one_shot != null ? "one_shot" :
+    var.purchase_strategy.split.fixed_step != null ? "fixed_step" :
+    var.purchase_strategy.split.gap_split != null ? "gap_split" :
+    "one_shot" # unreachable - validation ensures exactly one split is defined
   )
 
   # Coverage target (only for fixed target)

@@ -376,7 +376,7 @@ def _build_strategy_tooltip(
         cov = config.get("coverage_target_percent", 90.0)
         target_line = f"Target: fixed (coverage_percent: {cov:.0f}%)"
     elif target == "dynamic":
-        risk = config.get("dynamic_risk_level", "balanced")
+        risk = config.get("dynamic_risk_level", "optimal")
         target_line = f"Target: dynamic (risk_level: {risk})"
     else:
         target_line = "Target: aws"

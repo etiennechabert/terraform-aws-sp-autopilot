@@ -18,7 +18,7 @@ class TestStrategyValidation:
         for strategy in ["fixed", "aws", "dynamic"]:
             config = {**BASE_CONFIG, "target_strategy_type": strategy}
             if strategy == "dynamic":
-                config["dynamic_risk_level"] = "balanced"
+                config["dynamic_risk_level"] = "optimal"
             if strategy == "aws":
                 config["split_strategy_type"] = "one_shot"
             _validate_strategy_and_granularity(config)
@@ -38,28 +38,14 @@ class TestStrategyValidation:
         with pytest.raises(ValueError, match="Invalid split_strategy_type"):
             _validate_strategy_and_granularity(config)
 
-    def test_aws_target_requires_one_shot_split(self):
-        config = {
-            **BASE_CONFIG,
-            "target_strategy_type": "aws",
-            "split_strategy_type": "fixed_step",
-        }
-        with pytest.raises(
-            ValueError, match="AWS target strategy requires split_strategy_type='one_shot'"
-        ):
+    def test_aws_target_with_any_split(self):
+        for split in ["one_shot", "fixed_step", "gap_split"]:
+            config = {
+                **BASE_CONFIG,
+                "target_strategy_type": "aws",
+                "split_strategy_type": split,
+            }
             _validate_strategy_and_granularity(config)
-
-    def test_aws_target_allows_one_shot(self):
-        config = {
-            **BASE_CONFIG,
-            "target_strategy_type": "aws",
-            "split_strategy_type": "one_shot",
-        }
-        _validate_strategy_and_granularity(config)
-
-    def test_aws_target_allows_no_split(self):
-        config = {**BASE_CONFIG, "target_strategy_type": "aws"}
-        _validate_strategy_and_granularity(config)
 
     def test_dynamic_requires_risk_level(self):
         config = {**BASE_CONFIG, "target_strategy_type": "dynamic"}
@@ -76,7 +62,7 @@ class TestStrategyValidation:
             _validate_strategy_and_granularity(config)
 
     def test_dynamic_valid_risk_levels(self):
-        for level in ["too_prudent", "min_hourly", "balanced", "aggressive"]:
+        for level in ["prudent", "min_hourly", "optimal", "maximum"]:
             config = {
                 **BASE_CONFIG,
                 "target_strategy_type": "dynamic",
@@ -101,7 +87,7 @@ class TestSchedulerConfigStrategies:
             **BASE_CONFIG,
             "target_strategy_type": "dynamic",
             "split_strategy_type": "gap_split",
-            "dynamic_risk_level": "balanced",
+            "dynamic_risk_level": "optimal",
             "max_purchase_percent": 50.0,
             "min_purchase_percent": 1.0,
         }

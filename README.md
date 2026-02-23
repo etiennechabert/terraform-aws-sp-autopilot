@@ -91,9 +91,43 @@ See the [`examples/`](examples/) directory for complete, working examples:
 
 ### Purchase Strategies
 
-Strategy is configured with two orthogonal dimensions: **target** (what coverage to aim for) and **split** (how to reach the target).
+Strategy is configured with two orthogonal dimensions: **target** (what coverage to aim for) and **split** (how to reach the target). Both must be specified.
 
-#### Fixed Target + Fixed Step Split (Default)
+#### Targets
+
+- **`fixed`** — Target a fixed coverage percentage you define (`coverage_percent`).
+- **`dynamic`** — Automatically determines the optimal coverage target based on usage patterns using a knee-point algorithm (`risk_level`: `prudent`, `min_hourly`, `optimal`, `maximum`).
+- **`aws`** — Uses AWS Cost Explorer recommendations directly without modification.
+
+#### Splits
+
+- **`one_shot`** — Purchases the entire gap to the target in a single cycle.
+- **`fixed_step`** — Purchases a fixed percentage of spend per cycle (`step_percent`).
+- **`gap_split`** — Divides the remaining coverage gap by a configurable divider each cycle (`divider`), with optional `min_purchase_percent` and `max_purchase_percent` bounds.
+
+#### Recommended Combinations
+
+##### Dynamic Target + Gap Split (Recommended)
+
+Automatically determines the optimal coverage target based on usage patterns, dividing the coverage gap by a configurable divider each cycle.
+
+```hcl
+purchase_strategy = {
+  max_coverage_cap = 95
+
+  target = {
+    dynamic = { risk_level = "min_hourly" }
+  }
+
+  split = {
+    gap_split = {
+      divider = 2
+    }
+  }
+}
+```
+
+##### Fixed Target + Fixed Step Split
 
 Target a fixed coverage percentage, purchasing a fixed step each cycle.
 
@@ -111,29 +145,7 @@ purchase_strategy = {
 }
 ```
 
-#### Dynamic Target + Gap Split
-
-Automatically determines the optimal coverage target based on usage patterns, dividing the coverage gap by a configurable divider each cycle.
-
-```hcl
-purchase_strategy = {
-  max_coverage_cap = 95
-
-  target = {
-    dynamic = { risk_level = "balanced" }
-  }
-
-  split = {
-    gap_split = {
-      divider = 2
-    }
-  }
-}
-```
-
-Risk levels: `too_prudent`, `min_hourly`, `balanced`, `aggressive`.
-
-#### AWS Target
+##### AWS Target + One Shot
 
 Uses AWS Cost Explorer recommendations directly without modification.
 
@@ -143,6 +155,10 @@ purchase_strategy = {
 
   target = {
     aws = {}
+  }
+
+  split = {
+    one_shot = {}
   }
 }
 ```

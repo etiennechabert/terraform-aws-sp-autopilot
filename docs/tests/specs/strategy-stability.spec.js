@@ -10,46 +10,46 @@ test.describe('Strategy Card Stability Tests', () => {
 
     const getStrategyValues = async () => ({
       prudent: {
-        cost: await page.locator('#strategy-too-prudent-value').textContent(),
-        savings: await page.locator('#strategy-too-prudent-savings').textContent(),
-        savingsPct: await page.locator('#strategy-too-prudent-savings-pct').textContent()
+        cost: await page.locator('#strategy-prudent-value').textContent(),
+        savings: await page.locator('#strategy-prudent-savings').textContent(),
+        savingsPct: await page.locator('#strategy-prudent-savings-pct').textContent()
       },
       minHourly: {
         cost: await page.locator('#strategy-min-value').textContent(),
         savings: await page.locator('#strategy-min-savings').textContent(),
         savingsPct: await page.locator('#strategy-min-savings-pct').textContent()
       },
-      balanced: {
-        cost: await page.locator('#strategy-balanced-value').textContent(),
-        savings: await page.locator('#strategy-balanced-savings').textContent(),
-        savingsPct: await page.locator('#strategy-balanced-savings-pct').textContent()
+      optimal: {
+        cost: await page.locator('#strategy-optimal-value').textContent(),
+        savings: await page.locator('#strategy-optimal-savings').textContent(),
+        savingsPct: await page.locator('#strategy-optimal-savings-pct').textContent()
       },
-      risky: {
-        cost: await page.locator('#strategy-aggressive-value').textContent(),
-        savings: await page.locator('#strategy-aggressive-savings').textContent(),
-        savingsPct: await page.locator('#strategy-aggressive-savings-pct').textContent()
+      maximum: {
+        cost: await page.locator('#strategy-maximum-value').textContent(),
+        savings: await page.locator('#strategy-maximum-savings').textContent(),
+        savingsPct: await page.locator('#strategy-maximum-savings-pct').textContent()
       }
     });
 
     const baselineValues = await getStrategyValues();
 
-    await page.click('#strategy-aggressive');
+    await page.click('#strategy-maximum');
     await page.waitForTimeout(500);
-    const afterRiskyClick = await getStrategyValues();
+    const afterMaximumClick = await getStrategyValues();
 
-    await page.click('#strategy-balanced');
+    await page.click('#strategy-optimal');
     await page.waitForTimeout(500);
-    const afterBalancedClick = await getStrategyValues();
+    const afterOptimalClick = await getStrategyValues();
 
-    expect(afterRiskyClick.prudent).toEqual(baselineValues.prudent);
-    expect(afterBalancedClick.prudent).toEqual(baselineValues.prudent);
+    expect(afterMaximumClick.prudent).toEqual(baselineValues.prudent);
+    expect(afterOptimalClick.prudent).toEqual(baselineValues.prudent);
 
-    expect(afterRiskyClick.minHourly).toEqual(baselineValues.minHourly);
-    expect(afterBalancedClick.minHourly).toEqual(baselineValues.minHourly);
+    expect(afterMaximumClick.minHourly).toEqual(baselineValues.minHourly);
+    expect(afterOptimalClick.minHourly).toEqual(baselineValues.minHourly);
 
-    expect(afterRiskyClick.balanced).toEqual(baselineValues.balanced);
+    expect(afterMaximumClick.optimal).toEqual(baselineValues.optimal);
 
-    expect(afterBalancedClick.risky).toEqual(baselineValues.risky);
+    expect(afterOptimalClick.maximum).toEqual(baselineValues.maximum);
   });
 
   test('all strategy cards show consistent values across browser reload', async ({ page }) => {
@@ -58,10 +58,10 @@ test.describe('Strategy Card Stability Tests', () => {
     await page.waitForTimeout(1000);
 
     const getAll = async () => ({
-      prudent: await page.locator('#strategy-too-prudent-savings').textContent(),
+      prudent: await page.locator('#strategy-prudent-savings').textContent(),
       minHourly: await page.locator('#strategy-min-savings').textContent(),
-      balanced: await page.locator('#strategy-balanced-savings').textContent(),
-      risky: await page.locator('#strategy-aggressive-savings').textContent()
+      optimal: await page.locator('#strategy-optimal-savings').textContent(),
+      maximum: await page.locator('#strategy-maximum-savings').textContent()
     });
 
     const firstLoad = await getAll();

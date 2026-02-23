@@ -50,7 +50,7 @@ def _build_preview_config(base_config: dict[str, Any], target: str, split: str) 
     if target == "fixed" and "coverage_target_percent" not in config:
         config["coverage_target_percent"] = 90.0
     if target == "dynamic" and not config.get("dynamic_risk_level"):
-        config["dynamic_risk_level"] = "balanced"
+        config["dynamic_risk_level"] = "optimal"
     if split == "fixed_step" and not config.get("fixed_step_percent"):
         config["fixed_step_percent"] = config.get("max_purchase_percent", 10.0)
     if split == "gap_split":
