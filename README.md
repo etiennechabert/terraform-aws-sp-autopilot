@@ -280,13 +280,15 @@ lambda_config = {
 
 See [organizations example](examples/organizations/README.md) for complete setup.
 
-### Gradual Rollout
+### Recommended Rollout
 
-| Phase | Settings | Purpose |
-|-------|----------|---------|
-| **Week 1** | `dry_run = true` | Review recommendations only |
-| **Week 2-4** | `dry_run = false`, `coverage_target = 70`, `max_purchase = 5%` | Small purchases, monitor |
-| **Month 2+** | `coverage_target = 90`, `max_purchase = 10%` | Scale up |
+Start with **1-year No Upfront** commitments to validate the automation with minimal risk. Once comfortable after the first year, switch to **3-year All Upfront** for maximum savings — expiring 1Y plans will naturally get replaced by 3Y over time.
+
+| Phase | `plan_type` | `dry_run` | Purpose |
+|-------|-------------|-----------|---------|
+| **Week 1** | — | `true` | Review recommendations only |
+| **Year 1** | `no_upfront_one_year` | `false` | Validate with low-risk commitments |
+| **Year 2+** | `all_upfront_three_year` | `false` | Maximize savings as 1Y plans expire |
 
 ### Canceling Purchases
 
