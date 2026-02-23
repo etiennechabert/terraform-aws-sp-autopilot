@@ -1,24 +1,18 @@
-# Dynamic Target + Dichotomy Split
+# Dynamic Target + Gap Split
 #
-# This example demonstrates the dynamic target + dichotomy split strategy:
+# This example demonstrates the dynamic target + gap split strategy:
 # - Target: dynamically calculated based on usage patterns (balanced risk level)
-# - Split: dichotomy (binary search) for adaptive purchase sizing
+# - Split: gap_split divides the coverage gap by a configurable divider
 #
 # Dynamic Target (balanced):
 # Uses the knee-point algorithm to find the optimal coverage target where
 # marginal savings efficiency starts dropping significantly. This adapts
 # automatically to your workload patterns.
 #
-# Dichotomy Split Behavior (max_purchase_percent = 50%, min = 1%):
-# - Month 1: At 0% → Try 50% (fits under target) → Purchase 50%
-# - Month 2: At 50% → Try 50% (exceeds target) → Try 25% (fits) → Purchase 25%
-# - Month 3: At 75% → Keep halving until it fits under target
-# - ...continues until target reached
-#
-# Benefits:
-# - Target adapts to actual workload patterns (no manual tuning)
-# - Dichotomy creates stable, distributed commitments over time
-# - Prevents over-commitment through exponential halving
+# Gap Split Behavior (divider = 2):
+# - Divides the coverage gap by the divider each cycle
+# - Clamps result between min_purchase_percent and max_purchase_percent
+# - If the gap is smaller than min_purchase_percent, purchases exactly the gap
 
 terraform {
   required_version = ">= 1.4"
@@ -41,7 +35,7 @@ module "savings_plans" {
   # Resource naming (can be overridden for testing)
   name_prefix = var.name_prefix
 
-  # Purchase strategy - dynamic target with dichotomy split
+  # Purchase strategy - dynamic target with gap split
   purchase_strategy = {
     max_coverage_cap = 95       # Safety cap at 95%
     lookback_days    = 13       # Max for HOURLY granularity (recommended)
@@ -52,9 +46,8 @@ module "savings_plans" {
     }
 
     split = {
-      dichotomy = {
-        max_purchase_percent = 50 # Start at 50%
-        min_purchase_percent = 1  # Minimum purchase granularity
+      gap_split = {
+        divider = 2 # Halve the gap each cycle
       }
     }
   }
@@ -122,7 +115,7 @@ module "savings_plans" {
   tags = {
     Environment = "production"
     ManagedBy   = "terraform"
-    Strategy    = "dynamic-dichotomy"
+    Strategy    = "dynamic-gap-splitter"
     Purpose     = "savings-plans-automation"
   }
 }

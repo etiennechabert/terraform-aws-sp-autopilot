@@ -8,7 +8,7 @@ This Lambda:
 2. Calculates current coverage (excluding plans expiring within renewal_window_days)
 3. Gets AWS purchase recommendations
 4. Calculates purchase need based on coverage_target_percent and selected strategy
-5. Applies purchase limits (max_purchase_percent, min_commitment_per_plan)
+5. Applies purchase limits (min_commitment_per_plan)
 6. Queues purchase intents (or sends email only if dry_run=true)
 7. Sends notification email with analysis results
 """

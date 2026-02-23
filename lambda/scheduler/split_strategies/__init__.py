@@ -1,14 +1,14 @@
 from typing import Any
 
-from split_strategies.dichotomy_split import calculate_dichotomy_split
-from split_strategies.linear_split import calculate_linear_split
+from split_strategies.fixed_step_split import calculate_fixed_step_split
+from split_strategies.gap_split import calculate_gap_split
 from split_strategies.one_shot_split import calculate_one_shot_split
 
 
 SPLIT_STRATEGIES = {
     "one_shot": calculate_one_shot_split,
-    "linear": calculate_linear_split,
-    "dichotomy": calculate_dichotomy_split,
+    "fixed_step": calculate_fixed_step_split,
+    "gap_split": calculate_gap_split,
 }
 
 

@@ -19,7 +19,7 @@ Automates AWS Savings Plans purchases based on usage analysis, maintaining consi
 ## Key Features
 
 - **Automated Savings Plans purchasing** — Maintains target coverage without manual intervention
-- **Three purchase strategies** — Fixed, Dichotomy, and Follow-AWS for different workload patterns
+- **Three purchase strategies** — Fixed Step, Gap Split, and Follow-AWS for different workload patterns
 - **Three SP types supported** — Compute, Database, and SageMaker independently tracked
 - **Human review window** — Configurable delay between scheduling and purchasing allows cancellation
 - **Risk management** — Spreads financial commitments over time with configurable purchase limits
@@ -53,7 +53,7 @@ module "savings_plans" {
     }
 
     split = {
-      linear = { step_percent = 10 }
+      fixed_step = { step_percent = 10 }
     }
   }
 
@@ -85,7 +85,7 @@ See the [`examples/`](examples/) directory for complete, working examples:
 
 - **[single-account-compute](examples/single-account-compute/)** — Basic single-account Compute SP deployment
 - **[organizations](examples/organizations/)** — AWS Organizations multi-account setup
-- **[dynamic-strategy](examples/dynamic-strategy/)** — Dynamic target with dichotomy split
+- **[dynamic-strategy](examples/dynamic-strategy/)** — Dynamic target with gap split
 
 ## Configuration
 
@@ -93,7 +93,7 @@ See the [`examples/`](examples/) directory for complete, working examples:
 
 Strategy is configured with two orthogonal dimensions: **target** (what coverage to aim for) and **split** (how to reach the target).
 
-#### Fixed Target + Linear Split (Default)
+#### Fixed Target + Fixed Step Split (Default)
 
 Target a fixed coverage percentage, purchasing a fixed step each cycle.
 
@@ -106,14 +106,14 @@ purchase_strategy = {
   }
 
   split = {
-    linear = { step_percent = 10 }
+    fixed_step = { step_percent = 10 }
   }
 }
 ```
 
-#### Dynamic Target + Dichotomy Split
+#### Dynamic Target + Gap Split
 
-Automatically determines the optimal coverage target based on usage patterns, using exponentially decreasing purchase sizes.
+Automatically determines the optimal coverage target based on usage patterns, dividing the coverage gap by a configurable divider each cycle.
 
 ```hcl
 purchase_strategy = {
@@ -124,9 +124,8 @@ purchase_strategy = {
   }
 
   split = {
-    dichotomy = {
-      max_purchase_percent = 50
-      min_purchase_percent = 1
+    gap_split = {
+      divider = 2
     }
   }
 }

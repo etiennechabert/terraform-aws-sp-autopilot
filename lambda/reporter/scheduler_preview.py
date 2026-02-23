@@ -26,17 +26,17 @@ logger = logging.getLogger(__name__)
 
 
 DEFAULT_COMPARISONS = [
-    {"target": "fixed", "split": "linear", "label": "Fixed + Linear"},
-    {"target": "dynamic", "split": "dichotomy", "label": "Dynamic + Dichotomy"},
+    {"target": "fixed", "split": "fixed_step", "label": "Fixed + Fixed Step"},
+    {"target": "dynamic", "split": "gap_split", "label": "Dynamic + Gap Split"},
     {"target": "aws", "split": "one_shot", "label": "AWS Recommendation"},
 ]
 
 STRATEGY_LABELS = {
-    "fixed+linear": "Fixed + Linear",
-    "fixed+dichotomy": "Fixed + Dichotomy",
+    "fixed+fixed_step": "Fixed + Fixed Step",
+    "fixed+gap_split": "Fixed + Gap Split",
     "fixed+one_shot": "Fixed + One Shot",
-    "dynamic+linear": "Dynamic + Linear",
-    "dynamic+dichotomy": "Dynamic + Dichotomy",
+    "dynamic+fixed_step": "Dynamic + Fixed Step",
+    "dynamic+gap_split": "Dynamic + Gap Split",
     "dynamic+one_shot": "Dynamic + One Shot",
     "aws+one_shot": "AWS Recommendation",
 }
@@ -51,17 +51,17 @@ def _build_preview_config(base_config: dict[str, Any], target: str, split: str) 
         config["coverage_target_percent"] = 90.0
     if target == "dynamic" and not config.get("dynamic_risk_level"):
         config["dynamic_risk_level"] = "balanced"
-    if split == "linear" and not config.get("linear_step_percent"):
-        config["linear_step_percent"] = config.get("max_purchase_percent", 10.0)
-    if split == "dichotomy":
-        config.setdefault("max_purchase_percent", 50.0)
+    if split == "fixed_step" and not config.get("fixed_step_percent"):
+        config["fixed_step_percent"] = config.get("max_purchase_percent", 10.0)
+    if split == "gap_split":
         config.setdefault("min_purchase_percent", 1.0)
+        config.setdefault("gap_split_divider", 2.0)
 
     return config
 
 
 def _get_configured_key(config: dict[str, Any]) -> str:
-    return f"{config.get('target_strategy_type', 'fixed')}+{config.get('split_strategy_type', 'linear')}"
+    return f"{config.get('target_strategy_type', 'fixed')}+{config.get('split_strategy_type', 'fixed_step')}"
 
 
 _AWS_TYPE_TO_KEY = {"Compute": "compute", "Database": "database", "SageMaker": "sagemaker"}
@@ -100,7 +100,7 @@ def calculate_scheduler_preview(
 
     configured_key = _get_configured_key(config)
     configured_target = config.get("target_strategy_type", "fixed")
-    configured_split = config.get("split_strategy_type", "linear")
+    configured_split = config.get("split_strategy_type", "fixed_step")
 
     combos = [
         {

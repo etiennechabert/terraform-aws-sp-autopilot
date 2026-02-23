@@ -68,8 +68,8 @@ def sample_config():
     """Sample reporter configuration with new target+split strategy."""
     return {
         "target_strategy_type": "fixed",
-        "split_strategy_type": "linear",
-        "linear_step_percent": 10.0,
+        "split_strategy_type": "fixed_step",
+        "fixed_step_percent": 10.0,
         "max_purchase_percent": 10.0,
         "min_purchase_percent": 1.0,
         "compute_sp_term": "THREE_YEAR",
@@ -113,13 +113,13 @@ def test_calculate_scheduler_preview_all_combinations(
     assert "strategies" in result
     assert "error" in result
 
-    assert result["configured_strategy"] == "fixed+linear"
+    assert result["configured_strategy"] == "fixed+fixed_step"
     assert result["error"] is None
 
-    # Configured (fixed+linear) + 2 defaults (dynamic+dichotomy, aws+one_shot)
-    # fixed+linear is both configured and a default, so 3 total
-    assert "fixed+linear" in result["strategies"]
-    assert "dynamic+dichotomy" in result["strategies"]
+    # Configured (fixed+fixed_step) + 2 defaults (dynamic+gap_split, aws+one_shot)
+    # fixed+fixed_step is both configured and a default, so 3 total
+    assert "fixed+fixed_step" in result["strategies"]
+    assert "dynamic+gap_split" in result["strategies"]
     assert "aws+one_shot" in result["strategies"]
     assert len(result["strategies"]) == 3
 
@@ -153,16 +153,17 @@ def test_calculate_scheduler_preview_configured_strategy_marked(
 
     config = sample_config.copy()
     config["target_strategy_type"] = "fixed"
-    config["split_strategy_type"] = "dichotomy"
+    config["split_strategy_type"] = "gap_split"
+    config["gap_split_divider"] = 2.0
     config["max_purchase_percent"] = 50.0
 
     result = scheduler_preview.calculate_scheduler_preview(
         config, mock_clients, sample_coverage_data
     )
 
-    assert result["configured_strategy"] == "fixed+dichotomy"
+    assert result["configured_strategy"] == "fixed+gap_split"
     assert result["error"] is None
-    # fixed+dichotomy (configured) + fixed+linear + dynamic+dichotomy + aws+one_shot = 4
+    # fixed+gap_split (configured) + fixed+fixed_step + dynamic+gap_split + aws+one_shot = 4
     assert len(result["strategies"]) == 4
 
 
@@ -192,11 +193,11 @@ def test_calculate_scheduler_preview_no_recommendations(
         sample_config, mock_clients, coverage_data
     )
 
-    assert result["configured_strategy"] == "fixed+linear"
+    assert result["configured_strategy"] == "fixed+fixed_step"
     assert result["error"] is None
 
-    # Fixed+linear (configured) should report no recommendations (already at 95%)
-    assert result["strategies"]["fixed+linear"]["has_recommendations"] is False
+    # Fixed+fixed_step (configured) should report no recommendations (already at 95%)
+    assert result["strategies"]["fixed+fixed_step"]["has_recommendations"] is False
 
 
 def test_calculate_scheduler_preview_strategy_error_handling(
@@ -210,8 +211,8 @@ def test_calculate_scheduler_preview_strategy_error_handling(
     assert result["error"] is None
     assert len(result["strategies"]) == 3
 
-    # Configured strategy (fixed+linear) should work (no AWS call needed)
-    assert result["strategies"]["fixed+linear"]["error"] is None
+    # Configured strategy (fixed+fixed_step) should work (no AWS call needed)
+    assert result["strategies"]["fixed+fixed_step"]["error"] is None
 
 
 def test_coverage_is_min_hourly_based(sample_config, mock_clients, aws_mock_builder):
@@ -268,8 +269,8 @@ def test_coverage_is_min_hourly_based(sample_config, mock_clients, aws_mock_buil
         config, mock_clients, coverage_data, savings_data
     )
 
-    # Find database purchase from fixed+linear strategy
-    fixed_linear_purchases = result["strategies"]["fixed+linear"]["purchases"]
+    # Find database purchase from fixed+fixed_step strategy
+    fixed_linear_purchases = result["strategies"]["fixed+fixed_step"]["purchases"]
     db_purchase = next((p for p in fixed_linear_purchases if p["sp_type"] == "database"), None)
     assert db_purchase is not None
 

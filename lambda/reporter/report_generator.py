@@ -360,36 +360,36 @@ def _calculate_optimal_coverage(
 
 def _build_strategy_tooltip(
     strategy_key: str,
-    strategy_desc: str,
     config: dict[str, Any],
-    _is_configured: bool,
 ) -> str:
     """Build tooltip text for a strategy combination."""
     parts = strategy_key.split("+")
     target = parts[0] if parts else ""
     split = parts[1] if len(parts) > 1 else ""
 
-    if target == "aws":
-        return f"{strategy_desc} | Configure: target {{ aws = {{}} }}"
-
-    params_parts = []
+    # Target line
     if target == "fixed":
         cov = config.get("coverage_target_percent", 90.0)
-        params_parts.append(f"target: {cov:.0f}%")
+        target_line = f"Target: fixed (coverage_percent: {cov:.0f}%)"
     elif target == "dynamic":
         risk = config.get("dynamic_risk_level", "balanced")
-        params_parts.append(f"risk: {risk}")
+        target_line = f"Target: dynamic (risk_level: {risk})"
+    else:
+        target_line = "Target: aws"
 
-    if split == "linear":
-        step = config.get("linear_step_percent", config.get("max_purchase_percent", 10.0))
-        params_parts.append(f"step: {step:.0f}%")
-    elif split == "dichotomy":
-        max_p = config.get("max_purchase_percent", 50.0)
-        min_p = config.get("min_purchase_percent", 1.0)
-        params_parts.append(f"max: {max_p:.0f}%, min: {min_p:.0f}%")
+    # Split line
+    if split == "fixed_step":
+        step = config.get("fixed_step_percent", config.get("max_purchase_percent", 10.0))
+        split_line = f"Split: fixed_step (step_percent: {step:.0f}%)"
+    elif split == "gap_split":
+        divider = config.get("gap_split_divider", 2.0)
+        min_pct = config.get("min_purchase_percent", 1.0)
+        max_pct = config.get("max_purchase_percent", 10.0)
+        split_line = f"Split: gap_split (divider: {divider:.0f}, min_purchase_percent: {min_pct:.0f}%, max_purchase_percent: {max_pct:.0f}%)"
+    else:
+        split_line = "Split: one_shot"
 
-    params = ", ".join(params_parts) if params_parts else ""
-    return f"{strategy_desc} ({params})" if params else strategy_desc
+    return f"{target_line}\n{split_line}"
 
 
 def _render_no_purchase_row(strategy_display: str, is_configured: bool, tooltip: str) -> str:
@@ -468,16 +468,6 @@ def _render_sp_type_scheduler_preview(
     sp_type: str, preview_data: dict[str, Any] | None, config: dict[str, Any]
 ) -> str:
     """Render scheduler preview comparison for a specific SP type."""
-    strategy_descriptions = {
-        "fixed+linear": "Fixed target with linear step-based purchases.",
-        "fixed+dichotomy": "Fixed target with exponentially decreasing purchase sizes.",
-        "fixed+one_shot": "Fixed target purchased in a single step.",
-        "dynamic+linear": "Dynamic target (risk-based) with linear step purchases.",
-        "dynamic+dichotomy": "Dynamic target (risk-based) with exponentially decreasing purchases.",
-        "dynamic+one_shot": "Dynamic target (risk-based) purchased in a single step.",
-        "aws+one_shot": "Follows AWS recommendations directly.",
-    }
-
     if not preview_data:
         return ""
 
@@ -489,7 +479,7 @@ def _render_sp_type_scheduler_preview(
         """
 
     strategies = preview_data.get("strategies", {})
-    configured_strategy = preview_data.get("configured_strategy", "fixed+linear")
+    configured_strategy = preview_data.get("configured_strategy", "fixed+fixed_step")
     target_coverage = config.get("coverage_target_percent", 90.0)
 
     strategy_purchases = {}
@@ -530,9 +520,7 @@ def _render_sp_type_scheduler_preview(
         purchase = strategy_purchases.get(strategy_key)
         strategy_display = strategy_data.get("label", strategy_key)
         is_configured = strategy_key == configured_strategy
-        strategy_desc = strategy_descriptions.get(strategy_key, "")
-
-        tooltip = _build_strategy_tooltip(strategy_key, strategy_desc, config, is_configured)
+        tooltip = _build_strategy_tooltip(strategy_key, config)
 
         if not purchase:
             html += _render_no_purchase_row(strategy_display, is_configured, tooltip)
@@ -1275,7 +1263,6 @@ def generate_html_report(
             left: 10%;
             top: 100%;
             z-index: 1000;
-            width: 400px;
             padding: 12px 16px;
             background: #232f3e;
             color: white;
@@ -1284,7 +1271,7 @@ def generate_html_report(
             line-height: 1.5;
             box-shadow: 0 4px 12px rgba(0,0,0,0.3);
             margin-top: 8px;
-            white-space: normal;
+            white-space: pre;
             pointer-events: none;
             animation: tooltipFadeIn 0.2s ease-in;
         }}
@@ -1684,6 +1671,21 @@ def generate_html_report(
                             title: {{
                                 display: true,
                                 text: 'Time Period'
+                            }},
+                            ticks: {{
+                                autoSkip: false,
+                                maxRotation: 0,
+                                callback: function(value, index) {{
+                                    const label = chartData.labels[index];
+                                    if (!label) return '';
+                                    const parts = label.split(' ');
+                                    if (parts.length < 2) return '';
+                                    if (parts[1] === '12:00') {{
+                                        const dp = parts[0].split('-');
+                                        return dp[1] + '/' + dp[0];
+                                    }}
+                                    return '';
+                                }}
                             }}
                         }},
                         y: {{

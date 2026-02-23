@@ -25,8 +25,8 @@ mock_provider "aws" {
 # Purchase Strategy - Target + Split Validations
 # ============================================================================
 
-# Test: fixed target with linear split - valid
-run "test_fixed_linear_valid" {
+# Test: fixed target with fixed_step split - valid
+run "test_fixed_fixed_step_valid" {
   command = plan
 
   variables {
@@ -38,7 +38,7 @@ run "test_fixed_linear_valid" {
       }
 
       split = {
-        linear = { step_percent = 5 }
+        fixed_step = { step_percent = 5 }
       }
     }
     sp_plans = {
@@ -55,8 +55,8 @@ run "test_fixed_linear_valid" {
   }
 }
 
-# Test: fixed target with dichotomy split - valid
-run "test_fixed_dichotomy_valid" {
+# Test: fixed target with gap_split split - valid
+run "test_fixed_gap_split_valid" {
   command = plan
 
   variables {
@@ -68,9 +68,8 @@ run "test_fixed_dichotomy_valid" {
       }
 
       split = {
-        dichotomy = {
-          max_purchase_percent = 50
-          min_purchase_percent = 1
+        gap_split = {
+          divider = 2
         }
       }
     }
@@ -114,8 +113,8 @@ run "test_aws_target_valid" {
   }
 }
 
-# Test: dynamic target with linear split - valid
-run "test_dynamic_linear_valid" {
+# Test: dynamic target with fixed_step split - valid
+run "test_dynamic_fixed_step_valid" {
   command = plan
 
   variables {
@@ -127,7 +126,7 @@ run "test_dynamic_linear_valid" {
       }
 
       split = {
-        linear = { step_percent = 10 }
+        fixed_step = { step_percent = 10 }
       }
     }
     sp_plans = {
@@ -158,7 +157,7 @@ run "test_invalid_multiple_targets" {
       }
 
       split = {
-        linear = { step_percent = 5 }
+        fixed_step = { step_percent = 5 }
       }
     }
     sp_plans = {
@@ -192,7 +191,7 @@ run "test_invalid_aws_with_split" {
       }
 
       split = {
-        linear = { step_percent = 5 }
+        fixed_step = { step_percent = 5 }
       }
     }
     sp_plans = {
@@ -256,7 +255,7 @@ run "test_invalid_dynamic_risk_level" {
       }
 
       split = {
-        linear = { step_percent = 10 }
+        fixed_step = { step_percent = 10 }
       }
     }
     sp_plans = {
@@ -290,7 +289,7 @@ run "test_coverage_percent_valid" {
       }
 
       split = {
-        linear = { step_percent = 5 }
+        fixed_step = { step_percent = 5 }
       }
     }
     sp_plans = {
@@ -320,7 +319,7 @@ run "test_coverage_percent_exceeds_cap" {
       }
 
       split = {
-        linear = { step_percent = 5 }
+        fixed_step = { step_percent = 5 }
       }
     }
     sp_plans = {
@@ -354,7 +353,7 @@ run "test_max_coverage_cap_invalid_above_100" {
       }
 
       split = {
-        linear = { step_percent = 5 }
+        fixed_step = { step_percent = 5 }
       }
     }
     sp_plans = {
@@ -375,8 +374,8 @@ run "test_max_coverage_cap_invalid_above_100" {
   ]
 }
 
-# Test: dichotomy - invalid min >= max
-run "test_dichotomy_invalid_min_gte_max" {
+# Test: gap_split - invalid divider <= 0
+run "test_gap_split_invalid_divider_zero" {
   command = plan
 
   variables {
@@ -388,9 +387,8 @@ run "test_dichotomy_invalid_min_gte_max" {
       }
 
       split = {
-        dichotomy = {
-          max_purchase_percent = 5
-          min_purchase_percent = 10
+        gap_split = {
+          divider = 0
         }
       }
     }
@@ -412,8 +410,8 @@ run "test_dichotomy_invalid_min_gte_max" {
   ]
 }
 
-# Test: linear step_percent - invalid above 100
-run "test_linear_step_percent_invalid" {
+# Test: fixed_step step_percent - invalid above 100
+run "test_fixed_step_step_percent_invalid" {
   command = plan
 
   variables {
@@ -425,7 +423,7 @@ run "test_linear_step_percent_invalid" {
       }
 
       split = {
-        linear = { step_percent = 101 }
+        fixed_step = { step_percent = 101 }
       }
     }
     sp_plans = {
@@ -464,7 +462,7 @@ run "test_min_commitment_per_plan_valid_at_aws_min" {
       }
 
       split = {
-        linear = { step_percent = 5 }
+        fixed_step = { step_percent = 5 }
       }
     }
     sp_plans = {
@@ -495,7 +493,7 @@ run "test_min_commitment_per_plan_invalid_below_min" {
       }
 
       split = {
-        linear = { step_percent = 5 }
+        fixed_step = { step_percent = 5 }
       }
     }
     sp_plans = {
@@ -533,7 +531,7 @@ run "test_at_least_one_sp_enabled" {
       }
 
       split = {
-        linear = { step_percent = 5 }
+        fixed_step = { step_percent = 5 }
       }
     }
     sp_plans = {
@@ -564,7 +562,7 @@ run "test_compute_plan_type_required" {
       }
 
       split = {
-        linear = { step_percent = 5 }
+        fixed_step = { step_percent = 5 }
       }
     }
     sp_plans = {
@@ -595,7 +593,7 @@ run "test_database_plan_type_valid" {
       }
 
       split = {
-        linear = { step_percent = 5 }
+        fixed_step = { step_percent = 5 }
       }
     }
     sp_plans = {
@@ -628,7 +626,7 @@ run "test_database_plan_type_invalid" {
       }
 
       split = {
-        linear = { step_percent = 5 }
+        fixed_step = { step_percent = 5 }
       }
     }
     sp_plans = {
@@ -669,7 +667,7 @@ run "test_report_format_valid_html" {
       }
 
       split = {
-        linear = { step_percent = 5 }
+        fixed_step = { step_percent = 5 }
       }
     }
     sp_plans = {
@@ -702,7 +700,7 @@ run "test_report_format_invalid" {
       }
 
       split = {
-        linear = { step_percent = 5 }
+        fixed_step = { step_percent = 5 }
       }
     }
     sp_plans = {
@@ -739,7 +737,7 @@ run "test_s3_lifecycle_glacier_invalid_less_than_ia" {
       }
 
       split = {
-        linear = { step_percent = 5 }
+        fixed_step = { step_percent = 5 }
       }
     }
     sp_plans = {
@@ -783,7 +781,7 @@ run "test_notifications_valid_emails" {
       }
 
       split = {
-        linear = { step_percent = 5 }
+        fixed_step = { step_percent = 5 }
       }
     }
     sp_plans = {
@@ -813,7 +811,7 @@ run "test_notifications_valid_slack" {
       }
 
       split = {
-        linear = { step_percent = 5 }
+        fixed_step = { step_percent = 5 }
       }
     }
     sp_plans = {
@@ -844,7 +842,7 @@ run "test_notifications_invalid_no_method" {
       }
 
       split = {
-        linear = { step_percent = 5 }
+        fixed_step = { step_percent = 5 }
       }
     }
     sp_plans = {
@@ -884,7 +882,7 @@ run "test_hourly_granularity_max_lookback" {
       }
 
       split = {
-        linear = { step_percent = 5 }
+        fixed_step = { step_percent = 5 }
       }
     }
     sp_plans = {
@@ -916,7 +914,7 @@ run "test_daily_granularity_higher_lookback" {
       }
 
       split = {
-        linear = { step_percent = 5 }
+        fixed_step = { step_percent = 5 }
       }
     }
     sp_plans = {
@@ -976,7 +974,7 @@ run "test_dynamic_risk_too_prudent" {
       }
 
       split = {
-        linear = { step_percent = 10 }
+        fixed_step = { step_percent = 10 }
       }
     }
     sp_plans = {
@@ -1005,9 +1003,8 @@ run "test_dynamic_risk_aggressive" {
       }
 
       split = {
-        dichotomy = {
-          max_purchase_percent = 50
-          min_purchase_percent = 1
+        gap_split = {
+          divider = 2
         }
       }
     }

@@ -57,7 +57,7 @@ func TestFullDeploymentAndCleanup(t *testing.T) {
 					},
 				},
 				"split": map[string]interface{}{
-					"linear": map[string]interface{}{
+					"fixed_step": map[string]interface{}{
 						"step_percent": 15,
 					},
 				},
