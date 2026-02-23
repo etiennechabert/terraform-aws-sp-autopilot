@@ -32,7 +32,7 @@ variable "purchase_strategy" {
     })
 
     split = optional(object({
-      one_shot = optional(object({}))
+      one_shot   = optional(object({}))
       fixed_step = optional(object({ step_percent = number }))
       gap_split = optional(object({
         divider              = number
