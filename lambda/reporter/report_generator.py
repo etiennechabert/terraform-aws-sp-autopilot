@@ -631,7 +631,9 @@ def _build_breakdown_table_html(
     return html
 
 
-def _build_raw_data_section_html(raw_data: dict[str, Any] | None, report_timestamp: str) -> str:
+def _build_raw_data_section_html(
+    raw_data: dict[str, Any] | None, report_timestamp: str, monthly_savings: float = 0.0
+) -> str:
     """Build HTML for raw data section and footer."""
     html = """
         </div>
@@ -655,9 +657,44 @@ def _build_raw_data_section_html(raw_data: dict[str, Any] | None, report_timesta
         </div>
 """
 
+    coffee_count = int(monthly_savings * 0.01 / 6)
+    if monthly_savings > 0:
+        coffee_html = f"""
+            <div style="margin: 20px auto 0; padding: 10px 18px; background: linear-gradient(135deg, #fff8e1 0%, #fff3cd 100%); border-radius: 10px; max-width: 420px; border: 1px solid #ffe082; font-size: 0.85em;">
+                <p style="margin: 0 0 6px; color: #5d4037;">
+                    Savings Plans Autopilot helped you save <strong style="color: #2e7d32;">${monthly_savings:,.2f}</strong> this month.
+                </p>
+                <p style="margin: 0 0 6px; color: #6d4c41;">
+                    That could pay for {coffee_count} overpriced Berlin hipster flat whites at the 1% tax bracket.
+                </p>
+                <p style="margin: 0 0 6px; color: #6d4c41;">
+                    The human behind the machine runs on caffeine — consider fueling it?
+                </p>
+                <a href="https://buymeacoffee.com/etiennechak" target="_blank"
+                   style="display: inline-block; margin-top: 6px; padding: 6px 16px; background-color: #ffdd00; color: #000; font-weight: bold; border-radius: 6px; text-decoration: none; font-size: 0.9em; transition: transform 0.2s;"
+                   onmouseover="this.style.transform='scale(1.05)'" onmouseout="this.style.transform='scale(1)'">
+                    ☕ Buy me a coffee
+                </a>
+            </div>
+"""
+    else:
+        coffee_html = """
+            <div style="margin: 20px auto 0; padding: 10px 18px; background: linear-gradient(135deg, #fff8e1 0%, #fff3cd 100%); border-radius: 10px; max-width: 420px; border: 1px solid #ffe082; font-size: 0.85em;">
+                <p style="margin: 0 0 4px; color: #6d4c41;">
+                    No savings yet — but once Savings Plans Autopilot kicks in, it'll earn its Berlin flat white.
+                </p>
+                <a href="https://buymeacoffee.com/etiennechak" target="_blank"
+                   style="display: inline-block; margin-top: 6px; padding: 6px 16px; background-color: #ffdd00; color: #000; font-weight: bold; border-radius: 6px; text-decoration: none; font-size: 0.9em; transition: transform 0.2s;"
+                   onmouseover="this.style.transform='scale(1.05)'" onmouseout="this.style.transform='scale(1)'">
+                    ☕ Buy me a coffee anyway
+                </a>
+            </div>
+"""
+
     html += f"""
         <div class="footer">
             <p><strong>Savings Plans Autopilot</strong> - Generated: {report_timestamp}</p>
+{coffee_html}
             <p>
                 <a href="https://github.com/etiennechabert/terraform-aws-sp-autopilot" target="_blank" style="color: #2196f3; text-decoration: none;">terraform-aws-sp-autopilot</a>
                 <span style="opacity: 0.6;">| Open source | Apache 2.0</span>
@@ -1447,7 +1484,8 @@ def generate_html_report(
     plans = savings_data.get("plans", [])
     html += _build_active_plans_table_html(plans)
 
-    html += _build_raw_data_section_html(raw_data, report_timestamp)
+    monthly_savings = net_savings_hourly * 24 * 30
+    html += _build_raw_data_section_html(raw_data, report_timestamp, monthly_savings)
 
     # Prepare chart data from coverage timeseries and calculate optimal coverage
     chart_data, optimal_coverage_results = _prepare_chart_data(coverage_data, savings_data, config)
