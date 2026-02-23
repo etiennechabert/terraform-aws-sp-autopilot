@@ -947,9 +947,7 @@ def generate_html_report(
             color: #232f3e;
         }}
         .footer {{
-            margin-top: 20px;
             padding: 10px 0;
-            border-top: 1px solid #e0e0e0;
             text-align: center;
             color: #6c757d;
             font-size: 0.85em;
