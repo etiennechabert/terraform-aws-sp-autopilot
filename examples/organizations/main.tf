@@ -1,8 +1,8 @@
 # AWS Target + One Shot (Organizations)
 #
-# This example demonstrates the AWS target strategy (one_shot implied):
+# This example demonstrates the AWS target strategy with one_shot split:
 # - Target: follows AWS Cost Explorer recommendations directly
-# - Split: one_shot (implicit - purchases the full AWS recommendation)
+# - Split: one_shot (purchases the full AWS recommendation)
 # - Organization-wide Savings Plans (management account role)
 # - Both Compute and Database Savings Plans
 # - Comprehensive monitoring and notifications
@@ -36,7 +36,9 @@ module "savings_plans" {
       aws = {} # Follow AWS Cost Explorer recommendations
     }
 
-    # No split needed - aws target purchases the full recommendation
+    split = {
+      one_shot = {} # Purchase the full recommendation at once
+    }
   }
 
   # Savings Plans configuration - both Compute and Database for comprehensive coverage

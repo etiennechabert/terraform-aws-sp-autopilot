@@ -51,8 +51,8 @@ export const EXPECTED_PATTERN_BASELINES = {
  * Strategy IDs and their display names
  */
 export const STRATEGIES = {
-  tooPrudent: {
-    id: 'too-prudent',
+  prudent: {
+    id: 'prudent',
     name: 'Prudent',
     description: 'Under-committed',
     icon: '🐔',
@@ -63,16 +63,16 @@ export const STRATEGIES = {
     description: 'Baseline only',
     icon: '🛡️',
   },
-  balanced: {
-    id: 'balanced',
-    name: 'Balanced',
+  optimal: {
+    id: 'optimal',
+    name: 'Optimal',
     description: 'Knee point',
     icon: '⚖️',
     recommended: true,
   },
-  aggressive: {
-    id: 'aggressive',
-    name: 'Risky',
+  maximum: {
+    id: 'maximum',
+    name: 'Maximum',
     description: 'Max savings',
     icon: '⚠️',
   },

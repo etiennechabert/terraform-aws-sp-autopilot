@@ -73,7 +73,7 @@ test.describe('Pattern Selection Tests', () => {
     const onDemand = await page.locator('#metric-ondemand').textContent();
     expect(onDemand).toMatch(/\$\d+\.\d{2}\/h/);
 
-    const balancedCost = await page.locator('#strategy-balanced-value').textContent();
+    const balancedCost = await page.locator('#strategy-optimal-value').textContent();
     expect(balancedCost).toMatch(/\$\d+\.\d{2}\/h/);
   });
 

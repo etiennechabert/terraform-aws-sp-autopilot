@@ -376,7 +376,7 @@ def _build_strategy_tooltip(
         cov = config.get("coverage_target_percent", 90.0)
         target_line = f"Target: fixed (coverage_percent: {cov:.0f}%)"
     elif target == "dynamic":
-        risk = config.get("dynamic_risk_level", "balanced")
+        risk = config.get("dynamic_risk_level", "optimal")
         target_line = f"Target: dynamic (risk_level: {risk})"
     else:
         target_line = "Target: aws"
@@ -657,11 +657,10 @@ def _build_raw_data_section_html(raw_data: dict[str, Any] | None, report_timesta
 
     html += f"""
         <div class="footer">
-            <p><strong>Savings Plans Autopilot</strong> - Automated Coverage & Savings Report</p>
-            <p>Generated: {report_timestamp}</p>
-            <p style="margin-top: 15px; font-size: 0.9em;">
-                Powered by <a href="https://github.com/etiennechabert/terraform-aws-sp-autopilot" target="_blank" style="color: #2196f3; text-decoration: none;">terraform-aws-sp-autopilot</a>
-                <span style="opacity: 0.6;">| Open source on GitHub | Apache License 2.0</span>
+            <p><strong>Savings Plans Autopilot</strong> - Generated: {report_timestamp}</p>
+            <p>
+                <a href="https://github.com/etiennechabert/terraform-aws-sp-autopilot" target="_blank" style="color: #2196f3; text-decoration: none;">terraform-aws-sp-autopilot</a>
+                <span style="opacity: 0.6;">| Open source | Apache 2.0</span>
             </p>
         </div>
     </div>
@@ -731,7 +730,7 @@ def _build_active_plans_table_html(plans: list[dict[str, Any]]) -> str:
                         <th style="width: 16%;">Hourly Commitment</th>
                         <th style="width: 10%;">Term</th>
                         <th style="width: 16%;">Payment Option</th>
-                        <th style="width: 16%;">Days Remaining</th>
+                        <th style="width: 16%; text-align: right;">Days Remaining</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -763,7 +762,7 @@ def _build_active_plans_table_html(plans: list[dict[str, Any]]) -> str:
                         <td class="metric">${hourly_commitment:.2f}/hr</td>
                         <td>{term_years} year(s)</td>
                         <td>{payment_option}</td>
-                        <td class="metric" title="{tooltip_text}" style="cursor: help;">{days_remaining_display}</td>
+                        <td class="metric" title="{tooltip_text}" style="cursor: help; text-align: right;">{days_remaining_display}</td>
                     </tr>
 """
 
@@ -844,7 +843,7 @@ def generate_html_report(
             background-color: white;
             border-radius: 8px;
             box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-            padding: 30px;
+            padding: 30px 30px 0 30px;
         }}
         h1 {{
             color: #232f3e;
@@ -948,12 +947,13 @@ def generate_html_report(
             color: #232f3e;
         }}
         .footer {{
-            margin-top: 40px;
-            padding-top: 20px;
-            border-top: 2px solid #e0e0e0;
+            padding: 10px 0;
             text-align: center;
             color: #6c757d;
-            font-size: 0.9em;
+            font-size: 0.85em;
+        }}
+        .footer p {{
+            margin: 2px 0;
         }}
         .no-data {{
             text-align: center;
@@ -963,11 +963,39 @@ def generate_html_report(
         }}
         .chart-container {{
             position: relative;
-            height: 400px;
+            height: 280px;
             margin: 20px 0;
             padding: 20px;
             background-color: #f8f9fa;
             border-radius: 8px;
+        }}
+        .chart-header {{
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 4px;
+        }}
+        .chart-title {{
+            font-weight: bold;
+            font-size: 14px;
+            color: #666;
+        }}
+        .chart-legend {{
+            text-align: right;
+            font-size: 13px;
+            color: #666;
+        }}
+        .chart-legend-item {{
+            margin-left: 16px;
+        }}
+        .chart-legend-color {{
+            display: inline-block;
+            width: 14px;
+            height: 14px;
+            margin-right: 4px;
+            vertical-align: middle;
+            border: 1px solid;
+            border-radius: 2px;
         }}
         .tabs {{
             display: flex;
@@ -1116,6 +1144,14 @@ def generate_html_report(
             margin-top: 10px;
             font-size: 0.85em;
             color: #856404;
+            opacity: 0;
+            max-height: 0;
+            overflow: hidden;
+            transition: opacity 0.3s, max-height 0.3s;
+        }}
+        .simulator-cta:hover .simulator-description {{
+            opacity: 1;
+            max-height: 60px;
         }}
         .color-toggle {{
             padding: 12px 24px;
@@ -1548,8 +1584,25 @@ def generate_html_report(
         }}
 
         // Function to create chart for a specific type
+        function _injectChartHeader(canvasId, title) {{
+            const canvas = document.getElementById(canvasId);
+            const container = canvas.parentElement;
+            if (!container.querySelector('.chart-header')) {{
+                const header = document.createElement('div');
+                header.className = 'chart-header';
+                header.innerHTML = `
+                    <div class="chart-title">${{title}}</div>
+                    <div class="chart-legend">
+                        <span class="chart-legend-item"><span class="chart-legend-color" style="background:#5b9bd5;border-color:#4a8bc2;"></span>Covered by Savings Plans</span>
+                        <span class="chart-legend-item"><span class="chart-legend-color" style="background:#f0ad4e;border-color:#ec971f;"></span>On-Demand Cost</span>
+                    </div>`;
+                container.insertBefore(header, canvas);
+            }}
+        }}
+
         function createChart(canvasId, chartData, title, spType, showCoverageLine) {{
             const ctx = document.getElementById(canvasId);
+            _injectChartHeader(canvasId, title);
 
             // Initialize color mode for this chart
             chartColorModes[canvasId] = 'palette1';
@@ -1652,15 +1705,8 @@ def generate_html_report(
                         intersect: false
                     }},
                     plugins: {{
-                        title: {{
-                            display: true,
-                            text: title,
-                            font: {{ size: 16 }}
-                        }},
-                        legend: {{
-                            display: true,
-                            position: 'top'
-                        }},
+                        title: {{ display: false }},
+                        legend: {{ display: false }},
                         tooltip: {{
                             callbacks: {{
                                 title: function(tooltipItems) {{
@@ -1700,10 +1746,7 @@ def generate_html_report(
                     scales: {{
                         x: {{
                             stacked: true,
-                            title: {{
-                                display: true,
-                                text: 'Time Period'
-                            }},
+                            title: {{ display: false }},
                             ticks: {{
                                 autoSkip: false,
                                 maxRotation: 0,
@@ -1722,10 +1765,7 @@ def generate_html_report(
                         }},
                         y: {{
                             stacked: true,
-                            title: {{
-                                display: true,
-                                text: 'Cost (USD)'
-                            }},
+                            title: {{ display: false }},
                             ticks: {{
                                 callback: function(value) {{
                                     return '$' + value.toFixed(2);
@@ -1742,6 +1782,7 @@ def generate_html_report(
         // Function to create daily chart (simplified - no annotation lines)
         function createDailyChart(canvasId, chartData, title) {{
             const ctx = document.getElementById(canvasId);
+            _injectChartHeader(canvasId, title);
             const palette = colorPalettes['palette1'];
 
             chartInstances[canvasId] = new Chart(ctx, {{
@@ -1775,15 +1816,8 @@ def generate_html_report(
                         intersect: false
                     }},
                     plugins: {{
-                        title: {{
-                            display: true,
-                            text: title,
-                            font: {{ size: 14 }}
-                        }},
-                        legend: {{
-                            display: true,
-                            position: 'top'
-                        }},
+                        title: {{ display: false }},
+                        legend: {{ display: false }},
                         tooltip: {{
                             callbacks: {{
                                 title: function(tooltipItems) {{
@@ -1819,10 +1853,7 @@ def generate_html_report(
                     scales: {{
                         x: {{
                             stacked: true,
-                            title: {{
-                                display: true,
-                                text: 'Date'
-                            }},
+                            title: {{ display: false }},
                             ticks: {{
                                 autoSkip: false,
                                 maxRotation: 0,
@@ -1840,10 +1871,7 @@ def generate_html_report(
                         }},
                         y: {{
                             stacked: true,
-                            title: {{
-                                display: true,
-                                text: 'Daily Cost (USD)'
-                            }},
+                            title: {{ display: false }},
                             ticks: {{
                                 callback: function(value) {{
                                     return '$' + value.toFixed(0);

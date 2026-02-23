@@ -79,24 +79,24 @@ class TestDynamicTarget:
         assert result > 0
 
     def test_no_spending_data_raises(self):
-        config = {"dynamic_risk_level": "balanced"}
+        config = {"dynamic_risk_level": "optimal"}
         with pytest.raises(ValueError, match="requires spending data"):
             resolve_dynamic(config, spending_data=None, sp_type_key="compute")
 
     def test_empty_spending_data_raises(self):
-        config = {"dynamic_risk_level": "balanced"}
+        config = {"dynamic_risk_level": "optimal"}
         with pytest.raises(ValueError, match="requires spending data"):
             resolve_dynamic(config, spending_data={}, sp_type_key="compute")
 
     def test_no_hourly_data_falls_back(self):
         spending = {"compute": {"timeseries": []}}
-        config = {"dynamic_risk_level": "balanced", "savings_percentage": 30.0}
+        config = {"dynamic_risk_level": "optimal", "savings_percentage": 30.0}
         result = resolve_dynamic(config, spending, sp_type_key="compute")
         assert result == pytest.approx(90.0)
 
     def test_all_zero_costs_falls_back(self):
         spending = {"compute": {"timeseries": [{"total": 0.0}, {"total": 0.0}]}}
-        config = {"dynamic_risk_level": "balanced", "savings_percentage": 30.0}
+        config = {"dynamic_risk_level": "optimal", "savings_percentage": 30.0}
         result = resolve_dynamic(config, spending, sp_type_key="compute")
         assert result == pytest.approx(90.0)
 
@@ -121,7 +121,7 @@ class TestDynamicTarget:
 
     def test_all_risk_levels_return_value(self):
         spending = self._spending_data([80.0, 90.0, 100.0, 110.0, 120.0])
-        for level in ["too_prudent", "min_hourly", "balanced", "aggressive"]:
+        for level in ["prudent", "min_hourly", "optimal", "maximum"]:
             config = {"dynamic_risk_level": level, "savings_percentage": 30.0}
             result = resolve_dynamic(config, spending, sp_type_key="compute")
             assert result > 0, f"Risk level '{level}' returned non-positive value"

@@ -14,8 +14,6 @@
 
 Automates AWS Savings Plans purchases based on usage analysis, maintaining consistent coverage while limiting financial exposure through incremental commitments.
 
-**[AWS Savings Plan Simulator](https://etiennechabert.github.io/terraform-aws-sp-autopilot/)** — Interactive cost visualization tool
-
 ## Key Features
 
 - **Automated Savings Plans purchasing** — Maintains target coverage without manual intervention
@@ -91,9 +89,43 @@ See the [`examples/`](examples/) directory for complete, working examples:
 
 ### Purchase Strategies
 
-Strategy is configured with two orthogonal dimensions: **target** (what coverage to aim for) and **split** (how to reach the target).
+Strategy is configured with two orthogonal dimensions: **target** (what coverage to aim for) and **split** (how to reach the target). Both must be specified.
 
-#### Fixed Target + Fixed Step Split (Default)
+#### Targets
+
+- **`fixed`** — Target a fixed coverage percentage you define (`coverage_percent`).
+- **`dynamic`** — Automatically determines the optimal coverage target based on usage patterns using a knee-point algorithm (`risk_level`: `prudent`, `min_hourly`, `optimal`, `maximum`).
+- **`aws`** — Uses AWS Cost Explorer recommendations directly without modification.
+
+#### Splits
+
+- **`one_shot`** — Purchases the entire gap to the target in a single cycle.
+- **`fixed_step`** — Purchases a fixed percentage of spend per cycle (`step_percent`).
+- **`gap_split`** — Divides the remaining coverage gap by a configurable divider each cycle (`divider`), with optional `min_purchase_percent` and `max_purchase_percent` bounds.
+
+#### Recommended Combinations
+
+##### Dynamic Target + Gap Split (Recommended)
+
+Automatically determines the optimal coverage target based on usage patterns, dividing the coverage gap by a configurable divider each cycle.
+
+```hcl
+purchase_strategy = {
+  max_coverage_cap = 95
+
+  target = {
+    dynamic = { risk_level = "min_hourly" }
+  }
+
+  split = {
+    gap_split = {
+      divider = 2
+    }
+  }
+}
+```
+
+##### Fixed Target + Fixed Step Split
 
 Target a fixed coverage percentage, purchasing a fixed step each cycle.
 
@@ -111,29 +143,7 @@ purchase_strategy = {
 }
 ```
 
-#### Dynamic Target + Gap Split
-
-Automatically determines the optimal coverage target based on usage patterns, dividing the coverage gap by a configurable divider each cycle.
-
-```hcl
-purchase_strategy = {
-  max_coverage_cap = 95
-
-  target = {
-    dynamic = { risk_level = "balanced" }
-  }
-
-  split = {
-    gap_split = {
-      divider = 2
-    }
-  }
-}
-```
-
-Risk levels: `too_prudent`, `min_hourly`, `balanced`, `aggressive`.
-
-#### AWS Target
+##### AWS Target + One Shot
 
 Uses AWS Cost Explorer recommendations directly without modification.
 
@@ -143,6 +153,10 @@ purchase_strategy = {
 
   target = {
     aws = {}
+  }
+
+  split = {
+    one_shot = {}
   }
 }
 ```
@@ -232,6 +246,12 @@ The module consists of three Lambda functions with SQS queue coordination:
    - Stores in S3
    - Optionally emails stakeholders
 
+## GitHub Pages — Savings Plan Simulator
+
+The module includes an interactive **[Savings Plan Simulator](https://etiennechabert.github.io/terraform-aws-sp-autopilot/)** hosted on GitHub Pages. It visualizes coverage strategies and their cost impact using your actual spending data.
+
+Generated reports (from the Reporter Lambda) link to this simulator pre-loaded with your data, allowing stakeholders to explore "what-if" scenarios across different target/split combinations.
+
 ## Advanced Topics
 
 ### AWS Organizations Setup
@@ -240,9 +260,9 @@ For AWS Organizations, Savings Plans must be purchased from the **management acc
 
 ```hcl
 lambda_config = {
+  reporter  = { assume_role_arn = "arn:aws:iam::123456789012:role/SPReadOnlyRole" }
   scheduler = { assume_role_arn = "arn:aws:iam::123456789012:role/SPReadOnlyRole" }
   purchaser = { assume_role_arn = "arn:aws:iam::123456789012:role/SPPurchaserRole" }
-  reporter  = { assume_role_arn = "arn:aws:iam::123456789012:role/SPReadOnlyRole" }
 }
 ```
 
@@ -260,13 +280,17 @@ lambda_config = {
 
 See [organizations example](examples/organizations/README.md) for complete setup.
 
-### Gradual Rollout
+### Recommended Rollout
 
-| Phase | Settings | Purpose |
-|-------|----------|---------|
-| **Week 1** | `dry_run = true` | Review recommendations only |
-| **Week 2-4** | `dry_run = false`, `coverage_target = 70`, `max_purchase = 5%` | Small purchases, monitor |
-| **Month 2+** | `coverage_target = 90`, `max_purchase = 10%` | Scale up |
+Start with **1-year No Upfront** commitments to validate the automation with minimal risk. Once comfortable after the first year, switch to **3-year All Upfront** for maximum savings — expiring 1Y plans will naturally get replaced by 3Y over time.
+
+| Phase | `plan_type` | `dry_run` | Purpose |
+|-------|-------------|-----------|---------|
+| **Week 1** | — | `true` | Review recommendations only |
+| **Year 1** | `no_upfront_one_year` | `false` | Validate with low-risk commitments |
+| **Year 2+** | `all_upfront_three_year` | `false` | Maximize savings as 1Y plans expire |
+
+When switching to 3Y, consider slowing down purchases since each commitment lasts longer: increase the `divider` with gap_split (though it naturally purchases less as coverage grows, as long as `min_purchase_percent` isn't set too high), or reduce `step_percent` with fixed_step.
 
 ### Canceling Purchases
 

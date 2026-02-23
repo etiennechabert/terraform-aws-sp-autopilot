@@ -51,7 +51,7 @@ variable "purchase_strategy" {
       dynamic = optional(object({ risk_level = string }))
     })
 
-    split = optional(object({
+    split = object({
       one_shot   = optional(object({}))
       fixed_step = optional(object({ step_percent = number }))
       gap_split = optional(object({
@@ -59,7 +59,7 @@ variable "purchase_strategy" {
         min_purchase_percent = optional(number, 1)
         max_purchase_percent = optional(number)
       }))
-    }))
+    })
   })
 
   validation {
@@ -82,25 +82,14 @@ variable "purchase_strategy" {
     error_message = "Exactly one target strategy (fixed, aws, or dynamic) must be defined."
   }
 
-  # If target=aws, split must be null (implies one_shot)
+  # Exactly one split must be defined
   validation {
     condition = (
-      var.purchase_strategy.target.aws != null ? var.purchase_strategy.split == null : true
+      (var.purchase_strategy.split.one_shot != null && var.purchase_strategy.split.fixed_step == null && var.purchase_strategy.split.gap_split == null) ||
+      (var.purchase_strategy.split.one_shot == null && var.purchase_strategy.split.fixed_step != null && var.purchase_strategy.split.gap_split == null) ||
+      (var.purchase_strategy.split.one_shot == null && var.purchase_strategy.split.fixed_step == null && var.purchase_strategy.split.gap_split != null)
     )
-    error_message = "AWS target strategy does not use split (purchases follow AWS recommendations directly)."
-  }
-
-  # If target=fixed or dynamic, exactly one split must be defined
-  validation {
-    condition = (
-      var.purchase_strategy.target.aws != null ? true :
-      var.purchase_strategy.split != null && (
-        (var.purchase_strategy.split.one_shot != null && var.purchase_strategy.split.fixed_step == null && var.purchase_strategy.split.gap_split == null) ||
-        (var.purchase_strategy.split.one_shot == null && var.purchase_strategy.split.fixed_step != null && var.purchase_strategy.split.gap_split == null) ||
-        (var.purchase_strategy.split.one_shot == null && var.purchase_strategy.split.fixed_step == null && var.purchase_strategy.split.gap_split != null)
-      )
-    )
-    error_message = "For fixed/dynamic targets, exactly one split strategy (one_shot, fixed_step, or gap_split) must be defined."
+    error_message = "Exactly one split strategy (one_shot, fixed_step, or gap_split) must be defined."
   }
 
   # fixed.coverage_percent validation
@@ -118,10 +107,10 @@ variable "purchase_strategy" {
   validation {
     condition = (
       var.purchase_strategy.target.dynamic != null ?
-      contains(["too_prudent", "min_hourly", "balanced", "aggressive"], var.purchase_strategy.target.dynamic.risk_level) :
+      contains(["prudent", "min_hourly", "optimal", "maximum"], var.purchase_strategy.target.dynamic.risk_level) :
       true
     )
-    error_message = "dynamic.risk_level must be one of: too_prudent, min_hourly, balanced, aggressive."
+    error_message = "dynamic.risk_level must be one of: prudent, min_hourly, optimal, maximum."
   }
 
   # fixed_step.step_percent validation

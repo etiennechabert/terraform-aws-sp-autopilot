@@ -1,10 +1,10 @@
 # Dynamic Target + Gap Split
 #
 # This example demonstrates the dynamic target + gap split strategy:
-# - Target: dynamically calculated based on usage patterns (balanced risk level)
+# - Target: dynamically calculated based on usage patterns (optimal risk level)
 # - Split: gap_split divides the coverage gap by a configurable divider
 #
-# Dynamic Target (balanced):
+# Dynamic Target (optimal):
 # Uses the knee-point algorithm to find the optimal coverage target where
 # marginal savings efficiency starts dropping significantly. This adapts
 # automatically to your workload patterns.
@@ -42,7 +42,7 @@ module "savings_plans" {
     granularity      = "HOURLY" # Recommended for accurate analysis
 
     target = {
-      dynamic = { risk_level = "balanced" } # Knee-point algorithm
+      dynamic = { risk_level = "optimal" } # Knee-point algorithm
     }
 
     split = {

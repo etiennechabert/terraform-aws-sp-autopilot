@@ -218,6 +218,10 @@ purchase_strategy = {
   target = {
     aws = {}  # Follow AWS recommendations
   }
+
+  split = {
+    one_shot = {}  # Purchase the full recommendation at once
+  }
 }
 ```
 
@@ -296,6 +300,10 @@ purchase_strategy = {
 
   target = {
     aws = {}  # Follow AWS Cost Explorer recommendations
+  }
+
+  split = {
+    one_shot = {}
   }
 }
 ```

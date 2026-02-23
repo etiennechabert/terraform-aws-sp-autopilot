@@ -4,15 +4,15 @@ This example demonstrates the **dynamic target + gap split** strategy, which aut
 
 ## Strategy Overview
 
-### Dynamic Target (balanced)
+### Dynamic Target (optimal)
 
 The dynamic target uses the **knee-point algorithm** to find the optimal coverage level where marginal savings efficiency starts dropping significantly. This adapts automatically to your workload patterns — no manual coverage target tuning needed.
 
 Available risk levels:
-- `too_prudent` — 80% of min-hourly (very conservative)
+- `prudent` — 80% of min-hourly (very conservative)
 - `min_hourly` — 100% of min-hourly (always-safe baseline)
-- `balanced` — Knee-point (where efficiency drops to 30% of peak)
-- `aggressive` — Maximum net savings point
+- `optimal` — Knee-point (where efficiency drops to 30% of peak)
+- `maximum` — Maximum net savings point
 
 ### Gap Split
 
@@ -35,7 +35,7 @@ purchase_strategy = {
   max_coverage_cap = 95
 
   target = {
-    dynamic = { risk_level = "balanced" }
+    dynamic = { risk_level = "optimal" }
   }
 
   split = {
@@ -49,10 +49,10 @@ purchase_strategy = {
 ### Parameter Guidelines
 
 **risk_level**: Controls target aggressiveness
-- `balanced` (recommended): Best tradeoff between savings and risk
-- `aggressive`: Maximizes savings but may over-commit
+- `optimal` (recommended): Best tradeoff between savings and risk
+- `maximum`: Maximizes savings but may over-commit
 - `min_hourly`: Never exceeds your minimum observed usage
-- `too_prudent`: Very conservative, 80% of minimum usage
+- `prudent`: Very conservative, 80% of minimum usage
 
 **divider**: How much to divide the gap each cycle (required)
 - `2` (recommended): Halves the gap each cycle — good balance of speed and safety

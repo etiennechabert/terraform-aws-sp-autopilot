@@ -636,10 +636,10 @@
         const baseHourlyCosts = appState.hourlyCosts || [];
         if (baseHourlyCosts.length === 0) {
             return {
-                tooPrudent: 0,
+                prudent: 0,
                 minHourly: 0,
-                balanced: 0,
-                aggressive: 0
+                optimal: 0,
+                maximum: 0
             };
         }
 
@@ -650,8 +650,8 @@
         // Min-Hourly: Baseline only (minimum cost with load factor)
         const minHourly = Math.min(...hourlyCosts);
 
-        // Too Prudent: 80% of min-hourly (under-committed - for educational purposes)
-        const tooPrudent = minHourly * 0.80;
+        // Prudent: 80% of min-hourly (under-committed - for educational purposes)
+        const prudent = minHourly * 0.80;
 
         // Optimal: Maximum savings (the peak)
         const optimalResult = CostCalculator.calculateOptimalCoverage(
@@ -660,11 +660,11 @@
         );
         const optimal = optimalResult.coverageUnits;
 
-        // Balanced: The knee point (sweet spot)
-        const balanced = calculateKneePoint(hourlyCosts, appState.savingsPercentage, minHourly, optimal);
+        // Optimal: The knee point (sweet spot)
+        const optimalStrategy = calculateKneePoint(hourlyCosts, appState.savingsPercentage, minHourly, optimal);
 
-        // Aggressive: The exact optimal point (maximum savings)
-        const aggressive = optimal;
+        // Maximum: The exact optimal point (maximum savings)
+        const maximum = optimal;
 
         // AWS recommendation: convert commitment to on-demand equivalent using actual savings rate
         let awsRecommendation = null;
@@ -678,17 +678,17 @@
         }
 
         return {
-            tooPrudent,
+            prudent,
             minHourly,
-            balanced,
-            aggressive,
+            optimal: optimalStrategy,
+            maximum,
             awsRecommendation
         };
     }
 
     /**
      * Calculate the knee point on the savings curve
-     * This is the "balanced" strategy - where you get most of the savings
+     * This is the "optimal" strategy - where you get most of the savings
      * without committing all the way to optimal
      *
      * Uses perpendicular distance method to find the elbow of the curve
@@ -786,17 +786,17 @@
         let coverageCost;
 
         switch (strategy) {
-            case 'too-prudent':
-                coverageCost = strategies.tooPrudent;
+            case 'prudent':
+                coverageCost = strategies.prudent;
                 break;
             case 'min-hourly':
                 coverageCost = strategies.minHourly;
                 break;
-            case 'balanced':
-                coverageCost = strategies.balanced;
+            case 'optimal':
+                coverageCost = strategies.optimal;
                 break;
-            case 'aggressive':
-                coverageCost = strategies.aggressive;
+            case 'maximum':
+                coverageCost = strategies.maximum;
                 break;
             case 'aws':
                 coverageCost = strategies.awsRecommendation;
@@ -806,20 +806,8 @@
                 return;
         }
 
-        // Restore actual savings percentage if it was overridden
-        if (appState.actualSavingsPercentage) {
-            appState.savingsPercentage = appState.actualSavingsPercentage;
-        }
-
         // Update state
         appState.coverageCost = coverageCost;
-
-        // Update savings slider to reflect active rate
-        const savingsSlider = document.getElementById('savings-percentage');
-        if (savingsSlider) {
-            savingsSlider.value = appState.savingsPercentage;
-        }
-        updateSavingsDisplay(appState.savingsPercentage);
 
         // Update coverage slider
         const coverageSlider = document.getElementById('coverage-slider');
@@ -838,10 +826,10 @@
 
         // Show success message
         const strategyNames = {
-            'too-prudent': 'Prudent 🐔',
+            'prudent': 'Prudent 🐔',
             'min-hourly': 'Min-Hourly',
-            'balanced': 'Balanced',
-            'aggressive': 'Risky',
+            'optimal': 'Optimal',
+            'maximum': 'Maximum',
             'aws': 'Recommendation'
         };
         showToast(`${strategyNames[strategy]} strategy applied: ${CostCalculator.formatCurrency(coverageCost)}/h`);
@@ -981,10 +969,10 @@
         };
 
         // Update all strategy cards
-        updateStrategyCard('too-prudent', strategies.tooPrudent);
+        updateStrategyCard('prudent', strategies.prudent);
         updateStrategyCard('min', strategies.minHourly);
-        updateStrategyCard('balanced', strategies.balanced);
-        updateStrategyCard('aggressive', strategies.aggressive);
+        updateStrategyCard('optimal', strategies.optimal);
+        updateStrategyCard('maximum', strategies.maximum);
 
         const awsBtn = document.getElementById('strategy-aws');
         if (strategies.awsRecommendation !== null) {
@@ -1013,24 +1001,24 @@
         const highlightTolerance = 0.02;
         let activeButton = null;
 
-        const tooPrudentDiff = Math.abs(currentCoverage - strategies.tooPrudent);
+        const prudentDiff = Math.abs(currentCoverage - strategies.prudent);
         const minDiff = Math.abs(currentCoverage - strategies.minHourly);
-        const balancedDiff = Math.abs(currentCoverage - strategies.balanced);
-        const aggressiveDiff = Math.abs(currentCoverage - strategies.aggressive);
+        const optimalDiff = Math.abs(currentCoverage - strategies.optimal);
+        const maximumDiff = Math.abs(currentCoverage - strategies.maximum);
         const awsDiff = strategies.awsRecommendation !== null ? Math.abs(currentCoverage - strategies.awsRecommendation) : Infinity;
 
         // Find closest match
-        const minDistance = Math.min(tooPrudentDiff, minDiff, balancedDiff, aggressiveDiff, awsDiff);
+        const minDistance = Math.min(prudentDiff, minDiff, optimalDiff, maximumDiff, awsDiff);
 
         if (minDistance / Math.max(currentCoverage, 0.01) < highlightTolerance) {
-            if (minDistance === tooPrudentDiff) {
-                activeButton = document.getElementById('strategy-too-prudent');
+            if (minDistance === prudentDiff) {
+                activeButton = document.getElementById('strategy-prudent');
             } else if (minDistance === minDiff) {
                 activeButton = document.getElementById('strategy-min');
-            } else if (minDistance === balancedDiff) {
-                activeButton = document.getElementById('strategy-balanced');
-            } else if (minDistance === aggressiveDiff) {
-                activeButton = document.getElementById('strategy-aggressive');
+            } else if (minDistance === optimalDiff) {
+                activeButton = document.getElementById('strategy-optimal');
+            } else if (minDistance === maximumDiff) {
+                activeButton = document.getElementById('strategy-maximum');
             } else if (minDistance === awsDiff) {
                 activeButton = document.getElementById('strategy-aws');
             }
@@ -1557,6 +1545,13 @@
         const savingsPctElement = document.getElementById('metric-savings-pct');
         if (savingsPctElement) {
             savingsPctElement.textContent = CostCalculator.formatPercentage(results.savingsPercentageActual);
+        }
+
+        const sliderNetSavings = document.getElementById('slider-net-savings');
+        if (sliderNetSavings) {
+            const pct = results.savingsPercentageActual;
+            sliderNetSavings.textContent = `Net Savings: ${pct.toFixed(1)}%`;
+            sliderNetSavings.style.color = pct < 0 ? 'var(--accent-red, #ff5252)' : '';
         }
 
         // SP Commitment - show actual commitment cost (what user needs to pay)
