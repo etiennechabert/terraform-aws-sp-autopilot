@@ -15,9 +15,7 @@
 
 Automates AWS Savings Plans purchases based on usage analysis, maintaining consistent coverage while limiting financial exposure through incremental commitments.
 
-[**Try the interactive simulator**](https://etiennechabert.github.io/terraform-aws-sp-autopilot/) — Visualize coverage strategies, compare commitment levels, and find the optimal Savings Plan for your workload before deploying anything. Generated reports link to the simulator pre-loaded with your data.
-
-[![AWS Savings Plan Simulator](docs/images/simulator-preview.png)](https://etiennechabert.github.io/terraform-aws-sp-autopilot/)
+[**Try the interactive simulator**](https://etiennechabert.github.io/terraform-aws-sp-autopilot/) — Visualize strategies and find the optimal Savings Plan for your workload before deploying.
 
 ## Key Features
 
@@ -82,6 +80,12 @@ See the [`examples/`](examples/) directory for complete, working examples:
 - **[single-account-compute](examples/single-account-compute/)** — Basic single-account Compute SP deployment
 - **[organizations](examples/organizations/)** — AWS Organizations multi-account setup
 - **[dynamic-strategy](examples/dynamic-strategy/)** — Dynamic target with gap split
+
+## Interactive Simulator
+
+The module includes an interactive **[Savings Plan Simulator](https://etiennechabert.github.io/terraform-aws-sp-autopilot/)** to visualize coverage strategies and their cost impact before deploying anything. Generated reports link to the simulator pre-loaded with your data, allowing stakeholders to explore "what-if" scenarios across different target/split combinations.
+
+[![AWS Savings Plan Simulator](docs/images/simulator-preview.png)](https://etiennechabert.github.io/terraform-aws-sp-autopilot/)
 
 ## Configuration
 
