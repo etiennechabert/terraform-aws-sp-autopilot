@@ -82,6 +82,11 @@ def handler(event: dict[str, Any], context: Any) -> dict[str, Any]:
     coverage_data = analyzer.analyze_current_spending(config)
     coverage_data.pop("_unknown_services", None)
 
+    # Collect daily coverage data (365-day lookback) for long-term trend chart
+    daily_config = {**config, "granularity": "DAILY", "lookback_days": 365}
+    daily_coverage_data = analyzer.analyze_current_spending(daily_config)
+    daily_coverage_data.pop("_unknown_services", None)
+
     # Collect savings plans metrics (per enabled plan type)
     savings_data = get_savings_plans_summary(
         clients["savingsplans"],
@@ -163,7 +168,13 @@ def handler(event: dict[str, Any], context: Any) -> dict[str, Any]:
 
     # Generate report
     report_content = report_generator.generate_report(
-        coverage_data, savings_data, config["report_format"], config, raw_data, preview_data
+        coverage_data,
+        savings_data,
+        config["report_format"],
+        config,
+        raw_data,
+        preview_data,
+        daily_coverage_data,
     )
     logger.info(
         f"Report generated ({len(report_content)} bytes, format: {config['report_format']})"
