@@ -731,7 +731,7 @@ def _build_active_plans_table_html(plans: list[dict[str, Any]]) -> str:
                         <th style="width: 16%;">Hourly Commitment</th>
                         <th style="width: 10%;">Term</th>
                         <th style="width: 16%;">Payment Option</th>
-                        <th style="width: 16%;">Days Remaining</th>
+                        <th style="width: 16%; text-align: right;">Days Remaining</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -763,7 +763,7 @@ def _build_active_plans_table_html(plans: list[dict[str, Any]]) -> str:
                         <td class="metric">${hourly_commitment:.2f}/hr</td>
                         <td>{term_years} year(s)</td>
                         <td>{payment_option}</td>
-                        <td class="metric" title="{tooltip_text}" style="cursor: help;">{days_remaining_display}</td>
+                        <td class="metric" title="{tooltip_text}" style="cursor: help; text-align: right;">{days_remaining_display}</td>
                     </tr>
 """
 
