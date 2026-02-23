@@ -806,20 +806,8 @@
                 return;
         }
 
-        // Restore actual savings percentage if it was overridden
-        if (appState.actualSavingsPercentage) {
-            appState.savingsPercentage = appState.actualSavingsPercentage;
-        }
-
         // Update state
         appState.coverageCost = coverageCost;
-
-        // Update savings slider to reflect active rate
-        const savingsSlider = document.getElementById('savings-percentage');
-        if (savingsSlider) {
-            savingsSlider.value = appState.savingsPercentage;
-        }
-        updateSavingsDisplay(appState.savingsPercentage);
 
         // Update coverage slider
         const coverageSlider = document.getElementById('coverage-slider');
