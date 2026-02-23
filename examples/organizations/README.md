@@ -213,13 +213,8 @@ notifications = {
 }
 
 purchase_strategy = {
-  target = {
-    aws = {}  # Follow AWS recommendations
-  }
-
-  split = {
-    one_shot = {}  # Purchase the full recommendation at once
-  }
+  target = { aws = {} }      # Follow AWS recommendations
+  split  = { one_shot = {} } # Purchase the full recommendation at once
 }
 ```
 
@@ -294,13 +289,8 @@ After enabling:
 
 ```hcl
 purchase_strategy = {
-  target = {
-    aws = {}  # Follow AWS Cost Explorer recommendations
-  }
-
-  split = {
-    one_shot = {}
-  }
+  target = { aws = {} }      # Follow AWS Cost Explorer recommendations
+  split  = { one_shot = {} } # Purchase full recommendation at once
 }
 ```
 
