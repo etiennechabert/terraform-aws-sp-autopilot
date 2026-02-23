@@ -18,7 +18,7 @@ VALID_TARGET_STRATEGIES = ["fixed", "aws", "dynamic"]
 
 VALID_SPLIT_STRATEGIES = ["one_shot", "fixed_step", "gap_split"]
 
-VALID_RISK_LEVELS = ["too_prudent", "min_hourly", "balanced", "aggressive"]
+VALID_RISK_LEVELS = ["prudent", "min_hourly", "optimal", "maximum"]
 
 # Valid values for report_format field
 VALID_REPORT_FORMATS = ["html", "json", "csv"]
@@ -230,15 +230,6 @@ def _validate_sp_payment_options(config: dict[str, Any]) -> None:
 
 def _validate_strategy_cross_rules(config: dict[str, Any]) -> None:
     """Validate cross-dependencies between target and split strategies."""
-    if config.get("target_strategy_type") == "aws" and config.get("split_strategy_type") not in (
-        None,
-        "one_shot",
-    ):
-        raise ValueError(
-            "AWS target strategy requires split_strategy_type='one_shot' "
-            f"(got '{config.get('split_strategy_type')}')"
-        )
-
     if config.get("target_strategy_type") == "dynamic":
         risk_level = config.get("dynamic_risk_level")
         if not risk_level:

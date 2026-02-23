@@ -9,7 +9,7 @@ test.describe('Page Load Tests', () => {
     });
 
     await page.goto('index.html');
-    await page.waitForSelector('#strategy-balanced');
+    await page.waitForSelector('#strategy-optimal');
     await page.waitForTimeout(500);
 
     expect(errors).toHaveLength(0);

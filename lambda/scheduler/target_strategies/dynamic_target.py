@@ -6,7 +6,7 @@ from shared.optimal_coverage import calculate_strategies
 
 logger = logging.getLogger()
 
-VALID_RISK_LEVELS = ["too_prudent", "min_hourly", "balanced", "aggressive"]
+VALID_RISK_LEVELS = ["prudent", "min_hourly", "optimal", "maximum"]
 
 
 def resolve_dynamic(

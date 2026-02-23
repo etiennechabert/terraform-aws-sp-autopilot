@@ -28,7 +28,7 @@ logger = logging.getLogger(__name__)
 DEFAULT_COMPARISONS = [
     {"target": "fixed", "split": "fixed_step", "label": "Fixed + Fixed Step"},
     {"target": "dynamic", "split": "gap_split", "label": "Dynamic + Gap Split"},
-    {"target": "aws", "split": "one_shot", "label": "AWS Recommendation"},
+    {"target": "aws", "split": "one_shot", "label": "AWS Reco + One Shot"},
 ]
 
 STRATEGY_LABELS = {
@@ -38,7 +38,7 @@ STRATEGY_LABELS = {
     "dynamic+fixed_step": "Dynamic + Fixed Step",
     "dynamic+gap_split": "Dynamic + Gap Split",
     "dynamic+one_shot": "Dynamic + One Shot",
-    "aws+one_shot": "AWS Recommendation",
+    "aws+one_shot": "AWS Reco + One Shot",
 }
 
 
@@ -50,7 +50,7 @@ def _build_preview_config(base_config: dict[str, Any], target: str, split: str) 
     if target == "fixed" and "coverage_target_percent" not in config:
         config["coverage_target_percent"] = 90.0
     if target == "dynamic" and not config.get("dynamic_risk_level"):
-        config["dynamic_risk_level"] = "balanced"
+        config["dynamic_risk_level"] = "optimal"
     if split == "fixed_step" and not config.get("fixed_step_percent"):
         config["fixed_step_percent"] = config.get("max_purchase_percent", 10.0)
     if split == "gap_split":

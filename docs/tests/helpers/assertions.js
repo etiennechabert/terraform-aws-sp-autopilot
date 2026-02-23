@@ -3,7 +3,7 @@ import { expect } from '@playwright/test';
 /**
  * Assert that strategy card metrics match the top-level metrics
  * @param {Page} page - Playwright page object
- * @param {string} strategyId - Strategy ID (e.g., 'balanced', 'aggressive')
+ * @param {string} strategyId - Strategy ID (e.g., 'optimal', 'maximum')
  */
 export async function assertMetricsMatch(page, strategyId) {
   // Get values from strategy card
@@ -64,7 +64,7 @@ export async function assertAllMetricsValid(page) {
  * @param {Page} page - Playwright page object
  */
 export async function assertAllStrategyCardsValid(page) {
-  const strategies = ['too-prudent', 'min', 'balanced', 'aggressive'];
+  const strategies = ['prudent', 'min', 'optimal', 'maximum'];
 
   for (const strategy of strategies) {
     const cost = await page.locator(`#strategy-${strategy}-value`).textContent();

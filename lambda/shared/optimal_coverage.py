@@ -258,7 +258,7 @@ def calculate_knee_point(
     """
     Calculate the knee point on the savings curve.
 
-    This is the "balanced" strategy — where marginal efficiency drops to 40%
+    This is the "optimal" strategy — where marginal efficiency drops to 40%
     of its peak. Direct port of docs/js/main.js calculateKneePoint().
 
     CROSS-LANGUAGE SYNCHRONIZATION: Keep in sync with docs/js/main.js:696-776.
@@ -309,28 +309,27 @@ def calculate_strategies(hourly_costs: list[float], savings_percentage: float) -
         savings_percentage: Savings plan discount percentage (e.g., 30 for 30%)
 
     Returns:
-        Dict with keys: too_prudent, min_hourly, balanced, aggressive (all in $/hour)
+        Dict with keys: prudent, min_hourly, optimal, maximum (all in $/hour)
     """
     if not hourly_costs:
         return {
-            "too_prudent": 0.0,
+            "prudent": 0.0,
             "min_hourly": 0.0,
-            "balanced": 0.0,
-            "aggressive": 0.0,
+            "optimal": 0.0,
+            "maximum": 0.0,
         }
 
     min_hourly = min(hourly_costs)
-    too_prudent = min_hourly * 0.80
+    prudent = min_hourly * 0.80
 
     optimal_result = calculate_optimal_coverage(hourly_costs, savings_percentage)
-    optimal = optimal_result["coverage_hourly"]
+    maximum = optimal_result["coverage_hourly"]
 
-    balanced = calculate_knee_point(hourly_costs, savings_percentage, min_hourly, optimal)
-    aggressive = optimal
+    optimal = calculate_knee_point(hourly_costs, savings_percentage, min_hourly, maximum)
 
     return {
-        "too_prudent": too_prudent,
+        "prudent": prudent,
         "min_hourly": min_hourly,
-        "balanced": balanced,
-        "aggressive": aggressive,
+        "optimal": optimal,
+        "maximum": maximum,
     }

@@ -87,7 +87,7 @@ run "test_fixed_gap_split_valid" {
   }
 }
 
-# Test: aws target - valid (split must be null)
+# Test: aws target with one_shot split - valid
 run "test_aws_target_valid" {
   command = plan
 
@@ -97,6 +97,10 @@ run "test_aws_target_valid" {
 
       target = {
         aws = {}
+      }
+
+      split = {
+        one_shot = {}
       }
     }
     sp_plans = {
@@ -122,7 +126,7 @@ run "test_dynamic_fixed_step_valid" {
       max_coverage_cap = 90
 
       target = {
-        dynamic = { risk_level = "balanced" }
+        dynamic = { risk_level = "optimal" }
       }
 
       split = {
@@ -153,41 +157,7 @@ run "test_invalid_multiple_targets" {
 
       target = {
         fixed   = { coverage_percent = 80 }
-        dynamic = { risk_level = "balanced" }
-      }
-
-      split = {
-        fixed_step = { step_percent = 5 }
-      }
-    }
-    sp_plans = {
-      compute = {
-        enabled   = true
-        plan_type = "all_upfront_one_year"
-      }
-      database  = { enabled = false }
-      sagemaker = { enabled = false }
-    }
-    notifications = {
-      emails = ["test@example.com"]
-    }
-  }
-
-  expect_failures = [
-    var.purchase_strategy,
-  ]
-}
-
-# Test: invalid - aws target with split defined
-run "test_invalid_aws_with_split" {
-  command = plan
-
-  variables {
-    purchase_strategy = {
-      max_coverage_cap = 90
-
-      target = {
-        aws = {}
+        dynamic = { risk_level = "optimal" }
       }
 
       split = {
@@ -962,7 +932,7 @@ run "test_one_shot_split_valid" {
 }
 
 # Test: all dynamic risk levels are valid
-run "test_dynamic_risk_too_prudent" {
+run "test_dynamic_risk_prudent" {
   command = plan
 
   variables {
@@ -970,7 +940,7 @@ run "test_dynamic_risk_too_prudent" {
       max_coverage_cap = 90
 
       target = {
-        dynamic = { risk_level = "too_prudent" }
+        dynamic = { risk_level = "prudent" }
       }
 
       split = {
@@ -991,7 +961,7 @@ run "test_dynamic_risk_too_prudent" {
   }
 }
 
-run "test_dynamic_risk_aggressive" {
+run "test_dynamic_risk_maximum" {
   command = plan
 
   variables {
@@ -999,7 +969,7 @@ run "test_dynamic_risk_aggressive" {
       max_coverage_cap = 90
 
       target = {
-        dynamic = { risk_level = "aggressive" }
+        dynamic = { risk_level = "maximum" }
       }
 
       split = {
