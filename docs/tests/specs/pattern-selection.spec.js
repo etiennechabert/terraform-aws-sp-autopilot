@@ -30,6 +30,7 @@ test.describe('Pattern Selection Tests', () => {
     const initialCost = await page.locator('#metric-ondemand').textContent();
 
     await page.locator('#min-cost').fill('25');
+    await page.locator('#min-cost').blur();
     await page.waitForTimeout(500);
 
     const newCost = await page.locator('#metric-ondemand').textContent();
@@ -84,7 +85,9 @@ test.describe('Pattern Selection Tests', () => {
     await page.waitForTimeout(500);
 
     await page.locator('#min-cost').fill('90');
+    await page.locator('#min-cost').blur();
     await page.locator('#max-cost').fill('80');
+    await page.locator('#max-cost').blur();
     await page.waitForTimeout(500);
 
     const onDemand = await page.locator('#metric-ondemand').textContent();

@@ -21,7 +21,6 @@ Automates AWS Savings Plans purchases based on usage analysis, maintaining consi
 - **Three SP types supported** — Compute, Database, and SageMaker independently tracked
 - **Human review window** — Configurable delay between scheduling and purchasing allows cancellation
 - **Risk management** — Spreads financial commitments over time with configurable purchase limits
-- **Coverage cap enforcement** — Hard ceiling prevents over-commitment if usage shrinks
 - **Email & webhook notifications** — SNS, Slack, and Microsoft Teams integration
 
 ### Savings Plan Types
@@ -42,7 +41,6 @@ module "savings_plans" {
   version = "~> 1.0"
 
   purchase_strategy = {
-    max_coverage_cap = 95
     lookback_days    = 13       # Max for HOURLY granularity
     granularity      = "HOURLY" # Recommended (requires Cost Explorer hourly data)
 
@@ -61,7 +59,7 @@ module "savings_plans" {
     sagemaker = { enabled = false }
   }
 
-  scheduler = {
+  cron_schedules = {
     scheduler = "cron(0 8 1 * ? *)"  # 1st of month at 8 AM UTC
     purchaser = "cron(0 8 4 * ? *)"  # 4th of month (3-day review window)
     reporter  = "cron(0 9 20 * ? *)" # 20th of month
@@ -111,8 +109,6 @@ Automatically determines the optimal coverage target based on usage patterns, di
 
 ```hcl
 purchase_strategy = {
-  max_coverage_cap = 95
-
   target = {
     dynamic = { risk_level = "min_hourly" }
   }
@@ -131,8 +127,6 @@ Target a fixed coverage percentage, purchasing a fixed step each cycle.
 
 ```hcl
 purchase_strategy = {
-  max_coverage_cap = 100
-
   target = {
     fixed = { coverage_percent = 100 }
   }
@@ -149,8 +143,6 @@ Uses AWS Cost Explorer recommendations directly without modification.
 
 ```hcl
 purchase_strategy = {
-  max_coverage_cap = 95
-
   target = {
     aws = {}
   }
@@ -161,12 +153,12 @@ purchase_strategy = {
 }
 ```
 
-**Use with caution:** AWS recommendations can be aggressive. Best combined with low `max_coverage_cap`.
+**Use with caution:** AWS recommendations can be aggressive.
 
 ### Scheduling
 
 ```hcl
-scheduler = {
+cron_schedules = {
   scheduler = "cron(0 8 1 * ? *)"   # When to analyze and schedule purchases
   purchaser = "cron(0 8 4 * ? *)"   # When to execute purchases
   reporter  = "cron(0 9 20 * ? *)"  # When to generate monthly reports
@@ -237,7 +229,6 @@ The module consists of three Lambda functions with SQS queue coordination:
 
 3. **Purchaser Lambda** (e.g., 4th of month)
    - Processes queue messages
-   - Validates against `max_coverage_cap`
    - Executes purchases via AWS CreateSavingsPlan API
    - Sends email summary
 
@@ -312,7 +303,7 @@ Complete variable documentation: **[variables.tf](variables.tf)**
 Main configuration objects:
 - `purchase_strategy` — Coverage targets, purchase limits, strategy selection
 - `sp_plans` — Enable/configure Compute, Database, SageMaker
-- `scheduler` — Cron schedules for Scheduler, Purchaser, Reporter
+- `cron_schedules` — Cron schedules for Scheduler, Purchaser, Reporter
 - `notifications` — Email addresses, webhook URLs
 - `lambda_config` — Per-Lambda settings (dry-run, assume roles, alarms)
 - `monitoring` — CloudWatch alarms, error thresholds

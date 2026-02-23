@@ -7,7 +7,7 @@ variable "name_prefix" {
   default     = "sp-autopilot"
 }
 
-variable "scheduler" {
+variable "cron_schedules" {
   description = "EventBridge schedule configuration (can be overridden for testing)"
   type = object({
     scheduler = optional(string, "cron(0 8 1 * ? *)")

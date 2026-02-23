@@ -43,7 +43,7 @@ func TestExampleSingleAccountCompute(t *testing.T) {
 		TerraformDir: testDir,
 		Vars: map[string]interface{}{
 			"name_prefix": uniquePrefix,
-			"scheduler": map[string]interface{}{
+			"cron_schedules": map[string]interface{}{
 				"scheduler": disabledCronSchedule,
 				"purchaser": disabledCronSchedule,
 				"reporter":  disabledCronSchedule,
@@ -87,7 +87,7 @@ func TestExampleDynamicStrategy(t *testing.T) {
 		TerraformDir: testDir,
 		Vars: map[string]interface{}{
 			"name_prefix": uniquePrefix,
-			"scheduler": map[string]interface{}{
+			"cron_schedules": map[string]interface{}{
 				"scheduler": disabledCronSchedule,
 				"purchaser": disabledCronSchedule,
 				"reporter":  disabledCronSchedule,

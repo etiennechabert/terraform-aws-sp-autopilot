@@ -32,7 +32,6 @@ run "test_scheduler_eventbridge_rule_naming" {
   variables {
     purchase_strategy = {
       coverage_target_percent = 80
-      max_coverage_cap        = 90
       simple = {
         max_purchase_percent = 5
       }
@@ -66,7 +65,6 @@ run "test_scheduler_eventbridge_rule_description" {
   variables {
     purchase_strategy = {
       coverage_target_percent = 80
-      max_coverage_cap        = 90
       simple = {
         max_purchase_percent = 5
       }
@@ -95,7 +93,6 @@ run "test_scheduler_eventbridge_rule_default_schedule" {
   variables {
     purchase_strategy = {
       coverage_target_percent = 80
-      max_coverage_cap        = 90
       simple = {
         max_purchase_percent = 5
       }
@@ -124,7 +121,6 @@ run "test_scheduler_eventbridge_rule_custom_schedule" {
   variables {
     purchase_strategy = {
       coverage_target_percent = 80
-      max_coverage_cap        = 90
       simple = {
         max_purchase_percent = 5
       }
@@ -138,7 +134,7 @@ run "test_scheduler_eventbridge_rule_custom_schedule" {
     notifications = {
       emails = ["test@example.com"]
     }
-    scheduler = {
+    cron_schedules = {
       scheduler = "cron(0 2 1 * ? *)"
     }
   }
@@ -156,7 +152,6 @@ run "test_scheduler_eventbridge_rule_tags" {
   variables {
     purchase_strategy = {
       coverage_target_percent = 80
-      max_coverage_cap        = 90
       simple = {
         max_purchase_percent = 5
       }
@@ -203,7 +198,6 @@ run "test_purchaser_eventbridge_rule_naming" {
   variables {
     purchase_strategy = {
       coverage_target_percent = 80
-      max_coverage_cap        = 90
       simple = {
         max_purchase_percent = 5
       }
@@ -237,7 +231,6 @@ run "test_purchaser_eventbridge_rule_description" {
   variables {
     purchase_strategy = {
       coverage_target_percent = 80
-      max_coverage_cap        = 90
       simple = {
         max_purchase_percent = 5
       }
@@ -266,7 +259,6 @@ run "test_purchaser_eventbridge_rule_default_schedule" {
   variables {
     purchase_strategy = {
       coverage_target_percent = 80
-      max_coverage_cap        = 90
       simple = {
         max_purchase_percent = 5
       }
@@ -295,7 +287,6 @@ run "test_purchaser_eventbridge_rule_custom_schedule" {
   variables {
     purchase_strategy = {
       coverage_target_percent = 80
-      max_coverage_cap        = 90
       simple = {
         max_purchase_percent = 5
       }
@@ -309,7 +300,7 @@ run "test_purchaser_eventbridge_rule_custom_schedule" {
     notifications = {
       emails = ["test@example.com"]
     }
-    scheduler = {
+    cron_schedules = {
       purchaser = "cron(0 3 1 * ? *)"
     }
   }
@@ -327,7 +318,6 @@ run "test_purchaser_eventbridge_rule_tags" {
   variables {
     purchase_strategy = {
       coverage_target_percent = 80
-      max_coverage_cap        = 90
       simple = {
         max_purchase_percent = 5
       }
@@ -374,7 +364,6 @@ run "test_reporter_eventbridge_rule_enabled" {
   variables {
     purchase_strategy = {
       coverage_target_percent = 80
-      max_coverage_cap        = 90
       simple = {
         max_purchase_percent = 5
       }
@@ -411,7 +400,6 @@ run "test_reporter_eventbridge_rule_disabled" {
   variables {
     purchase_strategy = {
       coverage_target_percent = 80
-      max_coverage_cap        = 90
       simple = {
         max_purchase_percent = 5
       }
@@ -445,7 +433,6 @@ run "test_reporter_eventbridge_rule_description" {
   variables {
     purchase_strategy = {
       coverage_target_percent = 80
-      max_coverage_cap        = 90
       simple = {
         max_purchase_percent = 5
       }
@@ -477,7 +464,6 @@ run "test_reporter_eventbridge_rule_default_schedule" {
   variables {
     purchase_strategy = {
       coverage_target_percent = 80
-      max_coverage_cap        = 90
       simple = {
         max_purchase_percent = 5
       }
@@ -509,7 +495,6 @@ run "test_reporter_eventbridge_rule_custom_schedule" {
   variables {
     purchase_strategy = {
       coverage_target_percent = 80
-      max_coverage_cap        = 90
       simple = {
         max_purchase_percent = 5
       }
@@ -526,7 +511,7 @@ run "test_reporter_eventbridge_rule_custom_schedule" {
     reporting = {
       enabled = true
     }
-    scheduler = {
+    cron_schedules = {
       reporter = "cron(0 9 1 * ? *)"
     }
   }
@@ -544,7 +529,6 @@ run "test_reporter_eventbridge_rule_tags" {
   variables {
     purchase_strategy = {
       coverage_target_percent = 80
-      max_coverage_cap        = 90
       simple = {
         max_purchase_percent = 5
       }
@@ -594,7 +578,6 @@ run "test_scheduler_eventbridge_target_configuration" {
   variables {
     purchase_strategy = {
       coverage_target_percent = 80
-      max_coverage_cap        = 90
       simple = {
         max_purchase_percent = 5
       }
@@ -654,7 +637,6 @@ run "test_purchaser_eventbridge_target_configuration" {
   variables {
     purchase_strategy = {
       coverage_target_percent = 80
-      max_coverage_cap        = 90
       simple = {
         max_purchase_percent = 5
       }
@@ -714,7 +696,6 @@ run "test_reporter_eventbridge_target_enabled" {
   variables {
     purchase_strategy = {
       coverage_target_percent = 80
-      max_coverage_cap        = 90
       simple = {
         max_purchase_percent = 5
       }
@@ -759,7 +740,6 @@ run "test_reporter_eventbridge_target_disabled" {
   variables {
     purchase_strategy = {
       coverage_target_percent = 80
-      max_coverage_cap        = 90
       simple = {
         max_purchase_percent = 5
       }
@@ -797,7 +777,6 @@ run "test_scheduler_lambda_permission_eventbridge" {
   variables {
     purchase_strategy = {
       coverage_target_percent = 80
-      max_coverage_cap        = 90
       simple = {
         max_purchase_percent = 5
       }
@@ -848,7 +827,6 @@ run "test_purchaser_lambda_permission_eventbridge" {
   variables {
     purchase_strategy = {
       coverage_target_percent = 80
-      max_coverage_cap        = 90
       simple = {
         max_purchase_percent = 5
       }
@@ -899,7 +877,6 @@ run "test_reporter_lambda_permission_enabled" {
   variables {
     purchase_strategy = {
       coverage_target_percent = 80
-      max_coverage_cap        = 90
       simple = {
         max_purchase_percent = 5
       }
@@ -954,7 +931,6 @@ run "test_reporter_lambda_permission_disabled" {
   variables {
     purchase_strategy = {
       coverage_target_percent = 80
-      max_coverage_cap        = 90
       simple = {
         max_purchase_percent = 5
       }

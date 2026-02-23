@@ -256,14 +256,14 @@
         const minCostInput = document.getElementById('min-cost');
         if (minCostInput) {
             minCostInput.value = appState.minCost;
-            minCostInput.addEventListener('input', handleMinCostChange);
+            minCostInput.addEventListener('change', handleMinCostChange);
         }
 
         // Max cost input
         const maxCostInput = document.getElementById('max-cost');
         if (maxCostInput) {
             maxCostInput.value = appState.maxCost;
-            maxCostInput.addEventListener('input', handleMaxCostChange);
+            maxCostInput.addEventListener('change', handleMaxCostChange);
         }
 
         // Coverage slider

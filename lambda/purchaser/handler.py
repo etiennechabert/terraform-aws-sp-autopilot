@@ -5,7 +5,7 @@ This Lambda:
 1. Checks SQS queue for purchase intents
 2. Gets current coverage (excluding plans expiring within renewal_window_days)
 3. Processes each message:
-   - Validates against max_coverage_cap
+   - Validates message schema
    - Executes purchase via CreateSavingsPlan API
    - Deletes message on success
 4. Sends aggregated email with results
@@ -437,8 +437,6 @@ def process_purchase_messages(
         "failed_count": 0,
     }
 
-    current_coverage = initial_coverage.copy()
-
     for message in messages:
         try:
             # Parse message body
@@ -456,35 +454,15 @@ def process_purchase_messages(
                 # Message stays in queue for retry - do not delete
                 continue
 
-            # Validate against coverage cap
-            if would_exceed_cap(config, purchase_intent, current_coverage):
-                logger.warning(
-                    f"Skipping purchase - would exceed coverage cap: {purchase_intent.get('client_token')}"
-                )
-                results["skipped"].append(
-                    {
-                        "intent": purchase_intent,
-                        "reason": "Would exceed max_coverage_cap",
-                    }
-                )
-                results["skipped_count"] += 1
+            # Execute purchase
+            sp_id = execute_purchase(clients["savingsplans"], config, purchase_intent)
+            logger.info(f"Purchase successful: {sp_id}")
 
-                # Delete message even though we skipped it
-                delete_message(clients["sqs"], config["queue_url"], message["ReceiptHandle"])
+            results["successful"].append({"intent": purchase_intent, "sp_id": sp_id})
+            results["successful_count"] += 1
 
-            else:
-                # Execute purchase
-                sp_id = execute_purchase(clients["savingsplans"], config, purchase_intent)
-                logger.info(f"Purchase successful: {sp_id}")
-
-                results["successful"].append({"intent": purchase_intent, "sp_id": sp_id})
-                results["successful_count"] += 1
-
-                # Update coverage tracking
-                current_coverage = update_coverage_tracking(current_coverage, purchase_intent)
-
-                # Delete message after successful purchase
-                delete_message(clients["sqs"], config["queue_url"], message["ReceiptHandle"])
+            # Delete message after successful purchase
+            delete_message(clients["sqs"], config["queue_url"], message["ReceiptHandle"])
 
         except ClientError as e:
             logger.error(f"Failed to process purchase: {e!s}")
@@ -507,52 +485,6 @@ def process_purchase_messages(
         f"Processing complete - Successful: {results['successful_count']}, Skipped: {results['skipped_count']}, Failed: {results['failed_count']}"
     )
     return results
-
-
-def would_exceed_cap(
-    config: dict[str, Any],
-    purchase_intent: dict[str, Any],
-    _current_coverage: dict[str, float],
-) -> bool:
-    """
-    Check if purchase would exceed max_coverage_cap.
-
-    Args:
-        config: Configuration dictionary
-        purchase_intent: Purchase intent details
-        _current_coverage: Current coverage levels (unused, kept for API compatibility)
-
-    Returns:
-        bool: True if purchase would exceed cap
-    """
-    max_cap = config["max_coverage_cap"]
-    sp_type = purchase_intent.get("sp_type", "")
-    projected_coverage = purchase_intent.get("projected_coverage_after", 0.0)
-
-    # Determine which coverage type to check
-    if sp_type == constants.SP_FILTER_COMPUTE:
-        coverage_type = "compute"
-    elif sp_type == constants.SP_FILTER_DATABASE:
-        coverage_type = "database"
-    elif sp_type == constants.SP_FILTER_SAGEMAKER:
-        coverage_type = "sagemaker"
-    else:
-        logger.warning(f"Unknown SP type: {sp_type}, defaulting to compute")
-        coverage_type = "compute"
-
-    # Check if projected coverage would exceed cap
-    if projected_coverage > max_cap:
-        logger.warning(
-            f"Purchase would exceed cap - Type: {coverage_type}, "
-            f"Projected: {projected_coverage:.2f}%, Cap: {max_cap:.2f}%"
-        )
-        return True
-
-    logger.info(
-        f"Purchase within cap - Type: {coverage_type}, "
-        f"Projected: {projected_coverage:.2f}%, Cap: {max_cap:.2f}%"
-    )
-    return False
 
 
 def execute_purchase(
@@ -618,52 +550,6 @@ def execute_purchase(
         error_message = e.response.get("Error", {}).get("Message", str(e))
         logger.error(f"CreateSavingsPlan failed - Code: {error_code}, Message: {error_message}")
         raise
-
-
-def update_coverage_tracking(
-    current_coverage: dict[str, float], purchase_intent: dict[str, Any]
-) -> dict[str, float]:
-    """
-    Update coverage tracking after a purchase.
-
-    This function updates the in-memory coverage tracking to reflect a completed purchase.
-    This enables accurate cap validation for subsequent purchases in the same run - each
-    purchase validates against coverage including all previous purchases.
-
-    Args:
-        current_coverage: Current coverage levels
-        purchase_intent: Purchase intent that was executed
-
-    Returns:
-        dict: Updated coverage levels
-    """
-    updated_coverage = current_coverage.copy()
-
-    # Determine which coverage type to update
-    sp_type = purchase_intent.get("sp_type", "")
-    projected_coverage = purchase_intent.get("projected_coverage_after", 0.0)
-
-    if sp_type == constants.SP_FILTER_COMPUTE:
-        updated_coverage["compute"] = projected_coverage
-        logger.info(
-            f"Updated Compute coverage tracking: {current_coverage['compute']:.2f}% -> {projected_coverage:.2f}%"
-        )
-    elif sp_type == constants.SP_FILTER_DATABASE:
-        updated_coverage["database"] = projected_coverage
-        logger.info(
-            f"Updated Database coverage tracking: {current_coverage['database']:.2f}% -> {projected_coverage:.2f}%"
-        )
-    elif sp_type == constants.SP_FILTER_SAGEMAKER:
-        updated_coverage["sagemaker"] = projected_coverage
-        logger.info(
-            f"Updated SageMaker coverage tracking: {current_coverage['sagemaker']:.2f}% -> {projected_coverage:.2f}%"
-        )
-    else:
-        logger.warning(f"Unknown SP type for coverage tracking: {sp_type}")
-        # Return unchanged coverage for unknown types
-        return updated_coverage
-
-    return updated_coverage
 
 
 def delete_message(sqs_client: SQSClient, queue_url: str, receipt_handle: str) -> None:

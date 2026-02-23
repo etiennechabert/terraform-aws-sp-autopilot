@@ -32,7 +32,6 @@ REQUIRED_FIELDS = [
     "sp_type",
     "term_seconds",
     "payment_option",
-    "projected_coverage_after",
 ]
 
 
@@ -42,7 +41,7 @@ def validate_purchase_intent(purchase_intent: dict[str, Any]) -> None:
 
     Validates:
     - All required fields are present
-    - Data types are correct (commitment: numeric, term_seconds: int, projected_coverage_after: float)
+    - Data types are correct (commitment: numeric, term_seconds: int)
     - sp_type is a valid Savings Plan type
     - payment_option is a valid payment option
 
@@ -108,13 +107,6 @@ def _validate_field_types(purchase_intent: dict[str, Any]) -> None:
     if not isinstance(term_seconds, int):
         raise ValueError(
             f"Field 'term_seconds' must be an integer, got {type(term_seconds).__name__}: {term_seconds}"
-        )
-
-    # Validate projected_coverage_after is a float or int
-    projected_coverage_after = purchase_intent.get("projected_coverage_after")
-    if not isinstance(projected_coverage_after, (int, float)):
-        raise ValueError(
-            f"Field 'projected_coverage_after' must be a number, got {type(projected_coverage_after).__name__}: {projected_coverage_after}"
         )
 
     # Validate client_token is a string

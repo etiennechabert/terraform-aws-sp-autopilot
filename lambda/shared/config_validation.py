@@ -308,6 +308,16 @@ def validate_scheduler_config(config: dict[str, Any]) -> None:
 
     _validate_purchase_percent_constraints(config)
     _validate_renewal_window_days(config)
+
+    if "purchase_cooldown_days" in config:
+        _validate_non_negative_number(config["purchase_cooldown_days"], "purchase_cooldown_days")
+        if not isinstance(config["purchase_cooldown_days"], int):
+            raise ValueError(
+                f"Field 'purchase_cooldown_days' must be an integer, "
+                f"got {type(config['purchase_cooldown_days']).__name__}: "
+                f"{config['purchase_cooldown_days']}"
+            )
+
     _validate_lookback_days_with_granularity(config)
 
     if "min_commitment_per_plan" in config:
@@ -399,7 +409,6 @@ def validate_purchaser_config(config: dict[str, Any]) -> None:
     Validate purchaser configuration schema and data types.
 
     Validates:
-    - max_coverage_cap is within valid percentage range (0-100)
     - renewal_window_days is a positive integer
     - lookback_days is a positive integer within reasonable bounds
     - tags is a dictionary
@@ -416,10 +425,6 @@ def validate_purchaser_config(config: dict[str, Any]) -> None:
     """
     if not isinstance(config, dict):
         raise ValueError(f"Configuration must be a dictionary, got {type(config).__name__}")
-
-    # Validate max_coverage_cap
-    if "max_coverage_cap" in config:
-        _validate_percentage_range(config["max_coverage_cap"], "max_coverage_cap")
 
     # Validate renewal_window_days
     if "renewal_window_days" in config:

@@ -20,7 +20,6 @@ Include vulnerability description, reproduction steps, and impact assessment.
 This module can make AWS Savings Plans purchases (financial commitments). Default protections:
 
 - **Dry-run mode enabled by default** - No purchases until you set `dry_run = false`
-- **Coverage caps** - Hard limit via `max_coverage_cap` parameter
 - **Incremental limits** - Max purchase percentage per run via `max_purchase_percent`
 
 The `savingsplans:CreateSavingsPlan` IAM permission is required for purchases. Review and test recommendations in dry-run mode before enabling purchases.
