@@ -2,7 +2,7 @@
 Purchase Calculator Module - Two-phase strategy pipeline.
 
 Phase 1: Resolve target coverage (fixed/dynamic/aws)
-Phase 2: Calculate split for each SP type (one_shot/linear/dichotomy)
+Phase 2: Calculate split for each SP type (one_shot/fixed_step/gap_split)
 
 AWS target short-circuits to follow_aws_strategy.py (special path).
 """

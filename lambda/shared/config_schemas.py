@@ -29,7 +29,7 @@ STRATEGY_PARAMS = {
     "split_strategy_type": {
         "required": False,
         "type": "str",
-        "default": "linear",
+        "default": "fixed_step",
         "env_var": "SPLIT_STRATEGY_TYPE",
     },
     "dynamic_risk_level": {
@@ -55,10 +55,15 @@ STRATEGY_PARAMS = {
         "default": "1.0",
         "env_var": "MIN_PURCHASE_PERCENT",
     },
-    "linear_step_percent": {
+    "fixed_step_percent": {
         "required": False,
         "type": "float",
-        "env_var": "LINEAR_STEP_PERCENT",
+        "env_var": "FIXED_STEP_PERCENT",
+    },
+    "gap_split_divider": {
+        "required": False,
+        "type": "float",
+        "env_var": "GAP_SPLIT_DIVIDER",
     },
 }
 

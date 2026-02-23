@@ -1,6 +1,6 @@
-# Dynamic Target + Dichotomy Split Example
+# Dynamic Target + Gap Split Example
 
-This example demonstrates the **dynamic target + dichotomy split** strategy, which automatically determines the optimal coverage target based on your usage patterns and uses exponentially decreasing purchase sizes to reach it.
+This example demonstrates the **dynamic target + gap split** strategy, which automatically determines the optimal coverage target based on your usage patterns and divides the coverage gap by a configurable divider each cycle.
 
 ## Strategy Overview
 
@@ -14,19 +14,19 @@ Available risk levels:
 - `balanced` — Knee-point (where efficiency drops to 30% of peak)
 - `aggressive` — Maximum net savings point
 
-### Dichotomy Split
+### Gap Split
 
-The dichotomy split **always starts with `max_purchase_percent`** and halves until the purchase doesn't cause coverage to exceed the target.
+The gap split divides the remaining coverage gap by the configured divider each cycle, clamped between min and max purchase percent.
 
-**Example progression** (max 50%, dynamically computed target ~85%, min 1%):
+**Example progression** (dynamically computed target ~90%, divider = 2):
 
-| Month | Coverage | Try Sequence | Purchase % | Result |
-|-------|----------|--------------|------------|--------|
-| 1     | 0%       | 50% → 0+50=50% ✓ | 50%        | Coverage → 50% |
-| 2     | 50%      | 50% (100%) ✗ → 25% (75%) ✓ | 25%        | Coverage → 75% |
-| 3     | 75%      | 50% ✗ → 25% (100%) ✗ → 12.5% ✗ → 6.25% (81.25%) ✓ | 6.25%      | Coverage → 81.25% |
-| 4     | 81.25%   | 50% ✗ → ... → 3.125% (84.4%) ✓ | 3.125%     | Coverage → 84.4% |
-| 5     | 84.4%    | Gap < min → done | 0%         | At target |
+| Month | Coverage | Gap  | Gap / 2 | Purchase % | Result |
+|-------|----------|------|---------|------------|--------|
+| 1     | 0%       | 90%  | 45.0%   | 45.0%      | Coverage → 45.0% |
+| 2     | 45.0%    | 45%  | 22.5%   | 22.5%      | Coverage → 67.5% |
+| 3     | 67.5%    | 22.5% | 11.2%  | 11.2%      | Coverage → 78.8% |
+| 4     | 78.8%    | 11.2% | 5.6%   | 5.6%       | Coverage → 84.4% |
+| 5     | 84.4%    | 5.6% | 2.8%    | 2.8%       | Coverage → 87.2% |
 
 ## Configuration
 
@@ -39,9 +39,8 @@ purchase_strategy = {
   }
 
   split = {
-    dichotomy = {
-      max_purchase_percent = 50
-      min_purchase_percent = 1
+    gap_split = {
+      divider = 2
     }
   }
 }
@@ -55,12 +54,17 @@ purchase_strategy = {
 - `min_hourly`: Never exceeds your minimum observed usage
 - `too_prudent`: Very conservative, 80% of minimum usage
 
-**max_purchase_percent**: 25-75%
-- Higher (50-75%): Faster ramp to target, larger initial commitments
-- Lower (25-50%): Slower ramp, more conservative approach
+**divider**: How much to divide the gap each cycle (required)
+- `2` (recommended): Halves the gap each cycle — good balance of speed and safety
+- `3`: More conservative — takes more cycles to reach target
+- `1`: Purchases the entire gap at once (equivalent to one_shot)
 
-**min_purchase_percent**: 0.5-5%
-- Minimum purchase granularity
+**min_purchase_percent**: Minimum purchase size (default: 1%)
+- If the divided gap falls below this, the minimum is used instead
+- If the remaining gap is smaller than the minimum, purchases exactly the gap
+
+**max_purchase_percent**: Maximum purchase size (default: unlimited)
+- Caps the purchase at this percentage regardless of the divided gap
 
 ## Deployment
 
@@ -108,6 +112,6 @@ terraform destroy
 ## Learn More
 
 - [Main README](../../README.md) - Full module documentation
-- [Fixed + Linear Example](../single-account-compute/) - Simple fixed target strategy
+- [Fixed + Fixed Step Example](../single-account-compute/) - Simple fixed target strategy
 - [AWS Target Example](../organizations/) - Follow AWS recommendations directly
 - [AWS Savings Plans Documentation](https://docs.aws.amazon.com/savingsplans/latest/userguide/)

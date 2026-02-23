@@ -94,7 +94,7 @@ purchase_strategy = {
   }
 
   split = {
-    linear = { step_percent = 5 }  # Lower = slower commitment growth
+    fixed_step = { step_percent = 5 }  # Lower = slower commitment growth
   }
 }
 ```

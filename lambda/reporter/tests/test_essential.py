@@ -531,8 +531,8 @@ def test_handler_with_scheduler_preview_fixed_strategy(monkeypatch, mock_clients
     """Test scheduler preview with fixed strategy integration."""
     # Set scheduler strategy environment variables
     monkeypatch.setenv("TARGET_STRATEGY_TYPE", "fixed")
-    monkeypatch.setenv("SPLIT_STRATEGY_TYPE", "linear")
-    monkeypatch.setenv("LINEAR_STEP_PERCENT", "10")
+    monkeypatch.setenv("SPLIT_STRATEGY_TYPE", "fixed_step")
+    monkeypatch.setenv("FIXED_STEP_PERCENT", "10")
     monkeypatch.setenv("MAX_PURCHASE_PERCENT", "10")
     monkeypatch.setenv("MIN_PURCHASE_PERCENT", "1")
     monkeypatch.setenv("COMPUTE_SP_TERM", "THREE_YEAR")
@@ -592,7 +592,7 @@ def test_handler_with_scheduler_preview_fixed_strategy(monkeypatch, mock_clients
 
     # Verify all three strategies are shown in the comparison
     assert "Fixed" in report_html, "Preview should show Fixed strategy"
-    assert "Dichotomy" in report_html, "Preview should show Dichotomy strategy"
+    assert "Gap Split" in report_html, "Preview should show Gap Split strategy"
     assert "AWS Recommendation" in report_html, "Preview should show AWS Recommendation strategy"
 
     # Verify configured strategy is highlighted
@@ -602,13 +602,13 @@ def test_handler_with_scheduler_preview_fixed_strategy(monkeypatch, mock_clients
     assert mock_clients["s3"].put_object.called
 
 
-def test_handler_with_scheduler_preview_dichotomy_strategy(
+def test_handler_with_scheduler_preview_gap_split_strategy(
     monkeypatch, mock_clients, aws_mock_builder
 ):
-    """Test scheduler preview with dichotomy strategy integration."""
-    # Set scheduler strategy environment variables for dichotomy
+    """Test scheduler preview with gap_split strategy integration."""
     monkeypatch.setenv("TARGET_STRATEGY_TYPE", "fixed")
-    monkeypatch.setenv("SPLIT_STRATEGY_TYPE", "dichotomy")
+    monkeypatch.setenv("SPLIT_STRATEGY_TYPE", "gap_split")
+    monkeypatch.setenv("GAP_SPLIT_DIVIDER", "2.0")
     monkeypatch.setenv("MAX_PURCHASE_PERCENT", "50")
     monkeypatch.setenv("MIN_PURCHASE_PERCENT", "1")
     monkeypatch.setenv("COMPUTE_SP_TERM", "THREE_YEAR")
@@ -616,7 +616,7 @@ def test_handler_with_scheduler_preview_dichotomy_strategy(
     monkeypatch.setenv("REPORT_FORMAT", "html")
     monkeypatch.setenv("EMAIL_REPORTS", "false")
 
-    # Mock SpendingAnalyzer - coverage at 60% (larger gap for dichotomy)
+    # Mock SpendingAnalyzer - coverage at 60% (gap for gap_split)
     mock_clients["ce"].get_savings_plans_coverage.return_value = aws_mock_builder.coverage(
         coverage_percentage=60.0
     )
@@ -666,10 +666,10 @@ def test_handler_with_scheduler_preview_dichotomy_strategy(
 
     # Verify all three strategies are shown in the comparison
     assert "Fixed" in report_html
-    assert "Dichotomy" in report_html
+    assert "Gap Split" in report_html
     assert "AWS Recommendation" in report_html
 
-    # Verify configured strategy (dichotomy) is highlighted
+    # Verify configured strategy (gap_split) is highlighted
     assert "CONFIGURED" in report_html
 
 
@@ -735,7 +735,7 @@ def test_handler_with_scheduler_preview_follow_aws_strategy(
 
     # Verify all three strategies are shown in the comparison
     assert "Fixed" in report_html
-    assert "Dichotomy" in report_html
+    assert "Gap Split" in report_html
     assert "AWS Recommendation" in report_html
 
     # Verify configured strategy (follow_aws) is highlighted

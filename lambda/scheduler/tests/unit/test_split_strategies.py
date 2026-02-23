@@ -1,10 +1,7 @@
 import pytest
 from split_strategies import calculate_split
-from split_strategies.dichotomy_split import (
-    calculate_dichotomy_purchase_percent,
-    calculate_dichotomy_split,
-)
-from split_strategies.linear_split import calculate_linear_split
+from split_strategies.fixed_step_split import calculate_fixed_step_split
+from split_strategies.gap_split import calculate_gap_split
 from split_strategies.one_shot_split import calculate_one_shot_split
 
 
@@ -19,19 +16,19 @@ class TestCalculateSplit:
         result = calculate_split(30.0, 90.0, config)
         assert result == pytest.approx(60.0)
 
-    def test_dispatches_linear(self):
-        config = {"split_strategy_type": "linear", "linear_step_percent": 10.0}
+    def test_dispatches_fixed_step(self):
+        config = {"split_strategy_type": "fixed_step", "fixed_step_percent": 10.0}
         result = calculate_split(50.0, 90.0, config)
         assert result == pytest.approx(10.0)
 
-    def test_dispatches_dichotomy(self):
+    def test_dispatches_gap_split(self):
         config = {
-            "split_strategy_type": "dichotomy",
-            "max_purchase_percent": 50.0,
+            "split_strategy_type": "gap_split",
+            "gap_split_divider": 2.0,
             "min_purchase_percent": 1.0,
         }
         result = calculate_split(50.0, 90.0, config)
-        assert result > 0
+        assert result == pytest.approx(20.0)
 
     def test_unknown_strategy_raises(self):
         config = {"split_strategy_type": "nonexistent"}
@@ -59,68 +56,82 @@ class TestOneShotSplit:
 
 
 # ============================================================================
-# linear_split tests
+# fixed_step_split tests
 # ============================================================================
 
 
-class TestLinearSplit:
+class TestFixedStepSplit:
     def test_gap_larger_than_step(self):
-        config = {"linear_step_percent": 10.0}
-        assert calculate_linear_split(50.0, 90.0, config) == pytest.approx(10.0)
+        config = {"fixed_step_percent": 10.0}
+        assert calculate_fixed_step_split(50.0, 90.0, config) == pytest.approx(10.0)
 
     def test_gap_smaller_than_step(self):
-        config = {"linear_step_percent": 10.0}
-        assert calculate_linear_split(85.0, 90.0, config) == pytest.approx(5.0)
+        config = {"fixed_step_percent": 10.0}
+        assert calculate_fixed_step_split(85.0, 90.0, config) == pytest.approx(5.0)
 
     def test_no_gap(self):
-        config = {"linear_step_percent": 10.0}
-        assert calculate_linear_split(90.0, 90.0, config) == pytest.approx(0.0)
+        config = {"fixed_step_percent": 10.0}
+        assert calculate_fixed_step_split(90.0, 90.0, config) == pytest.approx(0.0)
 
     def test_negative_gap(self):
-        config = {"linear_step_percent": 10.0}
-        assert calculate_linear_split(95.0, 90.0, config) == pytest.approx(0.0)
+        config = {"fixed_step_percent": 10.0}
+        assert calculate_fixed_step_split(95.0, 90.0, config) == pytest.approx(0.0)
 
     def test_falls_back_to_max_purchase_percent(self):
         config = {"max_purchase_percent": 15.0}
-        assert calculate_linear_split(50.0, 90.0, config) == pytest.approx(15.0)
+        assert calculate_fixed_step_split(50.0, 90.0, config) == pytest.approx(15.0)
 
 
 # ============================================================================
-# dichotomy_split tests
+# gap_split tests
 # ============================================================================
 
 
-class TestDichotomyPurchasePercent:
+class TestGapSplit:
     def test_no_gap(self):
-        assert calculate_dichotomy_purchase_percent(90.0, 90.0, 50.0, 1.0) == pytest.approx(0.0)
+        config = {"gap_split_divider": 2.0}
+        assert calculate_gap_split(90.0, 90.0, config) == pytest.approx(0.0)
 
     def test_negative_gap(self):
-        assert calculate_dichotomy_purchase_percent(95.0, 90.0, 50.0, 1.0) == pytest.approx(0.0)
+        config = {"gap_split_divider": 2.0}
+        assert calculate_gap_split(95.0, 90.0, config) == pytest.approx(0.0)
 
-    def test_gap_below_min(self):
-        result = calculate_dichotomy_purchase_percent(89.5, 90.0, 50.0, 1.0)
-        assert result == pytest.approx(1.0)
+    def test_basic_divide(self):
+        # gap=40, divider=2 → 20.0
+        config = {"gap_split_divider": 2.0}
+        assert calculate_gap_split(50.0, 90.0, config) == pytest.approx(20.0)
 
-    def test_max_fits(self):
-        result = calculate_dichotomy_purchase_percent(0.0, 90.0, 50.0, 1.0)
-        assert result == pytest.approx(50.0)
+    def test_large_gap(self):
+        # gap=90, divider=2 → 45.0
+        config = {"gap_split_divider": 2.0}
+        assert calculate_gap_split(0.0, 90.0, config) == pytest.approx(45.0)
 
-    def test_halving_to_fit(self):
-        result = calculate_dichotomy_purchase_percent(50.0, 90.0, 50.0, 1.0)
-        assert result == pytest.approx(25.0)
+    def test_divider_3(self):
+        # gap=40, divider=3 → 13.3
+        config = {"gap_split_divider": 3.0}
+        assert calculate_gap_split(50.0, 90.0, config) == pytest.approx(13.3, abs=0.1)
 
-    def test_halving_reaches_min(self):
-        result = calculate_dichotomy_purchase_percent(89.0, 90.0, 50.0, 5.0)
-        assert result == pytest.approx(5.0)
+    def test_max_purchase_clamp(self):
+        # gap=40, divider=2 → 20.0, but max=15 → 15.0
+        config = {"gap_split_divider": 2.0, "max_purchase_percent": 15.0}
+        assert calculate_gap_split(50.0, 90.0, config) == pytest.approx(15.0)
 
+    def test_min_purchase_clamp(self):
+        # gap=40, divider=100 → 0.4, but min=1 → 1.0
+        config = {"gap_split_divider": 100.0, "min_purchase_percent": 1.0}
+        assert calculate_gap_split(50.0, 90.0, config) == pytest.approx(1.0)
 
-class TestDichotomySplit:
-    def test_uses_config_defaults(self):
+    def test_gap_smaller_than_min(self):
+        # gap=0.5, divider=2 → 0.25, min=1, but gap(0.5) < min(1) → 0.5
+        config = {"gap_split_divider": 2.0, "min_purchase_percent": 1.0}
+        assert calculate_gap_split(89.5, 90.0, config) == pytest.approx(0.5)
+
+    def test_defaults(self):
+        # gap=90, default divider=2, default min=1 → 45.0
         config = {}
-        result = calculate_dichotomy_split(0.0, 90.0, config)
-        assert result == pytest.approx(50.0)
+        assert calculate_gap_split(0.0, 90.0, config) == pytest.approx(45.0)
 
-    def test_uses_config_values(self):
-        config = {"max_purchase_percent": 20.0, "min_purchase_percent": 2.0}
-        result = calculate_dichotomy_split(50.0, 90.0, config)
-        assert result == pytest.approx(20.0)
+    def test_no_max_means_unlimited(self):
+        # gap=80, divider=1 → 80.0 (no max set)
+        config = {"gap_split_divider": 1.0}
+        assert calculate_gap_split(10.0, 90.0, config) == pytest.approx(80.0)

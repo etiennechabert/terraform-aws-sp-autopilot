@@ -29,7 +29,7 @@ class TestStrategyValidation:
             _validate_strategy_and_granularity(config)
 
     def test_valid_split_strategies(self):
-        for strategy in ["one_shot", "linear", "dichotomy"]:
+        for strategy in ["one_shot", "fixed_step", "gap_split"]:
             config = {**BASE_CONFIG, "split_strategy_type": strategy}
             _validate_strategy_and_granularity(config)
 
@@ -42,7 +42,7 @@ class TestStrategyValidation:
         config = {
             **BASE_CONFIG,
             "target_strategy_type": "aws",
-            "split_strategy_type": "linear",
+            "split_strategy_type": "fixed_step",
         }
         with pytest.raises(
             ValueError, match="AWS target strategy requires split_strategy_type='one_shot'"
@@ -100,7 +100,7 @@ class TestSchedulerConfigStrategies:
         config = {
             **BASE_CONFIG,
             "target_strategy_type": "dynamic",
-            "split_strategy_type": "dichotomy",
+            "split_strategy_type": "gap_split",
             "dynamic_risk_level": "balanced",
             "max_purchase_percent": 50.0,
             "min_purchase_percent": 1.0,

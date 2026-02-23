@@ -33,9 +33,10 @@ resource "aws_lambda_function" "scheduler" {
       TARGET_STRATEGY_TYPE        = local.target_strategy_type
       SPLIT_STRATEGY_TYPE         = local.split_strategy_type
       DYNAMIC_RISK_LEVEL          = local.dynamic_risk_level
-      LINEAR_STEP_PERCENT         = tostring(local.linear_step_percent)
+      FIXED_STEP_PERCENT          = tostring(local.fixed_step_percent)
       MAX_PURCHASE_PERCENT        = tostring(local.max_purchase_percent)
       MIN_PURCHASE_PERCENT        = tostring(local.min_purchase_percent)
+      GAP_SPLIT_DIVIDER           = tostring(local.gap_split_divider)
       RENEWAL_WINDOW_DAYS         = tostring(local.renewal_window_days)
       LOOKBACK_DAYS               = tostring(local.lookback_days)
       GRANULARITY                 = local.granularity
@@ -130,9 +131,10 @@ resource "aws_lambda_function" "reporter" {
       TARGET_STRATEGY_TYPE        = local.target_strategy_type
       SPLIT_STRATEGY_TYPE         = local.split_strategy_type
       DYNAMIC_RISK_LEVEL          = local.dynamic_risk_level
-      LINEAR_STEP_PERCENT         = tostring(local.linear_step_percent)
+      FIXED_STEP_PERCENT          = tostring(local.fixed_step_percent)
       MAX_PURCHASE_PERCENT        = tostring(local.max_purchase_percent)
       MIN_PURCHASE_PERCENT        = tostring(local.min_purchase_percent)
+      GAP_SPLIT_DIVIDER           = tostring(local.gap_split_divider)
       COMPUTE_SP_TERM             = local.compute_term
       COMPUTE_SP_PAYMENT_OPTION   = local.compute_payment_option
       DATABASE_SP_PAYMENT_OPTION  = local.database_sp_payment_option
