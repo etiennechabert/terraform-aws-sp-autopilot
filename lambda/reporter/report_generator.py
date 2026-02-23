@@ -969,6 +969,12 @@ def generate_html_report(
             background-color: #f8f9fa;
             border-radius: 8px;
         }}
+        .chart-title {{
+            font-weight: bold;
+            font-size: 14px;
+            color: #666;
+            margin-bottom: 4px;
+        }}
         .tabs {{
             display: flex;
             gap: 10px;
@@ -1556,8 +1562,20 @@ def generate_html_report(
         }}
 
         // Function to create chart for a specific type
+        function _injectChartTitle(canvasId, title) {{
+            const canvas = document.getElementById(canvasId);
+            const container = canvas.parentElement;
+            if (!container.querySelector('.chart-title')) {{
+                const titleEl = document.createElement('div');
+                titleEl.className = 'chart-title';
+                titleEl.textContent = title;
+                container.insertBefore(titleEl, canvas);
+            }}
+        }}
+
         function createChart(canvasId, chartData, title, spType, showCoverageLine) {{
             const ctx = document.getElementById(canvasId);
+            _injectChartTitle(canvasId, title);
 
             // Initialize color mode for this chart
             chartColorModes[canvasId] = 'palette1';
@@ -1660,12 +1678,7 @@ def generate_html_report(
                         intersect: false
                     }},
                     plugins: {{
-                        title: {{
-                            display: true,
-                            text: title,
-                            font: {{ size: 16 }},
-                            align: 'start'
-                        }},
+                        title: {{ display: false }},
                         legend: {{
                             display: true,
                             position: 'top',
@@ -1746,6 +1759,7 @@ def generate_html_report(
         // Function to create daily chart (simplified - no annotation lines)
         function createDailyChart(canvasId, chartData, title) {{
             const ctx = document.getElementById(canvasId);
+            _injectChartTitle(canvasId, title);
             const palette = colorPalettes['palette1'];
 
             chartInstances[canvasId] = new Chart(ctx, {{
@@ -1779,12 +1793,7 @@ def generate_html_report(
                         intersect: false
                     }},
                     plugins: {{
-                        title: {{
-                            display: true,
-                            text: title,
-                            font: {{ size: 14 }},
-                            align: 'start'
-                        }},
+                        title: {{ display: false }},
                         legend: {{
                             display: true,
                             position: 'top',
