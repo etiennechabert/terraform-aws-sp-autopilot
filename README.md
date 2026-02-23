@@ -14,6 +14,10 @@
 
 Automates AWS Savings Plans purchases based on usage analysis, maintaining consistent coverage while limiting financial exposure through incremental commitments.
 
+[**Try the interactive simulator**](https://etiennechabert.github.io/terraform-aws-sp-autopilot/) — Visualize coverage strategies, compare commitment levels, and find the optimal Savings Plan for your workload before deploying anything.
+
+[![AWS Savings Plan Simulator](docs/images/simulator-preview.png)](https://etiennechabert.github.io/terraform-aws-sp-autopilot/)
+
 ## Key Features
 
 - **Automated Savings Plans purchasing** — Maintains target coverage without manual intervention
