@@ -657,11 +657,10 @@ def _build_raw_data_section_html(raw_data: dict[str, Any] | None, report_timesta
 
     html += f"""
         <div class="footer">
-            <p><strong>Savings Plans Autopilot</strong> - Automated Coverage & Savings Report</p>
-            <p>Generated: {report_timestamp}</p>
-            <p style="margin-top: 15px; font-size: 0.9em;">
-                Powered by <a href="https://github.com/etiennechabert/terraform-aws-sp-autopilot" target="_blank" style="color: #2196f3; text-decoration: none;">terraform-aws-sp-autopilot</a>
-                <span style="opacity: 0.6;">| Open source on GitHub | Apache License 2.0</span>
+            <p><strong>Savings Plans Autopilot</strong> - Generated: {report_timestamp}</p>
+            <p>
+                <a href="https://github.com/etiennechabert/terraform-aws-sp-autopilot" target="_blank" style="color: #2196f3; text-decoration: none;">terraform-aws-sp-autopilot</a>
+                <span style="opacity: 0.6;">| Open source | Apache 2.0</span>
             </p>
         </div>
     </div>
@@ -948,12 +947,15 @@ def generate_html_report(
             color: #232f3e;
         }}
         .footer {{
-            margin-top: 40px;
-            padding-top: 20px;
-            border-top: 2px solid #e0e0e0;
+            margin-top: 20px;
+            padding: 10px 0;
+            border-top: 1px solid #e0e0e0;
             text-align: center;
             color: #6c757d;
-            font-size: 0.9em;
+            font-size: 0.85em;
+        }}
+        .footer p {{
+            margin: 2px 0;
         }}
         .no-data {{
             text-align: center;
