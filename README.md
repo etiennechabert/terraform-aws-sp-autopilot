@@ -14,8 +14,6 @@
 
 Automates AWS Savings Plans purchases based on usage analysis, maintaining consistent coverage while limiting financial exposure through incremental commitments.
 
-**[AWS Savings Plan Simulator](https://etiennechabert.github.io/terraform-aws-sp-autopilot/)** — Interactive cost visualization tool
-
 ## Key Features
 
 - **Automated Savings Plans purchasing** — Maintains target coverage without manual intervention
@@ -247,6 +245,12 @@ The module consists of three Lambda functions with SQS queue coordination:
    - Generates HTML spending reports
    - Stores in S3
    - Optionally emails stakeholders
+
+## GitHub Pages — Savings Plan Simulator
+
+The module includes an interactive **[Savings Plan Simulator](https://etiennechabert.github.io/terraform-aws-sp-autopilot/)** hosted on GitHub Pages. It visualizes coverage strategies and their cost impact using your actual spending data.
+
+Generated reports (from the Reporter Lambda) link to this simulator pre-loaded with your data, allowing stakeholders to explore "what-if" scenarios across different target/split combinations.
 
 ## Advanced Topics
 
