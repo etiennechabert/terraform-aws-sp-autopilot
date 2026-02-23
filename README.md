@@ -260,9 +260,9 @@ For AWS Organizations, Savings Plans must be purchased from the **management acc
 
 ```hcl
 lambda_config = {
+  reporter  = { assume_role_arn = "arn:aws:iam::123456789012:role/SPReadOnlyRole" }
   scheduler = { assume_role_arn = "arn:aws:iam::123456789012:role/SPReadOnlyRole" }
   purchaser = { assume_role_arn = "arn:aws:iam::123456789012:role/SPPurchaserRole" }
-  reporter  = { assume_role_arn = "arn:aws:iam::123456789012:role/SPReadOnlyRole" }
 }
 ```
 
