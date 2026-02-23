@@ -1116,6 +1116,14 @@ def generate_html_report(
             margin-top: 10px;
             font-size: 0.85em;
             color: #856404;
+            opacity: 0;
+            max-height: 0;
+            overflow: hidden;
+            transition: opacity 0.3s, max-height 0.3s;
+        }}
+        .simulator-cta:hover .simulator-description {{
+            opacity: 1;
+            max-height: 60px;
         }}
         .color-toggle {{
             padding: 12px 24px;
