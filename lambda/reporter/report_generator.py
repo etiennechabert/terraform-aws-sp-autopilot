@@ -153,6 +153,7 @@ def generate_report(
     raw_data: dict[str, Any] | None = None,
     preview_data: dict[str, Any] | None = None,
     daily_coverage_data: dict[str, Any] | None = None,
+    guard_results: dict[str, dict[str, Any]] | None = None,
 ) -> str:
     """
     Generate report in specified format.
@@ -165,6 +166,7 @@ def generate_report(
         raw_data: Optional raw AWS API responses to include in the report
         preview_data: Optional scheduler preview data
         daily_coverage_data: Optional daily granularity coverage data for trend chart
+        guard_results: Optional spike guard results
 
     Returns:
         str: Generated report content
@@ -173,12 +175,18 @@ def generate_report(
         ValueError: If report_format is invalid
     """
     if report_format == "json":
-        return generate_json_report(coverage_data, savings_data, config)
+        return generate_json_report(coverage_data, savings_data, config, guard_results)
     if report_format == "csv":
         return generate_csv_report(coverage_data, savings_data)
     if report_format == "html":
         return generate_html_report(
-            coverage_data, savings_data, config, raw_data, preview_data, daily_coverage_data
+            coverage_data,
+            savings_data,
+            config,
+            raw_data,
+            preview_data,
+            daily_coverage_data,
+            guard_results,
         )
     raise ValueError(f"Invalid report format: {report_format}")
 
@@ -804,6 +812,57 @@ def _build_active_plans_table_html(plans: list[dict[str, Any]]) -> str:
     return html
 
 
+def _render_spike_guard_warning_banner(
+    guard_results: dict[str, dict[str, Any]] | None,
+    config: dict[str, Any] | None,
+) -> str:
+    """Render yellow warning banner for usage spike, or empty string if no spike."""
+    if not guard_results:
+        return ""
+
+    flagged = {t: r for t, r in guard_results.items() if r["flagged"]}
+    if not flagged:
+        return ""
+
+    config = config or {}
+    long_days = config.get("spike_guard_long_lookback_days", 90)
+    short_days = config.get("spike_guard_short_lookback_days", 14)
+
+    rows = ""
+    for sp_type in sorted(flagged):
+        r = flagged[sp_type]
+        rows += f"""                <tr>
+                    <td>{sp_type.upper()}</td>
+                    <td>${r["long_term_avg"]:.4f}/h</td>
+                    <td>${r["short_term_avg"]:.4f}/h</td>
+                    <td style="color: #856404; font-weight: bold;">+{r["change_percent"]:.1f}%</td>
+                </tr>
+"""
+
+    return f"""
+        <div style="background: #fff3cd; border: 1px solid #ffc107; border-radius: 6px; padding: 15px 20px; margin-bottom: 20px;">
+            <h3 style="color: #856404; margin: 0 0 10px 0; font-size: 1.1em;">&#9888; Usage Spike Detected</h3>
+            <p style="color: #856404; margin: 0 0 10px 0; font-size: 0.9em;">
+                Recent usage ({short_days}d avg) is abnormally high compared to long-term baseline ({long_days}d avg).
+                The scheduler will block purchases for the following SP types to avoid over-committing on a temporary spike.
+                To adjust sensitivity, configure <code>purchase_strategy.spike_guard</code> in your Terraform module.
+            </p>
+            <table style="width: auto; margin: 0; font-size: 0.9em;">
+                <thead>
+                    <tr>
+                        <th style="text-align: left; padding: 4px 12px 4px 0;">SP Type</th>
+                        <th style="text-align: left; padding: 4px 12px 4px 0;">{long_days}d Avg</th>
+                        <th style="text-align: left; padding: 4px 12px 4px 0;">{short_days}d Avg</th>
+                        <th style="text-align: left; padding: 4px 12px 4px 0;">Spike</th>
+                    </tr>
+                </thead>
+                <tbody>
+{rows}                </tbody>
+            </table>
+        </div>
+"""
+
+
 def generate_html_report(
     coverage_data: dict[str, Any],
     savings_data: dict[str, Any],
@@ -811,6 +870,7 @@ def generate_html_report(
     raw_data: dict[str, Any] | None = None,
     preview_data: dict[str, Any] | None = None,
     daily_coverage_data: dict[str, Any] | None = None,
+    guard_results: dict[str, dict[str, Any]] | None = None,
 ) -> str:
     """
     Generate HTML report with coverage trends and savings metrics.
@@ -821,6 +881,7 @@ def generate_html_report(
         config: Configuration parameters used for the report
         raw_data: Optional raw AWS API responses to include in the report
         daily_coverage_data: Optional daily granularity coverage data for trend chart
+        guard_results: Optional spike guard results
 
     Returns:
         str: HTML report content
@@ -1385,6 +1446,7 @@ def generate_html_report(
             </div>
         </div>
 
+{_render_spike_guard_warning_banner(guard_results, config)}
         <div class="section">
             <h2>Report Parameters</h2>
             <div class="params-grid">
@@ -2245,6 +2307,7 @@ def generate_json_report(
     coverage_data: dict[str, Any],
     savings_data: dict[str, Any],
     config: dict[str, Any] | None = None,
+    guard_results: dict[str, dict[str, Any]] | None = None,
 ) -> str:
     """
     Generate JSON report with coverage trends and savings metrics.
@@ -2253,6 +2316,7 @@ def generate_json_report(
         coverage_data: Coverage data from SpendingAnalyzer
         savings_data: Savings Plans summary from savings_plans_metrics
         config: Configuration parameters used for the report
+        guard_results: Optional spike guard results
 
     Returns:
         str: JSON report content
@@ -2332,6 +2396,18 @@ def generate_json_report(
         },
         "active_savings_plans": savings_data.get("plans", []),
     }
+
+    if guard_results:
+        flagged = {t: r for t, r in guard_results.items() if r["flagged"]}
+        if flagged:
+            report["spike_guard"] = {
+                sp_type: {
+                    "long_term_avg_hourly": round(r["long_term_avg"], 4),
+                    "short_term_avg_hourly": round(r["short_term_avg"], 4),
+                    "spike_percent": r["change_percent"],
+                }
+                for sp_type, r in flagged.items()
+            }
 
     json_content = json.dumps(report, indent=2, default=str)
     logger.info(f"JSON report generated ({len(json_content)} bytes)")

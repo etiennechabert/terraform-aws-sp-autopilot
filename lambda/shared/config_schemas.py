@@ -100,6 +100,33 @@ SP_TERM_PAYMENT_OPTIONS = {
     },
 }
 
+SPIKE_GUARD_PARAMS = {
+    "spike_guard_enabled": {
+        "required": False,
+        "type": "bool",
+        "default": "true",
+        "env_var": "SPIKE_GUARD_ENABLED",
+    },
+    "spike_guard_long_lookback_days": {
+        "required": False,
+        "type": "int",
+        "default": "90",
+        "env_var": "SPIKE_GUARD_LONG_LOOKBACK_DAYS",
+    },
+    "spike_guard_short_lookback_days": {
+        "required": False,
+        "type": "int",
+        "default": "14",
+        "env_var": "SPIKE_GUARD_SHORT_LOOKBACK_DAYS",
+    },
+    "spike_guard_threshold_percent": {
+        "required": False,
+        "type": "float",
+        "default": "20",
+        "env_var": "SPIKE_GUARD_THRESHOLD_PERCENT",
+    },
+}
+
 AWS_COMMON = {
     "management_account_role_arn": {
         "required": False,

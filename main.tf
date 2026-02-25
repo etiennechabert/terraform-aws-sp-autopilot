@@ -192,6 +192,13 @@ locals {
   purchase_cooldown_days  = try(var.purchase_strategy.purchase_cooldown_days, 7)
   min_commitment_per_plan = try(var.purchase_strategy.min_commitment_per_plan, 0.001)
 
+  # Decline Check Settings
+
+  spike_guard_enabled             = try(var.purchase_strategy.spike_guard.enabled, true)
+  spike_guard_long_lookback_days  = try(var.purchase_strategy.spike_guard.long_lookback_days, 90)
+  spike_guard_short_lookback_days = try(var.purchase_strategy.spike_guard.short_lookback_days, 14)
+  spike_guard_threshold_percent   = try(var.purchase_strategy.spike_guard.threshold_percent, 20)
+
   # Encryption Settings
 
   sns_kms_key           = try(var.encryption.sns_kms_key, "alias/aws/sns")

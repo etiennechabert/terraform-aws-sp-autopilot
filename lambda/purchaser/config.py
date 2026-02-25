@@ -8,6 +8,7 @@ Autopilot Purchaser Lambda function.
 
 from typing import Any
 
+from shared.config_schemas import SP_TYPE_TOGGLES, SPIKE_GUARD_PARAMS
 from shared.handler_utils import load_config_from_env
 
 
@@ -33,6 +34,7 @@ CONFIG_SCHEMA = {
         "default": "HOURLY",
         "env_var": "GRANULARITY",
     },
+    **SP_TYPE_TOGGLES,
     "management_account_role_arn": {
         "required": False,
         "type": "str",
@@ -49,6 +51,7 @@ CONFIG_SCHEMA = {
         "type": "str",
         "env_var": "TEAMS_WEBHOOK_URL",
     },
+    **SPIKE_GUARD_PARAMS,
 }
 
 

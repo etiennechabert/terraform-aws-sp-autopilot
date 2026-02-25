@@ -48,7 +48,10 @@ def purge_queue(sqs_client: SQSClient, queue_url: str) -> None:
 
 
 def queue_purchase_intents(
-    sqs_client: SQSClient, config: dict[str, Any], purchase_plans: list[dict[str, Any]]
+    sqs_client: SQSClient,
+    config: dict[str, Any],
+    purchase_plans: list[dict[str, Any]],
+    scheduling_avg_hourly_total: dict[str, float] | None = None,
 ) -> None:
     """
     Queue purchase intents to queue.
@@ -58,6 +61,8 @@ def queue_purchase_intents(
         sqs_client: Boto3 SQS client (not used in local mode)
         config: Configuration dictionary
         purchase_plans: List of planned purchases
+        scheduling_avg_hourly_total: Average hourly spend per SP type at scheduling time
+            (embedded in SQS messages for purchaser spike guard)
     """
     logger.info(f"Queuing {len(purchase_plans)} purchase intents")
 
@@ -89,6 +94,9 @@ def queue_purchase_intents(
                 "queued_at": timestamp,
                 "tags": config.get("tags", {}),
             }
+
+            if scheduling_avg_hourly_total is not None:
+                purchase_intent["scheduling_avg_hourly_total"] = scheduling_avg_hourly_total
 
             # Send message via adapter
             message_id = queue_adapter.send_message(purchase_intent)
