@@ -102,6 +102,13 @@ def handler(event: dict[str, Any], context: Any) -> dict[str, Any]:
         f"Net savings: ${savings_data['actual_savings']['net_savings_hourly']:,.2f}/h"
     )
 
+    # Run spike guard (detect usage spikes)
+    guard_results = None
+    if config.get("spike_guard_enabled", True):
+        from shared.usage_decline_check import run_scheduling_spike_guard
+
+        _, guard_results = run_scheduling_spike_guard(analyzer, config)
+
     # Check for low utilization and alert if needed
     notifications_module.check_and_alert_low_utilization(clients["sns"], config, savings_data)
 
@@ -175,6 +182,7 @@ def handler(event: dict[str, Any], context: Any) -> dict[str, Any]:
         raw_data,
         preview_data,
         daily_coverage_data,
+        guard_results,
     )
     logger.info(
         f"Report generated ({len(report_content)} bytes, format: {config['report_format']})"

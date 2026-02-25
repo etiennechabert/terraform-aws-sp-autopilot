@@ -197,6 +197,88 @@ def send_scheduled_email(
     )
 
 
+def send_spike_guard_email(
+    sns_client: SNSClient,
+    config: dict[str, Any],
+    blocked_plans: list[dict[str, Any]],
+    guard_results: dict[str, dict[str, Any]],
+) -> None:
+    """Send notification that purchases were blocked due to usage spike."""
+    logger.info("Sending spike guard email")
+
+    flagged_types = {p.get("sp_type") for p in blocked_plans}
+    lines = [
+        "⚠️  USAGE SPIKE DETECTED — Purchases Blocked",
+        "=" * 50,
+        "",
+        f"{len(blocked_plans)} purchase plan(s) were blocked because recent usage is abnormally high.",
+        "This prevents over-committing to Savings Plans based on temporary spikes",
+        "(e.g. Black Friday, seasonal peaks, one-off migrations).",
+        "",
+        "Spike Details:",
+        "-" * 50,
+    ]
+
+    for sp_type in sorted(flagged_types):
+        result = guard_results.get(sp_type, {})
+        lines.extend(
+            [
+                f"  {sp_type.upper()} Savings Plan:",
+                f"    Long-term avg: ${result.get('long_term_avg', 0):.4f}/hour",
+                f"    Short-term avg: ${result.get('short_term_avg', 0):.4f}/hour",
+                f"    Spike: +{result.get('change_percent', 0):.1f}%",
+                "",
+            ]
+        )
+
+    lines.extend(
+        [
+            "Blocked Purchase Plans:",
+            "-" * 50,
+        ]
+    )
+
+    for i, plan in enumerate(blocked_plans, 1):
+        lines.extend(
+            [
+                f"  {i}. {plan.get('sp_type', 'unknown').upper()} — "
+                f"${plan.get('hourly_commitment', 0):.4f}/hour",
+            ]
+        )
+
+    lines.extend(
+        [
+            "",
+            "These purchases were NOT scheduled. Non-flagged SP types (if any) proceeded normally.",
+            "",
+            "To adjust sensitivity, modify spike_guard settings in your Terraform configuration:",
+            "  purchase_strategy.spike_guard.threshold_percent (currently "
+            f"{config.get('spike_guard_threshold_percent', 20)}%)",
+            "  purchase_strategy.spike_guard.enabled = false  (to disable entirely)",
+        ]
+    )
+
+    message = "\n".join(lines)
+
+    if local_mode.is_local_mode():
+        logger.info("LOCAL MODE: Skipping SNS publish. Usage guard email content:")
+        logger.info("=" * 60)
+        logger.info(message)
+        logger.info("=" * 60)
+        return
+
+    try:
+        sns_client.publish(
+            TopicArn=config["sns_topic_arn"],
+            Subject="SP Autopilot — Purchases Blocked (Usage Spike Detected)",
+            Message=message,
+        )
+        logger.info(f"Usage guard email sent to {config['sns_topic_arn']}")
+    except ClientError as e:
+        logger.error(f"Failed to send spike guard email: {e!s}")
+        raise
+
+
 def send_dry_run_email(
     sns_client: SNSClient,
     config: dict[str, Any],
