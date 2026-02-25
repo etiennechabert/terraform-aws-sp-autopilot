@@ -16,6 +16,7 @@ from report_generator import (
     _build_breakdown_table_html,
     _get_type_metrics_for_report,
     _parse_plan_dates,
+    _render_spike_guard_warning_banner,
 )
 
 
@@ -337,3 +338,61 @@ class TestBuildBreakdownTableHtml:
         )
 
         assert html == ""
+
+
+class TestUsageGuardWarningBanner:
+    """Test _render_spike_guard_warning_banner function."""
+
+    def test_returns_empty_when_no_results(self):
+        assert _render_spike_guard_warning_banner(None, {}) == ""
+
+    def test_returns_empty_when_nothing_flagged(self):
+        results = {
+            "compute": {
+                "flagged": False,
+                "long_term_avg": 1.0,
+                "short_term_avg": 1.05,
+                "change_percent": 5.0,
+            }
+        }
+        assert _render_spike_guard_warning_banner(results, {}) == ""
+
+    def test_renders_banner_when_flagged(self):
+        results = {
+            "compute": {
+                "flagged": True,
+                "long_term_avg": 1.0,
+                "short_term_avg": 1.3,
+                "change_percent": 30.0,
+            }
+        }
+        config = {
+            "spike_guard_long_lookback_days": 90,
+            "spike_guard_short_lookback_days": 14,
+        }
+        html = _render_spike_guard_warning_banner(results, config)
+        assert "Usage Spike Detected" in html
+        assert "COMPUTE" in html
+        assert "+30.0%" in html
+        assert "$1.0000/h" in html
+        assert "$1.3000/h" in html
+        assert "purchase_strategy.spike_guard" in html
+
+    def test_renders_multiple_types(self):
+        results = {
+            "compute": {
+                "flagged": True,
+                "long_term_avg": 1.0,
+                "short_term_avg": 1.5,
+                "change_percent": 50.0,
+            },
+            "database": {
+                "flagged": True,
+                "long_term_avg": 0.5,
+                "short_term_avg": 0.7,
+                "change_percent": 40.0,
+            },
+        }
+        html = _render_spike_guard_warning_banner(results, {})
+        assert "COMPUTE" in html
+        assert "DATABASE" in html

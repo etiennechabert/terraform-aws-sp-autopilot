@@ -60,6 +60,13 @@ variable "purchase_strategy" {
         max_purchase_percent = optional(number)
       }))
     })
+
+    spike_guard = optional(object({
+      enabled             = optional(bool, true)
+      long_lookback_days  = optional(number, 90)
+      short_lookback_days = optional(number, 14)
+      threshold_percent   = optional(number, 20)
+    }), {})
   })
 
   validation {
@@ -153,6 +160,33 @@ variable "purchase_strategy" {
       var.purchase_strategy.lookback_days <= 90
     )
     error_message = "lookback_days must be <= 13 for HOURLY granularity or <= 90 for DAILY granularity."
+  }
+
+  # spike_guard validations
+  validation {
+    condition = (
+      try(var.purchase_strategy.spike_guard.long_lookback_days, 90) >
+      try(var.purchase_strategy.spike_guard.short_lookback_days, 14)
+    )
+    error_message = "spike_guard.long_lookback_days must be greater than short_lookback_days."
+  }
+
+  validation {
+    condition     = try(var.purchase_strategy.spike_guard.long_lookback_days, 90) <= 90
+    error_message = "spike_guard.long_lookback_days must be <= 90."
+  }
+
+  validation {
+    condition     = try(var.purchase_strategy.spike_guard.short_lookback_days, 14) >= 1
+    error_message = "spike_guard.short_lookback_days must be >= 1."
+  }
+
+  validation {
+    condition = (
+      try(var.purchase_strategy.spike_guard.threshold_percent, 20) >= 1 &&
+      try(var.purchase_strategy.spike_guard.threshold_percent, 20) <= 100
+    )
+    error_message = "spike_guard.threshold_percent must be between 1 and 100."
   }
 }
 

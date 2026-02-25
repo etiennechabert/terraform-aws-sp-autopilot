@@ -99,6 +99,21 @@ def handler(event: dict[str, Any], context: Any) -> dict[str, Any]:
 
         logger.info(f"Found {len(messages)} purchase intents in queue")
 
+        # Step 1.5: Run purchasing spike guard
+        if config.get("spike_guard_enabled", True):
+            messages = _run_purchasing_spike_guard(clients, config, messages)
+            if not messages:
+                logger.info("All messages blocked by spike guard - exiting")
+                return {
+                    "statusCode": 200,
+                    "body": json.dumps(
+                        {
+                            "message": "All purchases blocked by spike guard",
+                            "purchases_executed": 0,
+                        }
+                    ),
+                }
+
         # Step 2: Get current coverage
         coverage = get_current_coverage(clients, config)
         logger.info(
@@ -731,4 +746,135 @@ def send_summary_email(
         logger.info("Summary email sent successfully")
     except ClientError as e:
         logger.error(f"Failed to send summary email: {e!s}")
+        raise
+
+
+def _run_purchasing_spike_guard(
+    clients: dict[str, Any],
+    config: dict[str, Any],
+    messages: list[dict[str, Any]],
+) -> list[dict[str, Any]]:
+    """
+    Run spike guard at purchase time and filter out blocked messages.
+
+    Compares scheduling-time 14d average (from SQS message) against current 14d average.
+    If usage dropped since scheduling (confirming the spike was temporary), those messages
+    are consumed (deleted) from the queue.
+
+    Returns remaining (non-blocked) messages.
+    """
+    # Extract scheduling averages from first message
+    first_body = json.loads(messages[0]["Body"])
+    scheduling_avgs = first_body.get("scheduling_avg_hourly_total")
+
+    if not scheduling_avgs:
+        logger.info("No scheduling_avg_hourly_total in message — skipping purchasing spike guard")
+        return messages
+
+    from shared.spending_analyzer import SpendingAnalyzer
+    from shared.usage_decline_check import run_purchasing_spike_guard
+
+    analyzer = SpendingAnalyzer(clients["savingsplans"], clients["ce"])
+    guard_results = run_purchasing_spike_guard(analyzer, scheduling_avgs, config)
+
+    flagged_types = {t for t, r in guard_results.items() if r["flagged"]}
+    if not flagged_types:
+        return messages
+
+    # Split messages into processable vs blocked
+    processable = []
+    blocked_messages = []
+    for msg in messages:
+        body = json.loads(msg["Body"])
+        if body.get("sp_type") in flagged_types:
+            blocked_messages.append(msg)
+        else:
+            processable.append(msg)
+
+    # Consume (delete) blocked messages from the queue
+    queue_adapter = QueueAdapter(sqs_client=clients["sqs"], queue_url=config["queue_url"])
+    for msg in blocked_messages:
+        queue_adapter.delete_message(msg["ReceiptHandle"])
+    logger.warning(
+        f"Deleted {len(blocked_messages)} blocked message(s) from queue: {flagged_types}"
+    )
+
+    # Send spike guard notification
+    _send_spike_guard_notification(clients["sns"], config, blocked_messages, guard_results)
+
+    return processable
+
+
+def _send_spike_guard_notification(
+    sns_client: SNSClient,
+    config: dict[str, Any],
+    blocked_messages: list[dict[str, Any]],
+    guard_results: dict[str, dict[str, Any]],
+) -> None:
+    """Send notification that purchases were blocked at purchase time due to usage drop since scheduling."""
+    flagged_types = set()
+    for msg in blocked_messages:
+        body = json.loads(msg["Body"])
+        flagged_types.add(body.get("sp_type", "unknown"))
+
+    lines = [
+        "⚠️  USAGE DROP SINCE SCHEDULING — Purchases Blocked",
+        "=" * 60,
+        "",
+        f"{len(blocked_messages)} purchase intent(s) were blocked and removed from the queue.",
+        "Usage dropped between scheduling and purchase time, confirming the spike was temporary.",
+        "",
+        "Drop Details:",
+        "-" * 50,
+    ]
+
+    for sp_type in sorted(flagged_types):
+        result = guard_results.get(sp_type, {})
+        lines.extend(
+            [
+                f"  {sp_type.upper()} Savings Plan:",
+                f"    Scheduling-time avg: ${result.get('baseline_avg', 0):.4f}/hour",
+                f"    Current avg: ${result.get('current_avg', 0):.4f}/hour",
+                f"    Drop: -{result.get('change_percent', 0):.1f}%",
+                "",
+            ]
+        )
+
+    lines.extend(
+        [
+            "Blocked Purchase Intents:",
+            "-" * 50,
+        ]
+    )
+
+    for i, msg in enumerate(blocked_messages, 1):
+        body = json.loads(msg["Body"])
+        lines.append(
+            f"  {i}. {body.get('sp_type', 'unknown').upper()} — "
+            f"${body.get('hourly_commitment', 0):.4f}/hour"
+        )
+
+    lines.extend(
+        [
+            "",
+            "These messages have been consumed from the queue.",
+            "The scheduler will re-evaluate on its next run.",
+            "",
+            "To adjust sensitivity, modify spike_guard settings in your Terraform configuration:",
+            "  purchase_strategy.spike_guard.threshold_percent (currently "
+            f"{config.get('spike_guard_threshold_percent', 20)}%)",
+            "  purchase_strategy.spike_guard.enabled = false  (to disable entirely)",
+        ]
+    )
+
+    message = "\n".join(lines)
+    try:
+        sns_client.publish(
+            TopicArn=config["sns_topic_arn"],
+            Subject="SP Autopilot — Purchases Blocked at Purchase Time (Usage Drop)",
+            Message=message,
+        )
+        logger.info("Usage guard notification sent")
+    except ClientError as e:
+        logger.error(f"Failed to send spike guard notification: {e!s}")
         raise

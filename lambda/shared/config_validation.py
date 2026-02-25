@@ -326,6 +326,7 @@ def validate_scheduler_config(config: dict[str, Any]) -> None:
     _validate_sp_terms(config)
     _validate_sp_payment_options(config)
     _validate_strategy_and_granularity(config)
+    _validate_spike_guard_params(config)
 
 
 def validate_reporter_config(config: dict[str, Any]) -> None:
@@ -403,6 +404,8 @@ def validate_reporter_config(config: dict[str, Any]) -> None:
         ],
     )
 
+    _validate_spike_guard_params(config)
+
 
 def validate_purchaser_config(config: dict[str, Any]) -> None:
     """
@@ -461,3 +464,41 @@ def validate_purchaser_config(config: dict[str, Any]) -> None:
             "teams_webhook_url",
         ],
     )
+
+    _validate_spike_guard_params(config)
+
+
+def _validate_spike_guard_params(config: dict[str, Any]) -> None:
+    """Validate spike guard parameters if present."""
+    if "spike_guard_long_lookback_days" in config:
+        long_days = config["spike_guard_long_lookback_days"]
+        if not isinstance(long_days, int) or long_days < 1 or long_days > 90:
+            raise ValueError(
+                f"Field 'spike_guard_long_lookback_days' must be an integer between 1 and 90, "
+                f"got {long_days}"
+            )
+
+    if "spike_guard_short_lookback_days" in config:
+        short_days = config["spike_guard_short_lookback_days"]
+        if not isinstance(short_days, int) or short_days < 1:
+            raise ValueError(
+                f"Field 'spike_guard_short_lookback_days' must be a positive integer, "
+                f"got {short_days}"
+            )
+
+    if (
+        "spike_guard_long_lookback_days" in config
+        and "spike_guard_short_lookback_days" in config
+        and config["spike_guard_long_lookback_days"] <= config["spike_guard_short_lookback_days"]
+    ):
+        raise ValueError(
+            "spike_guard_long_lookback_days must be greater than spike_guard_short_lookback_days"
+        )
+
+    if "spike_guard_threshold_percent" in config:
+        _validate_percentage_range(
+            config["spike_guard_threshold_percent"],
+            "spike_guard_threshold_percent",
+            1.0,
+            100.0,
+        )

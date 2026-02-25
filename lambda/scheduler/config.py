@@ -12,6 +12,7 @@ from shared.config_schemas import (
     AWS_COMMON,
     SP_TERM_PAYMENT_OPTIONS,
     SP_TYPE_TOGGLES,
+    SPIKE_GUARD_PARAMS,
     STRATEGY_PARAMS,
 )
 from shared.handler_utils import load_config_from_env
@@ -66,6 +67,7 @@ CONFIG_SCHEMA = {
         "env_var": "MIN_COMMITMENT_PER_PLAN",
     },
     **SP_TERM_PAYMENT_OPTIONS,
+    **SPIKE_GUARD_PARAMS,
     **AWS_COMMON,
 }
 

@@ -89,13 +89,21 @@ def handler(event: dict[str, Any], context: Any) -> dict[str, Any]:
 
     queue_module.purge_queue(clients["sqs"], config["queue_url"])
 
+    # Run spike guard (detect usage spikes before purchase calculation)
+    analyzer = SpendingAnalyzer(clients["savingsplans"], clients["ce"])
+    short_term_averages = None
+    guard_results = None
+    if config.get("spike_guard_enabled", True):
+        from shared.usage_decline_check import run_scheduling_spike_guard
+
+        short_term_averages, guard_results = run_scheduling_spike_guard(analyzer, config)
+
     # Conditionally analyze spending based on target strategy
     # - aws target doesn't need spending analysis (uses AWS recommendations only)
     # - fixed/dynamic targets need spending analysis for purchase calculations
     target_strategy = config["target_strategy_type"]
 
     if target_strategy != "aws":
-        analyzer = SpendingAnalyzer(clients["savingsplans"], clients["ce"])
         spending_data = analyzer.analyze_current_spending(config)
 
         # Extract coverage and unknown services for email notifications
@@ -113,6 +121,17 @@ def handler(event: dict[str, Any], context: Any) -> dict[str, Any]:
     # Calculate purchases using selected strategy (strategies handle their own limits)
     purchase_plans = purchase_module.calculate_purchase_need(config, clients, spending_data)
 
+    # Filter out purchase plans for SP types with usage spikes
+    blocked_plans = []
+    if guard_results:
+        flagged_types = {t for t, r in guard_results.items() if r["flagged"]}
+        if flagged_types:
+            blocked_plans = [p for p in purchase_plans if p.get("sp_type") in flagged_types]
+            purchase_plans = [p for p in purchase_plans if p.get("sp_type") not in flagged_types]
+            logger.warning(
+                f"Blocked {len(blocked_plans)} purchase plan(s) due to usage spike: {flagged_types}"
+            )
+
     if config["dry_run"]:
         email_module.send_dry_run_email(
             clients["sns"],
@@ -122,7 +141,9 @@ def handler(event: dict[str, Any], context: Any) -> dict[str, Any]:
             unknown_services if unknown_services else None,
         )
     else:
-        queue_module.queue_purchase_intents(clients["sqs"], config, purchase_plans)
+        queue_module.queue_purchase_intents(
+            clients["sqs"], config, purchase_plans, short_term_averages
+        )
         email_module.send_scheduled_email(
             clients["sns"],
             config,
@@ -131,6 +152,9 @@ def handler(event: dict[str, Any], context: Any) -> dict[str, Any]:
             unknown_services if unknown_services else None,
         )
 
+    if blocked_plans:
+        email_module.send_spike_guard_email(clients["sns"], config, blocked_plans, guard_results)
+
     return {
         "statusCode": 200,
         "body": json.dumps(
@@ -138,6 +162,7 @@ def handler(event: dict[str, Any], context: Any) -> dict[str, Any]:
                 "message": "Scheduler completed successfully",
                 "dry_run": config["dry_run"],
                 "purchases_planned": len(purchase_plans),
+                "purchases_blocked_by_spike_guard": len(blocked_plans),
             }
         ),
     }

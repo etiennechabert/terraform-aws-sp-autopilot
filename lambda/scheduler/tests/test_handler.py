@@ -45,6 +45,7 @@ def mock_env_vars(monkeypatch):
     monkeypatch.setenv("SAGEMAKER_SP_TERM_MIX", '{"three_year": 0.67, "one_year": 0.33}')
     monkeypatch.setenv("SAGEMAKER_SP_PAYMENT_OPTION", "ALL_UPFRONT")
     monkeypatch.setenv("TAGS", "{}")
+    monkeypatch.setenv("SPIKE_GUARD_ENABLED", "false")
 
 
 @pytest.fixture
@@ -722,3 +723,78 @@ def test_handler_successful_response_structure(mock_env_vars, mock_clients, aws_
     assert "message" in body
     assert "dry_run" in body
     assert "purchases_planned" in body
+
+
+def test_handler_spike_guard_blocks_flagged_types(
+    mock_env_vars, mock_clients, aws_mock_builder, monkeypatch
+):
+    """Test spike guard blocks purchases for flagged SP types."""
+    monkeypatch.setenv("SPIKE_GUARD_ENABLED", "true")
+
+    mock_clients["sqs"].purge_queue.return_value = {}
+    mock_clients[
+        "ce"
+    ].get_savings_plans_purchase_recommendation.return_value = aws_mock_builder.recommendation(
+        "compute", hourly_commitment=1.0
+    )
+    mock_clients["sns"].publish.return_value = {"MessageId": "test-msg"}
+
+    guard_results = {
+        "compute": {
+            "flagged": True,
+            "long_term_avg": 1.0,
+            "short_term_avg": 1.3,
+            "change_percent": 30.0,
+        }
+    }
+
+    with patch(
+        "shared.usage_decline_check.run_scheduling_spike_guard",
+        return_value=({"compute": 1.3}, guard_results),
+    ):
+        response = handler.handler({}, None)
+
+    assert response["statusCode"] == 200
+    body = json.loads(response["body"])
+    assert body["purchases_planned"] == 0
+    assert body["purchases_blocked_by_spike_guard"] == 1
+
+    # Should send both dry-run email and spike guard email
+    assert mock_clients["sns"].publish.call_count == 2
+    subjects = [call[1]["Subject"] for call in mock_clients["sns"].publish.call_args_list]
+    assert any("Spike" in s for s in subjects)
+
+
+def test_handler_spike_guard_allows_unflagged_types(
+    mock_env_vars, mock_clients, aws_mock_builder, monkeypatch
+):
+    """Test spike guard allows purchases for unflagged SP types."""
+    monkeypatch.setenv("SPIKE_GUARD_ENABLED", "true")
+
+    mock_clients["sqs"].purge_queue.return_value = {}
+    mock_clients[
+        "ce"
+    ].get_savings_plans_purchase_recommendation.return_value = aws_mock_builder.recommendation(
+        "compute", hourly_commitment=1.0
+    )
+    mock_clients["sns"].publish.return_value = {"MessageId": "test-msg"}
+
+    guard_results = {
+        "compute": {
+            "flagged": False,
+            "long_term_avg": 1.0,
+            "short_term_avg": 1.05,
+            "change_percent": 5.0,
+        }
+    }
+
+    with patch(
+        "shared.usage_decline_check.run_scheduling_spike_guard",
+        return_value=({"compute": 1.05}, guard_results),
+    ):
+        response = handler.handler({}, None)
+
+    assert response["statusCode"] == 200
+    body = json.loads(response["body"])
+    assert body["purchases_planned"] == 1
+    assert body["purchases_blocked_by_spike_guard"] == 0

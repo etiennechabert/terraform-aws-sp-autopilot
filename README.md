@@ -275,6 +275,30 @@ To cancel scheduled purchases before execution:
 
 **Timing:** Must be done between Scheduler and Purchaser runs (during review window).
 
+### Spike Guard
+
+Prevents over-committing to Savings Plans during temporary usage spikes (e.g. Black Friday, seasonal peaks, one-off migrations). Enabled by default, it compares recent average hourly spend against historical baselines and blocks purchases when recent usage is abnormally high.
+
+Two independent checks run automatically:
+- **At scheduling time** — compares 14-day avg vs 90-day avg. Blocks scheduling if recent usage spiked above the threshold.
+- **At purchase time** — compares current 14-day avg vs the 14-day avg recorded at scheduling time. Blocks purchase if usage dropped since scheduling (confirming the spike was temporary).
+
+Only the specific SP types showing anomalies are blocked — other types proceed normally.
+
+```hcl
+purchase_strategy = {
+  # ...
+  spike_guard = {           # optional, defaults to enabled
+    enabled             = true
+    long_lookback_days  = 90  # historical baseline period
+    short_lookback_days = 14  # recent usage period
+    threshold_percent   = 20  # block if recent avg is >= 20% above baseline
+  }
+}
+```
+
+Disable with `spike_guard = { enabled = false }`. The reporter includes a yellow warning banner when a spike is detected.
+
 ## Reference
 
 ### Configuration Variables

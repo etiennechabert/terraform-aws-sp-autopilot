@@ -743,3 +743,167 @@ def test_expiring_sagemaker_plans(mock_env_vars, mock_clients):
     # Verify
     assert response["statusCode"] == 200
     assert mock_clients["savingsplans"].create_savings_plan.called
+
+
+def test_spike_guard_blocks_purchase_on_usage_drop(mock_env_vars, mock_clients, monkeypatch):
+    """Test spike guard blocks purchases when usage dropped since scheduling."""
+    monkeypatch.setenv("SPIKE_GUARD_ENABLED", "true")
+    monkeypatch.setenv("SPIKE_GUARD_SHORT_LOOKBACK_DAYS", "14")
+    monkeypatch.setenv("SPIKE_GUARD_THRESHOLD_PERCENT", "20")
+    monkeypatch.setenv("SPIKE_GUARD_LONG_LOOKBACK_DAYS", "90")
+    monkeypatch.setenv("ENABLE_COMPUTE_SP", "true")
+    monkeypatch.setenv("ENABLE_DATABASE_SP", "false")
+    monkeypatch.setenv("ENABLE_SAGEMAKER_SP", "false")
+
+    # sp_type uses lowercase keys matching what the scheduler actually queues
+    purchase_intent = {
+        "client_token": "test-guard-token",
+        "offering_id": "sp-offering-guard",
+        "commitment": "1.00",
+        "sp_type": "compute",
+        "hourly_commitment": 1.0,
+        "term_seconds": 31536000,
+        "payment_option": "ALL_UPFRONT",
+        "upfront_amount": "8760.00",
+        "scheduling_avg_hourly_total": {"compute": 10.0},
+    }
+
+    mock_clients["sqs"].receive_message.return_value = {
+        "Messages": [{"Body": json.dumps(purchase_intent), "ReceiptHandle": "receipt-guard"}]
+    }
+    mock_clients["sqs"].delete_message.return_value = {}
+    mock_clients["sns"].publish.return_value = {"MessageId": "test-msg"}
+
+    guard_results = {
+        "compute": {
+            "flagged": True,
+            "baseline_avg": 10.0,
+            "current_avg": 7.0,
+            "change_percent": 30.0,
+        }
+    }
+
+    with patch(
+        "shared.usage_decline_check.run_purchasing_spike_guard",
+        return_value=guard_results,
+    ):
+        response = handler.handler({}, {})
+
+    assert response["statusCode"] == 200
+    body = json.loads(response["body"])
+    assert body["purchases_executed"] == 0
+    assert mock_clients["sqs"].delete_message.called
+    assert mock_clients["sns"].publish.called
+    subject = mock_clients["sns"].publish.call_args[1]["Subject"]
+    assert "Blocked" in subject
+
+
+def test_spike_guard_allows_purchase_when_no_drop(mock_env_vars, mock_clients, monkeypatch):
+    """Test spike guard allows purchase when usage hasn't dropped."""
+    monkeypatch.setenv("SPIKE_GUARD_ENABLED", "true")
+    monkeypatch.setenv("SPIKE_GUARD_SHORT_LOOKBACK_DAYS", "14")
+    monkeypatch.setenv("SPIKE_GUARD_THRESHOLD_PERCENT", "20")
+    monkeypatch.setenv("SPIKE_GUARD_LONG_LOOKBACK_DAYS", "90")
+    monkeypatch.setenv("ENABLE_COMPUTE_SP", "true")
+    monkeypatch.setenv("ENABLE_DATABASE_SP", "false")
+    monkeypatch.setenv("ENABLE_SAGEMAKER_SP", "false")
+
+    purchase_intent = {
+        "client_token": "test-guard-token2",
+        "offering_id": "sp-offering-guard2",
+        "commitment": "1.00",
+        "sp_type": "ComputeSavingsPlans",
+        "term_seconds": 31536000,
+        "payment_option": "ALL_UPFRONT",
+        "upfront_amount": "8760.00",
+        "scheduling_avg_hourly_total": {"compute": 10.0},
+    }
+
+    mock_clients["sqs"].receive_message.return_value = {
+        "Messages": [{"Body": json.dumps(purchase_intent), "ReceiptHandle": "receipt-guard2"}]
+    }
+    mock_clients["sns"].publish.return_value = {"MessageId": "test-msg"}
+
+    guard_results = {
+        "compute": {
+            "flagged": False,
+            "baseline_avg": 10.0,
+            "current_avg": 9.5,
+            "change_percent": 5.0,
+        }
+    }
+
+    mock_clients["ce"].get_savings_plans_coverage.return_value = {
+        "SavingsPlansCoverages": [
+            {
+                "Groups": [
+                    {
+                        "Attributes": {"SAVINGS_PLANS_TYPE": "ComputeSavingsPlans"},
+                        "Coverage": {"CoveragePercentage": "80.0"},
+                    }
+                ]
+            }
+        ]
+    }
+    mock_clients["savingsplans"].describe_savings_plans.return_value = {"savingsPlans": []}
+    mock_clients["savingsplans"].create_savings_plan.return_value = {
+        "savingsPlanId": "sp-guard-ok-123"
+    }
+    mock_clients["sqs"].delete_message.return_value = {}
+
+    with patch(
+        "shared.usage_decline_check.run_purchasing_spike_guard",
+        return_value=guard_results,
+    ):
+        response = handler.handler({}, {})
+
+    assert response["statusCode"] == 200
+    body = json.loads(response["body"])
+    assert body["purchases_executed"] == 1
+
+
+def test_spike_guard_skips_without_scheduling_avgs(mock_env_vars, mock_clients, monkeypatch):
+    """Test spike guard is skipped when message doesn't contain scheduling averages."""
+    monkeypatch.setenv("SPIKE_GUARD_ENABLED", "true")
+    monkeypatch.setenv("SPIKE_GUARD_SHORT_LOOKBACK_DAYS", "14")
+    monkeypatch.setenv("SPIKE_GUARD_THRESHOLD_PERCENT", "20")
+    monkeypatch.setenv("SPIKE_GUARD_LONG_LOOKBACK_DAYS", "90")
+
+    purchase_intent = {
+        "client_token": "test-no-avg-token",
+        "offering_id": "sp-offering-no-avg",
+        "commitment": "1.00",
+        "sp_type": "ComputeSavingsPlans",
+        "term_seconds": 31536000,
+        "payment_option": "ALL_UPFRONT",
+        "upfront_amount": "8760.00",
+    }
+
+    mock_clients["sqs"].receive_message.return_value = {
+        "Messages": [{"Body": json.dumps(purchase_intent), "ReceiptHandle": "receipt-no-avg"}]
+    }
+    mock_clients["sns"].publish.return_value = {"MessageId": "test-msg"}
+
+    mock_clients["ce"].get_savings_plans_coverage.return_value = {
+        "SavingsPlansCoverages": [
+            {
+                "Groups": [
+                    {
+                        "Attributes": {"SAVINGS_PLANS_TYPE": "ComputeSavingsPlans"},
+                        "Coverage": {"CoveragePercentage": "80.0"},
+                    }
+                ]
+            }
+        ]
+    }
+    mock_clients["savingsplans"].describe_savings_plans.return_value = {"savingsPlans": []}
+    mock_clients["savingsplans"].create_savings_plan.return_value = {
+        "savingsPlanId": "sp-no-avg-123"
+    }
+    mock_clients["sqs"].delete_message.return_value = {}
+
+    response = handler.handler({}, {})
+
+    assert response["statusCode"] == 200
+    body = json.loads(response["body"])
+    assert body["purchases_executed"] == 1

@@ -23,32 +23,36 @@ resource "aws_lambda_function" "scheduler" {
 
   environment {
     variables = {
-      QUEUE_URL                   = aws_sqs_queue.purchase_intents.url
-      SNS_TOPIC_ARN               = aws_sns_topic.notifications.arn
-      DRY_RUN                     = tostring(local.dry_run)
-      ENABLE_COMPUTE_SP           = tostring(local.compute_enabled)
-      ENABLE_DATABASE_SP          = tostring(local.database_enabled)
-      ENABLE_SAGEMAKER_SP         = tostring(local.sagemaker_enabled)
-      COVERAGE_TARGET_PERCENT     = tostring(local.coverage_target_percent)
-      TARGET_STRATEGY_TYPE        = local.target_strategy_type
-      SPLIT_STRATEGY_TYPE         = local.split_strategy_type
-      DYNAMIC_RISK_LEVEL          = local.dynamic_risk_level
-      FIXED_STEP_PERCENT          = tostring(local.fixed_step_percent)
-      MAX_PURCHASE_PERCENT        = tostring(local.max_purchase_percent)
-      MIN_PURCHASE_PERCENT        = tostring(local.min_purchase_percent)
-      GAP_SPLIT_DIVIDER           = tostring(local.gap_split_divider)
-      RENEWAL_WINDOW_DAYS         = tostring(local.renewal_window_days)
-      PURCHASE_COOLDOWN_DAYS      = tostring(local.purchase_cooldown_days)
-      LOOKBACK_DAYS               = tostring(local.lookback_days)
-      GRANULARITY                 = local.granularity
-      MIN_COMMITMENT_PER_PLAN     = tostring(local.min_commitment_per_plan)
-      COMPUTE_SP_TERM             = local.compute_term
-      COMPUTE_SP_PAYMENT_OPTION   = local.compute_payment_option
-      DATABASE_SP_PAYMENT_OPTION  = local.database_sp_payment_option
-      SAGEMAKER_SP_TERM           = local.sagemaker_term
-      SAGEMAKER_SP_PAYMENT_OPTION = local.sagemaker_payment_option
-      MANAGEMENT_ACCOUNT_ROLE_ARN = local.lambda_scheduler_assume_role_arn
-      TAGS                        = jsonencode(local.common_tags)
+      QUEUE_URL                       = aws_sqs_queue.purchase_intents.url
+      SNS_TOPIC_ARN                   = aws_sns_topic.notifications.arn
+      DRY_RUN                         = tostring(local.dry_run)
+      ENABLE_COMPUTE_SP               = tostring(local.compute_enabled)
+      ENABLE_DATABASE_SP              = tostring(local.database_enabled)
+      ENABLE_SAGEMAKER_SP             = tostring(local.sagemaker_enabled)
+      COVERAGE_TARGET_PERCENT         = tostring(local.coverage_target_percent)
+      TARGET_STRATEGY_TYPE            = local.target_strategy_type
+      SPLIT_STRATEGY_TYPE             = local.split_strategy_type
+      DYNAMIC_RISK_LEVEL              = local.dynamic_risk_level
+      FIXED_STEP_PERCENT              = tostring(local.fixed_step_percent)
+      MAX_PURCHASE_PERCENT            = tostring(local.max_purchase_percent)
+      MIN_PURCHASE_PERCENT            = tostring(local.min_purchase_percent)
+      GAP_SPLIT_DIVIDER               = tostring(local.gap_split_divider)
+      RENEWAL_WINDOW_DAYS             = tostring(local.renewal_window_days)
+      PURCHASE_COOLDOWN_DAYS          = tostring(local.purchase_cooldown_days)
+      LOOKBACK_DAYS                   = tostring(local.lookback_days)
+      GRANULARITY                     = local.granularity
+      MIN_COMMITMENT_PER_PLAN         = tostring(local.min_commitment_per_plan)
+      COMPUTE_SP_TERM                 = local.compute_term
+      COMPUTE_SP_PAYMENT_OPTION       = local.compute_payment_option
+      DATABASE_SP_PAYMENT_OPTION      = local.database_sp_payment_option
+      SAGEMAKER_SP_TERM               = local.sagemaker_term
+      SAGEMAKER_SP_PAYMENT_OPTION     = local.sagemaker_payment_option
+      MANAGEMENT_ACCOUNT_ROLE_ARN     = local.lambda_scheduler_assume_role_arn
+      TAGS                            = jsonencode(local.common_tags)
+      SPIKE_GUARD_ENABLED             = tostring(local.spike_guard_enabled)
+      SPIKE_GUARD_LONG_LOOKBACK_DAYS  = tostring(local.spike_guard_long_lookback_days)
+      SPIKE_GUARD_SHORT_LOOKBACK_DAYS = tostring(local.spike_guard_short_lookback_days)
+      SPIKE_GUARD_THRESHOLD_PERCENT   = tostring(local.spike_guard_threshold_percent)
     }
   }
 
@@ -77,15 +81,22 @@ resource "aws_lambda_function" "purchaser" {
 
   environment {
     variables = {
-      QUEUE_URL                   = aws_sqs_queue.purchase_intents.url
-      SNS_TOPIC_ARN               = aws_sns_topic.notifications.arn
-      RENEWAL_WINDOW_DAYS         = tostring(local.renewal_window_days)
-      LOOKBACK_DAYS               = tostring(local.lookback_days)
-      GRANULARITY                 = local.granularity
-      SLACK_WEBHOOK_URL           = local.slack_webhook_url
-      TEAMS_WEBHOOK_URL           = local.teams_webhook_url
-      MANAGEMENT_ACCOUNT_ROLE_ARN = local.lambda_purchaser_assume_role_arn
-      TAGS                        = jsonencode(local.common_tags)
+      QUEUE_URL                       = aws_sqs_queue.purchase_intents.url
+      SNS_TOPIC_ARN                   = aws_sns_topic.notifications.arn
+      RENEWAL_WINDOW_DAYS             = tostring(local.renewal_window_days)
+      LOOKBACK_DAYS                   = tostring(local.lookback_days)
+      GRANULARITY                     = local.granularity
+      ENABLE_COMPUTE_SP               = tostring(local.compute_enabled)
+      ENABLE_DATABASE_SP              = tostring(local.database_enabled)
+      ENABLE_SAGEMAKER_SP             = tostring(local.sagemaker_enabled)
+      SLACK_WEBHOOK_URL               = local.slack_webhook_url
+      TEAMS_WEBHOOK_URL               = local.teams_webhook_url
+      MANAGEMENT_ACCOUNT_ROLE_ARN     = local.lambda_purchaser_assume_role_arn
+      TAGS                            = jsonencode(local.common_tags)
+      SPIKE_GUARD_ENABLED             = tostring(local.spike_guard_enabled)
+      SPIKE_GUARD_LONG_LOOKBACK_DAYS  = tostring(local.spike_guard_long_lookback_days)
+      SPIKE_GUARD_SHORT_LOOKBACK_DAYS = tostring(local.spike_guard_short_lookback_days)
+      SPIKE_GUARD_THRESHOLD_PERCENT   = tostring(local.spike_guard_threshold_percent)
     }
   }
 
@@ -114,34 +125,38 @@ resource "aws_lambda_function" "reporter" {
 
   environment {
     variables = {
-      REPORTS_BUCKET              = aws_s3_bucket.reports.id
-      SNS_TOPIC_ARN               = aws_sns_topic.notifications.arn
-      REPORT_FORMAT               = local.report_format
-      EMAIL_REPORTS               = tostring(local.email_reports)
-      INCLUDE_DEBUG_DATA          = tostring(local.include_debug_data)
-      SLACK_WEBHOOK_URL           = local.slack_webhook_url
-      TEAMS_WEBHOOK_URL           = local.teams_webhook_url
-      LOW_UTILIZATION_THRESHOLD   = tostring(local.low_utilization_threshold)
-      LOOKBACK_DAYS               = tostring(local.lookback_days)
-      GRANULARITY                 = local.granularity
-      ENABLE_COMPUTE_SP           = tostring(local.compute_enabled)
-      ENABLE_DATABASE_SP          = tostring(local.database_enabled)
-      ENABLE_SAGEMAKER_SP         = tostring(local.sagemaker_enabled)
-      COVERAGE_TARGET_PERCENT     = tostring(local.coverage_target_percent)
-      TARGET_STRATEGY_TYPE        = local.target_strategy_type
-      SPLIT_STRATEGY_TYPE         = local.split_strategy_type
-      DYNAMIC_RISK_LEVEL          = local.dynamic_risk_level
-      FIXED_STEP_PERCENT          = tostring(local.fixed_step_percent)
-      MAX_PURCHASE_PERCENT        = tostring(local.max_purchase_percent)
-      MIN_PURCHASE_PERCENT        = tostring(local.min_purchase_percent)
-      GAP_SPLIT_DIVIDER           = tostring(local.gap_split_divider)
-      COMPUTE_SP_TERM             = local.compute_term
-      COMPUTE_SP_PAYMENT_OPTION   = local.compute_payment_option
-      DATABASE_SP_PAYMENT_OPTION  = local.database_sp_payment_option
-      SAGEMAKER_SP_TERM           = local.sagemaker_term
-      SAGEMAKER_SP_PAYMENT_OPTION = local.sagemaker_payment_option
-      MANAGEMENT_ACCOUNT_ROLE_ARN = local.lambda_reporter_assume_role_arn
-      TAGS                        = jsonencode(local.common_tags)
+      REPORTS_BUCKET                  = aws_s3_bucket.reports.id
+      SNS_TOPIC_ARN                   = aws_sns_topic.notifications.arn
+      REPORT_FORMAT                   = local.report_format
+      EMAIL_REPORTS                   = tostring(local.email_reports)
+      INCLUDE_DEBUG_DATA              = tostring(local.include_debug_data)
+      SLACK_WEBHOOK_URL               = local.slack_webhook_url
+      TEAMS_WEBHOOK_URL               = local.teams_webhook_url
+      LOW_UTILIZATION_THRESHOLD       = tostring(local.low_utilization_threshold)
+      LOOKBACK_DAYS                   = tostring(local.lookback_days)
+      GRANULARITY                     = local.granularity
+      ENABLE_COMPUTE_SP               = tostring(local.compute_enabled)
+      ENABLE_DATABASE_SP              = tostring(local.database_enabled)
+      ENABLE_SAGEMAKER_SP             = tostring(local.sagemaker_enabled)
+      COVERAGE_TARGET_PERCENT         = tostring(local.coverage_target_percent)
+      TARGET_STRATEGY_TYPE            = local.target_strategy_type
+      SPLIT_STRATEGY_TYPE             = local.split_strategy_type
+      DYNAMIC_RISK_LEVEL              = local.dynamic_risk_level
+      FIXED_STEP_PERCENT              = tostring(local.fixed_step_percent)
+      MAX_PURCHASE_PERCENT            = tostring(local.max_purchase_percent)
+      MIN_PURCHASE_PERCENT            = tostring(local.min_purchase_percent)
+      GAP_SPLIT_DIVIDER               = tostring(local.gap_split_divider)
+      COMPUTE_SP_TERM                 = local.compute_term
+      COMPUTE_SP_PAYMENT_OPTION       = local.compute_payment_option
+      DATABASE_SP_PAYMENT_OPTION      = local.database_sp_payment_option
+      SAGEMAKER_SP_TERM               = local.sagemaker_term
+      SAGEMAKER_SP_PAYMENT_OPTION     = local.sagemaker_payment_option
+      MANAGEMENT_ACCOUNT_ROLE_ARN     = local.lambda_reporter_assume_role_arn
+      TAGS                            = jsonencode(local.common_tags)
+      SPIKE_GUARD_ENABLED             = tostring(local.spike_guard_enabled)
+      SPIKE_GUARD_LONG_LOOKBACK_DAYS  = tostring(local.spike_guard_long_lookback_days)
+      SPIKE_GUARD_SHORT_LOOKBACK_DAYS = tostring(local.spike_guard_short_lookback_days)
+      SPIKE_GUARD_THRESHOLD_PERCENT   = tostring(local.spike_guard_threshold_percent)
     }
   }
 
