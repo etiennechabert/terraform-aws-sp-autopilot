@@ -279,6 +279,66 @@ def send_spike_guard_email(
         raise
 
 
+def send_cooldown_email(
+    sns_client: SNSClient,
+    config: dict[str, Any],
+    blocked_plans: list[dict[str, Any]],
+    cooldown_types: set[str],
+) -> None:
+    """Send notification that purchases were blocked due to purchase cooldown."""
+    logger.info("Sending cooldown email")
+    cooldown_days = config.get("purchase_cooldown_days", 7)
+
+    lines = [
+        "⏳  PURCHASE COOLDOWN — Purchases Blocked",
+        "=" * 50,
+        "",
+        f"{len(blocked_plans)} purchase plan(s) were blocked because a Savings Plan",
+        f"of the same type was purchased within the last {cooldown_days} days.",
+        "This prevents double-purchasing while Cost Explorer data settles (24-48h lag).",
+        "",
+        f"SP Types in Cooldown: {', '.join(sorted(t.upper() for t in cooldown_types))}",
+        "",
+        "Blocked Purchase Plans:",
+        "-" * 50,
+    ]
+
+    for i, plan in enumerate(blocked_plans, 1):
+        lines.append(
+            f"  {i}. {plan.get('sp_type', 'unknown').upper()} — "
+            f"${plan.get('hourly_commitment', 0):.4f}/hour"
+        )
+
+    lines.extend(
+        [
+            "",
+            "These purchases were NOT scheduled. Non-cooldown SP types (if any) proceeded normally.",
+            "",
+            "To adjust cooldown duration, modify purchase_cooldown_days in your Terraform configuration.",
+        ]
+    )
+
+    message = "\n".join(lines)
+
+    if local_mode.is_local_mode():
+        logger.info("LOCAL MODE: Skipping SNS publish. Cooldown email content:")
+        logger.info("=" * 60)
+        logger.info(message)
+        logger.info("=" * 60)
+        return
+
+    try:
+        sns_client.publish(
+            TopicArn=config["sns_topic_arn"],
+            Subject="SP Autopilot — Purchases Blocked (Cooldown)",
+            Message=message,
+        )
+        logger.info(f"Cooldown email sent to {config['sns_topic_arn']}")
+    except ClientError as e:
+        logger.error(f"Failed to send cooldown email: {e!s}")
+        raise
+
+
 def send_dry_run_email(
     sns_client: SNSClient,
     config: dict[str, Any],
