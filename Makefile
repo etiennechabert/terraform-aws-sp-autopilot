@@ -1,9 +1,11 @@
-.PHONY: help lint lint-check format test test-packaging coverage install-hooks
+.PHONY: help lint lint-check format test test-packaging coverage install-hooks docs docs-check
 
 help:
 	@echo "Available targets:"
 	@echo "  lint         - Run linting and auto-fix issues"
 	@echo "  lint-check   - Check linting without fixing (CI mode)"
+	@echo "  docs         - Generate Terraform docs in README"
+	@echo "  docs-check   - Check if Terraform docs are up-to-date (CI mode)"
 	@echo "  format       - Format Python code with ruff"
 	@echo "  test         - Run all tests"
 	@echo "  coverage     - Run all tests with aggregated coverage report (opens in browser)"
@@ -24,6 +26,12 @@ lint-check:
 	@echo "Checking ruff formatter..."
 	uvx ruff format --check lambda/
 	@echo "✓ Lint check complete"
+
+docs:
+	terraform-docs .
+
+docs-check:
+	terraform-docs . --output-check
 
 # Format Python code
 format:
