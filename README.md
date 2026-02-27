@@ -26,16 +26,6 @@ Automates AWS Savings Plans purchases based on usage analysis, maintaining consi
 - **Risk management** — Spreads financial commitments over time with configurable purchase limits
 - **Email & webhook notifications** — SNS, Slack, and Microsoft Teams integration
 
-### Savings Plan Types
-
-| Type | Coverage | Terms | Payment Options | Max Discount |
-|------|----------|-------|-----------------|--------------|
-| **Compute** | EC2, Lambda, Fargate | 1-year, 3-year | All/Partial/No Upfront | Up to 66% |
-| **Database** | RDS, Aurora, DynamoDB, ElastiCache, DocumentDB, Neptune, Keyspaces, Timestream, DMS | 1-year only | No Upfront only | Up to 35% |
-| **SageMaker** | Training, Inference, Notebooks | 1-year, 3-year | All/Partial/No Upfront | Up to 64% |
-
-> **Database Savings Plans** have fixed AWS constraints: 1-year term, No Upfront payment only.
-
 ## Quick Start
 
 ```hcl
@@ -75,6 +65,36 @@ See the [`examples/`](examples/) directory for complete, working examples:
 - **[organizations](examples/organizations/)** — AWS Organizations multi-account setup
 - **[dynamic-strategy](examples/dynamic-strategy/)** — Dynamic target with gap split
 
+## Architecture
+
+The module consists of three Lambda functions with SQS queue coordination:
+
+![Architecture Diagram](docs/architecture.svg)
+
+**Workflow:**
+
+1. **Scheduler Lambda** (e.g., 1st of month)
+   - Purges stale queue messages
+   - Analyzes current coverage (separate for Compute/Database/SageMaker)
+   - Gets AWS recommendations
+   - Applies purchase strategy
+   - Queues purchase intents to SQS
+
+2. **SQS Queue** (up to 14-day review window)
+   - Holds purchase intents
+   - Users can delete messages to cancel purchases
+   - Messages include full details and idempotency tokens
+
+3. **Purchaser Lambda** (e.g., 15th of month)
+   - Processes queue messages
+   - Executes purchases via AWS CreateSavingsPlan API
+   - Sends email summary
+
+4. **Reporter Lambda** (e.g., 20th of month)
+   - Generates HTML spending reports
+   - Stores in S3
+   - Optionally emails stakeholders
+
 ## Interactive Simulator
 
 The module includes an interactive **[Savings Plan Simulator](https://etiennechabert.github.io/terraform-aws-sp-autopilot/)** to visualize coverage strategies and their cost impact before deploying anything. Generated reports link to the simulator pre-loaded with your data, allowing stakeholders to explore "what-if" scenarios across different target/split combinations.
@@ -83,7 +103,7 @@ The module includes an interactive **[Savings Plan Simulator](https://etiennecha
 
 ## Configuration
 
-### Purchase Strategies
+### `purchase_strategy`
 
 Strategy is configured with two orthogonal dimensions: **target** (what coverage to aim for) and **split** (how to reach the target). Both must be specified.
 
@@ -136,7 +156,23 @@ purchase_strategy = {
 
 **Use with caution:** AWS recommendations can be aggressive.
 
-### Scheduling
+### `sp_plans`
+
+| Type | Coverage | `plan_type` values | Max Discount |
+|------|----------|--------------------|--------------|
+| **Compute** | EC2, Lambda, Fargate | `all_upfront_three_year`, `all_upfront_one_year`, `partial_upfront_three_year`, `partial_upfront_one_year`, `no_upfront_three_year`, `no_upfront_one_year` | Up to 66% |
+| **Database** | RDS, Aurora, DynamoDB, ElastiCache, DocumentDB, Neptune, Keyspaces, Timestream, DMS | `no_upfront_one_year` | Up to 35% |
+| **SageMaker** | Training, Inference, Notebooks | Same as Compute | Up to 64% |
+
+```hcl
+sp_plans = {
+  compute   = { enabled = true, plan_type = "all_upfront_one_year" }
+  database  = { enabled = true, plan_type = "no_upfront_one_year" }
+  sagemaker = { enabled = false }
+}
+```
+
+### `cron_schedules`
 
 ```hcl
 cron_schedules = {
@@ -148,7 +184,22 @@ cron_schedules = {
 
 **Review Window:** Time between `scheduler` and `purchaser` runs allows canceling unwanted purchases.
 
-### Notifications
+### `lambda_config`
+
+Controls which Lambda functions are active and cross-account role assumptions.
+
+```hcl
+lambda_config = {
+  purchaser = { enabled = false }  # Disable purchaser to review recommendations first
+  scheduler = { assume_role_arn = "arn:aws:iam::123456789012:role/SPSchedulerRole" }
+}
+```
+
+- **`enabled`** — Enable/disable individual Lambda functions (default: `true`). Disable the purchaser to review scheduler recommendations without executing purchases.
+- **`assume_role_arn`** — Cross-account role for AWS Organizations deployments (see [AWS Organizations Setup](#aws-organizations-setup))
+- **`error_alarm`** — Enable CloudWatch error alarm for the Lambda (default: `true`)
+
+### `notifications`
 
 #### Email
 
@@ -173,36 +224,6 @@ notifications = {
 Savings Plans are purchased as hourly commitments ($/hour). This module always analyzes data at hourly granularity for accurate purchase sizing.
 
 **Prerequisite:** You must enable **"Hourly and resource level granularity"** in [AWS Cost Explorer settings](https://console.aws.amazon.com/cost-management/home#/settings). Cost: ~$0.10-$1.00/month. The module will return a clear error if this setting is not enabled.
-
-## Architecture
-
-The module consists of three Lambda functions with SQS queue coordination:
-
-![Architecture Diagram](docs/architecture.svg)
-
-**Workflow:**
-
-1. **Scheduler Lambda** (e.g., 1st of month)
-   - Purges stale queue messages
-   - Analyzes current coverage (separate for Compute/Database/SageMaker)
-   - Gets AWS recommendations
-   - Applies purchase strategy
-   - Queues purchase intents to SQS
-
-2. **SQS Queue** (review window)
-   - Holds purchase intents
-   - Users can delete messages to cancel purchases
-   - Messages include full details and idempotency tokens
-
-3. **Purchaser Lambda** (e.g., 4th of month)
-   - Processes queue messages
-   - Executes purchases via AWS CreateSavingsPlan API
-   - Sends email summary
-
-4. **Reporter Lambda** (e.g., 20th of month)
-   - Generates HTML spending reports
-   - Stores in S3
-   - Optionally emails stakeholders
 
 ## Advanced Topics
 
@@ -234,15 +255,13 @@ See [organizations example](examples/organizations/README.md) for complete setup
 
 ### Recommended Rollout
 
-Start with **1-year No Upfront** commitments to validate the automation with minimal risk. Once comfortable after the first year, switch to **3-year All Upfront** for maximum savings — expiring 1Y plans will naturally get replaced by 3Y over time.
+1. **Review mode** — Deploy with the purchaser Lambda disabled (`lambda_config.purchaser.enabled = false`). The scheduler queues intents to SQS where you can inspect them, but nothing gets purchased.
 
-| Phase | `plan_type` | Purchaser | Purpose |
-|-------|-------------|-----------|---------|
-| **Week 1** | — | disabled | Review recommendations only (scheduler queues to SQS, inspect messages) |
-| **Year 1** | `no_upfront_one_year` | enabled | Validate with low-risk commitments |
-| **Year 2+** | `all_upfront_three_year` | enabled | Maximize savings as 1Y plans expire |
+2. **Low-risk commitments** — Enable the purchaser and start with `no_upfront_one_year` plan types. Review purchase notifications — you have a configurable window between scheduler and purchaser runs to delete SQS messages and cancel unwanted purchases.
 
-When switching to 3Y, consider slowing down purchases since each commitment lasts longer: increase the `divider` with gap_split (though it naturally purchases less as coverage grows, as long as `min_purchase_percent` isn't set too high), or reduce `step_percent` with fixed_step.
+3. **Maximum savings** — Once confident after the first year, switch to `all_upfront_three_year` for maximum discounts. Expiring 1Y plans will naturally get replaced by 3Y over time. Consider slowing down purchases since each commitment lasts longer: increase the `divider` with gap_split, or reduce `step_percent` with fixed_step.
+
+4. **[Buy Etienne a coffee](https://buymeacoffee.com/etiennechak)** — If the module saved you time and money.
 
 ### Canceling Purchases
 
@@ -279,66 +298,20 @@ purchase_strategy = {
 
 Disable with `spike_guard = { enabled = false }`. The reporter includes a yellow warning banner when a spike is detected.
 
-## Reference
+### Purchase Cooldown
 
-### Configuration Variables
+After a Savings Plan purchase, AWS Cost Explorer data lags by 24-48 hours — the new commitment won't be reflected in coverage metrics immediately. Without protection, the scheduler could analyze stale data and schedule a duplicate purchase for the same SP type.
 
-Complete variable documentation: **[variables.tf](variables.tf)**
+The cooldown prevents this: after purchasing a Savings Plan, the **specific SP type** (Compute, Database, or SageMaker) is blocked from new purchases for a configurable period (default: 7 days, minimum: 2). Other SP types are unaffected and can still be purchased.
 
-Main configuration objects:
-- `purchase_strategy` — Coverage targets, purchase limits, strategy selection
-- `sp_plans` — Enable/configure Compute, Database, SageMaker
-- `cron_schedules` — Cron schedules for Scheduler, Purchaser, Reporter
-- `notifications` — Email addresses, webhook URLs
-- `lambda_config` — Per-Lambda settings (enable/disable, assume roles, alarms)
-- `monitoring` — CloudWatch alarms, error thresholds
-- `reporting` — Report format, S3 storage, email delivery
+If all enabled SP types are currently in cooldown, the scheduler run is skipped entirely.
 
-### Outputs
-
-**Queue:** `queue_url`, `queue_arn`, `dlq_url`, `dlq_arn`
-
-**Lambdas:** `scheduler_lambda_arn`, `purchaser_lambda_arn`, `reporter_lambda_arn` (+ `_name` variants)
-
-**Notifications:** `sns_topic_arn`
-
-**Configuration:** `module_configuration`, `database_sp_configuration`
-
-### Supported Services
-
-**Compute Savings Plans:** EC2 (any family/size/region/OS/tenancy), Lambda, Fargate
-
-**Database Savings Plans:** RDS, Aurora, DynamoDB, ElastiCache (Valkey), DocumentDB, Neptune, Keyspaces, Timestream, DMS
-
-**SageMaker Savings Plans:** Training, Real-Time Inference, Serverless Inference, Notebook Instances
-
-Coverage is tracked independently for each SP type.
-
-### Requirements
-
-- **Terraform:** >= 1.0
-- **AWS Provider:** >= 5.0
-- **Cost Explorer:** [Hourly and resource level granularity](https://console.aws.amazon.com/cost-management/home#/settings) must be enabled
-- **IAM Permissions:**
-  - Cost Explorer: `ce:GetSavingsPlansPurchaseRecommendation`, `ce:GetSavingsPlansCoverage`
-  - Savings Plans: `savingsplans:CreateSavingsPlan`, `savingsplans:DescribeSavingsPlans`
-  - SQS: `sqs:SendMessage`, `sqs:ReceiveMessage`, `sqs:DeleteMessage`, `sqs:PurgeQueue`
-  - SNS: `sns:Publish`
-  - CloudWatch Logs: Lambda logging
-
-## Contributing
-
-Contributions welcome! See [CONTRIBUTING.md](CONTRIBUTING.md) for branch naming, commit conventions, and PR process. See [DEVELOPMENT.md](DEVELOPMENT.md) for local setup and testing.
-
-## Support
-
-For questions, issues, or feature requests, please open a [GitHub issue](https://github.com/etiennechabert/terraform-aws-sp-autopilot/issues).
-
-## License
-
-This module is open-source software licensed under the [Apache License 2.0](LICENSE).
-
----
+```hcl
+purchase_strategy = {
+  # ...
+  purchase_cooldown_days = 7  # default
+}
+```
 
 ## Terraform Reference
 
@@ -409,3 +382,15 @@ This module is open-source software licensed under the [Apache License 2.0](LICE
 | <a name="output_scheduler_rule_name"></a> [scheduler\_rule\_name](#output\_scheduler\_rule\_name) | Name of the EventBridge rule for Scheduler Lambda |
 | <a name="output_sns_topic_arn"></a> [sns\_topic\_arn](#output\_sns\_topic\_arn) | ARN of the SNS topic for notifications |
 <!-- END_TF_DOCS -->
+
+## Contributing
+
+Contributions welcome! See [CONTRIBUTING.md](CONTRIBUTING.md) for branch naming, commit conventions, and PR process. See [DEVELOPMENT.md](DEVELOPMENT.md) for local setup and testing.
+
+## Support
+
+For questions, issues, or feature requests, please open a [GitHub issue](https://github.com/etiennechabert/terraform-aws-sp-autopilot/issues).
+
+## License
+
+This module is open-source software licensed under the [Apache License 2.0](LICENSE).
