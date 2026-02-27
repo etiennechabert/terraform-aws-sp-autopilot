@@ -48,11 +48,6 @@ func TestExampleSingleAccountCompute(t *testing.T) {
 				"purchaser": disabledCronSchedule,
 				"reporter":  disabledCronSchedule,
 			},
-			"lambda_config": map[string]interface{}{
-				"scheduler": map[string]interface{}{
-					"dry_run": true,
-				},
-			},
 		},
 		NoColor: true,
 		Logger:  getCleanLogger(),
@@ -91,11 +86,6 @@ func TestExampleDynamicStrategy(t *testing.T) {
 				"scheduler": disabledCronSchedule,
 				"purchaser": disabledCronSchedule,
 				"reporter":  disabledCronSchedule,
-			},
-			"lambda_config": map[string]interface{}{
-				"scheduler": map[string]interface{}{
-					"dry_run": true,
-				},
 			},
 		},
 		NoColor: true,

@@ -120,12 +120,11 @@ def load_config_from_env(
         >>> # Simple schema with required and optional fields
         >>> schema = {
         ...     'queue_url': {'required': True, 'type': 'str', 'env_var': 'QUEUE_URL'},
-        ...     'dry_run': {'required': False, 'type': 'bool', 'default': 'true', 'env_var': 'DRY_RUN'},
         ...     'max_purchase_percent': {'required': False, 'type': 'float', 'default': '10'},
         ...     'tags': {'required': False, 'type': 'json', 'default': '{}'}
         ... }
         >>> config = load_config_from_env(schema)
-        >>> # Returns: {'queue_url': '...', 'dry_run': True, 'max_purchase_percent': 10.0, 'tags': {}}
+        >>> # Returns: {'queue_url': '...', 'max_purchase_percent': 10.0, 'tags': {}}
 
         >>> # With validator
         >>> config = load_config_from_env(schema, validator=validate_scheduler_config)

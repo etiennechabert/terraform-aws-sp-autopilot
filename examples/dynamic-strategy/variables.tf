@@ -20,9 +20,6 @@ variable "cron_schedules" {
 variable "lambda_config" {
   description = "Lambda configuration (can be overridden for testing)"
   type = object({
-    scheduler = optional(object({
-      dry_run = optional(bool, false) # Production mode by default for this example
-    }), {})
     purchaser = optional(object({
       enabled = optional(bool, true)
     }), {})

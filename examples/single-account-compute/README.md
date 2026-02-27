@@ -1,6 +1,6 @@
 # Single Account - Compute Savings Plans Only
 
-Simplest deployment scenario: single AWS account, Compute Savings Plans only (EC2, Lambda, Fargate), conservative targets, dry-run mode enabled.
+Simplest deployment scenario: single AWS account, Compute Savings Plans only (EC2, Lambda, Fargate), conservative targets, purchaser disabled by default for safe rollout.
 
 ## Features
 
@@ -8,7 +8,7 @@ Simplest deployment scenario: single AWS account, Compute Savings Plans only (EC
 - ✅ Conservative 5% monthly spend limit
 - ✅ 3-day human review window
 - ✅ Email notifications and CloudWatch alarms
-- ✅ Starts in dry-run mode for safety
+- ✅ Purchaser disabled by default for safe rollout
 
 ## Deployment
 
@@ -36,13 +36,13 @@ Check email for SNS confirmation and click the link.
 
 ## Testing
 
-### Dry-Run Mode (Default)
+### Purchaser Disabled (Default)
 
-Module starts with `lambda_config.scheduler.dry_run = true`:
-- Scheduler analyzes usage monthly
+Module starts with `lambda_config.purchaser.enabled = false`:
+- Scheduler analyzes usage monthly and queues purchase intents to SQS
 - Sends email with recommendations
-- **Does NOT queue purchases**
-- No actual Savings Plans purchased
+- **Purchaser is disabled, so no purchases are executed**
+- Review SQS messages to see what would be purchased
 
 ### Manual Test
 
@@ -53,18 +53,18 @@ aws lambda invoke \
   response.json
 ```
 
-Expected email includes current coverage, recommended purchases, and "DRY RUN" notice.
+Expected email includes current coverage and recommended purchases.
 
 ## Enabling Real Purchases
 
 ### 1. Update Configuration
 
-Edit `main.tf`:
+Edit `main.tf` to enable the purchaser:
 
 ```hcl
 lambda_config = {
-  scheduler = {
-    dry_run = false
+  purchaser = {
+    enabled = true
   }
 }
 ```

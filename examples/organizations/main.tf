@@ -88,7 +88,6 @@ module "savings_plans" {
   # Each Lambda can assume a different role in the management account
   lambda_config = {
     scheduler = {
-      dry_run         = true # Start in dry-run mode - emails only
       assume_role_arn = "arn:aws:iam::123456789012:role/SavingsPlansSchedulerRole"
       error_alarm     = true
     }

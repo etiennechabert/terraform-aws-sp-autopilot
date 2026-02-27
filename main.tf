@@ -142,10 +142,6 @@ locals {
     2.0
   )
 
-  # Scheduler Dry-Run Mode
-
-  dry_run = try(var.lambda_config.scheduler.dry_run, false)
-
   # Notification Settings
 
   notification_emails = var.notifications.emails

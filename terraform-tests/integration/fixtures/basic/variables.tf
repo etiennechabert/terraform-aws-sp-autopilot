@@ -171,7 +171,6 @@ variable "lambda_config" {
     scheduler = optional(object({
       memory_mb       = optional(number, 128)
       timeout         = optional(number, 300)
-      dry_run         = optional(bool, false)
       error_alarm     = optional(bool, true)
       assume_role_arn = optional(string)
     }), {})
@@ -192,7 +191,6 @@ variable "lambda_config" {
   })
   default = {
     scheduler = {
-      dry_run     = true
       error_alarm = true
     }
     purchaser = {

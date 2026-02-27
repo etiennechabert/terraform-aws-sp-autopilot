@@ -19,10 +19,10 @@ Include vulnerability description, reproduction steps, and impact assessment.
 
 This module can make AWS Savings Plans purchases (financial commitments). Default protections:
 
-- **Dry-run mode enabled by default** - No purchases until you set `dry_run = false`
-- **Incremental limits** - Max purchase percentage per run via `max_purchase_percent`
+- **Progressive enablement** — Deploy with the purchaser Lambda disabled, review scheduler analysis emails and SQS queue contents, then enable the purchaser when confident
+- **Incremental limits** — Max purchase percentage per run via `max_purchase_percent`
 
-The `savingsplans:CreateSavingsPlan` IAM permission is required for purchases. Review and test recommendations in dry-run mode before enabling purchases.
+The `savingsplans:CreateSavingsPlan` IAM permission is required for purchases. Review scheduler recommendations before enabling the purchaser Lambda.
 
 ### Dependency Updates
 

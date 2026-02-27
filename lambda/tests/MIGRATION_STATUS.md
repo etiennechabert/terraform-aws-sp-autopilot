@@ -50,7 +50,6 @@ This document tracks the migration of tests from inline AWS API mocks to the `aw
 **test_handler.py** (9 more tests recommended):
 - `test_calculate_current_coverage_with_expiring_plans` - Line ~93
 - `test_get_aws_recommendations_parallel_execution_both_enabled` - Line ~520
-- `test_handler_dry_run_mode` - Line ~1463
 - `test_handler_integration_success` - Multiple coverage/recommendation mocks
 - `test_handler_no_recommendations` - Coverage mocking
 - `test_handler_coverage_api_error` - Error handling tests

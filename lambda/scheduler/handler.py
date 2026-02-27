@@ -9,7 +9,7 @@ This Lambda:
 3. Gets AWS purchase recommendations
 4. Calculates purchase need based on coverage_target_percent and selected strategy
 5. Applies purchase limits (min_commitment_per_plan)
-6. Queues purchase intents (or sends email only if dry_run=true)
+6. Queues purchase intents to SQS
 7. Sends notification email with analysis results
 """
 
@@ -50,7 +50,7 @@ def handler(event: dict[str, Any], context: Any) -> dict[str, Any]:
     4. Analyze current coverage
     5. Get AWS recommendations
     6. Calculate purchases using strategy
-    7. Queue purchases or send dry-run notification
+    7. Queue purchases and send notification
     """
     config = load_config_from_env(CONFIG_SCHEMA, validator=validate_scheduler_config)
 
@@ -92,7 +92,6 @@ def handler(event: dict[str, Any], context: Any) -> dict[str, Any]:
                 "body": json.dumps(
                     {
                         "message": "Skipped — all enabled types within cooldown window",
-                        "dry_run": config["dry_run"],
                         "purchases_planned": 0,
                     }
                 ),
@@ -154,25 +153,14 @@ def handler(event: dict[str, Any], context: Any) -> dict[str, Any]:
                 f"Blocked {len(blocked_plans)} purchase plan(s) due to usage spike: {flagged_types}"
             )
 
-    if config["dry_run"]:
-        email_module.send_dry_run_email(
-            clients["sns"],
-            config,
-            purchase_plans,
-            coverage,
-            unknown_services if unknown_services else None,
-        )
-    else:
-        queue_module.queue_purchase_intents(
-            clients["sqs"], config, purchase_plans, short_term_averages
-        )
-        email_module.send_scheduled_email(
-            clients["sns"],
-            config,
-            purchase_plans,
-            coverage,
-            unknown_services if unknown_services else None,
-        )
+    queue_module.queue_purchase_intents(clients["sqs"], config, purchase_plans, short_term_averages)
+    email_module.send_scheduled_email(
+        clients["sns"],
+        config,
+        purchase_plans,
+        coverage,
+        unknown_services if unknown_services else None,
+    )
 
     if cooldown_blocked_plans:
         email_module.send_cooldown_email(
@@ -187,7 +175,6 @@ def handler(event: dict[str, Any], context: Any) -> dict[str, Any]:
         "body": json.dumps(
             {
                 "message": "Scheduler completed successfully",
-                "dry_run": config["dry_run"],
                 "purchases_planned": len(purchase_plans),
                 "purchases_blocked_by_cooldown": len(cooldown_blocked_plans),
                 "purchases_blocked_by_spike_guard": len(blocked_plans),

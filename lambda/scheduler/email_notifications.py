@@ -1,8 +1,8 @@
 """
 Email notification module for Scheduler Lambda.
 
-Provides email formatting and sending functionality for both scheduled
-purchase notifications and dry run analysis results.
+Provides email formatting and sending functionality for scheduled
+purchase notifications.
 """
 
 from __future__ import annotations
@@ -337,46 +337,3 @@ def send_cooldown_email(
     except ClientError as e:
         logger.error(f"Failed to send cooldown email: {e!s}")
         raise
-
-
-def send_dry_run_email(
-    sns_client: SNSClient,
-    config: dict[str, Any],
-    purchase_plans: list[dict[str, Any]],
-    coverage: dict[str, float] | None,
-    unknown_services: list[str] | None = None,
-) -> None:
-    logger.info("Sending dry run email")
-    _format_and_send(
-        sns_client,
-        config,
-        purchase_plans,
-        coverage,
-        unknown_services,
-        header_lines=[
-            "***** DRY RUN MODE ***** Savings Plans Analysis",
-            "=" * 50,
-            "",
-            "*** NO PURCHASES WERE SCHEDULED ***",
-            "",
-            f"Total Plans Analyzed: {len(purchase_plans)}",
-            "",
-        ],
-        plans_heading="Purchase Plans (WOULD BE SCHEDULED if dry_run=false):",
-        footer_lines=[
-            "TO ENABLE ACTUAL PURCHASES:",
-            "1. Set the DRY_RUN environment variable to 'false'",
-            "2. Update the Lambda configuration:",
-            "   aws lambda update-function-configuration \\",
-            "     --function-name <scheduler-lambda-name> \\",
-            "     --environment Variables={DRY_RUN=false,...}",
-            "",
-            "3. Or via Terraform:",
-            "   Set dry_run = false in your terraform.tfvars",
-            "",
-            "Once disabled, the Scheduler will queue purchase intents to SQS,",
-            "and the Purchaser Lambda will execute the actual purchases.",
-        ],
-        subject="[DRY RUN] Savings Plans Analysis - No Purchases Scheduled",
-        log_label="Dry run",
-    )
