@@ -1,0 +1,18 @@
+formatter: markdown table
+version: ">= 0.16.0"
+
+sections:
+  show:
+    - requirements
+    - providers
+    - resources
+    - inputs
+    - outputs
+
+output:
+  file: README.md
+  mode: inject
+
+sort:
+  enabled: true
+  by: required
