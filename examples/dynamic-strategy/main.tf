@@ -37,8 +37,6 @@ module "savings_plans" {
 
   # Purchase strategy - dynamic target with gap split
   purchase_strategy = {
-    lookback_days = 13 # Max 13 days (AWS HOURLY granularity limit)
-
     target = {
       dynamic = { risk_level = "optimal" } # Knee-point algorithm
     }
@@ -75,16 +73,13 @@ module "savings_plans" {
 
   # Notifications
   notifications = {
-    emails         = ["sre@example.com", "finops@example.com"]
-    send_no_action = true
+    emails = ["sre@example.com", "finops@example.com"]
   }
 
   # Reporting
   reporting = {
-    enabled        = true
-    format         = "html"
-    email_reports  = true
-    retention_days = 365
+    format        = "html"
+    email_reports = true
   }
 
   # Monitoring

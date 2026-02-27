@@ -52,10 +52,19 @@ locals {
 
   # Database SP Configuration
 
-  database_enabled           = var.sp_plans.database.enabled
-  database_plan_type         = var.sp_plans.database.plan_type # Guaranteed "no_upfront_one_year" when enabled=true
-  database_sp_term           = "ONE_YEAR"                      # AWS constraint
-  database_sp_payment_option = "NO_UPFRONT"                    # AWS constraint
+  database_enabled   = var.sp_plans.database.enabled
+  database_plan_type = var.sp_plans.database.plan_type
+
+  # Parse plan_type into term and payment_option (same pattern as compute/sagemaker)
+  database_sp_term = local.database_enabled ? (
+    strcontains(local.database_plan_type, "three_year") ? "THREE_YEAR" : "ONE_YEAR"
+  ) : "ONE_YEAR"
+
+  database_sp_payment_option = local.database_enabled ? (
+    strcontains(local.database_plan_type, "all_upfront") ? "ALL_UPFRONT" :
+    strcontains(local.database_plan_type, "partial_upfront") ? "PARTIAL_UPFRONT" :
+    "NO_UPFRONT"
+  ) : "NO_UPFRONT"
 
   # SageMaker SP Configuration
 
@@ -139,18 +148,15 @@ locals {
 
   # Notification Settings
 
-  notification_emails  = var.notifications.emails
-  slack_webhook_url    = try(var.notifications.slack_webhook, null)
-  teams_webhook_url    = try(var.notifications.teams_webhook, null)
-  send_no_action_email = try(var.notifications.send_no_action, true)
+  notification_emails = var.notifications.emails
+  slack_webhook_url   = try(var.notifications.slack_webhook, null)
+  teams_webhook_url   = try(var.notifications.teams_webhook, null)
 
   # Reporting Settings
 
-  enable_reports        = try(var.reporting.enabled, true)
-  report_format         = try(var.reporting.format, "html")
-  email_reports         = try(var.reporting.email_reports, false)
-  include_debug_data    = try(var.reporting.include_debug_data, false)
-  report_retention_days = try(var.reporting.retention_days, 365)
+  report_format      = try(var.reporting.format, "html")
+  email_reports      = try(var.reporting.email_reports, false)
+  include_debug_data = try(var.reporting.include_debug_data, false)
 
   s3_lifecycle_transition_ia_days         = try(var.reporting.s3_lifecycle.transition_ia_days, 90)
   s3_lifecycle_transition_glacier_days    = try(var.reporting.s3_lifecycle.transition_glacier_days, 180)
@@ -185,8 +191,7 @@ locals {
 
   # Purchase Strategy Settings (extract from nested object)
 
-  lookback_days           = try(var.purchase_strategy.lookback_days, 30)
-  min_data_days           = try(var.purchase_strategy.min_data_days, 14)
+  lookback_days           = 13
   renewal_window_days     = try(var.purchase_strategy.renewal_window_days, 7)
   purchase_cooldown_days  = try(var.purchase_strategy.purchase_cooldown_days, 7)
   min_commitment_per_plan = try(var.purchase_strategy.min_commitment_per_plan, 0.001)
@@ -200,8 +205,7 @@ locals {
 
   # Encryption Settings
 
-  sns_kms_key           = try(var.encryption.sns_kms_key, "alias/aws/sns")
-  sqs_kms_key           = try(var.encryption.sqs_kms_key, "alias/aws/sqs")
-  s3_encryption_enabled = try(var.encryption.s3.enabled, true)
-  s3_kms_key            = try(var.encryption.s3.kms_key, null) # null = AES256, otherwise SSE-KMS
+  sns_kms_key = try(var.encryption.sns_kms_key, "alias/aws/sns")
+  sqs_kms_key = try(var.encryption.sqs_kms_key, "alias/aws/sqs")
+  s3_kms_key  = try(var.encryption.s3.kms_key, null) # null = AES256, otherwise SSE-KMS
 }

@@ -28,8 +28,6 @@ module "savings_plans" {
 
   # Purchase strategy - follow AWS recommendations directly
   purchase_strategy = {
-    lookback_days = 13 # Max 13 days (AWS HOURLY granularity limit)
-
     target = {
       aws = {} # Follow AWS Cost Explorer recommendations
     }
@@ -71,7 +69,6 @@ module "savings_plans" {
       "cloud-governance@example.com", # Cloud governance team
       "aws-admins@example.com"        # AWS administrators
     ]
-    send_no_action = true # Get notified even when no action needed
   }
 
   # Reporting
