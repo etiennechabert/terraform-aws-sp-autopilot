@@ -133,7 +133,6 @@ def _ensure_savings_rates(config: dict[str, Any], clients: dict[str, Any]) -> di
                 clients["ce"],
                 sp_type["name"],
                 config.get("lookback_days", 13),
-                config.get("granularity", "DAILY"),
             )
             if metrics["savings_percentage"] > 0:
                 config[config_key] = metrics["savings_percentage"]

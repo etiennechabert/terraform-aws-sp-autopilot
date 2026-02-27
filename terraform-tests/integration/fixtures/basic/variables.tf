@@ -20,7 +20,6 @@ variable "purchase_strategy" {
   type = object({
     lookback_days           = optional(number, 13)
     min_data_days           = optional(number, 14)
-    granularity             = optional(string, "HOURLY")
     renewal_window_days     = optional(number, 7)
     purchase_cooldown_days  = optional(number, 7)
     min_commitment_per_plan = optional(number, 0.001)
@@ -44,7 +43,6 @@ variable "purchase_strategy" {
   default = {
     lookback_days           = 7
     min_data_days           = 14
-    granularity             = "DAILY"
     renewal_window_days     = 7
     min_commitment_per_plan = 0.001
 

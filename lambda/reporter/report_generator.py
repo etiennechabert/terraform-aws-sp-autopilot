@@ -1455,7 +1455,7 @@ def generate_html_report(
                 </div>
                 <span style="color: #dee2e6;">•</span>
                 <div class="param-item">
-                    <strong>Granularity:</strong> <span>{config["granularity"]}</span>
+                    <strong>Granularity:</strong> <span>HOURLY</span>
                 </div>
                 <span style="color: #dee2e6;">•</span>
                 <div class="param-item">
@@ -2354,7 +2354,7 @@ def generate_json_report(
         },
         "report_parameters": {
             "lookback_days": config.get("lookback_days"),
-            "granularity": config.get("granularity"),
+            "granularity": "HOURLY",
             "enable_compute_sp": config.get("enable_compute_sp"),
             "enable_database_sp": config.get("enable_database_sp"),
             "enable_sagemaker_sp": config.get("enable_sagemaker_sp"),

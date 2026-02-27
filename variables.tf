@@ -40,7 +40,6 @@ variable "purchase_strategy" {
   type = object({
     lookback_days           = optional(number, 13)
     min_data_days           = optional(number, 14)
-    granularity             = optional(string, "HOURLY")
     renewal_window_days     = optional(number, 7)
     purchase_cooldown_days  = optional(number, 7)
     min_commitment_per_plan = optional(number, 0.001)
@@ -75,8 +74,8 @@ variable "purchase_strategy" {
   }
 
   validation {
-    condition     = try(var.purchase_strategy.purchase_cooldown_days >= 0, true)
-    error_message = "purchase_cooldown_days must be >= 0."
+    condition     = try(var.purchase_strategy.purchase_cooldown_days >= 2, true)
+    error_message = "purchase_cooldown_days must be >= 2 (Cost Explorer data lags 24-48h)."
   }
 
   # Exactly one target must be defined
@@ -149,17 +148,8 @@ variable "purchase_strategy" {
   }
 
   validation {
-    condition     = contains(["HOURLY", "DAILY"], try(var.purchase_strategy.granularity, "HOURLY"))
-    error_message = "granularity must be either 'HOURLY' or 'DAILY'."
-  }
-
-  validation {
-    condition = (
-      try(var.purchase_strategy.granularity, "HOURLY") == "HOURLY" ?
-      var.purchase_strategy.lookback_days <= 13 :
-      var.purchase_strategy.lookback_days <= 90
-    )
-    error_message = "lookback_days must be <= 13 for HOURLY granularity or <= 90 for DAILY granularity."
+    condition     = var.purchase_strategy.lookback_days <= 13
+    error_message = "lookback_days must be <= 13 (AWS Cost Explorer HOURLY granularity limit is 14 days)."
   }
 
   # spike_guard validations

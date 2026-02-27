@@ -16,7 +16,7 @@ from botocore.exceptions import ClientError
 
 from shared import sp_calculations
 from shared.aws_debug import add_response
-from shared.constants import DIMENSION_SAVINGS_PLANS_TYPE, PLAN_TYPE_TO_API_FILTER
+from shared.constants import AWS_TYPE_TO_KEY, DIMENSION_SAVINGS_PLANS_TYPE, PLAN_TYPE_TO_API_FILTER
 
 
 if TYPE_CHECKING:
@@ -47,7 +47,6 @@ def _aggregate_type_metrics(
     enabled_plan_types: list[str],
     breakdown_by_type: dict[str, Any],
     lookback_days: int,
-    granularity: str,
 ) -> tuple[float, float, float, float]:
     """Fetch and aggregate per-type metrics. Returns (net_savings, on_demand_equivalent, sp_cost, used_commitment)."""
     total_net_savings = 0.0
@@ -56,7 +55,7 @@ def _aggregate_type_metrics(
     total_used_commitment = 0.0
 
     for plan_type in enabled_plan_types:
-        type_metrics = get_savings_plans_metrics(ce_client, plan_type, lookback_days, granularity)
+        type_metrics = get_savings_plans_metrics(ce_client, plan_type, lookback_days)
 
         if plan_type in breakdown_by_type:
             breakdown_by_type[plan_type]["average_utilization"] = type_metrics[
@@ -103,28 +102,29 @@ def _calculate_weighted_utilization(breakdown_by_type: dict[str, Any]) -> float:
     )
 
 
-def has_recent_purchase(
+def get_recent_purchase_sp_types(
     savingsplans_client: SavingsPlansClient,
     cooldown_days: int = 7,
-) -> bool:
+) -> set[str]:
     """
-    Check if any Savings Plan was purchased within the cooldown period.
+    Return the set of SP type keys that have been purchased within the cooldown window.
 
     Cost Explorer data lags 24-48h, so recent purchases make coverage
-    calculations unreliable. This prevents double-purchasing.
+    calculations unreliable. This prevents double-purchasing per SP type.
 
     Args:
         savingsplans_client: Boto3 Savings Plans client
         cooldown_days: Number of days to look back for recent purchases
 
     Returns:
-        True if any plan was started within the cooldown window
+        Set of internal SP type keys (e.g. {"compute", "database"}) with recent purchases
     """
     if cooldown_days <= 0:
-        return False
+        return set()
 
     cutoff = datetime.now(UTC) - timedelta(days=cooldown_days)
     plans = get_active_savings_plans(savingsplans_client)
+    recent_types: set[str] = set()
 
     for plan in plans:
         start_str = plan.get("start_date", "")
@@ -133,15 +133,17 @@ def has_recent_purchase(
         try:
             start_date = datetime.fromisoformat(start_str.replace("Z", "+00:00"))
             if start_date >= cutoff:
-                logger.info(
-                    f"Recent purchase detected: plan {plan['plan_id']} started {start_str} "
-                    f"(within {cooldown_days}-day cooldown)"
-                )
-                return True
+                sp_key = AWS_TYPE_TO_KEY.get(plan["plan_type"])
+                if sp_key:
+                    logger.info(
+                        f"Recent purchase detected: {sp_key} plan {plan['plan_id']} "
+                        f"started {start_str} (within {cooldown_days}-day cooldown)"
+                    )
+                    recent_types.add(sp_key)
         except (ValueError, TypeError):
             continue
 
-    return False
+    return recent_types
 
 
 def get_active_savings_plans(
@@ -290,7 +292,6 @@ def get_savings_plans_metrics(
     ce_client: CostExplorerClient,
     plan_type: str,
     lookback_days: int,
-    granularity: str = "HOURLY",
 ) -> dict[str, Any]:
     """
     Get Savings Plans utilization and savings metrics for a specific plan type.
@@ -301,7 +302,6 @@ def get_savings_plans_metrics(
         ce_client: Boto3 Cost Explorer client
         plan_type: Plan type to filter by ("compute", "sagemaker", "database")
         lookback_days: Number of days to analyze
-        granularity: API granularity - "HOURLY" or "DAILY" (default: "HOURLY")
 
     Returns:
         dict: Combined metrics:
@@ -318,9 +318,7 @@ def get_savings_plans_metrics(
     Raises:
         ClientError: If Cost Explorer API call fails (except DataUnavailableException)
     """
-    logger.info(
-        f"Fetching Savings Plans metrics for {plan_type} for last {lookback_days} days (granularity: {granularity})"
-    )
+    logger.info(f"Fetching Savings Plans metrics for {plan_type} for last {lookback_days} days")
 
     if plan_type not in PLAN_TYPE_TO_API_FILTER:
         raise ValueError(
@@ -330,21 +328,15 @@ def get_savings_plans_metrics(
     try:
         end_time = datetime.now(UTC)
         start_time = end_time - timedelta(days=lookback_days)
-
-        if granularity == "HOURLY":
-            start_time = _round_start_time_for_hourly(start_time)
-
-        # Format dates based on granularity
-        # HOURLY requires ISO 8601 (yyyy-MM-ddTHH:mm:ssZ)
-        # DAILY requires date only (yyyy-MM-dd)
-        date_format = "%Y-%m-%d" if granularity == "DAILY" else "%Y-%m-%dT%H:%M:%SZ"
+        start_time = _round_start_time_for_hourly(start_time)
+        date_format = "%Y-%m-%dT%H:%M:%SZ"
 
         params = {
             "TimePeriod": {
                 "Start": start_time.strftime(date_format),
                 "End": end_time.strftime(date_format),
             },
-            "Granularity": granularity,
+            "Granularity": "HOURLY",
             "Filter": {
                 "Dimensions": {
                     "Key": DIMENSION_SAVINGS_PLANS_TYPE,
@@ -458,7 +450,6 @@ def get_savings_plans_summary(
     ce_client: CostExplorerClient,
     enabled_plan_types: list[str],
     lookback_days: int,
-    granularity: str = "HOURLY",
 ) -> dict[str, Any]:
     """
     Get comprehensive Savings Plans summary combining all metrics.
@@ -472,7 +463,6 @@ def get_savings_plans_summary(
         ce_client: Boto3 Cost Explorer client
         enabled_plan_types: List of enabled plan types (e.g., ["compute", "sagemaker"])
         lookback_days: Number of days to analyze for utilization/savings
-        granularity: API granularity - "HOURLY" or "DAILY" (default: "HOURLY")
 
     Returns:
         dict: Complete summary (all cost values are hourly averages):
@@ -514,9 +504,7 @@ def get_savings_plans_summary(
         total_on_demand_equivalent,
         total_actual_sp_cost,
         total_used_commitment,
-    ) = _aggregate_type_metrics(
-        ce_client, enabled_plan_types, breakdown_by_type, lookback_days, granularity
-    )
+    ) = _aggregate_type_metrics(ce_client, enabled_plan_types, breakdown_by_type, lookback_days)
 
     overall_utilization = _calculate_weighted_utilization(breakdown_by_type)
 

@@ -11,6 +11,7 @@ import sys
 from typing import Any
 
 from shared import sp_calculations
+from shared.constants import AWS_TYPE_TO_KEY
 
 
 # purchase_calculator lives in the scheduler directory; in Lambda archives both
@@ -64,9 +65,6 @@ def _get_configured_key(config: dict[str, Any]) -> str:
     return f"{config.get('target_strategy_type', 'fixed')}+{config.get('split_strategy_type', 'fixed_step')}"
 
 
-_AWS_TYPE_TO_KEY = {"Compute": "compute", "Database": "database", "SageMaker": "sagemaker"}
-
-
 def _inject_actual_savings_rates(
     config: dict[str, Any], savings_data: dict[str, Any] | None
 ) -> dict[str, Any]:
@@ -76,7 +74,7 @@ def _inject_actual_savings_rates(
     if not breakdown:
         return config
     config = config.copy()
-    for aws_name, key in _AWS_TYPE_TO_KEY.items():
+    for aws_name, key in AWS_TYPE_TO_KEY.items():
         pct = breakdown.get(aws_name, {}).get("savings_percentage")
         if pct is not None:
             config[f"{key}_savings_percentage"] = pct

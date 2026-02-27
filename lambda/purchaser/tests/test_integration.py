@@ -49,6 +49,7 @@ def mock_clients():
         mock_sns = Mock()
         mock_ce = Mock()
         mock_sp = Mock()
+        mock_sp.describe_savings_plans.return_value = {"savingsPlans": []}
 
         mock_init.return_value = {
             "sqs": mock_sqs,
@@ -907,3 +908,108 @@ def test_spike_guard_skips_without_scheduling_avgs(mock_env_vars, mock_clients, 
     assert response["statusCode"] == 200
     body = json.loads(response["body"])
     assert body["purchases_executed"] == 1
+
+
+def test_cooldown_blocks_recently_purchased_type(mock_env_vars, mock_clients, monkeypatch):
+    """Cooldown should block purchases for SP types purchased within the cooldown window."""
+    from datetime import datetime, timedelta
+
+    monkeypatch.setenv("PURCHASE_COOLDOWN_DAYS", "7")
+
+    purchase_intent = {
+        "client_token": "test-cooldown-token",
+        "offering_id": "sp-offering-cooldown",
+        "commitment": "1.00",
+        "sp_type": "compute",
+        "hourly_commitment": 1.0,
+        "term_seconds": 31536000,
+        "payment_option": "ALL_UPFRONT",
+        "upfront_amount": "8760.00",
+    }
+
+    mock_clients["sqs"].receive_message.return_value = {
+        "Messages": [{"Body": json.dumps(purchase_intent), "ReceiptHandle": "receipt-cooldown"}]
+    }
+    mock_clients["sqs"].delete_message.return_value = {}
+    mock_clients["sns"].publish.return_value = {"MessageId": "test-msg"}
+
+    recent_start = (datetime.now(UTC) - timedelta(days=2)).strftime("%Y-%m-%dT%H:%M:%S.000Z")
+    mock_clients["savingsplans"].describe_savings_plans.return_value = {
+        "savingsPlans": [
+            {
+                "savingsPlanId": "sp-recent-123",
+                "savingsPlanType": "Compute",
+                "start": recent_start,
+                "state": "active",
+            }
+        ]
+    }
+
+    response = handler.handler({}, {})
+
+    assert response["statusCode"] == 200
+    body = json.loads(response["body"])
+    assert body["purchases_executed"] == 0
+    assert mock_clients["sqs"].delete_message.called
+    assert not mock_clients["savingsplans"].create_savings_plan.called
+
+
+def test_cooldown_allows_different_type(mock_env_vars, mock_clients, monkeypatch):
+    """Cooldown on compute should not block database purchases."""
+    from datetime import datetime, timedelta
+
+    monkeypatch.setenv("PURCHASE_COOLDOWN_DAYS", "7")
+
+    purchase_intent = {
+        "client_token": "test-db-cooldown",
+        "offering_id": "sp-db-offering",
+        "commitment": "1.00",
+        "sp_type": "DatabaseSavingsPlans",
+        "term_seconds": 31536000,
+        "payment_option": "NO_UPFRONT",
+        "upfront_amount": None,
+    }
+
+    mock_clients["sqs"].receive_message.return_value = {
+        "Messages": [{"Body": json.dumps(purchase_intent), "ReceiptHandle": "receipt-db-cd"}]
+    }
+    mock_clients["sns"].publish.return_value = {"MessageId": "test-msg"}
+
+    recent_start = (datetime.now(UTC) - timedelta(days=2)).strftime("%Y-%m-%dT%H:%M:%S.000Z")
+    far_future_end = (datetime.now(UTC) + timedelta(days=365)).strftime("%Y-%m-%dT%H:%M:%S.000Z")
+    mock_clients["savingsplans"].describe_savings_plans.return_value = {
+        "savingsPlans": [
+            {
+                "savingsPlanId": "sp-recent-compute",
+                "savingsPlanType": "Compute",
+                "start": recent_start,
+                "end": far_future_end,
+                "state": "active",
+                "commitment": "1.00",
+            }
+        ]
+    }
+
+    mock_clients["ce"].get_savings_plans_coverage.return_value = {
+        "SavingsPlansCoverages": [
+            {
+                "Groups": [
+                    {
+                        "Attributes": {"SAVINGS_PLANS_TYPE": "DatabaseSavingsPlans"},
+                        "Coverage": {"CoveragePercentage": "50.0"},
+                    }
+                ]
+            }
+        ]
+    }
+    mock_clients["savingsplans"].create_savings_plan.return_value = {
+        "savingsPlanId": "sp-db-new-456"
+    }
+    mock_clients["sqs"].delete_message.return_value = {}
+
+    response = handler.handler({}, {})
+
+    assert response["statusCode"] == 200
+    body = json.loads(response["body"])
+    assert body["purchases_executed"] == 1
+    assert mock_clients["savingsplans"].create_savings_plan.called

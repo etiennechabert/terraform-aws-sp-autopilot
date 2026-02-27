@@ -83,8 +83,8 @@ def handler(event: dict[str, Any], context: Any) -> dict[str, Any]:
     coverage_data.pop("_unknown_services", None)
 
     # Collect daily coverage data (365-day lookback) for long-term trend chart
-    daily_config = {**config, "granularity": "DAILY", "lookback_days": 365}
-    daily_coverage_data = analyzer.analyze_current_spending(daily_config)
+    daily_config = {**config, "lookback_days": 365}
+    daily_coverage_data = analyzer.analyze_daily_spending(daily_config)
     daily_coverage_data.pop("_unknown_services", None)
 
     # Collect savings plans metrics (per enabled plan type)
@@ -93,7 +93,6 @@ def handler(event: dict[str, Any], context: Any) -> dict[str, Any]:
         clients["ce"],
         get_enabled_plan_types(config),
         config["lookback_days"],
-        config["granularity"],
     )
 
     logger.info(
@@ -161,7 +160,6 @@ def handler(event: dict[str, Any], context: Any) -> dict[str, Any]:
             "savings_data": reorder_savings_data(savings_data),
             "config": {
                 "lookback_days": config["lookback_days"],
-                "granularity": config["granularity"],
                 "coverage_target_percent": config["coverage_target_percent"],
                 "enable_compute_sp": config["enable_compute_sp"],
                 "enable_database_sp": config["enable_database_sp"],

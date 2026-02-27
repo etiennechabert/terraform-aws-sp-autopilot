@@ -30,8 +30,7 @@ module "savings_plans" {
 
   # Purchase strategy - fixed target at 100% with fixed 10% steps
   purchase_strategy = {
-    lookback_days = 13       # Max for HOURLY granularity (recommended)
-    granularity   = "HOURLY" # Recommended for accurate analysis
+    lookback_days = 13 # Max 13 days (AWS HOURLY granularity limit)
 
     target = {
       fixed = { coverage_percent = 100 } # Target 100% coverage

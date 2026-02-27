@@ -724,48 +724,16 @@ run "test_notifications_invalid_no_method" {
 }
 
 # ============================================================================
-# Granularity - Variable Validations
+# Lookback Days - Variable Validations
 # ============================================================================
 
-# Test: HOURLY granularity with lookback_days at max (13)
-run "test_hourly_granularity_max_lookback" {
+# Test: lookback_days at max (13)
+run "test_max_lookback_days" {
   command = plan
 
   variables {
     purchase_strategy = {
       lookback_days = 13
-      granularity   = "HOURLY"
-
-      target = {
-        fixed = { coverage_percent = 80 }
-      }
-
-      split = {
-        fixed_step = { step_percent = 5 }
-      }
-    }
-    sp_plans = {
-      compute = {
-        enabled   = true
-        plan_type = "all_upfront_one_year"
-      }
-      database  = { enabled = false }
-      sagemaker = { enabled = false }
-    }
-    notifications = {
-      emails = ["test@example.com"]
-    }
-  }
-}
-
-# Test: DAILY granularity with higher lookback_days
-run "test_daily_granularity_higher_lookback" {
-  command = plan
-
-  variables {
-    purchase_strategy = {
-      lookback_days = 30
-      granularity   = "DAILY"
 
       target = {
         fixed = { coverage_percent = 80 }

@@ -49,7 +49,6 @@ func TestFullDeploymentAndCleanup(t *testing.T) {
 			"name_prefix": uniquePrefix,
 			// Purchase strategy configuration
 			"purchase_strategy": map[string]interface{}{
-				"granularity": "DAILY", // Use DAILY for test compatibility
 				"target": map[string]interface{}{
 					"fixed": map[string]interface{}{
 						"coverage_percent": 80,
