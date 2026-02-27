@@ -271,14 +271,14 @@ variable "sp_plans" {
 variable "cron_schedules" {
   description = "EventBridge cron schedules for each Lambda function. Set to null to disable a schedule."
   type = object({
-    scheduler = optional(string) # Set to null to disable. Default: "cron(0 8 1-7 * MON *)"
-    purchaser = optional(string) # Set to null to disable. Default: "cron(0 8 10-17 * MON *)"
-    reporter  = optional(string) # Set to null to disable. Default: "cron(0 8 20-27 * MON *)"
+    scheduler = optional(string) # Set to null to disable. Default: "cron(0 8 1 * ? *)"
+    purchaser = optional(string) # Set to null to disable. Default: "cron(0 8 10 * ? *)"
+    reporter  = optional(string) # Set to null to disable. Default: "cron(0 9 24 * ? *)"
   })
   default = {
-    scheduler = "cron(0 8 1-7 * MON *)"   # 1st of month at 8am UTC
-    purchaser = "cron(0 8 10-17 * MON *)" # 10th of month at 8am UTC
-    reporter  = "cron(0 8 20-27 * MON *)" # 20th of month at 8am UTC
+    scheduler = "cron(0 8 1 * ? *)"  # 1st of month at 8am UTC
+    purchaser = "cron(0 8 10 * ? *)" # 10th of month at 8am UTC
+    reporter  = "cron(0 9 24 * ? *)" # 24th of month at 9am UTC
   }
 }
 

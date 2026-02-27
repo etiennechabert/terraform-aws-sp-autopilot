@@ -4,7 +4,7 @@ Executes queued Savings Plan purchases from SQS and sends consolidated purchase 
 
 ## Overview
 
-Second component in the automation workflow. Runs on schedule (default: 4th of month) to process purchase intents queued by the [Scheduler Lambda](../scheduler/README.md), execute purchases, and send summary emails.
+Second component in the automation workflow. Runs on schedule (default: 10th of month) to process purchase intents queued by the [Scheduler Lambda](../scheduler/README.md), execute purchases, and send summary emails.
 
 ## Workflow
 

@@ -483,8 +483,8 @@ run "test_reporter_eventbridge_rule_default_schedule" {
   }
 
   assert {
-    condition     = aws_cloudwatch_event_rule.reporter[0].schedule_expression == "cron(0 9 20 * ? *)"
-    error_message = "Reporter EventBridge rule should use default schedule: cron(0 9 20 * ? *)"
+    condition     = aws_cloudwatch_event_rule.reporter[0].schedule_expression == "cron(0 9 24 * ? *)"
+    error_message = "Reporter EventBridge rule should use default schedule: cron(0 9 24 * ? *)"
   }
 }
 
