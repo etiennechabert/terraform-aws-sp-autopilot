@@ -60,15 +60,26 @@ def handler(event: dict[str, Any], context: Any) -> dict[str, Any]:
         lambda msg: _send_error_notification(config["sns_topic_arn"], msg),
     )
 
-    # Check purchase cooldown — skip if any SP was purchased recently
+    # Check per-type purchase cooldown
     cooldown_days = config.get("purchase_cooldown_days", 7)
+    cooldown_types: set[str] = set()
     if cooldown_days > 0:
-        from shared.savings_plans_metrics import has_recent_purchase
+        from shared.savings_plans_metrics import get_recent_purchase_sp_types
 
-        if has_recent_purchase(clients["savingsplans"], cooldown_days):
+        cooldown_types = get_recent_purchase_sp_types(clients["savingsplans"], cooldown_days)
+
+        # If ALL enabled types are in cooldown, skip the entire run
+        enabled_types = {"compute"}
+        if config.get("enable_database_sp", False):
+            enabled_types.add("database")
+        if config.get("enable_sagemaker_sp", False):
+            enabled_types.add("sagemaker")
+
+        if enabled_types <= cooldown_types:
             msg = (
-                f"Savings Plan purchased within last {cooldown_days} days — "
-                "skipping scheduling to let Cost Explorer data settle"
+                f"All enabled SP types {sorted(enabled_types)} purchased within "
+                f"last {cooldown_days} days — skipping scheduling to let "
+                "Cost Explorer data settle"
             )
             logger.warning(msg)
             clients["sns"].publish(
@@ -80,7 +91,7 @@ def handler(event: dict[str, Any], context: Any) -> dict[str, Any]:
                 "statusCode": 200,
                 "body": json.dumps(
                     {
-                        "message": "Skipped — recent purchase within cooldown window",
+                        "message": "Skipped — all enabled types within cooldown window",
                         "dry_run": config["dry_run"],
                         "purchases_planned": 0,
                     }
@@ -121,6 +132,17 @@ def handler(event: dict[str, Any], context: Any) -> dict[str, Any]:
     # Calculate purchases using selected strategy (strategies handle their own limits)
     purchase_plans = purchase_module.calculate_purchase_need(config, clients, spending_data)
 
+    # Filter out purchase plans for SP types in cooldown
+    cooldown_blocked_plans = []
+    if cooldown_types:
+        cooldown_blocked_plans = [p for p in purchase_plans if p.get("sp_type") in cooldown_types]
+        purchase_plans = [p for p in purchase_plans if p.get("sp_type") not in cooldown_types]
+        if cooldown_blocked_plans:
+            logger.warning(
+                f"Blocked {len(cooldown_blocked_plans)} purchase plan(s) due to cooldown: "
+                f"{sorted(cooldown_types)}"
+            )
+
     # Filter out purchase plans for SP types with usage spikes
     blocked_plans = []
     if guard_results:
@@ -152,6 +174,11 @@ def handler(event: dict[str, Any], context: Any) -> dict[str, Any]:
             unknown_services if unknown_services else None,
         )
 
+    if cooldown_blocked_plans:
+        email_module.send_cooldown_email(
+            clients["sns"], config, cooldown_blocked_plans, cooldown_types
+        )
+
     if blocked_plans:
         email_module.send_spike_guard_email(clients["sns"], config, blocked_plans, guard_results)
 
@@ -162,6 +189,7 @@ def handler(event: dict[str, Any], context: Any) -> dict[str, Any]:
                 "message": "Scheduler completed successfully",
                 "dry_run": config["dry_run"],
                 "purchases_planned": len(purchase_plans),
+                "purchases_blocked_by_cooldown": len(cooldown_blocked_plans),
                 "purchases_blocked_by_spike_guard": len(blocked_plans),
             }
         ),

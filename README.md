@@ -44,8 +44,7 @@ module "savings_plans" {
   version = "~> 1.0"
 
   purchase_strategy = {
-    lookback_days    = 13       # Max for HOURLY granularity
-    granularity      = "HOURLY" # Recommended (requires Cost Explorer hourly data)
+    lookback_days = 13 # Max 13 days (AWS HOURLY granularity limit)
 
     target = { fixed = { coverage_percent = 90 } }
     split  = { fixed_step = { step_percent = 10 } }
@@ -175,24 +174,11 @@ notifications = {
 }
 ```
 
-### Data Granularity
+### Hourly Granularity (Required)
 
-#### HOURLY (Recommended)
+Savings Plans are purchased as hourly commitments ($/hour). This module always analyzes data at hourly granularity for accurate purchase sizing.
 
-Savings Plans are purchased as hourly commitments ($/hour). Analyzing data at hourly granularity provides accurate purchase sizing.
-
-```hcl
-purchase_strategy = {
-  lookback_days = 14      # Max for HOURLY
-  granularity   = "HOURLY" # Recommended
-}
-```
-
-**Requirement:** Enable "Hourly and resource level granularity" in Cost Explorer settings. Cost: ~$0.10-$1.00/month.
-
-#### DAILY (Compatibility)
-
-Use only if hourly data isn't available. Supports up to 90 `lookback_days`. Less accurate analysis, potentially suboptimal purchases.
+**Prerequisite:** You must enable **"Hourly and resource level granularity"** in [AWS Cost Explorer settings](https://console.aws.amazon.com/cost-management/home#/settings). Cost: ~$0.10-$1.00/month. The module will return a clear error if this setting is not enabled.
 
 ## Architecture
 
@@ -338,6 +324,7 @@ Coverage is tracked independently for each SP type.
 
 - **Terraform:** >= 1.0
 - **AWS Provider:** >= 5.0
+- **Cost Explorer:** [Hourly and resource level granularity](https://console.aws.amazon.com/cost-management/home#/settings) must be enabled
 - **IAM Permissions:**
   - Cost Explorer: `ce:GetSavingsPlansPurchaseRecommendation`, `ce:GetSavingsPlansCoverage`
   - Savings Plans: `savingsplans:CreateSavingsPlan`, `savingsplans:DescribeSavingsPlans`

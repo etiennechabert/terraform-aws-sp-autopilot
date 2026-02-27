@@ -54,12 +54,6 @@ CONFIG_SCHEMA = {
         "default": "13",
         "env_var": "LOOKBACK_DAYS",
     },
-    "granularity": {
-        "required": False,
-        "type": "str",
-        "default": "DAILY",
-        "env_var": "GRANULARITY",
-    },
     "min_commitment_per_plan": {
         "required": False,
         "type": "float",

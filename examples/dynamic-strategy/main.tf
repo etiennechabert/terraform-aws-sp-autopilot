@@ -37,8 +37,7 @@ module "savings_plans" {
 
   # Purchase strategy - dynamic target with gap split
   purchase_strategy = {
-    lookback_days = 13       # Max for HOURLY granularity (recommended)
-    granularity   = "HOURLY" # Recommended for accurate analysis
+    lookback_days = 13 # Max 13 days (AWS HOURLY granularity limit)
 
     target = {
       dynamic = { risk_level = "optimal" } # Knee-point algorithm

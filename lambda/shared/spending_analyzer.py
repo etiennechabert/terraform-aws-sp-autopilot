@@ -241,7 +241,6 @@ class SpendingAnalyzer:
         Args:
             config: Configuration dictionary containing:
                 - lookback_days: Days to look back for coverage data (default: 7)
-                - granularity: API granularity - "HOURLY" or "DAILY" (default: "HOURLY")
                 - enable_compute_sp: Whether to fetch Compute SP data
                 - enable_database_sp: Whether to fetch Database SP data
                 - enable_sagemaker_sp: Whether to fetch SageMaker SP data
@@ -272,8 +271,7 @@ class SpendingAnalyzer:
         now = datetime.now(UTC)
 
         # Step 1: Validate our service constants are complete
-        granularity = config.get("granularity", "HOURLY")
-        unknown_services = self._validate_service_constants(now, granularity)
+        unknown_services = self._validate_service_constants(now)
 
         # Step 2: Fetch coverage data from Cost Explorer
         lookback_days = config.get("lookback_days", 7)
@@ -297,11 +295,38 @@ class SpendingAnalyzer:
 
         return sp_type_data
 
-    def _normalize_start_time(self, start_time: datetime, granularity: str) -> datetime:
-        """Round start_time to midnight for HOURLY granularity."""
-        if granularity != "HOURLY":
-            return start_time
+    def analyze_daily_spending(self, config: dict[str, Any]) -> dict[str, dict[str, Any]]:
+        """Fetch coverage at DAILY granularity for long-term trend charts (up to 365 days)."""
+        now = datetime.now(UTC)
+        lookback_days = config.get("lookback_days", 365)
+        end_time = now - timedelta(days=1)
+        start_time = end_time - timedelta(days=lookback_days)
 
+        service_filters = self._build_service_filters(config)
+        if not service_filters:
+            return group_coverage_by_sp_type([])
+
+        date_format = "%Y-%m-%d"
+        all_coverages = []
+
+        for sp_type, service_list in service_filters:
+            params = {
+                "TimePeriod": {
+                    "Start": start_time.strftime(date_format),
+                    "End": end_time.strftime(date_format),
+                },
+                "Granularity": "DAILY",
+                "Filter": {"Dimensions": {"Key": "SERVICE", "Values": service_list}},
+            }
+            response = self.ce_client.get_savings_plans_coverage(**params)
+            coverages = response.get("SavingsPlansCoverages", [])
+            self._tag_coverage_items(coverages, sp_type)
+            all_coverages.extend(coverages)
+
+        return group_coverage_by_sp_type(all_coverages)
+
+    def _normalize_start_time(self, start_time: datetime) -> datetime:
+        """Round start_time UP to next midnight for HOURLY granularity."""
         if (
             start_time.hour != 0
             or start_time.minute != 0
@@ -333,19 +358,15 @@ class SpendingAnalyzer:
         self, now: datetime, lookback_days: int, config: dict[str, Any]
     ) -> list[dict[str, Any]]:
         """
-        Fetch Savings Plans coverage data from Cost Explorer.
+        Fetch Savings Plans coverage data from Cost Explorer at HOURLY granularity.
 
-        Supports both HOURLY and DAILY granularity. HOURLY provides better accuracy for
-        purchase calculations since Savings Plans are priced as $/hour commitments, but
-        DAILY can be used for accounts without hourly granularity enabled.
-
-        AWS retains hourly data for 14 days. Daily data is retained for 90+ days.
+        AWS retains hourly data for 14 days.
         Service filtering keeps each call under the 500-item limit.
 
         Args:
             now: Current timestamp
-            lookback_days: Number of days to look back (max 14 for HOURLY, 90 for DAILY)
-            config: Configuration dictionary with granularity and enable flags
+            lookback_days: Number of days to look back (max 14)
+            config: Configuration dictionary with enable flags
 
         Returns:
             list: Coverage data items from Cost Explorer response
@@ -353,10 +374,9 @@ class SpendingAnalyzer:
         Raises:
             ClientError: If AWS API calls fail
         """
-        granularity = config.get("granularity", "HOURLY")
         end_time = now - timedelta(days=1)
         start_time = end_time - timedelta(days=lookback_days)
-        start_time = self._normalize_start_time(start_time, granularity)
+        start_time = self._normalize_start_time(start_time)
 
         service_filters = self._build_service_filters(config)
         if not service_filters:
@@ -364,11 +384,11 @@ class SpendingAnalyzer:
             return []
 
         logger.info(
-            f"Fetching {granularity.lower()} coverage data for {lookback_days} days "
+            f"Fetching hourly coverage data for {lookback_days} days "
             f"using {len(service_filters)} service-filtered calls"
         )
 
-        date_format = "%Y-%m-%d" if granularity == "DAILY" else "%Y-%m-%dT%H:%M:%SZ"
+        date_format = "%Y-%m-%dT%H:%M:%SZ"
         all_coverages = []
 
         try:
@@ -378,7 +398,7 @@ class SpendingAnalyzer:
                         "Start": start_time.strftime(date_format),
                         "End": end_time.strftime(date_format),
                     },
-                    "Granularity": granularity,
+                    "Granularity": "HOURLY",
                     "Filter": {"Dimensions": {"Key": "SERVICE", "Values": service_list}},
                 }
 
@@ -401,27 +421,29 @@ class SpendingAnalyzer:
                 )
 
         except ClientError as e:
-            error_code = e.response.get("Error", {}).get("Code", "Unknown")
-            if error_code == "DataUnavailableException":
-                logger.warning(
-                    "Cost Explorer data not available (new account or no usage data). "
-                    "Returning empty coverage data."
-                )
-                return []
+            error_message = e.response.get("Error", {}).get("Message", "")
+            if "Hourly data granularity is an opt-in only feature" in error_message:
+                raise RuntimeError(
+                    "Cost Explorer hourly data is not available. "
+                    "Please enable 'Hourly and resource level granularity' in AWS Cost Explorer settings "
+                    "(Cost Management > Preferences > Cost Explorer). "
+                    "This must be enabled from the PAYER account. "
+                    "Data will be available within 24-48 hours after enabling."
+                ) from e
             raise
 
         if not all_coverages:
-            logger.warning(f"No {granularity.lower()} coverage data available from Cost Explorer")
+            logger.warning("No hourly coverage data available from Cost Explorer")
             return []
 
         logger.info(
-            f"Fetched {len(all_coverages)} total {granularity.lower()} coverage data points "
+            f"Fetched {len(all_coverages)} total hourly coverage data points "
             f"from {len(service_filters)} service-filtered calls"
         )
 
         return all_coverages
 
-    def _validate_service_constants(self, now: datetime, granularity: str = "HOURLY") -> set[str]:
+    def _validate_service_constants(self, now: datetime) -> set[str]:
         """
         Validate that our service constants include all AWS services with SP coverage.
 
@@ -434,7 +456,6 @@ class SpendingAnalyzer:
 
         Args:
             now: Current timestamp
-            granularity: API granularity - "HOURLY" or "DAILY" (default: "HOURLY")
 
         Returns:
             set: Unknown services found (empty if all services are known)
@@ -447,8 +468,7 @@ class SpendingAnalyzer:
 
         logger.debug("Validating service constants against AWS API (1-day GROUP BY SERVICE call)")
 
-        # Format dates based on granularity
-        date_format = "%Y-%m-%d" if granularity == "DAILY" else "%Y-%m-%dT%H:%M:%SZ"
+        date_format = "%Y-%m-%dT%H:%M:%SZ"
 
         try:
             params = {
@@ -456,7 +476,7 @@ class SpendingAnalyzer:
                     "Start": start_time.strftime(date_format),
                     "End": end_time.strftime(date_format),
                 },
-                "Granularity": granularity,
+                "Granularity": "HOURLY",
                 "GroupBy": [{"Type": "DIMENSION", "Key": "SERVICE"}],
             }
 
@@ -490,8 +510,10 @@ class SpendingAnalyzer:
             return unknown_services
 
         except ClientError as e:
-            error_code = e.response.get("Error", {}).get("Code", "Unknown")
-            if error_code == "DataUnavailableException":
-                logger.debug("No coverage data available for validation (new account or no usage)")
+            error_message = e.response.get("Error", {}).get("Message", "")
+            if "Hourly data granularity is an opt-in only feature" in error_message:
+                logger.debug(
+                    "No coverage data available for validation (hourly granularity not enabled)"
+                )
                 return set()
             raise

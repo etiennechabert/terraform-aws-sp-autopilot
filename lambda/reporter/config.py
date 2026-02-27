@@ -46,11 +46,6 @@ CONFIG_SCHEMA = {
         "type": "int",
         "env_var": "LOOKBACK_DAYS",
     },
-    "granularity": {
-        "required": True,
-        "type": "str",
-        "env_var": "GRANULARITY",
-    },
     **AWS_COMMON,
     "slack_webhook_url": {
         "required": False,

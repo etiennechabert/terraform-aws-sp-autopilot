@@ -28,12 +28,6 @@ CONFIG_SCHEMA = {
         "default": "13",
         "env_var": "LOOKBACK_DAYS",
     },
-    "granularity": {
-        "required": False,
-        "type": "str",
-        "default": "HOURLY",
-        "env_var": "GRANULARITY",
-    },
     **SP_TYPE_TOGGLES,
     "management_account_role_arn": {
         "required": False,
