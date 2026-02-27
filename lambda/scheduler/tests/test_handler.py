@@ -38,7 +38,6 @@ def mock_env_vars(monkeypatch):
     monkeypatch.setenv("MAX_PURCHASE_PERCENT", "10")
     monkeypatch.setenv("RENEWAL_WINDOW_DAYS", "7")
     monkeypatch.setenv("LOOKBACK_DAYS", "13")
-    monkeypatch.setenv("MIN_DATA_DAYS", "14")
     monkeypatch.setenv("MIN_COMMITMENT_PER_PLAN", "0.001")
     monkeypatch.setenv("COMPUTE_SP_TERM_MIX", '{"three_year": 0.67, "one_year": 0.33}')
     monkeypatch.setenv("COMPUTE_SP_PAYMENT_OPTION", "ALL_UPFRONT")

@@ -723,40 +723,6 @@ run "test_notifications_invalid_no_method" {
   ]
 }
 
-# ============================================================================
-# Lookback Days - Variable Validations
-# ============================================================================
-
-# Test: lookback_days at max (13)
-run "test_max_lookback_days" {
-  command = plan
-
-  variables {
-    purchase_strategy = {
-      lookback_days = 13
-
-      target = {
-        fixed = { coverage_percent = 80 }
-      }
-
-      split = {
-        fixed_step = { step_percent = 5 }
-      }
-    }
-    sp_plans = {
-      compute = {
-        enabled   = true
-        plan_type = "all_upfront_one_year"
-      }
-      database  = { enabled = false }
-      sagemaker = { enabled = false }
-    }
-    notifications = {
-      emails = ["test@example.com"]
-    }
-  }
-}
-
 # Test: one_shot split - valid
 run "test_one_shot_split_valid" {
   command = plan
