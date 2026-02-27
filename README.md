@@ -26,16 +26,6 @@ Automates AWS Savings Plans purchases based on usage analysis, maintaining consi
 - **Risk management** — Spreads financial commitments over time with configurable purchase limits
 - **Email & webhook notifications** — SNS, Slack, and Microsoft Teams integration
 
-### Savings Plan Types
-
-| Type | Coverage | Terms | Payment Options | Max Discount |
-|------|----------|-------|-----------------|--------------|
-| **Compute** | EC2, Lambda, Fargate | 1-year, 3-year | All/Partial/No Upfront | Up to 66% |
-| **Database** | RDS, Aurora, DynamoDB, ElastiCache, DocumentDB, Neptune, Keyspaces, Timestream, DMS | 1-year only | No Upfront only | Up to 35% |
-| **SageMaker** | Training, Inference, Notebooks | 1-year, 3-year | All/Partial/No Upfront | Up to 64% |
-
-> **Database Savings Plans** have fixed AWS constraints: 1-year term, No Upfront payment only.
-
 ## Quick Start
 
 ```hcl
@@ -55,9 +45,9 @@ module "savings_plans" {
   }
 
   cron_schedules = {
-    scheduler = "cron(0 8 1 * ? *)"  # 1st of month at 8 AM UTC
-    purchaser = "cron(0 8 4 * ? *)"  # 4th of month (3-day review window)
-    reporter  = "cron(0 9 20 * ? *)" # 20th of month
+    scheduler = "cron(0 8 1 * ? *)"   # 1st of month at 8 AM UTC
+    purchaser = "cron(0 8 10 * ? *)"  # 10th of month
+    reporter  = "cron(0 9 24 * ? *)"  # 24th of month
   }
 
   notifications = {
@@ -75,6 +65,36 @@ See the [`examples/`](examples/) directory for complete, working examples:
 - **[organizations](examples/organizations/)** — AWS Organizations multi-account setup
 - **[dynamic-strategy](examples/dynamic-strategy/)** — Dynamic target with gap split
 
+## Architecture
+
+The module consists of three Lambda functions with SQS queue coordination:
+
+![Architecture Diagram](docs/architecture.svg)
+
+**Workflow:**
+
+1. **Scheduler Lambda** (e.g., 1st of month)
+   - Purges stale queue messages
+   - Analyzes current coverage (separate for Compute/Database/SageMaker)
+   - Gets AWS recommendations
+   - Applies purchase strategy
+   - Queues purchase intents to SQS
+
+2. **SQS Queue** (maximum 14-day review window)
+   - Holds purchase intents for up to 14 days
+   - Users can delete messages to cancel purchases
+   - Messages include full details and idempotency tokens
+
+3. **Purchaser Lambda** (e.g., 10th of month)
+   - Processes queue messages
+   - Executes purchases via AWS CreateSavingsPlan API
+   - Sends email summary
+
+4. **Reporter Lambda** (e.g., 24th of month)
+   - Generates HTML spending reports
+   - Stores in S3
+   - Optionally emails stakeholders
+
 ## Interactive Simulator
 
 The module includes an interactive **[Savings Plan Simulator](https://etiennechabert.github.io/terraform-aws-sp-autopilot/)** to visualize coverage strategies and their cost impact before deploying anything. Generated reports link to the simulator pre-loaded with your data, allowing stakeholders to explore "what-if" scenarios across different target/split combinations.
@@ -83,7 +103,7 @@ The module includes an interactive **[Savings Plan Simulator](https://etiennecha
 
 ## Configuration
 
-### Purchase Strategies
+### `purchase_strategy`
 
 Strategy is configured with two orthogonal dimensions: **target** (what coverage to aim for) and **split** (how to reach the target). Both must be specified.
 
@@ -136,19 +156,70 @@ purchase_strategy = {
 
 **Use with caution:** AWS recommendations can be aggressive.
 
-### Scheduling
+#### Other Settings
+
+- **`renewal_window_days`** (default: `7`) — How many days before a Savings Plan expires to schedule its replacement. The scheduler will include expiring plans in its coverage gap calculation so replacements are purchased before expiration.
+- **`purchase_cooldown_days`** (default: `7`) — After purchasing a Savings Plan, block new purchases for that specific SP type (Compute, Database, or SageMaker) for this many days. Prevents duplicates while Cost Explorer data catches up (24-48h lag).
+- **`min_commitment_per_plan`** (default: `0.001`) — Minimum hourly commitment per plan in USD. AWS minimum is $0.001/hr.
+
+### `sp_plans`
+
+| Type | Coverage | Max Discount |
+|------|----------|--------------|
+| **Compute** | EC2, Lambda, Fargate | Up to 66% |
+| **Database** | RDS, Aurora, DynamoDB, ElastiCache, DocumentDB, Neptune, Keyspaces, Timestream, DMS | Up to 35% |
+| **SageMaker** | Training, Inference, Notebooks | Up to 64% |
+
+`plan_type` values (required when `enabled = true`):
+- **`all_upfront`**: `all_upfront_one_year`, `all_upfront_three_year`
+- **`partial_upfront`**: `partial_upfront_one_year`, `partial_upfront_three_year`
+- **`no_upfront`**: `no_upfront_one_year`, `no_upfront_three_year`
+
+Database SPs only support `no_upfront_one_year`.
+
+```hcl
+sp_plans = {
+  compute   = { enabled = true, plan_type = "all_upfront_one_year" }
+  database  = { enabled = true, plan_type = "no_upfront_one_year" }
+  sagemaker = { enabled = false } # plan_type is required ONLY when enabled = true
+}
+```
+
+### `cron_schedules`
 
 ```hcl
 cron_schedules = {
   scheduler = "cron(0 8 1 * ? *)"   # When to analyze and schedule purchases
-  purchaser = "cron(0 8 4 * ? *)"   # When to execute purchases
-  reporter  = "cron(0 9 20 * ? *)"  # When to generate monthly reports
+  purchaser = "cron(0 8 10 * ? *)"  # When to execute purchases
+  reporter  = "cron(0 9 24 * ? *)"  # When to generate monthly reports
 }
 ```
 
 **Review Window:** Time between `scheduler` and `purchaser` runs allows canceling unwanted purchases.
 
-### Notifications
+**Scheduling guidelines:**
+- Purchaser should run **within 13 days** of the scheduler — SQS messages expire after 14 days, so purchase intents are lost if the purchaser runs too late.
+- Purchaser should run **at least 2 days after** the scheduler — provides a review window and accounts for Cost Explorer data lag.
+- Reporter should run **at least 2 days after** the purchaser — Cost Explorer needs 24-48h to reflect newly purchased Savings Plans.
+
+The default schedules (1st, 10th, 24th of the month) satisfy all guidelines. Note that manual Savings Plan purchases via the AWS console also cause Cost Explorer data lag, so be mindful of timing regardless of automation schedules.
+
+### `lambda_config`
+
+Controls which Lambda functions are active and cross-account role assumptions.
+
+```hcl
+lambda_config = {
+  purchaser = { enabled = false }  # Disable purchaser to review recommendations first
+  scheduler = { assume_role_arn = "arn:aws:iam::123456789012:role/SPSchedulerRole" }
+}
+```
+
+- **`enabled`** — Enable/disable individual Lambda functions (default: `true`). Disable the purchaser to review scheduler recommendations without executing purchases.
+- **`assume_role_arn`** — Cross-account role for AWS Organizations deployments (see [AWS Organizations Setup](#aws-organizations-setup))
+- **`error_alarm`** — Enable CloudWatch error alarm for the Lambda (default: `true`)
+
+### `notifications`
 
 #### Email
 
@@ -172,37 +243,7 @@ notifications = {
 
 Savings Plans are purchased as hourly commitments ($/hour). This module always analyzes data at hourly granularity for accurate purchase sizing.
 
-**Prerequisite:** You must enable **"Hourly and resource level granularity"** in [AWS Cost Explorer settings](https://console.aws.amazon.com/cost-management/home#/settings). Cost: ~$0.10-$1.00/month. The module will return a clear error if this setting is not enabled.
-
-## Architecture
-
-The module consists of three Lambda functions with SQS queue coordination:
-
-![Architecture Diagram](docs/architecture.svg)
-
-**Workflow:**
-
-1. **Scheduler Lambda** (e.g., 1st of month)
-   - Purges stale queue messages
-   - Analyzes current coverage (separate for Compute/Database/SageMaker)
-   - Gets AWS recommendations
-   - Applies purchase strategy
-   - Queues purchase intents to SQS
-
-2. **SQS Queue** (review window)
-   - Holds purchase intents
-   - Users can delete messages to cancel purchases
-   - Messages include full details and idempotency tokens
-
-3. **Purchaser Lambda** (e.g., 4th of month)
-   - Processes queue messages
-   - Executes purchases via AWS CreateSavingsPlan API
-   - Sends email summary
-
-4. **Reporter Lambda** (e.g., 20th of month)
-   - Generates HTML spending reports
-   - Stores in S3
-   - Optionally emails stakeholders
+**Prerequisite:** You must enable **"Hourly and resource level granularity"** in [AWS Cost Explorer settings](https://console.aws.amazon.com/cost-management/home#/settings). Cost: ~$0.10-$1.00/month. The Scheduler Lambda will fail with an explicit error if hourly granularity is not enabled — no purchases will be scheduled.
 
 ## Advanced Topics
 
@@ -234,15 +275,13 @@ See [organizations example](examples/organizations/README.md) for complete setup
 
 ### Recommended Rollout
 
-Start with **1-year No Upfront** commitments to validate the automation with minimal risk. Once comfortable after the first year, switch to **3-year All Upfront** for maximum savings — expiring 1Y plans will naturally get replaced by 3Y over time.
+1. **Reporter only** — Deploy with scheduler and purchaser disabled. Review spending reports to understand your current coverage and savings opportunities.
 
-| Phase | `plan_type` | Purchaser | Purpose |
-|-------|-------------|-----------|---------|
-| **Week 1** | — | disabled | Review recommendations only (scheduler queues to SQS, inspect messages) |
-| **Year 1** | `no_upfront_one_year` | enabled | Validate with low-risk commitments |
-| **Year 2+** | `all_upfront_three_year` | enabled | Maximize savings as 1Y plans expire |
+2. **Reporter + Scheduler** — Enable the scheduler. It queues purchase intents to SQS where you can inspect them, but nothing gets purchased. Review the analysis emails and SQS messages to validate recommendations. You can also purchase manually via the AWS console to understand what the purchaser will do when enabled.
 
-When switching to 3Y, consider slowing down purchases since each commitment lasts longer: increase the `divider` with gap_split (though it naturally purchases less as coverage grows, as long as `min_purchase_percent` isn't set too high), or reduce `step_percent` with fixed_step.
+3. **Full automation** — Enable the purchaser and start with `no_upfront_one_year` plan types. You have a configurable window between scheduler and purchaser runs to delete SQS messages and cancel unwanted purchases. Once confident after the first year, switch to `all_upfront_three_year` — 3-year plans offer significantly higher discount rates, allowing you to push coverage further above min-hourly spend. Expiring 1Y plans will naturally get replaced by 3Y over time.
+
+4. **Sit back and relax** — Check your purchase notification emails each month, and if everything looks fine, admire your report showing coverage and savings grow over time. And maybe [buy Etienne a coffee](https://buymeacoffee.com/etiennechak) if the module saved you time and money.
 
 ### Canceling Purchases
 
@@ -279,67 +318,6 @@ purchase_strategy = {
 
 Disable with `spike_guard = { enabled = false }`. The reporter includes a yellow warning banner when a spike is detected.
 
-## Reference
-
-### Configuration Variables
-
-Complete variable documentation: **[variables.tf](variables.tf)**
-
-Main configuration objects:
-- `purchase_strategy` — Coverage targets, purchase limits, strategy selection
-- `sp_plans` — Enable/configure Compute, Database, SageMaker
-- `cron_schedules` — Cron schedules for Scheduler, Purchaser, Reporter
-- `notifications` — Email addresses, webhook URLs
-- `lambda_config` — Per-Lambda settings (enable/disable, assume roles, alarms)
-- `monitoring` — CloudWatch alarms, error thresholds
-- `reporting` — Report format, S3 storage, email delivery
-
-### Outputs
-
-**Queue:** `queue_url`, `queue_arn`, `dlq_url`, `dlq_arn`
-
-**Lambdas:** `scheduler_lambda_arn`, `purchaser_lambda_arn`, `reporter_lambda_arn` (+ `_name` variants)
-
-**Notifications:** `sns_topic_arn`
-
-**Configuration:** `module_configuration`, `database_sp_configuration`
-
-### Supported Services
-
-**Compute Savings Plans:** EC2 (any family/size/region/OS/tenancy), Lambda, Fargate
-
-**Database Savings Plans:** RDS, Aurora, DynamoDB, ElastiCache (Valkey), DocumentDB, Neptune, Keyspaces, Timestream, DMS
-
-**SageMaker Savings Plans:** Training, Real-Time Inference, Serverless Inference, Notebook Instances
-
-Coverage is tracked independently for each SP type.
-
-### Requirements
-
-- **Terraform:** >= 1.0
-- **AWS Provider:** >= 5.0
-- **Cost Explorer:** [Hourly and resource level granularity](https://console.aws.amazon.com/cost-management/home#/settings) must be enabled
-- **IAM Permissions:**
-  - Cost Explorer: `ce:GetSavingsPlansPurchaseRecommendation`, `ce:GetSavingsPlansCoverage`
-  - Savings Plans: `savingsplans:CreateSavingsPlan`, `savingsplans:DescribeSavingsPlans`
-  - SQS: `sqs:SendMessage`, `sqs:ReceiveMessage`, `sqs:DeleteMessage`, `sqs:PurgeQueue`
-  - SNS: `sns:Publish`
-  - CloudWatch Logs: Lambda logging
-
-## Contributing
-
-Contributions welcome! See [CONTRIBUTING.md](CONTRIBUTING.md) for branch naming, commit conventions, and PR process. See [DEVELOPMENT.md](DEVELOPMENT.md) for local setup and testing.
-
-## Support
-
-For questions, issues, or feature requests, please open a [GitHub issue](https://github.com/etiennechabert/terraform-aws-sp-autopilot/issues).
-
-## License
-
-This module is open-source software licensed under the [Apache License 2.0](LICENSE).
-
----
-
 ## Terraform Reference
 
 <!-- BEGIN_TF_DOCS -->
@@ -364,7 +342,7 @@ This module is open-source software licensed under the [Apache License 2.0](LICE
 | <a name="input_notifications"></a> [notifications](#input\_notifications) | Notification configuration for email, Slack, and Teams | <pre>object({<br/>    emails        = list(string)<br/>    slack_webhook = optional(string)<br/>    teams_webhook = optional(string)<br/>  })</pre> | n/a | yes |
 | <a name="input_purchase_strategy"></a> [purchase\_strategy](#input\_purchase\_strategy) | Purchase strategy configuration with orthogonal target + split dimensions | <pre>object({<br/>    renewal_window_days     = optional(number, 7)<br/>    purchase_cooldown_days  = optional(number, 7)<br/>    min_commitment_per_plan = optional(number, 0.001)<br/><br/>    target = object({<br/>      fixed   = optional(object({ coverage_percent = number }))<br/>      aws     = optional(object({}))<br/>      dynamic = optional(object({ risk_level = string }))<br/>    })<br/><br/>    split = object({<br/>      one_shot   = optional(object({}))<br/>      fixed_step = optional(object({ step_percent = number }))<br/>      gap_split = optional(object({<br/>        divider              = number<br/>        min_purchase_percent = optional(number, 1)<br/>        max_purchase_percent = optional(number)<br/>      }))<br/>    })<br/><br/>    spike_guard = optional(object({<br/>      enabled             = optional(bool, true)<br/>      long_lookback_days  = optional(number, 90)<br/>      short_lookback_days = optional(number, 14)<br/>      threshold_percent   = optional(number, 20)<br/>    }), {})<br/>  })</pre> | n/a | yes |
 | <a name="input_sp_plans"></a> [sp\_plans](#input\_sp\_plans) | Savings Plans configuration for Compute, Database, and SageMaker | <pre>object({<br/>    compute = object({<br/>      enabled   = bool<br/>      plan_type = optional(string)<br/>    })<br/><br/>    database = object({<br/>      enabled   = bool<br/>      plan_type = optional(string) # AWS only supports "no_upfront_one_year" for Database SPs<br/>    })<br/><br/>    sagemaker = object({<br/>      enabled   = bool<br/>      plan_type = optional(string)<br/>    })<br/>  })</pre> | n/a | yes |
-| <a name="input_cron_schedules"></a> [cron\_schedules](#input\_cron\_schedules) | EventBridge cron schedules for each Lambda function. Set to null to disable a schedule. | <pre>object({<br/>    scheduler = optional(string) # Set to null to disable, defaults to "cron(0 8 1 * ? *)"<br/>    purchaser = optional(string) # Set to null to disable, defaults to "cron(0 8 10 * ? *)"<br/>    reporter  = optional(string) # Set to null to disable, defaults to "cron(0 9 20 * ? *)"<br/>  })</pre> | <pre>{<br/>  "purchaser": "cron(0 8 10-17 * MON *)",<br/>  "reporter": "cron(0 8 20-27 * MON *)",<br/>  "scheduler": "cron(0 8 1-7 * MON *)"<br/>}</pre> | no |
+| <a name="input_cron_schedules"></a> [cron\_schedules](#input\_cron\_schedules) | EventBridge cron schedules for each Lambda function. Set to null to disable a schedule. | <pre>object({<br/>    scheduler = optional(string) # Set to null to disable. Default: "cron(0 8 1-7 * MON *)"<br/>    purchaser = optional(string) # Set to null to disable. Default: "cron(0 8 10-17 * MON *)"<br/>    reporter  = optional(string) # Set to null to disable. Default: "cron(0 8 20-27 * MON *)"<br/>  })</pre> | <pre>{<br/>  "purchaser": "cron(0 8 10-17 * MON *)",<br/>  "reporter": "cron(0 8 20-27 * MON *)",<br/>  "scheduler": "cron(0 8 1-7 * MON *)"<br/>}</pre> | no |
 | <a name="input_encryption"></a> [encryption](#input\_encryption) | Encryption configuration for SNS, SQS, and S3 | <pre>object({<br/>    sns_kms_key = optional(string, "alias/aws/sns") # Default: AWS managed KMS key. Set to null to disable.<br/>    sqs_kms_key = optional(string, "alias/aws/sqs") # Default: AWS managed KMS key. Set to null to disable.<br/>    s3 = optional(object({<br/>      kms_key = optional(string) # null = AES256 (SSE-S3, free), set to KMS key ARN for SSE-KMS<br/>    }), {})<br/>  })</pre> | `{}` | no |
 | <a name="input_lambda_config"></a> [lambda\_config](#input\_lambda\_config) | Lambda function configuration including enable/disable controls, performance settings, cross-account role ARNs, and error alarms | <pre>object({<br/>    scheduler = optional(object({<br/>      enabled         = optional(bool, true)<br/>      memory_mb       = optional(number, 128)<br/>      timeout         = optional(number, 300)<br/>      assume_role_arn = optional(string)     # Role to assume for Cost Explorer and Savings Plans APIs (AWS Orgs)<br/>      error_alarm     = optional(bool, true) # Enable CloudWatch error alarm for this Lambda<br/>    }), {})<br/><br/>    purchaser = optional(object({<br/>      enabled         = optional(bool, true)<br/>      memory_mb       = optional(number, 128)<br/>      timeout         = optional(number, 300)<br/>      assume_role_arn = optional(string)     # Role to assume for Savings Plans purchase APIs (AWS Orgs)<br/>      error_alarm     = optional(bool, true) # Enable CloudWatch error alarm for this Lambda<br/>    }), {})<br/><br/>    reporter = optional(object({<br/>      enabled         = optional(bool, true)<br/>      memory_mb       = optional(number, 128)<br/>      timeout         = optional(number, 300)<br/>      assume_role_arn = optional(string)     # Role to assume for Cost Explorer and Savings Plans APIs (AWS Orgs)<br/>      error_alarm     = optional(bool, true) # Enable CloudWatch error alarm for this Lambda<br/>    }), {})<br/>  })</pre> | `{}` | no |
 | <a name="input_monitoring"></a> [monitoring](#input\_monitoring) | CloudWatch monitoring and alarm configuration | <pre>object({<br/>    dlq_alarm                 = optional(bool, true)<br/>    error_threshold           = optional(number, 1)  # Threshold for Lambda error alarms (configured per-Lambda in lambda_config)<br/>    low_utilization_threshold = optional(number, 70) # Alert when Savings Plans utilization falls below this percentage<br/>  })</pre> | `{}` | no |
@@ -409,3 +387,17 @@ This module is open-source software licensed under the [Apache License 2.0](LICE
 | <a name="output_scheduler_rule_name"></a> [scheduler\_rule\_name](#output\_scheduler\_rule\_name) | Name of the EventBridge rule for Scheduler Lambda |
 | <a name="output_sns_topic_arn"></a> [sns\_topic\_arn](#output\_sns\_topic\_arn) | ARN of the SNS topic for notifications |
 <!-- END_TF_DOCS -->
+
+## Contributing
+
+Contributions welcome! See [CONTRIBUTING.md](CONTRIBUTING.md) for branch naming, commit conventions, and PR process.
+
+See [DEVELOPMENT.md](DEVELOPMENT.md) for local setup and testing.
+
+## Support
+
+For questions, issues, or feature requests, please open a [GitHub issue](https://github.com/etiennechabert/terraform-aws-sp-autopilot/issues). If you want to support the project, you can [buy Etienne a coffee](https://buymeacoffee.com/etiennechak).
+
+## License
+
+This module is open-source software licensed under the [Apache License 2.0](LICENSE).
