@@ -197,12 +197,12 @@ cron_schedules = {
 
 **Review Window:** Time between `scheduler` and `purchaser` runs allows canceling unwanted purchases.
 
-**Scheduling constraints:**
-- Purchaser must run **within 13 days** of the scheduler — SQS messages expire after 14 days, so purchase intents are lost if the purchaser runs too late.
-- Purchaser must run **at least 2 days after** the scheduler — provides a review window to cancel unwanted purchases.
-- Reporter must run **at least 2 days after** the purchaser — Cost Explorer needs 24-48h to reflect newly purchased Savings Plans.
+**Scheduling guidelines:**
+- Purchaser should run **within 13 days** of the scheduler — SQS messages expire after 14 days, so purchase intents are lost if the purchaser runs too late.
+- Purchaser should run **at least 2 days after** the scheduler — provides a review window and accounts for Cost Explorer data lag.
+- Reporter should run **at least 2 days after** the purchaser — Cost Explorer needs 24-48h to reflect newly purchased Savings Plans.
 
-The default schedules (1st, 10th, 24th of the month) satisfy all constraints. The module validates these gaps at `terraform plan` time.
+The default schedules (1st, 10th, 24th of the month) satisfy all guidelines. Note that manual Savings Plan purchases via the AWS console also cause Cost Explorer data lag, so be mindful of timing regardless of automation schedules.
 
 ### `lambda_config`
 

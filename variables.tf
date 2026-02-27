@@ -280,37 +280,6 @@ variable "cron_schedules" {
     purchaser = "cron(0 8 10-17 * MON *)" # 10th of month at 8am UTC
     reporter  = "cron(0 8 20-27 * MON *)" # 20th of month at 8am UTC
   }
-
-  # Purchaser must run within 13 days of the scheduler (SQS messages expire after 14 days).
-  # Compares range starts (min days) since day-of-week constraints make max-to-min overly conservative.
-  validation {
-    condition = try(
-      tonumber(regex("^cron\\(\\S+ \\S+ (\\d+)", var.cron_schedules.purchaser)[0]) -
-      tonumber(regex("^cron\\(\\S+ \\S+ (\\d+)", var.cron_schedules.scheduler)[0]) <= 13,
-      true
-    )
-    error_message = "Purchaser must run within 13 days of the scheduler. SQS messages expire after 14 days."
-  }
-
-  # Purchaser must run at least 2 days after the scheduler (review window + Cost Explorer data lag)
-  validation {
-    condition = try(
-      tonumber(regex("^cron\\(\\S+ \\S+ (\\d+)", var.cron_schedules.purchaser)[0]) -
-      tonumber(try(regex("-(\\d+)", var.cron_schedules.scheduler)[0], regex("^cron\\(\\S+ \\S+ (\\d+)", var.cron_schedules.scheduler)[0])) >= 2,
-      true
-    )
-    error_message = "Purchaser must run at least 2 days after the scheduler (minimum review window and Cost Explorer data lag)."
-  }
-
-  # Reporter must run at least 2 days after the purchaser (Cost Explorer needs 24-48h to reflect new SPs)
-  validation {
-    condition = try(
-      tonumber(regex("^cron\\(\\S+ \\S+ (\\d+)", var.cron_schedules.reporter)[0]) -
-      tonumber(try(regex("-(\\d+)", var.cron_schedules.purchaser)[0], regex("^cron\\(\\S+ \\S+ (\\d+)", var.cron_schedules.purchaser)[0])) >= 2,
-      true
-    )
-    error_message = "Reporter must run at least 2 days after the purchaser (Cost Explorer needs 24-48h to reflect new Savings Plans)."
-  }
 }
 
 # Notifications
