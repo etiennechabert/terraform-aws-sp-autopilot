@@ -22,7 +22,7 @@ cp .env.local.example .env.local
 # Edit .env.local with your AWS profile
 
 # Run Lambda functions locally
-python lambda/local_runner.py scheduler --dry-run
+python lambda/local_runner.py scheduler
 python lambda/local_runner.py purchaser
 python lambda/local_runner.py reporter --format html
 ```
@@ -37,19 +37,18 @@ The `local_runner.py` utility simulates Lambda execution locally. It reads envir
 - SNS notifications are logged but not sent
 
 ```bash
-python lambda/local_runner.py scheduler --dry-run   # Analyze coverage, queue intents
+python lambda/local_runner.py scheduler              # Analyze coverage, queue intents
 python lambda/local_runner.py purchaser              # Process queued intents
 python lambda/local_runner.py reporter --format html # Generate HTML report
 ```
 
-**Always keep `DRY_RUN=true`** in `.env.local` to prevent actual Savings Plans purchases.
+In local mode, purchase intents are written to `local_data/queue/` as JSON files instead of SQS. No actual Savings Plans are purchased — the purchaser only operates on local files.
 
 ### Key Environment Variables
 
 | Variable | Description | Default |
 |----------|-------------|---------|
 | `AWS_PROFILE` | AWS profile to use | (required) |
-| `DRY_RUN` | Skip actual purchases | `true` |
 | `COVERAGE_TARGET_PERCENT` | Target coverage | `90.0` |
 | `REPORT_FORMAT` | Report format | `html` |
 

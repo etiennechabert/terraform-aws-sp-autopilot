@@ -15,7 +15,6 @@ variable "lambda_config" {
   description = "Lambda configuration (can be overridden for testing)"
   type = object({
     scheduler = optional(object({
-      dry_run         = optional(bool, true)
       assume_role_arn = optional(string)
     }), {})
     purchaser = optional(object({

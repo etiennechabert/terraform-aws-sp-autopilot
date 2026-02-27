@@ -91,7 +91,6 @@ module "savings_plans" {
   # Lambda configuration - purchaser enabled for production use (can be overridden for testing)
   lambda_config = {
     scheduler = {
-      dry_run     = try(var.lambda_config.scheduler.dry_run, false) # Production mode - queue purchases
       error_alarm = true
     }
     purchaser = {

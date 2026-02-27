@@ -7,7 +7,6 @@ variable "lambda_config" {
   type = object({
     scheduler = optional(object({
       enabled         = optional(bool, true)
-      dry_run         = optional(bool, false) # If true, sends email only (no SQS queueing)
       memory_mb       = optional(number, 128)
       timeout         = optional(number, 300)
       assume_role_arn = optional(string)     # Role to assume for Cost Explorer and Savings Plans APIs (AWS Orgs)

@@ -14,7 +14,7 @@ First component in the automation workflow. Runs on schedule (default: 1st of mo
 4. Calculate purchase need based on coverage gap
 5. Apply split strategy (one_shot, fixed_step, or gap_split)
 6. Split by term mix (Compute SP only)
-7. Queue purchase intents OR send dry-run email
+7. Queue purchase intents to SQS
 8. Send notification email with results
 
 ## Key Environment Variables
@@ -23,7 +23,6 @@ First component in the automation workflow. Runs on schedule (default: 1st of mo
 |----------|---------|-------------|
 | `QUEUE_URL` | — | SQS queue URL (required) |
 | `SNS_TOPIC_ARN` | — | SNS topic ARN (required) |
-| `DRY_RUN` | `true` | Email only, no queue |
 | `COVERAGE_TARGET_PERCENT` | `90` | Target coverage % |
 | `MAX_PURCHASE_PERCENT` | `10` | Max purchase limit |
 | `MANAGEMENT_ACCOUNT_ROLE_ARN` | — | Cross-account role ARN |
@@ -52,7 +51,7 @@ aws lambda invoke \
   output.json
 ```
 
-In dry-run mode, verify no messages queued to SQS.
+Verify purchase intents are queued to SQS and notification email is sent.
 
 ## Related Components
 

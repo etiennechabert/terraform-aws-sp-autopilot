@@ -5,7 +5,7 @@
 # - Split: fixed steps of 10% per cycle
 # - Single AWS account (no Organizations)
 # - Compute Savings Plans only (EC2, Lambda, Fargate)
-# - Starts in dry-run mode for safety
+# - Purchaser disabled by default for safety
 
 terraform {
   required_version = ">= 1.4"
@@ -85,11 +85,10 @@ module "savings_plans" {
   # Lambda configuration (using defaults with error alarms enabled, can be overridden for testing)
   lambda_config = {
     scheduler = {
-      dry_run     = try(var.lambda_config.scheduler.dry_run, true) # Start in dry-run mode - emails only
       error_alarm = true
     }
     purchaser = {
-      enabled     = try(var.lambda_config.purchaser.enabled, true)
+      enabled     = try(var.lambda_config.purchaser.enabled, false) # Start with purchaser disabled for safety
       error_alarm = true
     }
     reporter = {

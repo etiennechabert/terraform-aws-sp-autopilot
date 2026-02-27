@@ -9,7 +9,7 @@ Organization-wide Savings Plans automation with centralized purchasing and multi
 - ✅ 8% monthly spend limit, 5-day review window
 - ✅ Multi-team email notifications
 - ✅ CloudWatch alarms and cross-account role
-- ✅ Starts in dry-run mode for safety
+- ✅ Progressive rollout via `enabled` flags
 
 ## Prerequisites
 
@@ -232,7 +232,7 @@ All email recipients receive confirmation emails. Each must click their link.
 
 ## Testing
 
-### Dry-Run Mode (Default)
+### Manual Test
 
 ```bash
 aws lambda invoke \
@@ -245,7 +245,6 @@ Expected email:
 - Org-wide Compute SP coverage
 - Org-wide Database SP coverage
 - Recommended purchases for each type
-- "DRY RUN" notice
 
 ### Verify Cross-Account Access
 
@@ -257,14 +256,17 @@ aws logs tail /aws/lambda/$(terraform output -raw scheduler_lambda_name) --follo
 
 Look for: `Successfully assumed role in management account`
 
-## Enabling Real Purchases
+## Enabling Purchases
 
-### 1. Update Configuration
+### 1. Enable the Purchaser Lambda
+
+Update `main.tf` to enable the purchaser:
 
 ```hcl
 lambda_config = {
-  scheduler = {
-    dry_run = false
+  purchaser = {
+    enabled         = true
+    assume_role_arn = "arn:aws:iam::123456789012:role/SavingsPlansPurchaserRole"
   }
 }
 ```
@@ -384,7 +386,7 @@ See [main README](../../README.md) for complete documentation.
 ---
 
 **⚠️ Important:**
-- Start with `lambda_config.scheduler.dry_run = true` and validate org-wide recommendations
-- Coordinate with FinOps, governance, and finance teams before enabling
+- Start with the purchaser disabled and validate org-wide recommendations from scheduler emails
+- Coordinate with FinOps, governance, and finance teams before enabling the purchaser
 - Establish review process for purchase queue during review window
 - Org-level SPs automatically benefit all member accounts

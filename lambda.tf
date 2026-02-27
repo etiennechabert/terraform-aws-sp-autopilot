@@ -25,7 +25,6 @@ resource "aws_lambda_function" "scheduler" {
     variables = {
       QUEUE_URL                       = aws_sqs_queue.purchase_intents.url
       SNS_TOPIC_ARN                   = aws_sns_topic.notifications.arn
-      DRY_RUN                         = tostring(local.dry_run)
       ENABLE_COMPUTE_SP               = tostring(local.compute_enabled)
       ENABLE_DATABASE_SP              = tostring(local.database_enabled)
       ENABLE_SAGEMAKER_SP             = tostring(local.sagemaker_enabled)

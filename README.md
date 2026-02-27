@@ -64,9 +64,6 @@ module "savings_plans" {
     emails = ["devops@example.com"]
   }
 
-  lambda_config = {
-    scheduler = { dry_run = true } # Start in dry-run mode (recommended)
-  }
 }
 ```
 
@@ -190,7 +187,7 @@ The module consists of three Lambda functions with SQS queue coordination:
    - Analyzes current coverage (separate for Compute/Database/SageMaker)
    - Gets AWS recommendations
    - Applies purchase strategy
-   - Queues purchase intents to SQS (or emails only if `dry_run = true`)
+   - Queues purchase intents to SQS
 
 2. **SQS Queue** (review window)
    - Holds purchase intents
@@ -239,11 +236,11 @@ See [organizations example](examples/organizations/README.md) for complete setup
 
 Start with **1-year No Upfront** commitments to validate the automation with minimal risk. Once comfortable after the first year, switch to **3-year All Upfront** for maximum savings — expiring 1Y plans will naturally get replaced by 3Y over time.
 
-| Phase | `plan_type` | `dry_run` | Purpose |
+| Phase | `plan_type` | Purchaser | Purpose |
 |-------|-------------|-----------|---------|
-| **Week 1** | — | `true` | Review recommendations only |
-| **Year 1** | `no_upfront_one_year` | `false` | Validate with low-risk commitments |
-| **Year 2+** | `all_upfront_three_year` | `false` | Maximize savings as 1Y plans expire |
+| **Week 1** | — | disabled | Review recommendations only (scheduler queues to SQS, inspect messages) |
+| **Year 1** | `no_upfront_one_year` | enabled | Validate with low-risk commitments |
+| **Year 2+** | `all_upfront_three_year` | enabled | Maximize savings as 1Y plans expire |
 
 When switching to 3Y, consider slowing down purchases since each commitment lasts longer: increase the `divider` with gap_split (though it naturally purchases less as coverage grows, as long as `min_purchase_percent` isn't set too high), or reduce `step_percent` with fixed_step.
 
@@ -293,7 +290,7 @@ Main configuration objects:
 - `sp_plans` — Enable/configure Compute, Database, SageMaker
 - `cron_schedules` — Cron schedules for Scheduler, Purchaser, Reporter
 - `notifications` — Email addresses, webhook URLs
-- `lambda_config` — Per-Lambda settings (dry-run, assume roles, alarms)
+- `lambda_config` — Per-Lambda settings (enable/disable, assume roles, alarms)
 - `monitoring` — CloudWatch alarms, error thresholds
 - `reporting` — Report format, S3 storage, email delivery
 
@@ -369,7 +366,7 @@ This module is open-source software licensed under the [Apache License 2.0](LICE
 | <a name="input_sp_plans"></a> [sp\_plans](#input\_sp\_plans) | Savings Plans configuration for Compute, Database, and SageMaker | <pre>object({<br/>    compute = object({<br/>      enabled   = bool<br/>      plan_type = optional(string)<br/>    })<br/><br/>    database = object({<br/>      enabled   = bool<br/>      plan_type = optional(string) # AWS only supports "no_upfront_one_year" for Database SPs<br/>    })<br/><br/>    sagemaker = object({<br/>      enabled   = bool<br/>      plan_type = optional(string)<br/>    })<br/>  })</pre> | n/a | yes |
 | <a name="input_cron_schedules"></a> [cron\_schedules](#input\_cron\_schedules) | EventBridge cron schedules for each Lambda function. Set to null to disable a schedule. | <pre>object({<br/>    scheduler = optional(string) # Set to null to disable, defaults to "cron(0 8 1 * ? *)"<br/>    purchaser = optional(string) # Set to null to disable, defaults to "cron(0 8 10 * ? *)"<br/>    reporter  = optional(string) # Set to null to disable, defaults to "cron(0 9 20 * ? *)"<br/>  })</pre> | <pre>{<br/>  "purchaser": "cron(0 8 10-17 * MON *)",<br/>  "reporter": "cron(0 8 20-27 * MON *)",<br/>  "scheduler": "cron(0 8 1-7 * MON *)"<br/>}</pre> | no |
 | <a name="input_encryption"></a> [encryption](#input\_encryption) | Encryption configuration for SNS, SQS, and S3 | <pre>object({<br/>    sns_kms_key = optional(string, "alias/aws/sns") # Default: AWS managed KMS key. Set to null to disable.<br/>    sqs_kms_key = optional(string, "alias/aws/sqs") # Default: AWS managed KMS key. Set to null to disable.<br/>    s3 = optional(object({<br/>      kms_key = optional(string) # null = AES256 (SSE-S3, free), set to KMS key ARN for SSE-KMS<br/>    }), {})<br/>  })</pre> | `{}` | no |
-| <a name="input_lambda_config"></a> [lambda\_config](#input\_lambda\_config) | Lambda function configuration including enable/disable controls, performance settings, cross-account role ARNs, and error alarms | <pre>object({<br/>    scheduler = optional(object({<br/>      enabled         = optional(bool, true)<br/>      dry_run         = optional(bool, false) # If true, sends email only (no SQS queueing)<br/>      memory_mb       = optional(number, 128)<br/>      timeout         = optional(number, 300)<br/>      assume_role_arn = optional(string)     # Role to assume for Cost Explorer and Savings Plans APIs (AWS Orgs)<br/>      error_alarm     = optional(bool, true) # Enable CloudWatch error alarm for this Lambda<br/>    }), {})<br/><br/>    purchaser = optional(object({<br/>      enabled         = optional(bool, true)<br/>      memory_mb       = optional(number, 128)<br/>      timeout         = optional(number, 300)<br/>      assume_role_arn = optional(string)     # Role to assume for Savings Plans purchase APIs (AWS Orgs)<br/>      error_alarm     = optional(bool, true) # Enable CloudWatch error alarm for this Lambda<br/>    }), {})<br/><br/>    reporter = optional(object({<br/>      enabled         = optional(bool, true)<br/>      memory_mb       = optional(number, 128)<br/>      timeout         = optional(number, 300)<br/>      assume_role_arn = optional(string)     # Role to assume for Cost Explorer and Savings Plans APIs (AWS Orgs)<br/>      error_alarm     = optional(bool, true) # Enable CloudWatch error alarm for this Lambda<br/>    }), {})<br/>  })</pre> | `{}` | no |
+| <a name="input_lambda_config"></a> [lambda\_config](#input\_lambda\_config) | Lambda function configuration including enable/disable controls, performance settings, cross-account role ARNs, and error alarms | <pre>object({<br/>    scheduler = optional(object({<br/>      enabled         = optional(bool, true)<br/>      memory_mb       = optional(number, 128)<br/>      timeout         = optional(number, 300)<br/>      assume_role_arn = optional(string)     # Role to assume for Cost Explorer and Savings Plans APIs (AWS Orgs)<br/>      error_alarm     = optional(bool, true) # Enable CloudWatch error alarm for this Lambda<br/>    }), {})<br/><br/>    purchaser = optional(object({<br/>      enabled         = optional(bool, true)<br/>      memory_mb       = optional(number, 128)<br/>      timeout         = optional(number, 300)<br/>      assume_role_arn = optional(string)     # Role to assume for Savings Plans purchase APIs (AWS Orgs)<br/>      error_alarm     = optional(bool, true) # Enable CloudWatch error alarm for this Lambda<br/>    }), {})<br/><br/>    reporter = optional(object({<br/>      enabled         = optional(bool, true)<br/>      memory_mb       = optional(number, 128)<br/>      timeout         = optional(number, 300)<br/>      assume_role_arn = optional(string)     # Role to assume for Cost Explorer and Savings Plans APIs (AWS Orgs)<br/>      error_alarm     = optional(bool, true) # Enable CloudWatch error alarm for this Lambda<br/>    }), {})<br/>  })</pre> | `{}` | no |
 | <a name="input_monitoring"></a> [monitoring](#input\_monitoring) | CloudWatch monitoring and alarm configuration | <pre>object({<br/>    dlq_alarm                 = optional(bool, true)<br/>    error_threshold           = optional(number, 1)  # Threshold for Lambda error alarms (configured per-Lambda in lambda_config)<br/>    low_utilization_threshold = optional(number, 70) # Alert when Savings Plans utilization falls below this percentage<br/>  })</pre> | `{}` | no |
 | <a name="input_name_prefix"></a> [name\_prefix](#input\_name\_prefix) | Prefix for all resource names. Allows multiple module deployments in the same AWS account. | `string` | `"sp-autopilot"` | no |
 | <a name="input_reporting"></a> [reporting](#input\_reporting) | Report generation and storage configuration | <pre>object({<br/>    format             = optional(string, "html")<br/>    email_reports      = optional(bool, false)<br/>    include_debug_data = optional(bool, false)<br/><br/>    s3_lifecycle = optional(object({<br/>      transition_ia_days         = optional(number, 90)<br/>      transition_glacier_days    = optional(number, 180)<br/>      expiration_days            = optional(number, 365)<br/>      noncurrent_expiration_days = optional(number, 90)<br/>    }), {})<br/>  })</pre> | `{}` | no |
