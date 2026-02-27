@@ -60,6 +60,13 @@ else
     exit 1
 fi
 
+STAGED_TF_FILES=$(git diff --cached --name-only --diff-filter=ACM | grep '\.tf$' || true)
+if [ -n "$STAGED_TF_FILES" ] && command -v terraform-docs &> /dev/null; then
+    echo "📖 Running make docs..."
+    make docs
+    git add README.md
+fi
+
 echo ""
 echo "✅ All pre-commit checks passed!"
 exit 0
