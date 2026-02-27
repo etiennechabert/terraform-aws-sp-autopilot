@@ -18,8 +18,6 @@ variable "aws_region" {
 variable "purchase_strategy" {
   description = "Purchase strategy configuration"
   type = object({
-    lookback_days           = optional(number, 13)
-    min_data_days           = optional(number, 14)
     renewal_window_days     = optional(number, 7)
     purchase_cooldown_days  = optional(number, 7)
     min_commitment_per_plan = optional(number, 0.001)
@@ -41,8 +39,6 @@ variable "purchase_strategy" {
     }))
   })
   default = {
-    lookback_days           = 7
-    min_data_days           = 14
     renewal_window_days     = 7
     min_commitment_per_plan = 0.001
 
@@ -117,14 +113,12 @@ variable "cron_schedules" {
 variable "notifications" {
   description = "Notification configuration"
   type = object({
-    emails         = list(string)
-    slack_webhook  = optional(string)
-    teams_webhook  = optional(string)
-    send_no_action = optional(bool, true)
+    emails        = list(string)
+    slack_webhook = optional(string)
+    teams_webhook = optional(string)
   })
   default = {
-    emails         = ["test@example.com"]
-    send_no_action = true
+    emails = ["test@example.com"]
   }
 }
 
@@ -135,10 +129,8 @@ variable "notifications" {
 variable "reporting" {
   description = "Reporting configuration"
   type = object({
-    enabled        = optional(bool, true)
-    format         = optional(string, "html")
-    email_reports  = optional(bool, false)
-    retention_days = optional(number, 365)
+    format        = optional(string, "html")
+    email_reports = optional(bool, false)
 
     s3_lifecycle = optional(object({
       transition_ia_days         = optional(number, 90)
@@ -148,10 +140,8 @@ variable "reporting" {
     }), {})
   })
   default = {
-    enabled        = true
-    format         = "html"
-    email_reports  = false
-    retention_days = 365
+    format        = "html"
+    email_reports = false
   }
 }
 

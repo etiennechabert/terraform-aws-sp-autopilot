@@ -38,8 +38,6 @@ variable "lambda_config" {
 variable "purchase_strategy" {
   description = "Purchase strategy configuration with orthogonal target + split dimensions"
   type = object({
-    lookback_days           = optional(number, 13)
-    min_data_days           = optional(number, 14)
     renewal_window_days     = optional(number, 7)
     purchase_cooldown_days  = optional(number, 7)
     min_commitment_per_plan = optional(number, 0.001)
@@ -145,11 +143,6 @@ variable "purchase_strategy" {
       true
     )
     error_message = "For gap_split split: min_purchase_percent must be greater than 0."
-  }
-
-  validation {
-    condition     = var.purchase_strategy.lookback_days <= 13
-    error_message = "lookback_days must be <= 13 (AWS Cost Explorer HOURLY granularity limit is 14 days)."
   }
 
   # spike_guard validations
@@ -295,10 +288,9 @@ variable "cron_schedules" {
 variable "notifications" {
   description = "Notification configuration for email, Slack, and Teams"
   type = object({
-    emails         = list(string)
-    slack_webhook  = optional(string)
-    teams_webhook  = optional(string)
-    send_no_action = optional(bool, true)
+    emails        = list(string)
+    slack_webhook = optional(string)
+    teams_webhook = optional(string)
   })
 
   validation {
@@ -312,10 +304,8 @@ variable "notifications" {
 variable "reporting" {
   description = "Report generation and storage configuration"
   type = object({
-    enabled            = optional(bool, true)
     format             = optional(string, "html")
     email_reports      = optional(bool, false)
-    retention_days     = optional(number, 365)
     include_debug_data = optional(bool, false)
 
     s3_lifecycle = optional(object({
@@ -330,11 +320,6 @@ variable "reporting" {
   validation {
     condition     = contains(["html", "pdf", "json"], try(var.reporting.format, "html"))
     error_message = "report_format must be one of: html, pdf, json."
-  }
-
-  validation {
-    condition     = try(var.reporting.retention_days >= 1, true)
-    error_message = "retention_days must be at least 1."
   }
 
   validation {
@@ -423,8 +408,7 @@ variable "encryption" {
     sns_kms_key = optional(string, "alias/aws/sns") # Default: AWS managed KMS key. Set to null to disable.
     sqs_kms_key = optional(string, "alias/aws/sqs") # Default: AWS managed KMS key. Set to null to disable.
     s3 = optional(object({
-      enabled = optional(bool, true) # Enable/disable S3 encryption
-      kms_key = optional(string)     # null = AES256 (SSE-S3, free), set to KMS key ARN for SSE-KMS
+      kms_key = optional(string) # null = AES256 (SSE-S3, free), set to KMS key ARN for SSE-KMS
     }), {})
   })
   default = {}
