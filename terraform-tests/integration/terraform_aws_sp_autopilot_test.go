@@ -88,10 +88,9 @@ func TestFullDeploymentAndCleanup(t *testing.T) {
 			"monitoring": map[string]interface{}{
 				"dlq_alarm": true,
 			},
-			// Lambda configuration with dry-run and error alarms
+			// Lambda configuration with error alarms
 			"lambda_config": map[string]interface{}{
 				"scheduler": map[string]interface{}{
-					"dry_run":     true,
 					"error_alarm": true,
 				},
 				"purchaser": map[string]interface{}{
@@ -280,7 +279,6 @@ func TestFullDeploymentAndCleanup(t *testing.T) {
 
 	assert.Equal(t, "true", moduleConfig["compute_sp_enabled"], "Compute SP should be enabled")
 	assert.Equal(t, "true", moduleConfig["database_sp_enabled"], "Database SP should be enabled")
-	assert.Equal(t, "true", moduleConfig["dry_run"], "Dry run should be enabled")
 
 	t.Log("✓ Module configuration validated")
 

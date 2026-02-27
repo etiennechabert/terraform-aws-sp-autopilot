@@ -6,7 +6,7 @@ This script allows you to run the Lambda functions locally with filesystem I/O
 instead of SQS and S3. This is useful for debugging and development.
 
 Usage:
-    python lambda/local_runner.py scheduler  [--dry-run]
+    python lambda/local_runner.py scheduler
     python lambda/local_runner.py purchaser
     python lambda/local_runner.py reporter [--format html|json]
 
@@ -15,12 +15,11 @@ Environment:
     Key variables:
     - LOCAL_MODE=true (automatically set by this script)
     - LOCAL_DATA_DIR=./local_data (default)
-    - DRY_RUN=true (for scheduler, prevents actual queueing)
     - AWS credentials (AWS_PROFILE or AWS_ACCESS_KEY_ID/AWS_SECRET_ACCESS_KEY)
 
 Example:
-    # Run scheduler in dry-run mode
-    python lambda/local_runner.py scheduler --dry-run
+    # Run scheduler locally
+    python lambda/local_runner.py scheduler
 
     # Run purchaser (processes local queue files)
     python lambda/local_runner.py purchaser
@@ -84,11 +83,6 @@ def run_scheduler(args):
     print("\n" + "=" * 60)
     print("Running Scheduler Lambda in LOCAL mode")
     print("=" * 60 + "\n")
-
-    # Set DRY_RUN if requested
-    if args.dry_run:
-        os.environ["DRY_RUN"] = "true"
-        print("DRY_RUN mode enabled - no messages will be queued\n")
 
     # Import and run scheduler handler
     from scheduler.handler import handler
@@ -224,10 +218,6 @@ def main():
         "lambda_name",
         choices=["scheduler", "purchaser", "reporter"],
         help="Name of the Lambda function to run",
-    )
-
-    parser.add_argument(
-        "--dry-run", action="store_true", help="Run scheduler in dry-run mode (no queueing)"
     )
 
     parser.add_argument(

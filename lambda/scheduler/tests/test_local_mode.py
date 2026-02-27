@@ -19,7 +19,6 @@ import pytest
 os.environ.setdefault("AWS_DEFAULT_REGION", "us-east-1")
 os.environ.setdefault("QUEUE_URL", "not-used-in-local-mode")
 os.environ.setdefault("SNS_TOPIC_ARN", "arn:aws:sns:us-east-1:123456789012:test-topic")
-os.environ.setdefault("DRY_RUN", "false")
 os.environ.setdefault("LOOKBACK_DAYS", "7")
 os.environ.setdefault("GRANULARITY", "HOURLY")
 os.environ.setdefault("COVERAGE_TARGET_PERCENT", "80")
@@ -120,24 +119,6 @@ def test_handler_local_mode_no_purchases_needed(mock_aws_clients, monkeypatch):
     message_files = list(queue_dir.glob("*.json"))
     # Just verify queue directory exists and handler completed
     assert queue_dir.exists()
-
-
-def test_handler_local_mode_dry_run(mock_aws_clients, monkeypatch):
-    """Test scheduler in dry-run mode (no queue messages)."""
-    test_data_dir = f"/tmp/sp-autopilot-test-{os.getpid()}-dryrun"
-    monkeypatch.setenv("LOCAL_MODE", "true")
-    monkeypatch.setenv("LOCAL_DATA_DIR", test_data_dir)
-    monkeypatch.setenv("DRY_RUN", "true")
-
-    response = handler.handler({}, {})
-
-    assert response["statusCode"] == 200
-
-    # Verify no queue messages in dry-run mode
-    queue_dir = Path(test_data_dir) / "queue"
-    if queue_dir.exists():
-        message_files = list(queue_dir.glob("*.json"))
-        assert len(message_files) == 0, "Dry-run should not generate queue messages"
 
 
 def test_handler_local_mode_multiple_plan_types(mock_aws_clients, monkeypatch, aws_mock_builder):

@@ -28,7 +28,6 @@ def mock_env_vars(monkeypatch):
     """Set up environment variables for testing."""
     monkeypatch.setenv("QUEUE_URL", "https://sqs.us-east-1.amazonaws.com/123456789012/test-queue")
     monkeypatch.setenv("SNS_TOPIC_ARN", "arn:aws:sns:us-east-1:123456789012:test-topic")
-    monkeypatch.setenv("DRY_RUN", "true")
     monkeypatch.setenv("ENABLE_COMPUTE_SP", "true")
     monkeypatch.setenv("ENABLE_DATABASE_SP", "false")
     monkeypatch.setenv("ENABLE_SAGEMAKER_SP", "false")
@@ -56,6 +55,7 @@ def mock_clients():
     ):
         mock_ce = Mock()
         mock_sqs = Mock()
+        mock_sqs.send_message.return_value = {"MessageId": "msg-default"}
         mock_sns = Mock()
         mock_sp = Mock()
 
@@ -229,57 +229,6 @@ def test_get_recent_purchase_sp_types_multiple_types():
     assert result == {"compute", "sagemaker"}
 
 
-def test_handler_dry_run_mode(mock_env_vars, mock_clients, aws_mock_builder):
-    """Test handler in dry-run mode sends email but doesn't queue."""
-    mock_clients["sqs"].purge_queue.return_value = {}
-    mock_clients[
-        "ce"
-    ].get_savings_plans_purchase_recommendation.return_value = aws_mock_builder.recommendation(
-        "compute", hourly_commitment=1.0
-    )
-    mock_clients["sns"].publish.return_value = {"MessageId": "test-msg"}
-
-    response = handler.handler({}, None)
-
-    assert response["statusCode"] == 200
-    body = json.loads(response["body"])
-    assert body["dry_run"] is True
-
-    assert mock_clients["sqs"].purge_queue.called
-    assert not mock_clients["sqs"].send_message.called
-    assert mock_clients["sns"].publish.called
-
-    email_call = mock_clients["sns"].publish.call_args[1]
-    assert "DRY RUN" in email_call["Subject"]
-
-
-def test_handler_production_mode(mock_env_vars, mock_clients, aws_mock_builder, monkeypatch):
-    """Test handler in production mode queues messages and sends email."""
-    monkeypatch.setenv("DRY_RUN", "false")
-
-    mock_clients["sqs"].purge_queue.return_value = {}
-    mock_clients[
-        "ce"
-    ].get_savings_plans_purchase_recommendation.return_value = aws_mock_builder.recommendation(
-        "compute", hourly_commitment=1.0
-    )
-    mock_clients["sqs"].send_message.return_value = {"MessageId": "msg-123"}
-    mock_clients["sns"].publish.return_value = {"MessageId": "test-msg"}
-
-    response = handler.handler({}, None)
-
-    assert response["statusCode"] == 200
-    body = json.loads(response["body"])
-    assert body["dry_run"] is False
-
-    assert mock_clients["sqs"].purge_queue.called
-    assert mock_clients["sqs"].send_message.called
-    assert mock_clients["sns"].publish.called
-
-    email_call = mock_clients["sns"].publish.call_args[1]
-    assert "DRY RUN" not in email_call["Subject"]
-
-
 def test_handler_follow_aws_strategy(mock_env_vars, mock_clients, aws_mock_builder):
     """Test follow_aws strategy uses 100% of AWS recommendations."""
     mock_clients["sqs"].purge_queue.return_value = {}
@@ -442,8 +391,7 @@ def test_handler_no_recommendations(mock_env_vars, mock_clients, aws_mock_builde
     assert body["purchases_planned"] == 0
 
     email_call = mock_clients["sns"].publish.call_args[1]
-    # Email should indicate no purchases were scheduled
-    assert "NO PURCHASES WERE SCHEDULED" in email_call["Message"]
+    assert "Total Plans Queued: 0" in email_call["Message"]
 
 
 def test_handler_applies_max_purchase_percent(
@@ -656,12 +604,8 @@ def test_handler_sns_notification_sent(mock_env_vars, mock_clients, aws_mock_bui
     assert "Message" in publish_call
 
 
-def test_handler_queues_purchases_in_production(
-    mock_env_vars, mock_clients, aws_mock_builder, monkeypatch
-):
-    """Test purchases are queued in production mode."""
-    monkeypatch.setenv("DRY_RUN", "false")
-
+def test_handler_queues_purchases(mock_env_vars, mock_clients, aws_mock_builder):
+    """Test purchases are queued to SQS and notification email is sent."""
     mock_clients["sqs"].purge_queue.return_value = {}
     mock_clients[
         "ce"
@@ -674,14 +618,15 @@ def test_handler_queues_purchases_in_production(
     response = handler.handler({}, None)
 
     assert response["statusCode"] == 200
+    assert mock_clients["sqs"].purge_queue.called
     assert mock_clients["sqs"].send_message.called
+    assert mock_clients["sns"].publish.called
 
     send_call = mock_clients["sqs"].send_message.call_args[1]
     assert send_call["QueueUrl"] == "https://sqs.us-east-1.amazonaws.com/123456789012/test-queue"
     assert "MessageBody" in send_call
 
     message_body = json.loads(send_call["MessageBody"])
-    # Check for actual message structure
     assert "sp_type" in message_body
     assert "hourly_commitment" in message_body
     assert "payment_option" in message_body
@@ -797,7 +742,6 @@ def test_handler_successful_response_structure(mock_env_vars, mock_clients, aws_
 
     body = json.loads(response["body"])
     assert "message" in body
-    assert "dry_run" in body
     assert "purchases_planned" in body
 
 
@@ -835,7 +779,7 @@ def test_handler_spike_guard_blocks_flagged_types(
     assert body["purchases_planned"] == 0
     assert body["purchases_blocked_by_spike_guard"] == 1
 
-    # Should send both dry-run email and spike guard email
+    # Should send both scheduled email and spike guard email
     assert mock_clients["sns"].publish.call_count == 2
     subjects = [call[1]["Subject"] for call in mock_clients["sns"].publish.call_args_list]
     assert any("Spike" in s for s in subjects)
@@ -853,6 +797,7 @@ def test_handler_spike_guard_allows_unflagged_types(
     ].get_savings_plans_purchase_recommendation.return_value = aws_mock_builder.recommendation(
         "compute", hourly_commitment=1.0
     )
+    mock_clients["sqs"].send_message.return_value = {"MessageId": "msg-123"}
     mock_clients["sns"].publish.return_value = {"MessageId": "test-msg"}
 
     guard_results = {
