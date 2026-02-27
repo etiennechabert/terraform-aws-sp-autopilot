@@ -1,7 +1,7 @@
 import pytest
 
 from shared.config_validation import (
-    _validate_strategy_and_granularity,
+    _validate_strategies,
     validate_scheduler_config,
 )
 
@@ -21,22 +21,22 @@ class TestStrategyValidation:
                 config["dynamic_risk_level"] = "optimal"
             if strategy == "aws":
                 config["split_strategy_type"] = "one_shot"
-            _validate_strategy_and_granularity(config)
+            _validate_strategies(config)
 
     def test_invalid_target_strategy(self):
         config = {**BASE_CONFIG, "target_strategy_type": "invalid"}
         with pytest.raises(ValueError, match="Invalid target_strategy_type"):
-            _validate_strategy_and_granularity(config)
+            _validate_strategies(config)
 
     def test_valid_split_strategies(self):
         for strategy in ["one_shot", "fixed_step", "gap_split"]:
             config = {**BASE_CONFIG, "split_strategy_type": strategy}
-            _validate_strategy_and_granularity(config)
+            _validate_strategies(config)
 
     def test_invalid_split_strategy(self):
         config = {**BASE_CONFIG, "split_strategy_type": "invalid"}
         with pytest.raises(ValueError, match="Invalid split_strategy_type"):
-            _validate_strategy_and_granularity(config)
+            _validate_strategies(config)
 
     def test_aws_target_with_any_split(self):
         for split in ["one_shot", "fixed_step", "gap_split"]:
@@ -45,12 +45,12 @@ class TestStrategyValidation:
                 "target_strategy_type": "aws",
                 "split_strategy_type": split,
             }
-            _validate_strategy_and_granularity(config)
+            _validate_strategies(config)
 
     def test_dynamic_requires_risk_level(self):
         config = {**BASE_CONFIG, "target_strategy_type": "dynamic"}
         with pytest.raises(ValueError, match="requires 'dynamic_risk_level'"):
-            _validate_strategy_and_granularity(config)
+            _validate_strategies(config)
 
     def test_dynamic_invalid_risk_level(self):
         config = {
@@ -59,7 +59,7 @@ class TestStrategyValidation:
             "dynamic_risk_level": "yolo",
         }
         with pytest.raises(ValueError, match="Invalid dynamic_risk_level"):
-            _validate_strategy_and_granularity(config)
+            _validate_strategies(config)
 
     def test_dynamic_valid_risk_levels(self):
         for level in ["prudent", "min_hourly", "optimal", "maximum"]:
@@ -68,17 +68,7 @@ class TestStrategyValidation:
                 "target_strategy_type": "dynamic",
                 "dynamic_risk_level": level,
             }
-            _validate_strategy_and_granularity(config)
-
-    def test_valid_granularity(self):
-        for gran in ["HOURLY", "DAILY"]:
-            config = {**BASE_CONFIG, "granularity": gran}
-            _validate_strategy_and_granularity(config)
-
-    def test_invalid_granularity(self):
-        config = {**BASE_CONFIG, "granularity": "WEEKLY"}
-        with pytest.raises(ValueError, match="Invalid granularity"):
-            _validate_strategy_and_granularity(config)
+            _validate_strategies(config)
 
 
 class TestSchedulerConfigStrategies:

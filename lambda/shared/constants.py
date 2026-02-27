@@ -41,6 +41,13 @@ PLAN_TYPE_TO_API_FILTER = {
     PLAN_TYPE_EC2_INSTANCE: SP_FILTER_EC2_INSTANCE,
 }
 
+# Map AWS plan type names to internal lowercase keys
+AWS_TYPE_TO_KEY = {
+    PLAN_TYPE_COMPUTE: "compute",
+    PLAN_TYPE_SAGEMAKER: "sagemaker",
+    PLAN_TYPE_DATABASE: "database",
+}
+
 
 # ============================================================================
 # AWS Dimension Keys

@@ -53,7 +53,7 @@ def mock_clients():
     """Mock AWS clients at the initialization boundary."""
     with (
         patch("handler.initialize_clients") as mock_init,
-        patch("shared.savings_plans_metrics.has_recent_purchase", return_value=False),
+        patch("shared.savings_plans_metrics.get_recent_purchase_sp_types", return_value=set()),
     ):
         mock_ce = Mock()
         mock_sqs = Mock()
@@ -75,13 +75,16 @@ def mock_clients():
         }
 
 
-def test_handler_cooldown_skips_scheduling(mock_env_vars, monkeypatch):
-    """Test handler skips scheduling when a recent purchase is within cooldown window."""
+def test_handler_cooldown_skips_all_enabled_types(mock_env_vars, monkeypatch):
+    """Test handler skips scheduling when all enabled SP types are in cooldown."""
     monkeypatch.setenv("PURCHASE_COOLDOWN_DAYS", "7")
 
     with (
         patch("handler.initialize_clients") as mock_init,
-        patch("shared.savings_plans_metrics.has_recent_purchase", return_value=True),
+        patch(
+            "shared.savings_plans_metrics.get_recent_purchase_sp_types",
+            return_value={"compute"},
+        ),
     ):
         mock_sns = Mock()
         mock_sns.publish.return_value = {"MessageId": "test-msg"}
@@ -102,9 +105,41 @@ def test_handler_cooldown_skips_scheduling(mock_env_vars, monkeypatch):
     assert "cooldown" in mock_sns.publish.call_args[1]["Subject"].lower()
 
 
-def test_has_recent_purchase_detects_recent_plan():
-    """Test has_recent_purchase returns True when a plan was started within cooldown."""
-    from shared.savings_plans_metrics import has_recent_purchase
+def test_handler_cooldown_filters_per_type(
+    mock_env_vars, mock_clients, aws_mock_builder, monkeypatch
+):
+    """Test cooldown blocks only the SP types that were recently purchased."""
+    monkeypatch.setenv("ENABLE_COMPUTE_SP", "true")
+    monkeypatch.setenv("ENABLE_DATABASE_SP", "true")
+    monkeypatch.setenv("PURCHASE_COOLDOWN_DAYS", "7")
+
+    mock_clients["sqs"].purge_queue.return_value = {}
+    mock_clients["sns"].publish.return_value = {"MessageId": "test-msg"}
+
+    def mock_recommendation(*args, **kwargs):
+        sp_type = kwargs.get("SavingsPlansType")
+        if sp_type == "COMPUTE_SP":
+            return aws_mock_builder.recommendation("compute", hourly_commitment=1.0)
+        return aws_mock_builder.recommendation("database", hourly_commitment=2.0)
+
+    mock_clients["ce"].get_savings_plans_purchase_recommendation.side_effect = mock_recommendation
+
+    with patch(
+        "shared.savings_plans_metrics.get_recent_purchase_sp_types",
+        return_value={"compute"},
+    ):
+        response = handler.handler({}, None)
+
+    assert response["statusCode"] == 200
+    body = json.loads(response["body"])
+    # Compute blocked by cooldown, database goes through
+    assert body["purchases_planned"] == 1
+    assert body["purchases_blocked_by_cooldown"] == 1
+
+
+def test_get_recent_purchase_sp_types_detects_recent_plan():
+    """Test get_recent_purchase_sp_types returns the type key for recently purchased plans."""
+    from shared.savings_plans_metrics import get_recent_purchase_sp_types
 
     recent_start = (datetime.now(UTC) - timedelta(days=2)).isoformat()
     mock_client = Mock()
@@ -121,12 +156,12 @@ def test_has_recent_purchase_detects_recent_plan():
             }
         ]
     }
-    assert has_recent_purchase(mock_client, cooldown_days=7) is True
+    assert get_recent_purchase_sp_types(mock_client, cooldown_days=7) == {"compute"}
 
 
-def test_has_recent_purchase_ignores_old_plan():
-    """Test has_recent_purchase returns False when all plans are older than cooldown."""
-    from shared.savings_plans_metrics import has_recent_purchase
+def test_get_recent_purchase_sp_types_ignores_old_plan():
+    """Test get_recent_purchase_sp_types returns empty set when all plans are older than cooldown."""
+    from shared.savings_plans_metrics import get_recent_purchase_sp_types
 
     old_start = (datetime.now(UTC) - timedelta(days=30)).isoformat()
     mock_client = Mock()
@@ -143,14 +178,56 @@ def test_has_recent_purchase_ignores_old_plan():
             }
         ]
     }
-    assert has_recent_purchase(mock_client, cooldown_days=7) is False
+    assert get_recent_purchase_sp_types(mock_client, cooldown_days=7) == set()
 
 
-def test_has_recent_purchase_zero_cooldown():
-    """Test has_recent_purchase returns False when cooldown is 0 (disabled)."""
-    from shared.savings_plans_metrics import has_recent_purchase
+def test_get_recent_purchase_sp_types_zero_cooldown():
+    """Test get_recent_purchase_sp_types returns empty set when cooldown is 0 (disabled)."""
+    from shared.savings_plans_metrics import get_recent_purchase_sp_types
 
-    assert has_recent_purchase(Mock(), cooldown_days=0) is False
+    assert get_recent_purchase_sp_types(Mock(), cooldown_days=0) == set()
+
+
+def test_get_recent_purchase_sp_types_multiple_types():
+    """Test get_recent_purchase_sp_types returns multiple types when different types were purchased."""
+    from shared.savings_plans_metrics import get_recent_purchase_sp_types
+
+    recent_start = (datetime.now(UTC) - timedelta(days=2)).isoformat()
+    old_start = (datetime.now(UTC) - timedelta(days=30)).isoformat()
+    mock_client = Mock()
+    mock_client.describe_savings_plans.return_value = {
+        "savingsPlans": [
+            {
+                "savingsPlanId": "sp-123",
+                "savingsPlanType": "Compute",
+                "commitment": "1.0",
+                "start": recent_start,
+                "end": "2029-01-01T00:00:00Z",
+                "paymentOption": "ALL_UPFRONT",
+                "termDurationInSeconds": 94608000,
+            },
+            {
+                "savingsPlanId": "sp-456",
+                "savingsPlanType": "SageMaker",
+                "commitment": "0.5",
+                "start": recent_start,
+                "end": "2029-01-01T00:00:00Z",
+                "paymentOption": "ALL_UPFRONT",
+                "termDurationInSeconds": 94608000,
+            },
+            {
+                "savingsPlanId": "sp-789",
+                "savingsPlanType": "Database",
+                "commitment": "2.0",
+                "start": old_start,
+                "end": "2029-01-01T00:00:00Z",
+                "paymentOption": "ALL_UPFRONT",
+                "termDurationInSeconds": 94608000,
+            },
+        ]
+    }
+    result = get_recent_purchase_sp_types(mock_client, cooldown_days=7)
+    assert result == {"compute", "sagemaker"}
 
 
 def test_handler_dry_run_mode(mock_env_vars, mock_clients, aws_mock_builder):

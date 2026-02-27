@@ -114,6 +114,22 @@ def handler(event: dict[str, Any], context: Any) -> dict[str, Any]:
                     ),
                 }
 
+        # Step 1.6: Per-type purchase cooldown
+        cooldown_days = config.get("purchase_cooldown_days", 7)
+        if cooldown_days > 0:
+            messages = _run_purchase_cooldown(clients, config, messages, cooldown_days)
+            if not messages:
+                logger.info("All messages blocked by purchase cooldown - exiting")
+                return {
+                    "statusCode": 200,
+                    "body": json.dumps(
+                        {
+                            "message": "All purchases blocked by cooldown",
+                            "purchases_executed": 0,
+                        }
+                    ),
+                }
+
         # Step 2: Get current coverage
         coverage = get_current_coverage(clients, config)
         logger.info(
@@ -244,20 +260,14 @@ def get_ce_coverage(
     logger.info(f"Getting coverage from Cost Explorer for {start_time.date()} to {end_time.date()}")
 
     try:
-        # Get coverage grouped by SERVICE (EC2, Lambda, Fargate, SageMaker, etc.)
-        granularity = config.get("granularity", "HOURLY")
-
-        # Format dates based on granularity
-        # HOURLY requires ISO 8601 (yyyy-MM-ddTHH:mm:ssZ)
-        # DAILY requires date only (yyyy-MM-dd)
-        date_format = "%Y-%m-%d" if granularity == "DAILY" else "%Y-%m-%dT%H:%M:%SZ"
+        date_format = "%Y-%m-%dT%H:%M:%SZ"
 
         response = ce_client.get_savings_plans_coverage(
             TimePeriod={
                 "Start": start_time.strftime(date_format),
                 "End": end_time.strftime(date_format),
             },
-            Granularity=granularity,
+            Granularity="HOURLY",
             GroupBy=[{"Type": "DIMENSION", "Key": "SERVICE"}],
         )
 
@@ -746,6 +756,99 @@ def send_summary_email(
         logger.info("Summary email sent successfully")
     except ClientError as e:
         logger.error(f"Failed to send summary email: {e!s}")
+        raise
+
+
+def _run_purchase_cooldown(
+    clients: dict[str, Any],
+    config: dict[str, Any],
+    messages: list[dict[str, Any]],
+    cooldown_days: int,
+) -> list[dict[str, Any]]:
+    """
+    Filter out queued purchase intents for SP types that were recently purchased.
+
+    Blocked messages are deleted from the queue. Returns remaining messages.
+    """
+    from shared.savings_plans_metrics import get_recent_purchase_sp_types
+
+    cooldown_types = get_recent_purchase_sp_types(clients["savingsplans"], cooldown_days)
+    if not cooldown_types:
+        return messages
+
+    processable = []
+    blocked_messages = []
+    for msg in messages:
+        body = json.loads(msg["Body"])
+        if body.get("sp_type") in cooldown_types:
+            blocked_messages.append(msg)
+        else:
+            processable.append(msg)
+
+    if not blocked_messages:
+        return messages
+
+    queue_adapter = QueueAdapter(sqs_client=clients["sqs"], queue_url=config["queue_url"])
+    for msg in blocked_messages:
+        queue_adapter.delete_message(msg["ReceiptHandle"])
+    logger.warning(
+        f"Deleted {len(blocked_messages)} message(s) blocked by cooldown: {sorted(cooldown_types)}"
+    )
+
+    _send_cooldown_notification(
+        clients["sns"], config, blocked_messages, cooldown_types, cooldown_days
+    )
+
+    return processable
+
+
+def _send_cooldown_notification(
+    sns_client: SNSClient,
+    config: dict[str, Any],
+    blocked_messages: list[dict[str, Any]],
+    cooldown_types: set[str],
+    cooldown_days: int,
+) -> None:
+    """Send notification that purchases were blocked at purchase time due to cooldown."""
+    lines = [
+        "⏳  PURCHASE COOLDOWN — Purchases Blocked at Purchase Time",
+        "=" * 60,
+        "",
+        f"{len(blocked_messages)} purchase intent(s) were blocked and removed from the queue.",
+        f"A Savings Plan of the same type was purchased within the last {cooldown_days} days.",
+        "This prevents double-purchasing while Cost Explorer data settles.",
+        "",
+        f"SP Types in Cooldown: {', '.join(sorted(t.upper() for t in cooldown_types))}",
+        "",
+        "Blocked Purchase Intents:",
+        "-" * 50,
+    ]
+
+    for i, msg in enumerate(blocked_messages, 1):
+        body = json.loads(msg["Body"])
+        lines.append(
+            f"  {i}. {body.get('sp_type', 'unknown').upper()} — "
+            f"${body.get('hourly_commitment', 0):.4f}/hour"
+        )
+
+    lines.extend(
+        [
+            "",
+            "These messages have been consumed from the queue.",
+            "The scheduler will re-evaluate on its next run.",
+        ]
+    )
+
+    message = "\n".join(lines)
+    try:
+        sns_client.publish(
+            TopicArn=config["sns_topic_arn"],
+            Subject="SP Autopilot — Purchases Blocked at Purchase Time (Cooldown)",
+            Message=message,
+        )
+        logger.info("Cooldown notification sent")
+    except ClientError as e:
+        logger.error(f"Failed to send cooldown notification: {e!s}")
         raise
 
 

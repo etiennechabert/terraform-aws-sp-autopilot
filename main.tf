@@ -187,7 +187,6 @@ locals {
 
   lookback_days           = try(var.purchase_strategy.lookback_days, 30)
   min_data_days           = try(var.purchase_strategy.min_data_days, 14)
-  granularity             = try(var.purchase_strategy.granularity, "HOURLY")
   renewal_window_days     = try(var.purchase_strategy.renewal_window_days, 7)
   purchase_cooldown_days  = try(var.purchase_strategy.purchase_cooldown_days, 7)
   min_commitment_per_plan = try(var.purchase_strategy.min_commitment_per_plan, 0.001)

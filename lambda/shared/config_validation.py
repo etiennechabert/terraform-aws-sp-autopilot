@@ -23,9 +23,6 @@ VALID_RISK_LEVELS = ["prudent", "min_hourly", "optimal", "maximum"]
 # Valid values for report_format field
 VALID_REPORT_FORMATS = ["html", "json", "csv"]
 
-# Valid values for granularity field
-VALID_GRANULARITIES = ["HOURLY", "DAILY"]
-
 
 def _validate_percentage_range(
     value: Any, field_name: str, min_val: float = 0.0, max_val: float = 100.0
@@ -117,10 +114,8 @@ def _validate_sp_types_enabled(config: dict[str, Any], context: str = "") -> Non
         )
 
 
-def _validate_lookback_days_with_granularity(
-    config: dict[str, Any], field_name: str = "lookback_days"
-) -> None:
-    """Validate lookback_days is a positive integer within AWS API limits based on granularity."""
+def _validate_lookback_days(config: dict[str, Any], field_name: str = "lookback_days") -> None:
+    """Validate lookback_days is a positive integer within AWS HOURLY granularity limits."""
     if field_name not in config:
         return
 
@@ -131,16 +126,10 @@ def _validate_lookback_days_with_granularity(
             f"got {type(config[field_name]).__name__}: {config[field_name]}"
         )
 
-    granularity = config.get("granularity", "HOURLY")
-    if granularity == "HOURLY" and config[field_name] > 14:
+    if config[field_name] > 14:
         raise ValueError(
-            f"Field '{field_name}' must be 14 or less for HOURLY granularity. "
+            f"Field '{field_name}' must be 14 or less. "
             f"AWS Cost Explorer retains hourly data for 14 days. "
-            f"Got {config[field_name]}"
-        )
-    if granularity == "DAILY" and config[field_name] > 90:
-        raise ValueError(
-            f"Field '{field_name}' must be 90 or less for DAILY granularity. "
             f"Got {config[field_name]}"
         )
 
@@ -244,8 +233,8 @@ def _validate_strategy_cross_rules(config: dict[str, Any]) -> None:
             )
 
 
-def _validate_strategy_and_granularity(config: dict[str, Any]) -> None:
-    """Validate target/split strategy types and granularity."""
+def _validate_strategies(config: dict[str, Any]) -> None:
+    """Validate target/split strategy types."""
     if "target_strategy_type" in config:
         target_type = config["target_strategy_type"]
         if target_type not in VALID_TARGET_STRATEGIES:
@@ -264,14 +253,6 @@ def _validate_strategy_and_granularity(config: dict[str, Any]) -> None:
 
     _validate_strategy_cross_rules(config)
 
-    if "granularity" in config:
-        granularity = config["granularity"]
-        if granularity not in VALID_GRANULARITIES:
-            raise ValueError(
-                f"Invalid granularity: '{granularity}'. "
-                f"Must be one of: {', '.join(VALID_GRANULARITIES)}"
-            )
-
 
 def validate_scheduler_config(config: dict[str, Any]) -> None:
     """
@@ -285,7 +266,7 @@ def validate_scheduler_config(config: dict[str, Any]) -> None:
     - Term values are valid (ONE_YEAR or THREE_YEAR)
     - Payment options are valid
     - Purchase strategy type is valid
-    - Logical constraints (min < max, lookback <= 14 days for HOURLY, <= 90 days for DAILY)
+    - Logical constraints (min < max, lookback <= 14 days)
 
     Args:
         config: Dictionary containing scheduler configuration
@@ -318,14 +299,14 @@ def validate_scheduler_config(config: dict[str, Any]) -> None:
                 f"{config['purchase_cooldown_days']}"
             )
 
-    _validate_lookback_days_with_granularity(config)
+    _validate_lookback_days(config)
 
     if "min_commitment_per_plan" in config:
         _validate_non_negative_number(config["min_commitment_per_plan"], "min_commitment_per_plan")
 
     _validate_sp_terms(config)
     _validate_sp_payment_options(config)
-    _validate_strategy_and_granularity(config)
+    _validate_strategies(config)
     _validate_spike_guard_params(config)
 
 
@@ -339,7 +320,7 @@ def validate_reporter_config(config: dict[str, Any]) -> None:
     - email_reports is a boolean
     - tags is a dictionary
     - String fields are non-empty strings
-    - lookback_days is within AWS limits based on granularity
+    - lookback_days is within AWS limits
     - low_utilization_threshold is within valid range (0-100)
 
     Args:
@@ -376,16 +357,7 @@ def validate_reporter_config(config: dict[str, Any]) -> None:
 
     _validate_tags_field(config)
 
-    # Validate granularity
-    if "granularity" in config:
-        granularity = config["granularity"]
-        if granularity not in VALID_GRANULARITIES:
-            raise ValueError(
-                f"Invalid granularity: '{granularity}'. "
-                f"Must be one of: {', '.join(VALID_GRANULARITIES)}"
-            )
-
-    _validate_lookback_days_with_granularity(config)
+    _validate_lookback_days(config)
 
     # Validate low_utilization_threshold
     if "low_utilization_threshold" in config:
