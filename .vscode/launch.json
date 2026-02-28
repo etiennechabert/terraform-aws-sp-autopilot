@@ -30,7 +30,6 @@
                 "FIXED_STEP_PERCENT": "10",
                 "COMPUTE_SP_TERM": "THREE_YEAR",
                 "RENEWAL_WINDOW_DAYS": "7",
-                "LOOKBACK_HOURS": "336",
                 "MIN_COMMITMENT_PER_PLAN": "0",
                 "COMPUTE_SP_PAYMENT_OPTION": "NO_UPFRONT"
             },
@@ -68,7 +67,6 @@
                 "MIN_PURCHASE_PERCENT": "1",
                 "COMPUTE_SP_TERM": "THREE_YEAR",
                 "RENEWAL_WINDOW_DAYS": "7",
-                "LOOKBACK_HOURS": "336",
                 "MIN_COMMITMENT_PER_PLAN": "0",
                 "COMPUTE_SP_PAYMENT_OPTION": "NO_UPFRONT"
             },
@@ -102,7 +100,6 @@
                 "SPLIT_STRATEGY_TYPE": "one_shot",
                 "COMPUTE_SP_TERM": "THREE_YEAR",
                 "RENEWAL_WINDOW_DAYS": "7",
-                "LOOKBACK_HOURS": "336",
                 "MIN_COMMITMENT_PER_PLAN": "0",
                 "COMPUTE_SP_PAYMENT_OPTION": "NO_UPFRONT"
             },
@@ -160,7 +157,6 @@
                 "ENABLE_DATABASE_SP": "true",
                 "ENABLE_SAGEMAKER_SP": "false",
                 // Data collection settings
-                "LOOKBACK_HOURS": "336",
                 "GRANULARITY": "HOURLY",
                 // Alert settings
                 "LOW_UTILIZATION_THRESHOLD": "70",
@@ -168,8 +164,8 @@
                 // Debug data
                 "INCLUDE_DEBUG_DATA": "true",
                 // Scheduler strategy (for preview simulation)
-                "TARGET_STRATEGY_TYPE": "fixed",
-                "SPLIT_STRATEGY_TYPE": "fixed_step",
+                "TARGET_STRATEGY_TYPE": "dynamic",
+                "SPLIT_STRATEGY_TYPE": "gap_split",
                 "FIXED_STEP_PERCENT": "10",
                 "COVERAGE_TARGET_PERCENT": "90",
                 "COMPUTE_SP_TERM": "THREE_YEAR",
@@ -208,7 +204,6 @@
                 "ENABLE_DATABASE_SP": "true",
                 "ENABLE_SAGEMAKER_SP": "true",
                 // Data collection settings
-                "LOOKBACK_HOURS": "336",
                 "GRANULARITY": "HOURLY",
                 // Alert settings
                 "LOW_UTILIZATION_THRESHOLD": "70",
@@ -246,7 +241,6 @@
                 "ENABLE_DATABASE_SP": "true",
                 "ENABLE_SAGEMAKER_SP": "true",
                 // Data collection settings
-                "LOOKBACK_HOURS": "336",
                 "GRANULARITY": "HOURLY",
                 // Alert settings
                 "LOW_UTILIZATION_THRESHOLD": "70",

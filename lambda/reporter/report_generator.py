@@ -1777,9 +1777,13 @@ def generate_html_report(
                 }}
                 // Update configured target annotation color if present
                 const ann = chart.options.plugins.annotation && chart.options.plugins.annotation.annotations;
-                if (ann && ann.configuredTarget) {{
-                    ann.configuredTarget.borderColor = palette.configuredTarget;
-                    ann.configuredTarget.label.backgroundColor = palette.configuredTargetBg;
+                if (ann) {{
+                    if (ann.currentCoverage) {{
+                        ann.currentCoverage.label.backgroundColor = palette.coveredBorder;
+                    }}
+                    if (ann.configuredTarget) {{
+                        ann.configuredTarget.label.backgroundColor = palette.configuredTargetBg;
+                    }}
                 }}
                 chart.update();
             }});
@@ -1883,14 +1887,14 @@ def generate_html_report(
                         yMin: onDemandEquivalent,
                         yMax: onDemandEquivalent,
                         borderColor: 'rgba(255, 255, 255, 0.8)',
-                        borderWidth: 1,
+                        borderWidth: 2,
                         borderDash: [4, 3],
                         label: {{
                             display: true,
                             z: 10,
                             content: 'Current: $' + spCommitmentHourly.toFixed(2) + '/hr (' + currentCoveragePct.toFixed(1) + '% coverage)',
                             position: 'center',
-                            backgroundColor: 'rgba(0, 0, 0, 0.85)',
+                            backgroundColor: palette.coveredBorder,
                             color: 'white',
                             font: {{
                                 size: 12,
@@ -1909,7 +1913,7 @@ def generate_html_report(
                         yMin: minHourly,
                         yMax: minHourly,
                         borderColor: 'rgba(70, 70, 70, 0.9)',
-                        borderWidth: 3,
+                        borderWidth: 2,
                         borderDash: [8, 4],
                         label: {{
                             display: true,
@@ -1937,8 +1941,8 @@ def generate_html_report(
                         z: 1,
                         yMin: projectedOdEquiv,
                         yMax: projectedOdEquiv,
-                        borderColor: palette.configuredTarget,
-                        borderWidth: 1,
+                        borderColor: 'rgba(255, 255, 255, 0.8)',
+                        borderWidth: 2,
                         borderDash: [4, 3],
                         label: {{
                             display: true,
