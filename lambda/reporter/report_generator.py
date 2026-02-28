@@ -1882,9 +1882,9 @@ def generate_html_report(
                         z: 1,
                         yMin: onDemandEquivalent,
                         yMax: onDemandEquivalent,
-                        borderColor: 'rgba(255, 255, 255, 0.9)',
-                        borderWidth: 3,
-                        borderDash: [8, 4],
+                        borderColor: 'rgba(255, 255, 255, 0.8)',
+                        borderWidth: 1,
+                        borderDash: [4, 3],
                         label: {{
                             display: true,
                             z: 10,
@@ -1938,8 +1938,8 @@ def generate_html_report(
                         yMin: projectedOdEquiv,
                         yMax: projectedOdEquiv,
                         borderColor: palette.configuredTarget,
-                        borderWidth: 2,
-                        borderDash: [6, 3],
+                        borderWidth: 1,
+                        borderDash: [4, 3],
                         label: {{
                             display: true,
                             z: 10,
