@@ -71,7 +71,9 @@ def _process_sp_type(
     purchase_percent = calculate_split(current_coverage, target_coverage, config)
     savings_pct = config.get(f"{key}_savings_percentage", config.get("savings_percentage", 30.0))
     od_coverage_to_add = min_hourly * (purchase_percent / 100.0) if purchase_percent > 0 else 0
-    hourly_commitment = sp_calculations.commitment_from_coverage(od_coverage_to_add, savings_pct)
+    hourly_commitment = round(
+        sp_calculations.commitment_from_coverage(od_coverage_to_add, savings_pct), 5
+    )
 
     min_commitment = config.get("min_commitment_per_plan", 0.001)
     if purchase_percent <= 0 or hourly_commitment < min_commitment:

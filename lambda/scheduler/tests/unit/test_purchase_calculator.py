@@ -155,6 +155,57 @@ def test_aws_target_no_recommendation(aws_config):
     assert len(result) == 0
 
 
+def test_hourly_commitment_rounded_to_5_decimals_aws(aws_config):
+    """AWS enforces max 5 decimal places on hourly commitment."""
+    from unittest.mock import Mock
+
+    aws_config["enable_database_sp"] = False
+    aws_config["enable_sagemaker_sp"] = False
+
+    mock_ce_client = Mock()
+    mock_ce_client.get_savings_plans_purchase_recommendation.return_value = {
+        "Metadata": {"RecommendationId": "rec-round", "LookbackPeriodInDays": "13"},
+        "SavingsPlansPurchaseRecommendation": {
+            "SavingsPlansPurchaseRecommendationDetails": [
+                {"HourlyCommitmentToPurchase": "6.398646667453034"}
+            ]
+        },
+    }
+
+    clients = {"ce": mock_ce_client}
+    result = purchase_calculator.calculate_purchase_need(aws_config, clients, spending_data=None)
+
+    assert len(result) == 1
+    commitment = result[0]["hourly_commitment"]
+    decimals = str(commitment).split(".")[1] if "." in str(commitment) else ""
+    assert len(decimals) <= 5
+
+
+def test_hourly_commitment_rounded_to_5_decimals_fixed(fixed_gap_split_config):
+    """Fixed strategy path also rounds to 5 decimal places."""
+    from unittest.mock import Mock
+
+    spending_data = {
+        "compute": {
+            "summary": {
+                "avg_coverage_total": 50.0,
+                "avg_hourly_total": 7.123456789,
+                "avg_hourly_covered": 3.5,
+            }
+        }
+    }
+
+    clients = {"ce": Mock(), "savingsplans": Mock()}
+    result = purchase_calculator.calculate_purchase_need(
+        fixed_gap_split_config, clients, spending_data
+    )
+
+    assert len(result) == 1
+    commitment = result[0]["hourly_commitment"]
+    decimals = str(commitment).split(".")[1] if "." in str(commitment) else ""
+    assert len(decimals) <= 5
+
+
 def test_aws_target_sp_disabled(aws_config):
     """Test AWS target when all SP types disabled."""
     from unittest.mock import Mock

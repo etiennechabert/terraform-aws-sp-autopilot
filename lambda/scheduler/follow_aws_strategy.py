@@ -31,7 +31,7 @@ def calculate_purchase_need_follow_aws(
             )
             continue
 
-        hourly_commitment_float = float(recommendation["HourlyCommitmentToPurchase"])
+        hourly_commitment_float = round(float(recommendation["HourlyCommitmentToPurchase"]), 5)
         if hourly_commitment_float <= 0:
             logger.info(f"{sp_type['name']} SP recommendation has zero commitment - skipping")
             continue
