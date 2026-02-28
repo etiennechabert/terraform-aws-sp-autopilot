@@ -117,7 +117,7 @@ class QueueAdapter:
         try:
             response = self.sqs_client.send_message(
                 QueueUrl=self.queue_url,
-                MessageBody=json.dumps(message_body, default=str),
+                MessageBody=json.dumps(message_body, indent=2, default=str),
             )
             message_id = response["MessageId"]
             logger.info(f"Sent SQS message: {message_id}")
