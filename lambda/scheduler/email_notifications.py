@@ -26,7 +26,6 @@ logger.setLevel(logging.INFO)
 
 def _format_coverage_block(
     coverage: dict[str, float] | None,
-    config: dict[str, Any],
     purchase_plans: list[dict[str, Any]],
 ) -> list[str]:
     if coverage is None:
@@ -52,9 +51,6 @@ def _format_coverage_block(
             if target is not None:
                 lines.append(f"  {sp_type.capitalize()} SP: {target:.2f}%")
         lines.append("")
-    else:
-        fallback = config.get("coverage_target_percent", 90)
-        lines.extend([f"Target Coverage: {fallback:.2f}%", ""])
 
     return lines
 
@@ -151,7 +147,7 @@ def _format_and_send(
 ) -> None:
     email_lines = [
         *header_lines,
-        *_format_coverage_block(coverage, config, purchase_plans),
+        *_format_coverage_block(coverage, purchase_plans),
         plans_heading,
         "-" * 50,
         *_format_plans_block(purchase_plans),
