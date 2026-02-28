@@ -112,10 +112,9 @@ def fetch_averages(
     """
     guard_config = {
         **config,
-        "granularity": "DAILY",
         "lookback_days": lookback_days,
     }
-    spending_data = analyzer.analyze_current_spending(guard_config)
+    spending_data = analyzer.analyze_daily_spending(guard_config)
     spending_data.pop("_unknown_services", None)
 
     return {sp_type: data["summary"]["avg_hourly_total"] for sp_type, data in spending_data.items()}

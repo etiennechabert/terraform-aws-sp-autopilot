@@ -103,15 +103,15 @@ def get_aws_recommendations(
 
     recommendations: dict[str, Any] = {"compute": None, "database": None, "sagemaker": None}
 
-    lookback_days = config["lookback_days"]
-    if lookback_days <= 7:
+    lookback_hours = config["lookback_hours"]
+    if lookback_hours <= 168:
         lookback_period = "SEVEN_DAYS"
-    elif lookback_days <= 30:
+    elif lookback_hours <= 720:
         lookback_period = "THIRTY_DAYS"
     else:
         lookback_period = "SIXTY_DAYS"
 
-    logger.info(f"Using lookback period: {lookback_period} (config: {lookback_days} days)")
+    logger.info(f"Using lookback period: {lookback_period} (config: {lookback_hours} hours)")
 
     enabled_types = [
         sp_key for sp_key, sp_conf in SP_TYPE_CONFIG.items() if config[f"enable_{sp_key}_sp"]

@@ -46,7 +46,7 @@ def _aggregate_type_metrics(
     ce_client: CostExplorerClient,
     enabled_plan_types: list[str],
     breakdown_by_type: dict[str, Any],
-    lookback_days: int,
+    lookback_hours: int,
 ) -> tuple[float, float, float, float]:
     """Fetch and aggregate per-type metrics. Returns (net_savings, on_demand_equivalent, sp_cost, used_commitment)."""
     total_net_savings = 0.0
@@ -55,7 +55,7 @@ def _aggregate_type_metrics(
     total_used_commitment = 0.0
 
     for plan_type in enabled_plan_types:
-        type_metrics = get_savings_plans_metrics(ce_client, plan_type, lookback_days)
+        type_metrics = get_savings_plans_metrics(ce_client, plan_type, lookback_hours)
 
         if plan_type in breakdown_by_type:
             breakdown_by_type[plan_type]["average_utilization"] = type_metrics[
@@ -224,18 +224,6 @@ def get_active_savings_plans(
         raise
 
 
-def _round_start_time_for_hourly(start_time: datetime) -> datetime:
-    """Round start time UP to next midnight for HOURLY granularity."""
-    if (
-        start_time.hour != 0
-        or start_time.minute != 0
-        or start_time.second != 0
-        or start_time.microsecond != 0
-    ):
-        return start_time.replace(hour=0, minute=0, second=0, microsecond=0) + timedelta(days=1)
-    return start_time.replace(hour=0, minute=0, second=0, microsecond=0)
-
-
 def _process_utilization_data(utilizations: list[dict[str, Any]]) -> dict[str, Any]:
     """Process utilization data from API response."""
     total_utilization = 0.0
@@ -291,7 +279,7 @@ def _process_utilization_data(utilizations: list[dict[str, Any]]) -> dict[str, A
 def get_savings_plans_metrics(
     ce_client: CostExplorerClient,
     plan_type: str,
-    lookback_days: int,
+    lookback_hours: int,
 ) -> dict[str, Any]:
     """
     Get Savings Plans utilization and savings metrics for a specific plan type.
@@ -301,7 +289,7 @@ def get_savings_plans_metrics(
     Args:
         ce_client: Boto3 Cost Explorer client
         plan_type: Plan type to filter by ("compute", "sagemaker", "database")
-        lookback_days: Number of days to analyze
+        lookback_hours: Number of hours to analyze (max 336)
 
     Returns:
         dict: Combined metrics:
@@ -318,7 +306,7 @@ def get_savings_plans_metrics(
     Raises:
         ClientError: If Cost Explorer API call fails (except DataUnavailableException)
     """
-    logger.info(f"Fetching Savings Plans metrics for {plan_type} for last {lookback_days} days")
+    logger.info(f"Fetching Savings Plans metrics for {plan_type} for last {lookback_hours} hours")
 
     if plan_type not in PLAN_TYPE_TO_API_FILTER:
         raise ValueError(
@@ -326,9 +314,9 @@ def get_savings_plans_metrics(
         )
 
     try:
-        end_time = datetime.now(UTC)
-        start_time = end_time - timedelta(days=lookback_days)
-        start_time = _round_start_time_for_hourly(start_time)
+        today = datetime.now(UTC).replace(hour=0, minute=0, second=0, microsecond=0)
+        end_time = today
+        start_time = end_time - timedelta(hours=lookback_hours)
         date_format = "%Y-%m-%dT%H:%M:%SZ"
 
         params = {
@@ -405,7 +393,7 @@ def get_savings_plans_metrics(
         )
 
         logger.info(
-            f"Metrics for {plan_type}: {actual_hours} hours of data (requested {lookback_days * 24}), "
+            f"Metrics for {plan_type}: {actual_hours} hours of data (requested {lookback_hours}), "
             f"utilization={average_utilization:.2f}%, savings=${net_savings_hourly:.2f}/hr ({savings_percentage:.2f}%)"
         )
 
@@ -449,7 +437,7 @@ def get_savings_plans_summary(
     savingsplans_client: SavingsPlansClient,
     ce_client: CostExplorerClient,
     enabled_plan_types: list[str],
-    lookback_days: int,
+    lookback_hours: int,
 ) -> dict[str, Any]:
     """
     Get comprehensive Savings Plans summary combining all metrics.
@@ -462,7 +450,7 @@ def get_savings_plans_summary(
         savingsplans_client: Boto3 Savings Plans client
         ce_client: Boto3 Cost Explorer client
         enabled_plan_types: List of enabled plan types (e.g., ["compute", "sagemaker"])
-        lookback_days: Number of days to analyze for utilization/savings
+        lookback_hours: Number of hours to analyze for utilization/savings
 
     Returns:
         dict: Complete summary (all cost values are hourly averages):
@@ -504,7 +492,7 @@ def get_savings_plans_summary(
         total_on_demand_equivalent,
         total_actual_sp_cost,
         total_used_commitment,
-    ) = _aggregate_type_metrics(ce_client, enabled_plan_types, breakdown_by_type, lookback_days)
+    ) = _aggregate_type_metrics(ce_client, enabled_plan_types, breakdown_by_type, lookback_hours)
 
     overall_utilization = _calculate_weighted_utilization(breakdown_by_type)
 

@@ -42,11 +42,11 @@ CONFIG_SCHEMA = {
         "default": "7",
         "env_var": "PURCHASE_COOLDOWN_DAYS",
     },
-    "lookback_days": {
+    "lookback_hours": {
         "required": False,
         "type": "int",
-        "default": "13",
-        "env_var": "LOOKBACK_DAYS",
+        "default": "336",
+        "env_var": "LOOKBACK_HOURS",
     },
     "min_commitment_per_plan": {
         "required": False,

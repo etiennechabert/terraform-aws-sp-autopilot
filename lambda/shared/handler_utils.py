@@ -179,11 +179,11 @@ def get_enabled_plan_types(config: dict[str, Any]) -> list[str]:
         list: Enabled plan types using AWS naming (e.g., ["Compute", "SageMaker", "Database"])
     """
     enabled_types = []
-    if config.get("enable_compute_sp", False):
+    if config["enable_compute_sp"]:
         enabled_types.append(PLAN_TYPE_COMPUTE)
-    if config.get("enable_sagemaker_sp", False):
+    if config["enable_sagemaker_sp"]:
         enabled_types.append(PLAN_TYPE_SAGEMAKER)
-    if config.get("enable_database_sp", False):
+    if config["enable_database_sp"]:
         enabled_types.append(PLAN_TYPE_DATABASE)
     return enabled_types
 

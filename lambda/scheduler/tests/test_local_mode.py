@@ -19,7 +19,7 @@ import pytest
 os.environ.setdefault("AWS_DEFAULT_REGION", "us-east-1")
 os.environ.setdefault("QUEUE_URL", "not-used-in-local-mode")
 os.environ.setdefault("SNS_TOPIC_ARN", "arn:aws:sns:us-east-1:123456789012:test-topic")
-os.environ.setdefault("LOOKBACK_DAYS", "7")
+os.environ.setdefault("LOOKBACK_HOURS", "168")
 os.environ.setdefault("GRANULARITY", "HOURLY")
 os.environ.setdefault("COVERAGE_TARGET_PERCENT", "80")
 os.environ.setdefault("ENABLE_COMPUTE_SP", "true")

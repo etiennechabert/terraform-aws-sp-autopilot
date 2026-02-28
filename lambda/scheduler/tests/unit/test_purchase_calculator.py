@@ -21,12 +21,13 @@ def aws_config():
         "coverage_target_percent": 90.0,
         "max_purchase_percent": 10.0,
         "min_commitment_per_plan": 0.001,
-        "lookback_days": 13,
+        "lookback_hours": 336,
         "compute_sp_payment_option": "ALL_UPFRONT",
         "compute_sp_term": "THREE_YEAR",
         "database_sp_payment_option": "NO_UPFRONT",
         "sagemaker_sp_payment_option": "ALL_UPFRONT",
         "sagemaker_sp_term": "THREE_YEAR",
+        "savings_percentage": 30.0,
     }
 
 
@@ -46,6 +47,8 @@ def fixed_gap_split_config():
         "min_commitment_per_plan": 0.001,
         "compute_sp_payment_option": "ALL_UPFRONT",
         "compute_sp_term": "THREE_YEAR",
+        "savings_percentage": 30.0,
+        "lookback_hours": 336,
     }
 
 
@@ -234,7 +237,7 @@ def test_missing_target_strategy_type():
     config = {"enable_compute_sp": True}
     clients = {"ce": Mock()}
 
-    with pytest.raises(ValueError, match="Missing required configuration 'target_strategy_type'"):
+    with pytest.raises(KeyError, match="target_strategy_type"):
         purchase_calculator.calculate_purchase_need(config, clients, spending_data=None)
 
 
@@ -364,6 +367,8 @@ def test_fixed_gap_split_multiple_sp_types():
         "database_sp_payment_option": "NO_UPFRONT",
         "sagemaker_sp_payment_option": "ALL_UPFRONT",
         "sagemaker_sp_term": "THREE_YEAR",
+        "savings_percentage": 30.0,
+        "lookback_hours": 336,
     }
 
     spending_data = {
@@ -427,6 +432,8 @@ def test_fixed_fixed_step_basic():
         "min_commitment_per_plan": 0.001,
         "compute_sp_payment_option": "ALL_UPFRONT",
         "compute_sp_term": "THREE_YEAR",
+        "savings_percentage": 30.0,
+        "lookback_hours": 336,
     }
 
     spending_data = {

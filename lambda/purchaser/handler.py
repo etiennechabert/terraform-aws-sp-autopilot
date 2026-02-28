@@ -100,7 +100,7 @@ def handler(event: dict[str, Any], context: Any) -> dict[str, Any]:
         logger.info(f"Found {len(messages)} purchase intents in queue")
 
         # Step 1.5: Run purchasing spike guard
-        if config.get("spike_guard_enabled", True):
+        if config["spike_guard_enabled"]:
             messages = _run_purchasing_spike_guard(clients, config, messages)
             if not messages:
                 logger.info("All messages blocked by spike guard - exiting")
@@ -115,7 +115,7 @@ def handler(event: dict[str, Any], context: Any) -> dict[str, Any]:
                 }
 
         # Step 1.6: Per-type purchase cooldown
-        cooldown_days = config.get("purchase_cooldown_days", 7)
+        cooldown_days = config["purchase_cooldown_days"]
         if cooldown_days > 0:
             messages = _run_purchase_cooldown(clients, config, messages, cooldown_days)
             if not messages:
@@ -215,8 +215,9 @@ def get_current_coverage(clients: dict[str, Any], config: dict[str, Any]) -> dic
     try:
         # Get date range for coverage query using configured lookback period
         # Cost Explorer has 24-48 hour data lag, so we query multiple days for stability
-        end_time = datetime.now(UTC)
-        start_time = end_time - timedelta(days=config["lookback_days"])
+        today = datetime.now(UTC).replace(hour=0, minute=0, second=0, microsecond=0)
+        end_time = today
+        start_time = end_time - timedelta(hours=config["lookback_hours"])
 
         # Get raw coverage from Cost Explorer
         raw_coverage = get_ce_coverage(clients["ce"], start_time, end_time, config)
@@ -546,7 +547,7 @@ def execute_purchase(
             "PurchaseDate": datetime.now(UTC).isoformat(),
             "ClientToken": client_token,
         }
-        tags.update(config.get("tags", {}))
+        tags.update(config["tags"])
 
         # Build CreateSavingsPlan request parameters
         create_params = {
@@ -965,7 +966,7 @@ def _send_spike_guard_notification(
             "",
             "To adjust sensitivity, modify spike_guard settings in your Terraform configuration:",
             "  purchase_strategy.spike_guard.threshold_percent (currently "
-            f"{config.get('spike_guard_threshold_percent', 20)}%)",
+            f"{config['spike_guard_threshold_percent']}%)",
             "  purchase_strategy.spike_guard.enabled = false  (to disable entirely)",
         ]
     )

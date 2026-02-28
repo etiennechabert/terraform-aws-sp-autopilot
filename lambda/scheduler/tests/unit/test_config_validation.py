@@ -47,9 +47,13 @@ class TestStrategyValidation:
             }
             _validate_strategies(config)
 
-    def test_dynamic_requires_risk_level(self):
-        config = {**BASE_CONFIG, "target_strategy_type": "dynamic"}
-        with pytest.raises(ValueError, match="requires 'dynamic_risk_level'"):
+    def test_dynamic_with_invalid_risk_level(self):
+        config = {
+            **BASE_CONFIG,
+            "target_strategy_type": "dynamic",
+            "dynamic_risk_level": "invalid",
+        }
+        with pytest.raises(ValueError, match="Invalid dynamic_risk_level"):
             _validate_strategies(config)
 
     def test_dynamic_invalid_risk_level(self):

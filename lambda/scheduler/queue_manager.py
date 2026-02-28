@@ -92,7 +92,7 @@ def queue_purchase_intents(
                 "payment_option": plan.get("payment_option", "ALL_UPFRONT"),
                 "recommendation_id": plan.get("recommendation_id", "unknown"),
                 "queued_at": timestamp,
-                "tags": config.get("tags", {}),
+                "tags": config["tags"],
             }
 
             if scheduling_avg_hourly_total is not None:
