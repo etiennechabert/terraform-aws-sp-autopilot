@@ -72,7 +72,7 @@ def handler(event: dict[str, Any], context: Any) -> dict[str, Any]:
     )
 
     # Clear any previous AWS API responses and start fresh (if debug data collection is enabled)
-    if config.get("include_debug_data", False):
+    if config["include_debug_data"]:
         from shared.aws_debug import clear_responses
 
         clear_responses()
@@ -83,7 +83,7 @@ def handler(event: dict[str, Any], context: Any) -> dict[str, Any]:
     coverage_data.pop("_unknown_services", None)
 
     # Collect daily coverage data (365-day lookback) for long-term trend chart
-    daily_config = {**config, "lookback_days": config.get("lookback_days", 365)}
+    daily_config = {**config, "lookback_days": config["lookback_days"]}
     daily_coverage_data = analyzer.analyze_daily_spending(daily_config)
     daily_coverage_data.pop("_unknown_services", None)
 
@@ -103,7 +103,7 @@ def handler(event: dict[str, Any], context: Any) -> dict[str, Any]:
 
     # Run spike guard (detect usage spikes)
     guard_results = None
-    if config.get("spike_guard_enabled", True):
+    if config["spike_guard_enabled"]:
         from shared.usage_decline_check import run_scheduling_spike_guard
 
         _, guard_results = run_scheduling_spike_guard(analyzer, config)
@@ -152,7 +152,7 @@ def handler(event: dict[str, Any], context: Any) -> dict[str, Any]:
 
     # Only include raw data section if debug data is enabled
     raw_data = None
-    if config.get("include_debug_data", False):
+    if config["include_debug_data"]:
         from shared.aws_debug import get_responses
 
         raw_data = {

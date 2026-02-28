@@ -69,13 +69,13 @@ def _process_sp_type(
         return None
 
     purchase_percent = calculate_split(current_coverage, target_coverage, config)
-    savings_pct = config.get(f"{key}_savings_percentage", config.get("savings_percentage", 30.0))
+    savings_pct = config.get(f"{key}_savings_percentage", config["savings_percentage"])
     od_coverage_to_add = min_hourly * (purchase_percent / 100.0) if purchase_percent > 0 else 0
     hourly_commitment = round(
         sp_calculations.commitment_from_coverage(od_coverage_to_add, savings_pct), 5
     )
 
-    min_commitment = config.get("min_commitment_per_plan", 0.001)
+    min_commitment = config["min_commitment_per_plan"]
     if purchase_percent <= 0 or hourly_commitment < min_commitment:
         if hourly_commitment > 0:
             logger.info(
@@ -134,7 +134,7 @@ def _ensure_savings_rates(config: dict[str, Any], clients: dict[str, Any]) -> di
             metrics = get_savings_plans_metrics(
                 clients["ce"],
                 sp_type["name"],
-                config.get("lookback_hours", 336),
+                config["lookback_hours"],
             )
             if metrics["savings_percentage"] > 0:
                 config[config_key] = metrics["savings_percentage"]
@@ -158,11 +158,8 @@ def calculate_purchase_need(
 
     AWS target short-circuits to follow_aws_strategy.py.
     """
-    target_strategy = config.get("target_strategy_type")
-    split_strategy = config.get("split_strategy_type")
-
-    if not target_strategy:
-        raise ValueError("Missing required configuration 'target_strategy_type'")
+    target_strategy = config["target_strategy_type"]
+    split_strategy = config["split_strategy_type"]
 
     logger.info(f"Using target strategy: {target_strategy}, split strategy: {split_strategy}")
 

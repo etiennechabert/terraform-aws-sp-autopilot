@@ -400,23 +400,26 @@ def _build_strategy_tooltip(
 
     # Target line
     if target == "fixed":
-        cov = config.get("coverage_target_percent", 90.0)
+        cov = config["coverage_target_percent"]
         target_line = f"Target: fixed (coverage_percent: {cov:.0f}%)"
     elif target == "dynamic":
-        risk = config.get("dynamic_risk_level", "optimal")
+        risk = config["dynamic_risk_level"]
         target_line = f"Target: dynamic (risk_level: {risk})"
     else:
         target_line = "Target: aws"
 
     # Split line
     if split == "fixed_step":
-        step = config.get("fixed_step_percent", config.get("max_purchase_percent", 10.0))
+        step = config["fixed_step_percent"]
         split_line = f"Split: fixed_step (step_percent: {step:.0f}%)"
     elif split == "gap_split":
-        divider = config.get("gap_split_divider", 2.0)
-        min_pct = config.get("min_purchase_percent", 1.0)
-        max_pct = config.get("max_purchase_percent", 10.0)
-        split_line = f"Split: gap_split (divider: {divider:.0f}, min_purchase_percent: {min_pct:.0f}%, max_purchase_percent: {max_pct:.0f}%)"
+        divider = config["gap_split_divider"]
+        min_pct = config["min_purchase_percent"]
+        max_pct = config.get("max_purchase_percent")
+        parts = f"divider: {divider:.0f}, min_purchase_percent: {min_pct:.0f}%"
+        if max_pct is not None:
+            parts += f", max_purchase_percent: {max_pct:.0f}%"
+        split_line = f"Split: gap_split ({parts})"
     else:
         split_line = "Split: one_shot"
 
@@ -511,7 +514,7 @@ def _render_sp_type_scheduler_preview(
 
     strategies = preview_data.get("strategies", {})
     configured_strategy = preview_data.get("configured_strategy", "fixed+fixed_step")
-    target_coverage = config.get("coverage_target_percent", 90.0)
+    target_coverage = config["coverage_target_percent"]
 
     strategy_purchases = {}
     for strategy_key, strategy_data in strategies.items():
@@ -856,8 +859,8 @@ def _render_spike_guard_warning_banner(
         return ""
 
     config = config or {}
-    long_days = config.get("spike_guard_long_lookback_days", 90)
-    short_days = config.get("spike_guard_short_lookback_days", 14)
+    long_days = config["spike_guard_long_lookback_days"]
+    short_days = config["spike_guard_short_lookback_days"]
 
     rows = ""
     for sp_type in sorted(flagged):
@@ -942,7 +945,7 @@ def generate_html_report(
             ("database", "enable_database_sp"),
             ("sagemaker", "enable_sagemaker_sp"),
         ]
-        if config.get(key)
+        if config[key]
     ]
     show_global_tab = len(enabled_types) != 1
     single_type = enabled_types[0] if len(enabled_types) == 1 else None
@@ -1537,17 +1540,17 @@ def generate_html_report(
     }
                 {
         ""
-        if not config.get("enable_compute_sp")
+        if not config["enable_compute_sp"]
         else f'<button class="tab{"" if show_global_tab else " active"}" onclick="switchTab(\'compute\')">Compute</button>'
     }
                 {
         ""
-        if not config.get("enable_database_sp")
+        if not config["enable_database_sp"]
         else f'<button class="tab{"" if show_global_tab else " active"}" onclick="switchTab(\'database\')">Database</button>'
     }
                 {
         ""
-        if not config.get("enable_sagemaker_sp")
+        if not config["enable_sagemaker_sp"]
         else f'<button class="tab{"" if show_global_tab else " active"}" onclick="switchTab(\'sagemaker\')">SageMaker</button>'
     }
                 <button class="color-toggle" onclick="toggleActiveTabColors()" title="Toggle color-blind friendly mode" style="margin-left: auto;">
@@ -1570,7 +1573,7 @@ def generate_html_report(
 
             {
         ""
-        if not config.get("enable_compute_sp")
+        if not config["enable_compute_sp"]
         else f'''<div id="compute-tab" class="tab-content{" active" if single_type == "compute" else ""}">
                 <div id="compute-metrics"></div>
                 <div class="chart-container" id="compute-daily-container" style="display: none;">
@@ -1585,7 +1588,7 @@ def generate_html_report(
 
             {
         ""
-        if not config.get("enable_database_sp")
+        if not config["enable_database_sp"]
         else f'''<div id="database-tab" class="tab-content{" active" if single_type == "database" else ""}">
                 <div id="database-metrics"></div>
                 <div class="chart-container" id="database-daily-container" style="display: none;">
@@ -1600,7 +1603,7 @@ def generate_html_report(
 
             {
         ""
-        if not config.get("enable_sagemaker_sp")
+        if not config["enable_sagemaker_sp"]
         else f'''<div id="sagemaker-tab" class="tab-content{" active" if single_type == "sagemaker" else ""}">
                 <div id="sagemaker-metrics"></div>
                 <div class="chart-container" id="sagemaker-daily-container" style="display: none;">
@@ -1892,7 +1895,7 @@ def generate_html_report(
                         label: {{
                             display: true,
                             z: 10,
-                            content: 'Current: $' + spCommitmentHourly.toFixed(2) + '/hr (' + currentCoveragePct.toFixed(1) + '% coverage)',
+                            content: 'Current: $' + onDemandEquivalent.toFixed(2) + '/hr (' + currentCoveragePct.toFixed(1) + '% coverage)',
                             position: 'center',
                             backgroundColor: palette.coveredBorder,
                             color: 'white',
@@ -2592,12 +2595,12 @@ def generate_json_report(
             "generator": "sp-autopilot-reporter",
         },
         "report_parameters": {
-            "lookback_hours": config.get("lookback_hours"),
+            "lookback_hours": config["lookback_hours"],
             "granularity": "HOURLY",
-            "enable_compute_sp": config.get("enable_compute_sp"),
-            "enable_database_sp": config.get("enable_database_sp"),
-            "enable_sagemaker_sp": config.get("enable_sagemaker_sp"),
-            "low_utilization_threshold": config.get("low_utilization_threshold"),
+            "enable_compute_sp": config["enable_compute_sp"],
+            "enable_database_sp": config["enable_database_sp"],
+            "enable_sagemaker_sp": config["enable_sagemaker_sp"],
+            "low_utilization_threshold": config["low_utilization_threshold"],
         },
         "coverage_summary": {
             "compute": {

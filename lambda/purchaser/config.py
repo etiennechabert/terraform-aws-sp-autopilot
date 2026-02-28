@@ -28,6 +28,12 @@ CONFIG_SCHEMA = {
         "default": "336",
         "env_var": "LOOKBACK_HOURS",
     },
+    "purchase_cooldown_days": {
+        "required": False,
+        "type": "int",
+        "default": "7",
+        "env_var": "PURCHASE_COOLDOWN_DAYS",
+    },
     **SP_TYPE_TOGGLES,
     "management_account_role_arn": {
         "required": False,

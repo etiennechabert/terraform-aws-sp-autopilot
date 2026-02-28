@@ -274,7 +274,7 @@ class SpendingAnalyzer:
         unknown_services = self._validate_service_constants(now)
 
         # Step 2: Fetch coverage data from Cost Explorer
-        lookback_hours = config.get("lookback_hours", 336)
+        lookback_hours = config["lookback_hours"]
         coverage_data = self._fetch_coverage_data(now, lookback_hours, config)
 
         # Step 3: Group coverage by SP type with time series
@@ -298,7 +298,7 @@ class SpendingAnalyzer:
     def analyze_daily_spending(self, config: dict[str, Any]) -> dict[str, dict[str, Any]]:
         """Fetch coverage at DAILY granularity for long-term trend charts (up to 365 days)."""
         now = datetime.now(UTC)
-        lookback_days = config.get("lookback_days", 365)
+        lookback_days = config["lookback_days"]
         end_time = now - timedelta(days=1)
         start_time = end_time - timedelta(days=lookback_days)
 
@@ -328,11 +328,11 @@ class SpendingAnalyzer:
     def _build_service_filters(self, config: dict[str, Any]) -> list[tuple[str, list[str]]]:
         """Build list of (SP type name, service list) tuples based on enabled SP types."""
         service_filters = []
-        if config.get("enable_compute_sp", True):
+        if config["enable_compute_sp"]:
             service_filters.append(("Compute", COMPUTE_SP_SERVICES))
-        if config.get("enable_database_sp", False):
+        if config["enable_database_sp"]:
             service_filters.append(("Database", DATABASE_SP_SERVICES))
-        if config.get("enable_sagemaker_sp", False):
+        if config["enable_sagemaker_sp"]:
             service_filters.append(("SageMaker", SAGEMAKER_SP_SERVICES))
         return service_filters
 

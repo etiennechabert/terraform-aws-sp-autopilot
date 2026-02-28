@@ -13,5 +13,5 @@ def calculate_fixed_step_split(
     if gap <= 0:
         return 0.0
 
-    step_percent = config.get("fixed_step_percent", config.get("max_purchase_percent", 10.0))
+    step_percent = config["fixed_step_percent"]
     return min(gap, step_percent)

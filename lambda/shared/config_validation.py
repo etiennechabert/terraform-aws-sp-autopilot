@@ -219,18 +219,12 @@ def _validate_sp_payment_options(config: dict[str, Any]) -> None:
 
 def _validate_strategy_cross_rules(config: dict[str, Any]) -> None:
     """Validate cross-dependencies between target and split strategies."""
-    if config.get("target_strategy_type") == "dynamic":
-        risk_level = config.get("dynamic_risk_level")
-        if not risk_level:
-            raise ValueError(
-                "Dynamic target strategy requires 'dynamic_risk_level'. "
-                f"Must be one of: {', '.join(VALID_RISK_LEVELS)}"
-            )
-        if risk_level not in VALID_RISK_LEVELS:
-            raise ValueError(
-                f"Invalid dynamic_risk_level: '{risk_level}'. "
-                f"Must be one of: {', '.join(VALID_RISK_LEVELS)}"
-            )
+    risk_level = config.get("dynamic_risk_level")
+    if risk_level and risk_level not in VALID_RISK_LEVELS:
+        raise ValueError(
+            f"Invalid dynamic_risk_level: '{risk_level}'. "
+            f"Must be one of: {', '.join(VALID_RISK_LEVELS)}"
+        )
 
 
 def _validate_strategies(config: dict[str, Any]) -> None:

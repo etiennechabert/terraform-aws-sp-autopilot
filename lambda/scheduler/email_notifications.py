@@ -183,9 +183,9 @@ def send_scheduled_email(
             "CANCELLATION INSTRUCTIONS:",
             "To cancel these purchases before they execute:",
             "1. Purge the SQS queue to remove all pending purchase intents",
-            f"2. Queue URL: {config.get('queue_url', 'N/A')}",
+            f"2. Queue URL: {config['queue_url']}",
             "3. AWS CLI command:",
-            f"   aws sqs purge-queue --queue-url {config.get('queue_url', 'QUEUE_URL')}",
+            f"   aws sqs purge-queue --queue-url {config['queue_url']}",
             "",
             "These purchases will be executed by the Purchaser Lambda.",
             "Monitor CloudWatch Logs and SNS notifications for execution results.",
@@ -251,7 +251,7 @@ def send_spike_guard_email(
             "",
             "To adjust sensitivity, modify spike_guard settings in your Terraform configuration:",
             "  purchase_strategy.spike_guard.threshold_percent (currently "
-            f"{config.get('spike_guard_threshold_percent', 20)}%)",
+            f"{config['spike_guard_threshold_percent']}%)",
             "  purchase_strategy.spike_guard.enabled = false  (to disable entirely)",
         ]
     )
@@ -285,7 +285,7 @@ def send_cooldown_email(
 ) -> None:
     """Send notification that purchases were blocked due to purchase cooldown."""
     logger.info("Sending cooldown email")
-    cooldown_days = config.get("purchase_cooldown_days", 7)
+    cooldown_days = config["purchase_cooldown_days"]
 
     lines = [
         "⏳  PURCHASE COOLDOWN — Purchases Blocked",

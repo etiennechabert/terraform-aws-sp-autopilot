@@ -38,9 +38,9 @@ def resolve_dynamic(
         return 90.0
 
     savings_percentage = (
-        config.get(f"{sp_type_key}_savings_percentage", config.get("savings_percentage", 30.0))
+        config.get(f"{sp_type_key}_savings_percentage", config["savings_percentage"])
         if sp_type_key
-        else config.get("savings_percentage", 30.0)
+        else config["savings_percentage"]
     )
 
     strategies = calculate_strategies(hourly_costs, savings_percentage)

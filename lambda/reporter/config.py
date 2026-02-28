@@ -75,6 +75,12 @@ CONFIG_SCHEMA = {
         "default": "90.0",
         "env_var": "COVERAGE_TARGET_PERCENT",
     },
+    "min_commitment_per_plan": {
+        "required": False,
+        "type": "float",
+        "default": "0.001",
+        "env_var": "MIN_COMMITMENT_PER_PLAN",
+    },
     **STRATEGY_PARAMS,
     **SP_TERM_PAYMENT_OPTIONS,
     **SPIKE_GUARD_PARAMS,

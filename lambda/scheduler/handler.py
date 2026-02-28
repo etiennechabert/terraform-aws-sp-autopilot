@@ -61,7 +61,7 @@ def handler(event: dict[str, Any], context: Any) -> dict[str, Any]:
     )
 
     # Check per-type purchase cooldown
-    cooldown_days = config.get("purchase_cooldown_days", 7)
+    cooldown_days = config["purchase_cooldown_days"]
     cooldown_types: set[str] = set()
     if cooldown_days > 0:
         from shared.savings_plans_metrics import get_recent_purchase_sp_types
@@ -70,9 +70,9 @@ def handler(event: dict[str, Any], context: Any) -> dict[str, Any]:
 
         # If ALL enabled types are in cooldown, skip the entire run
         enabled_types = {"compute"}
-        if config.get("enable_database_sp", False):
+        if config["enable_database_sp"]:
             enabled_types.add("database")
-        if config.get("enable_sagemaker_sp", False):
+        if config["enable_sagemaker_sp"]:
             enabled_types.add("sagemaker")
 
         if enabled_types <= cooldown_types:
@@ -103,7 +103,7 @@ def handler(event: dict[str, Any], context: Any) -> dict[str, Any]:
     analyzer = SpendingAnalyzer(clients["savingsplans"], clients["ce"])
     short_term_averages = None
     guard_results = None
-    if config.get("spike_guard_enabled", True):
+    if config["spike_guard_enabled"]:
         from shared.usage_decline_check import run_scheduling_spike_guard
 
         short_term_averages, guard_results = run_scheduling_spike_guard(analyzer, config)

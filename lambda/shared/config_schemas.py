@@ -23,18 +23,19 @@ STRATEGY_PARAMS = {
     "target_strategy_type": {
         "required": False,
         "type": "str",
-        "default": "fixed",
+        "default": "dynamic",
         "env_var": "TARGET_STRATEGY_TYPE",
     },
     "split_strategy_type": {
         "required": False,
         "type": "str",
-        "default": "fixed_step",
+        "default": "gap_split",
         "env_var": "SPLIT_STRATEGY_TYPE",
     },
     "dynamic_risk_level": {
         "required": False,
         "type": "str",
+        "default": "min_hourly",
         "env_var": "DYNAMIC_RISK_LEVEL",
     },
     "savings_percentage": {
@@ -46,7 +47,6 @@ STRATEGY_PARAMS = {
     "max_purchase_percent": {
         "required": False,
         "type": "float",
-        "default": "10.0",
         "env_var": "MAX_PURCHASE_PERCENT",
     },
     "min_purchase_percent": {
@@ -58,11 +58,13 @@ STRATEGY_PARAMS = {
     "fixed_step_percent": {
         "required": False,
         "type": "float",
+        "default": "10.0",
         "env_var": "FIXED_STEP_PERCENT",
     },
     "gap_split_divider": {
         "required": False,
         "type": "float",
+        "default": "2.0",
         "env_var": "GAP_SPLIT_DIVIDER",
     },
 }
