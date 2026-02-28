@@ -44,17 +44,13 @@ def _format_coverage_block(
         for plan in purchase_plans
     }
 
-    lines = ["Current Coverage:"]
+    lines = []
     for key, label in enabled:
-        lines.append(f"  {label}: {coverage.get(key, 0):.2f}%")
-    lines.append("")
-
-    if targets:
-        lines.append("Target Coverage:")
-        for key, label in enabled:
-            target = targets.get(key)
-            if target is not None:
-                lines.append(f"  {label}: {target:.2f}%")
+        lines.append(f"{label}:")
+        lines.append(f"  Current Coverage: {coverage.get(key, 0):.2f}%")
+        target = targets.get(key)
+        if target is not None:
+            lines.append(f"  Target Coverage:  {target:.2f}%")
         lines.append("")
 
     return lines
