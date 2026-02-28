@@ -215,7 +215,8 @@ def get_current_coverage(clients: dict[str, Any], config: dict[str, Any]) -> dic
     try:
         # Get date range for coverage query using configured lookback period
         # Cost Explorer has 24-48 hour data lag, so we query multiple days for stability
-        end_time = datetime.now(UTC)
+        today = datetime.now(UTC).replace(hour=0, minute=0, second=0, microsecond=0)
+        end_time = today
         start_time = end_time - timedelta(days=config["lookback_days"])
 
         # Get raw coverage from Cost Explorer

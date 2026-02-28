@@ -325,17 +325,6 @@ class SpendingAnalyzer:
 
         return group_coverage_by_sp_type(all_coverages)
 
-    def _normalize_start_time(self, start_time: datetime) -> datetime:
-        """Round start_time UP to next midnight for HOURLY granularity."""
-        if (
-            start_time.hour != 0
-            or start_time.minute != 0
-            or start_time.second != 0
-            or start_time.microsecond != 0
-        ):
-            return start_time.replace(hour=0, minute=0, second=0, microsecond=0) + timedelta(days=1)
-        return start_time.replace(hour=0, minute=0, second=0, microsecond=0)
-
     def _build_service_filters(self, config: dict[str, Any]) -> list[tuple[str, list[str]]]:
         """Build list of (SP type name, service list) tuples based on enabled SP types."""
         service_filters = []
@@ -374,9 +363,9 @@ class SpendingAnalyzer:
         Raises:
             ClientError: If AWS API calls fail
         """
-        end_time = now - timedelta(days=1)
+        today = now.replace(hour=0, minute=0, second=0, microsecond=0)
+        end_time = today
         start_time = end_time - timedelta(days=lookback_days)
-        start_time = self._normalize_start_time(start_time)
 
         service_filters = self._build_service_filters(config)
         if not service_filters:
@@ -463,8 +452,9 @@ class SpendingAnalyzer:
         Raises:
             ClientError: If AWS API call fails
         """
-        end_time = now - timedelta(days=1)
-        start_time = end_time - timedelta(days=1)  # 1 day only
+        today = now.replace(hour=0, minute=0, second=0, microsecond=0)
+        end_time = today
+        start_time = end_time - timedelta(days=1)
 
         logger.debug("Validating service constants against AWS API (1-day GROUP BY SERVICE call)")
 

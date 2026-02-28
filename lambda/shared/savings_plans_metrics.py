@@ -224,18 +224,6 @@ def get_active_savings_plans(
         raise
 
 
-def _round_start_time_for_hourly(start_time: datetime) -> datetime:
-    """Round start time UP to next midnight for HOURLY granularity."""
-    if (
-        start_time.hour != 0
-        or start_time.minute != 0
-        or start_time.second != 0
-        or start_time.microsecond != 0
-    ):
-        return start_time.replace(hour=0, minute=0, second=0, microsecond=0) + timedelta(days=1)
-    return start_time.replace(hour=0, minute=0, second=0, microsecond=0)
-
-
 def _process_utilization_data(utilizations: list[dict[str, Any]]) -> dict[str, Any]:
     """Process utilization data from API response."""
     total_utilization = 0.0
@@ -326,9 +314,9 @@ def get_savings_plans_metrics(
         )
 
     try:
-        end_time = datetime.now(UTC)
+        today = datetime.now(UTC).replace(hour=0, minute=0, second=0, microsecond=0)
+        end_time = today
         start_time = end_time - timedelta(days=lookback_days)
-        start_time = _round_start_time_for_hourly(start_time)
         date_format = "%Y-%m-%dT%H:%M:%SZ"
 
         params = {
