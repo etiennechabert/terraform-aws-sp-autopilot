@@ -164,10 +164,13 @@ class TestGetTypeMetricsForReport:
         Note: The commitment ($1.00/hr) will be converted to on-demand equivalent ($1.54/hr)
         in the JavaScript generation code for the simulator.
         """
-        summary = {
-            "avg_coverage_total": 64.9,
-            "avg_hourly_total": 1.54,
-            "avg_hourly_covered": 1.54,
+        sp_type_data = {
+            "summary": {
+                "avg_coverage_total": 64.9,
+                "avg_hourly_total": 1.54,
+                "avg_hourly_covered": 1.54,
+            },
+            "timeseries": [{"total": 1.54}],
         }
         breakdown_by_type = {
             "Database": {
@@ -178,7 +181,7 @@ class TestGetTypeMetricsForReport:
             }
         }
 
-        metrics = _get_type_metrics_for_report(summary, "Database", breakdown_by_type)
+        metrics = _get_type_metrics_for_report(sp_type_data, "Database", breakdown_by_type)
 
         assert metrics["total_commitment"] == 1.0
         assert metrics["sp_commitment_hourly"] == 1.0
@@ -187,10 +190,13 @@ class TestGetTypeMetricsForReport:
 
     def test_total_commitment_defaults_to_zero_when_missing(self):
         """Test that total_commitment defaults to 0.0 when not in breakdown."""
-        summary = {
-            "avg_coverage_total": 0.0,
-            "avg_hourly_total": 0.0,
-            "avg_hourly_covered": 0.0,
+        sp_type_data = {
+            "summary": {
+                "avg_coverage_total": 0.0,
+                "avg_hourly_total": 0.0,
+                "avg_hourly_covered": 0.0,
+            },
+            "timeseries": [],
         }
         breakdown_by_type = {
             "Compute": {
@@ -200,21 +206,27 @@ class TestGetTypeMetricsForReport:
             }
         }
 
-        metrics = _get_type_metrics_for_report(summary, "Compute", breakdown_by_type)
+        metrics = _get_type_metrics_for_report(sp_type_data, "Compute", breakdown_by_type)
 
         assert metrics["total_commitment"] == 0.0
 
     def test_multiple_sp_types_have_correct_commitments(self):
         """Test that different SP types get their correct total_commitment values."""
-        summary_compute = {
-            "avg_coverage_total": 70.0,
-            "avg_hourly_total": 100.0,
-            "avg_hourly_covered": 70.0,
+        compute_data = {
+            "summary": {
+                "avg_coverage_total": 70.0,
+                "avg_hourly_total": 100.0,
+                "avg_hourly_covered": 70.0,
+            },
+            "timeseries": [{"total": 100.0}],
         }
-        summary_database = {
-            "avg_coverage_total": 100.0,
-            "avg_hourly_total": 1.54,
-            "avg_hourly_covered": 1.54,
+        database_data = {
+            "summary": {
+                "avg_coverage_total": 100.0,
+                "avg_hourly_total": 1.54,
+                "avg_hourly_covered": 1.54,
+            },
+            "timeseries": [{"total": 1.54}],
         }
         breakdown_by_type = {
             "Compute": {
@@ -231,11 +243,9 @@ class TestGetTypeMetricsForReport:
             },
         }
 
-        compute_metrics = _get_type_metrics_for_report(
-            summary_compute, "Compute", breakdown_by_type
-        )
+        compute_metrics = _get_type_metrics_for_report(compute_data, "Compute", breakdown_by_type)
         database_metrics = _get_type_metrics_for_report(
-            summary_database, "Database", breakdown_by_type
+            database_data, "Database", breakdown_by_type
         )
 
         assert compute_metrics["total_commitment"] == 19.31
@@ -245,10 +255,13 @@ class TestGetTypeMetricsForReport:
 
     def test_on_demand_coverage_hourly_calculated_correctly(self):
         """Test that on_demand_coverage_hourly is pre-calculated from commitment and savings percentage."""
-        summary = {
-            "avg_coverage_total": 100.0,
-            "avg_hourly_total": 1.54,
-            "avg_hourly_covered": 1.54,
+        sp_type_data = {
+            "summary": {
+                "avg_coverage_total": 100.0,
+                "avg_hourly_total": 1.54,
+                "avg_hourly_covered": 1.54,
+            },
+            "timeseries": [{"total": 1.54}],
         }
         breakdown_by_type = {
             "Database": {
@@ -259,7 +272,7 @@ class TestGetTypeMetricsForReport:
             }
         }
 
-        metrics = _get_type_metrics_for_report(summary, "Database", breakdown_by_type)
+        metrics = _get_type_metrics_for_report(sp_type_data, "Database", breakdown_by_type)
 
         # With 35% savings, $1.00 commitment covers $1.54 on-demand
         # Formula: commitment / (1 - discount_rate) = 1.0 / (1 - 0.35) = 1.0 / 0.65 = 1.538

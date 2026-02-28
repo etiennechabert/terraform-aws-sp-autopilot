@@ -116,12 +116,18 @@ def handler(event: dict[str, Any], context: Any) -> dict[str, Any]:
     if target_strategy != "aws":
         spending_data = analyzer.analyze_current_spending(config)
 
-        # Extract coverage and unknown services for email notifications
+        # Extract coverage (as % of min-hourly) and unknown services for email notifications
         unknown_services = cast(list[str], spending_data.pop("_unknown_services", []))
-        coverage = {
-            sp_type: data["summary"]["avg_coverage_total"]
-            for sp_type, data in spending_data.items()
-        }
+        coverage = {}
+        for sp_type, data in spending_data.items():
+            summary = data["summary"]
+            avg_cov = summary["avg_coverage_total"]
+            avg_total = summary["avg_hourly_total"]
+            ts = data.get("timeseries", [])
+            costs = [i["total"] for i in ts if i["total"] > 0]
+            min_h = min(costs) if costs else avg_total
+            ratio = avg_total / min_h if min_h > 0 and avg_total > 0 else 1.0
+            coverage[sp_type] = avg_cov * ratio
     else:
         # aws target strategy - no spending analysis needed
         spending_data = None
