@@ -79,15 +79,15 @@ def _process_sp_type(
     if purchase_percent <= 0 or hourly_commitment < min_commitment:
         if hourly_commitment > 0:
             logger.info(
-                f"{sp_type['name']} SP calculated commitment ${hourly_commitment:.4f}/h "
-                f"is below minimum ${min_commitment:.4f}/h - skipping"
+                f"{sp_type['name']} SP calculated commitment ${hourly_commitment:.5f}/h "
+                f"is below minimum ${min_commitment:.5f}/h - skipping"
             )
         return None
 
     split_type = config["split_strategy_type"]
 
     logger.info(
-        f"{sp_type['name']} SP purchase planned: ${hourly_commitment:.4f}/h "
+        f"{sp_type['name']} SP purchase planned: ${hourly_commitment:.5f}/h "
         f"({purchase_percent:.2f}% of spend, gap: {coverage_gap:.2f}%)"
     )
 

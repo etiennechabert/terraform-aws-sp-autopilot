@@ -465,7 +465,7 @@ def _render_purchase_row(
     return f"""
                     <tr {row_style} data-tooltip="{tooltip}">
                         <td><strong><span class="strategy-name">{strategy_display}</span></strong>{configured_badge}</td>
-                        <td class="metric" style="color: #2196f3; font-weight: bold;">${hourly_commit:.4f}/hr</td>
+                        <td class="metric" style="color: #2196f3; font-weight: bold;">${hourly_commit:.5f}/hr</td>
                         <td class="metric">{current_cov:.1f}%</td>
                         <td class="metric" style="color: #28a745;" title="{discount_tooltip}">+{cov_increase:.1f}%</td>
                         <td class="metric {coverage_class}" style="font-weight: bold;" title="{discount_tooltip}">{projected_cov:.1f}%</td>
@@ -2445,7 +2445,7 @@ def generate_csv_report(
         "## Summary",
         "metric,value",
         f"active_plans_count,{savings_data.get('plans_count', 0)}",
-        f"total_hourly_commitment,{savings_data.get('total_commitment', 0.0):.4f}",
+        f"total_hourly_commitment,{savings_data.get('total_commitment', 0.0):.5f}",
         f"average_utilization_percentage,{savings_data.get('average_utilization', 0.0):.2f}",
         f"compute_avg_coverage,{compute_summary.get('avg_coverage_total', 0.0):.2f}",
         f"database_avg_coverage,{database_summary.get('avg_coverage_total', 0.0):.2f}",
@@ -2465,7 +2465,7 @@ def generate_csv_report(
             f"{plan.get('plan_type', '')},"
             f"{plan.get('payment_option', '')},"
             f"{plan.get('term_years', 0)},"
-            f"{plan.get('hourly_commitment', 0.0):.4f},"
+            f"{plan.get('hourly_commitment', 0.0):.5f},"
             f"{plan.get('start_date', '')},"
             f"{plan.get('end_date', '')}"
         )

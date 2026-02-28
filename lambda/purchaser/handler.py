@@ -828,7 +828,7 @@ def _send_cooldown_notification(
         body = json.loads(msg["Body"])
         lines.append(
             f"  {i}. {body.get('sp_type', 'unknown').upper()} — "
-            f"${body.get('hourly_commitment', 0):.4f}/hour"
+            f"${body.get('hourly_commitment', 0):.5f}/hour"
         )
 
     lines.extend(
@@ -954,7 +954,7 @@ def _send_spike_guard_notification(
         body = json.loads(msg["Body"])
         lines.append(
             f"  {i}. {body.get('sp_type', 'unknown').upper()} — "
-            f"${body.get('hourly_commitment', 0):.4f}/hour"
+            f"${body.get('hourly_commitment', 0):.5f}/hour"
         )
 
     lines.extend(
