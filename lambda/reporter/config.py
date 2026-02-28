@@ -42,8 +42,9 @@ CONFIG_SCHEMA = {
     },
     **SP_TYPE_TOGGLES,
     "lookback_hours": {
-        "required": True,
+        "required": False,
         "type": "int",
+        "default": "336",
         "env_var": "LOOKBACK_HOURS",
     },
     "lookback_days": {
