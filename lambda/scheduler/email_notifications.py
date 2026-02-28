@@ -24,39 +24,10 @@ logger = logging.getLogger()
 logger.setLevel(logging.INFO)
 
 
-def _format_coverage_block(
-    coverage: dict[str, float] | None,
-    config: dict[str, Any],
+def _format_plans_block(
     purchase_plans: list[dict[str, Any]],
+    coverage: dict[str, float] | None,
 ) -> list[str]:
-    if coverage is None:
-        return []
-
-    sp_types = [
-        ("compute", "enable_compute_sp", "Compute SP"),
-        ("database", "enable_database_sp", "Database SP"),
-        ("sagemaker", "enable_sagemaker_sp", "SageMaker SP"),
-    ]
-    enabled = [(key, label) for key, cfg_key, label in sp_types if config.get(cfg_key)]
-
-    targets = {
-        plan["sp_type"]: plan.get("details", {}).get("coverage", {}).get("target")
-        for plan in purchase_plans
-    }
-
-    lines = []
-    for key, label in enabled:
-        lines.append(f"{label}:")
-        lines.append(f"  Current Coverage: {coverage.get(key, 0):.2f}%")
-        target = targets.get(key)
-        if target is not None:
-            lines.append(f"  Target Coverage:  {target:.2f}%")
-        lines.append("")
-
-    return lines
-
-
-def _format_plans_block(purchase_plans: list[dict[str, Any]]) -> list[str]:
     lines: list[str] = []
     total_annual_cost = 0.0
 
@@ -65,20 +36,30 @@ def _format_plans_block(purchase_plans: list[dict[str, Any]]) -> list[str]:
         hourly_commitment = plan.get("hourly_commitment", 0.0)
         term = plan.get("term", "unknown")
         payment_option = plan.get("payment_option", "ALL_UPFRONT")
+        savings_pct = plan.get("estimated_savings_percentage", 0.0)
 
         annual_cost = hourly_commitment * 8760
         total_annual_cost += annual_cost
 
-        lines.extend(
-            [
-                f"{i}. {sp_type.upper()} Savings Plan",
-                f"   Added Commitment: ${hourly_commitment:.5f}/hour",
-                f"   Term: {term}",
-                f"   Payment Option: {payment_option}",
-                f"   Estimated Annual Cost: ${annual_cost:,.2f}",
-                "",
-            ]
-        )
+        target = plan.get("details", {}).get("coverage", {}).get("target")
+        current_cov = coverage.get(sp_type, 0) if coverage else 0
+
+        plan_lines = [f"{i}. {sp_type.upper()} Savings Plan"]
+        if target is not None:
+            plan_lines.append(f"   Target Coverage:       {target:.2f}%")
+        plan_lines.append(f"   Current Coverage:      {current_cov:.2f}%")
+        plan_lines.append(f"   Added Commitment:      ${hourly_commitment:.5f}/hour")
+        plan_lines.append(f"   Term:                  {term}")
+        plan_lines.append(f"   Payment Option:        {payment_option}")
+        plan_lines.append(f"   Estimated Annual Cost: ${annual_cost:,.2f}")
+        if savings_pct > 0:
+            od_equivalent = hourly_commitment / (1 - savings_pct / 100)
+            annual_savings = (od_equivalent - hourly_commitment) * 8760
+            plan_lines.append(
+                f"   Estimated Savings:     ${annual_savings:,.2f}/year ({savings_pct:.1f}% discount)"
+            )
+        plan_lines.append("")
+        lines.extend(plan_lines)
 
     lines.extend(
         [
@@ -148,10 +129,9 @@ def _format_and_send(
 ) -> None:
     email_lines = [
         *header_lines,
-        *_format_coverage_block(coverage, config, purchase_plans),
         plans_heading,
         "-" * 50,
-        *_format_plans_block(purchase_plans),
+        *_format_plans_block(purchase_plans, coverage),
         *_format_unknown_services_warning(unknown_services),
         *footer_lines,
     ]
