@@ -102,7 +102,7 @@ def queue_purchase_intents(
             message_id = queue_adapter.send_message(purchase_intent)
 
             logger.info(
-                f"Queued purchase intent: {sp_type} {term} ${commitment:.4f}/hour "
+                f"Queued purchase intent: {sp_type} {term} ${commitment:.5f}/hour "
                 f"(message_id: {message_id}, client_token: {client_token})"
             )
             queued_count += 1

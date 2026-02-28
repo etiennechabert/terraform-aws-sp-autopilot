@@ -123,7 +123,7 @@ def check_and_alert_low_utilization(
         f"Current Utilization: {average_utilization:.2f}%",
         f"Alert Threshold: {threshold:.2f}%",
         f"Active Plans: {plans_count}",
-        f"Total Commitment: ${savings_data['total_commitment']:.4f}/hour",
+        f"Total Commitment: ${savings_data['total_commitment']:.5f}/hour",
         "",
         "This may indicate:",
         "• Decreased compute usage requiring plan adjustment",

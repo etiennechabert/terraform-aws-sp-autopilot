@@ -75,7 +75,7 @@ def _format_plans_block(purchase_plans: list[dict[str, Any]]) -> list[str]:
         lines.extend(
             [
                 f"{i}. {sp_type.upper()} Savings Plan",
-                f"   Added Commitment: ${hourly_commitment:.4f}/hour",
+                f"   Added Commitment: ${hourly_commitment:.5f}/hour",
                 f"   Term: {term}",
                 f"   Payment Option: {payment_option}",
                 f"   Estimated Annual Cost: ${annual_cost:,.2f}",
@@ -263,7 +263,7 @@ def send_spike_guard_email(
         lines.extend(
             [
                 f"  {i}. {plan.get('sp_type', 'unknown').upper()} — "
-                f"${plan.get('hourly_commitment', 0):.4f}/hour",
+                f"${plan.get('hourly_commitment', 0):.5f}/hour",
             ]
         )
 
@@ -327,7 +327,7 @@ def send_cooldown_email(
     for i, plan in enumerate(blocked_plans, 1):
         lines.append(
             f"  {i}. {plan.get('sp_type', 'unknown').upper()} — "
-            f"${plan.get('hourly_commitment', 0):.4f}/hour"
+            f"${plan.get('hourly_commitment', 0):.5f}/hour"
         )
 
     lines.extend(
