@@ -259,6 +259,7 @@ def test_handler_fixed_strategy(mock_env_vars, mock_clients, aws_mock_builder, m
     monkeypatch.setenv("SPLIT_STRATEGY_TYPE", "fixed_step")
     monkeypatch.setenv("FIXED_STEP_PERCENT", "10")
     monkeypatch.setenv("MAX_PURCHASE_PERCENT", "5")
+    monkeypatch.setenv("COVERAGE_TARGET_PERCENT", "99")
 
     mock_clients["sqs"].purge_queue.return_value = {}
 
@@ -266,9 +267,7 @@ def test_handler_fixed_strategy(mock_env_vars, mock_clients, aws_mock_builder, m
         "savingsplans"
     ].describe_savings_plans.return_value = aws_mock_builder.describe_savings_plans(plans_count=0)
 
-    mock_clients["ce"].get_savings_plans_coverage.return_value = aws_mock_builder.coverage(
-        coverage_percentage=50.0
-    )
+    mock_clients["ce"].get_savings_plans_coverage.return_value = aws_mock_builder.coverage()
 
     mock_clients["ce"].get_cost_and_usage.return_value = aws_mock_builder.cost_and_usage()
 
@@ -502,13 +501,11 @@ def test_handler_term_mix_splitting(mock_env_vars, mock_clients, aws_mock_builde
     monkeypatch.setenv("SPLIT_STRATEGY_TYPE", "fixed_step")
     monkeypatch.setenv("FIXED_STEP_PERCENT", "10")
     monkeypatch.setenv("COMPUTE_SP_TERM", "ONE_YEAR")  # Override default THREE_YEAR
+    monkeypatch.setenv("COVERAGE_TARGET_PERCENT", "99")
 
     mock_clients["sqs"].purge_queue.return_value = {}
 
-    # Mock for fixed strategy
-    mock_clients["ce"].get_savings_plans_coverage.return_value = aws_mock_builder.coverage(
-        coverage_percentage=50.0
-    )
+    mock_clients["ce"].get_savings_plans_coverage.return_value = aws_mock_builder.coverage()
     mock_clients["sns"].publish.return_value = {"MessageId": "test-msg"}
 
     response = handler.handler({}, None)
@@ -517,7 +514,6 @@ def test_handler_term_mix_splitting(mock_env_vars, mock_clients, aws_mock_builde
 
     email_call = mock_clients["sns"].publish.call_args[1]
     message = email_call["Message"]
-    # Fixed strategy should use the configured term (ONE_YEAR)
     assert "ONE_YEAR" in message
 
 
