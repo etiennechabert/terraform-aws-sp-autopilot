@@ -26,30 +26,35 @@ logger.setLevel(logging.INFO)
 
 def _format_coverage_block(
     coverage: dict[str, float] | None,
+    config: dict[str, Any],
     purchase_plans: list[dict[str, Any]],
 ) -> list[str]:
     if coverage is None:
         return []
+
+    sp_types = [
+        ("compute", "enable_compute_sp", "Compute SP"),
+        ("database", "enable_database_sp", "Database SP"),
+        ("sagemaker", "enable_sagemaker_sp", "SageMaker SP"),
+    ]
+    enabled = [(key, label) for key, cfg_key, label in sp_types if config.get(cfg_key)]
 
     targets = {
         plan["sp_type"]: plan.get("details", {}).get("coverage", {}).get("target")
         for plan in purchase_plans
     }
 
-    lines = [
-        "Current Coverage:",
-        f"  Compute SP:  {coverage.get('compute', 0):.2f}%",
-        f"  Database SP: {coverage.get('database', 0):.2f}%",
-        f"  SageMaker SP: {coverage.get('sagemaker', 0):.2f}%",
-        "",
-    ]
+    lines = ["Current Coverage:"]
+    for key, label in enabled:
+        lines.append(f"  {label}: {coverage.get(key, 0):.2f}%")
+    lines.append("")
 
     if targets:
         lines.append("Target Coverage:")
-        for sp_type in ("compute", "database", "sagemaker"):
-            target = targets.get(sp_type)
+        for key, label in enabled:
+            target = targets.get(key)
             if target is not None:
-                lines.append(f"  {sp_type.capitalize()} SP: {target:.2f}%")
+                lines.append(f"  {label}: {target:.2f}%")
         lines.append("")
 
     return lines
@@ -147,7 +152,7 @@ def _format_and_send(
 ) -> None:
     email_lines = [
         *header_lines,
-        *_format_coverage_block(coverage, purchase_plans),
+        *_format_coverage_block(coverage, config, purchase_plans),
         plans_heading,
         "-" * 50,
         *_format_plans_block(purchase_plans),
