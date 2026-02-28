@@ -38,7 +38,7 @@ resource "aws_lambda_function" "scheduler" {
       GAP_SPLIT_DIVIDER               = tostring(local.gap_split_divider)
       RENEWAL_WINDOW_DAYS             = tostring(local.renewal_window_days)
       PURCHASE_COOLDOWN_DAYS          = tostring(local.purchase_cooldown_days)
-      LOOKBACK_DAYS                   = tostring(local.lookback_days)
+      LOOKBACK_HOURS                  = tostring(local.lookback_hours)
       MIN_COMMITMENT_PER_PLAN         = tostring(local.min_commitment_per_plan)
       COMPUTE_SP_TERM                 = local.compute_term
       COMPUTE_SP_PAYMENT_OPTION       = local.compute_payment_option
@@ -82,7 +82,7 @@ resource "aws_lambda_function" "purchaser" {
       QUEUE_URL                       = aws_sqs_queue.purchase_intents.url
       SNS_TOPIC_ARN                   = aws_sns_topic.notifications.arn
       RENEWAL_WINDOW_DAYS             = tostring(local.renewal_window_days)
-      LOOKBACK_DAYS                   = tostring(local.lookback_days)
+      LOOKBACK_HOURS                  = tostring(local.lookback_hours)
       ENABLE_COMPUTE_SP               = tostring(local.compute_enabled)
       ENABLE_DATABASE_SP              = tostring(local.database_enabled)
       ENABLE_SAGEMAKER_SP             = tostring(local.sagemaker_enabled)
@@ -130,7 +130,7 @@ resource "aws_lambda_function" "reporter" {
       SLACK_WEBHOOK_URL               = local.slack_webhook_url
       TEAMS_WEBHOOK_URL               = local.teams_webhook_url
       LOW_UTILIZATION_THRESHOLD       = tostring(local.low_utilization_threshold)
-      LOOKBACK_DAYS                   = tostring(local.lookback_days)
+      LOOKBACK_HOURS                  = tostring(local.lookback_hours)
       ENABLE_COMPUTE_SP               = tostring(local.compute_enabled)
       ENABLE_DATABASE_SP              = tostring(local.database_enabled)
       ENABLE_SAGEMAKER_SP             = tostring(local.sagemaker_enabled)

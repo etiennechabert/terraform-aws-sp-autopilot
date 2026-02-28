@@ -36,7 +36,7 @@ def mock_env_vars(monkeypatch):
     monkeypatch.setenv("SPLIT_STRATEGY_TYPE", "one_shot")
     monkeypatch.setenv("MAX_PURCHASE_PERCENT", "10")
     monkeypatch.setenv("RENEWAL_WINDOW_DAYS", "7")
-    monkeypatch.setenv("LOOKBACK_DAYS", "13")
+    monkeypatch.setenv("LOOKBACK_HOURS", "336")
     monkeypatch.setenv("MIN_COMMITMENT_PER_PLAN", "0.001")
     monkeypatch.setenv("COMPUTE_SP_TERM_MIX", '{"three_year": 0.67, "one_year": 0.33}')
     monkeypatch.setenv("COMPUTE_SP_PAYMENT_OPTION", "ALL_UPFRONT")
@@ -445,8 +445,8 @@ def test_handler_filters_below_min_commitment(
 def test_handler_lookback_period_mapping(
     mock_env_vars, mock_clients, aws_mock_builder, monkeypatch
 ):
-    """Test lookback_days maps to correct AWS API parameters."""
-    monkeypatch.setenv("LOOKBACK_DAYS", "7")
+    """Test lookback_hours maps to correct AWS API parameters."""
+    monkeypatch.setenv("LOOKBACK_HOURS", "168")
 
     mock_clients["sqs"].purge_queue.return_value = {}
     mock_clients[

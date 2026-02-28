@@ -187,7 +187,7 @@ locals {
 
   # Purchase Strategy Settings (extract from nested object)
 
-  lookback_days           = 13
+  lookback_hours          = 336
   renewal_window_days     = try(var.purchase_strategy.renewal_window_days, 7)
   purchase_cooldown_days  = try(var.purchase_strategy.purchase_cooldown_days, 7)
   min_commitment_per_plan = try(var.purchase_strategy.min_commitment_per_plan, 0.001)

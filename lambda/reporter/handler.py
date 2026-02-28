@@ -83,7 +83,7 @@ def handler(event: dict[str, Any], context: Any) -> dict[str, Any]:
     coverage_data.pop("_unknown_services", None)
 
     # Collect daily coverage data (365-day lookback) for long-term trend chart
-    daily_config = {**config, "lookback_days": 365}
+    daily_config = {**config, "lookback_days": config.get("lookback_days", 365)}
     daily_coverage_data = analyzer.analyze_daily_spending(daily_config)
     daily_coverage_data.pop("_unknown_services", None)
 
@@ -92,7 +92,7 @@ def handler(event: dict[str, Any], context: Any) -> dict[str, Any]:
         clients["savingsplans"],
         clients["ce"],
         get_enabled_plan_types(config),
-        config["lookback_days"],
+        config["lookback_hours"],
     )
 
     logger.info(
@@ -159,7 +159,7 @@ def handler(event: dict[str, Any], context: Any) -> dict[str, Any]:
             "coverage_data": reorder_coverage_data(coverage_data),
             "savings_data": reorder_savings_data(savings_data),
             "config": {
-                "lookback_days": config["lookback_days"],
+                "lookback_hours": config["lookback_hours"],
                 "coverage_target_percent": config["coverage_target_percent"],
                 "enable_compute_sp": config["enable_compute_sp"],
                 "enable_database_sp": config["enable_database_sp"],

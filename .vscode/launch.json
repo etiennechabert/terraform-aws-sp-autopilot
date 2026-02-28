@@ -30,7 +30,7 @@
                 "FIXED_STEP_PERCENT": "10",
                 "COMPUTE_SP_TERM": "THREE_YEAR",
                 "RENEWAL_WINDOW_DAYS": "7",
-                "LOOKBACK_DAYS": "13",
+                "LOOKBACK_HOURS": "336",
                 "MIN_COMMITMENT_PER_PLAN": "0",
                 "COMPUTE_SP_PAYMENT_OPTION": "NO_UPFRONT"
             },
@@ -68,7 +68,7 @@
                 "MIN_PURCHASE_PERCENT": "1",
                 "COMPUTE_SP_TERM": "THREE_YEAR",
                 "RENEWAL_WINDOW_DAYS": "7",
-                "LOOKBACK_DAYS": "13",
+                "LOOKBACK_HOURS": "336",
                 "MIN_COMMITMENT_PER_PLAN": "0",
                 "COMPUTE_SP_PAYMENT_OPTION": "NO_UPFRONT"
             },
@@ -102,7 +102,7 @@
                 "SPLIT_STRATEGY_TYPE": "one_shot",
                 "COMPUTE_SP_TERM": "THREE_YEAR",
                 "RENEWAL_WINDOW_DAYS": "7",
-                "LOOKBACK_DAYS": "13",
+                "LOOKBACK_HOURS": "336",
                 "MIN_COMMITMENT_PER_PLAN": "0",
                 "COMPUTE_SP_PAYMENT_OPTION": "NO_UPFRONT"
             },
@@ -156,11 +156,11 @@
                 "REPORT_FORMAT": "html",
                 "EMAIL_REPORTS": "false",
                 // Savings Plans types to include in report
-                "ENABLE_COMPUTE_SP": "true",
+                "ENABLE_COMPUTE_SP": "false",
                 "ENABLE_DATABASE_SP": "true",
-                "ENABLE_SAGEMAKER_SP": "true",
+                "ENABLE_SAGEMAKER_SP": "false",
                 // Data collection settings
-                "LOOKBACK_DAYS": "14",
+                "LOOKBACK_HOURS": "336",
                 "GRANULARITY": "HOURLY",
                 // Alert settings
                 "LOW_UTILIZATION_THRESHOLD": "70",
@@ -208,7 +208,7 @@
                 "ENABLE_DATABASE_SP": "true",
                 "ENABLE_SAGEMAKER_SP": "true",
                 // Data collection settings
-                "LOOKBACK_DAYS": "14",
+                "LOOKBACK_HOURS": "336",
                 "GRANULARITY": "HOURLY",
                 // Alert settings
                 "LOW_UTILIZATION_THRESHOLD": "70",
@@ -246,7 +246,7 @@
                 "ENABLE_DATABASE_SP": "true",
                 "ENABLE_SAGEMAKER_SP": "true",
                 // Data collection settings
-                "LOOKBACK_DAYS": "14",
+                "LOOKBACK_HOURS": "336",
                 "GRANULARITY": "HOURLY",
                 // Alert settings
                 "LOW_UTILIZATION_THRESHOLD": "70",

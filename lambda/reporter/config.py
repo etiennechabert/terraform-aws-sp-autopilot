@@ -41,9 +41,15 @@ CONFIG_SCHEMA = {
         "env_var": "INCLUDE_DEBUG_DATA",
     },
     **SP_TYPE_TOGGLES,
-    "lookback_days": {
+    "lookback_hours": {
         "required": True,
         "type": "int",
+        "env_var": "LOOKBACK_HOURS",
+    },
+    "lookback_days": {
+        "required": False,
+        "type": "int",
+        "default": "365",
         "env_var": "LOOKBACK_DAYS",
     },
     **AWS_COMMON,

@@ -21,7 +21,7 @@ def aws_config():
         "coverage_target_percent": 90.0,
         "max_purchase_percent": 10.0,
         "min_commitment_per_plan": 0.001,
-        "lookback_days": 13,
+        "lookback_hours": 336,
         "compute_sp_payment_option": "ALL_UPFRONT",
         "compute_sp_term": "THREE_YEAR",
         "database_sp_payment_option": "NO_UPFRONT",

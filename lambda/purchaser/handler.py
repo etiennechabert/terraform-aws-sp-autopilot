@@ -217,7 +217,7 @@ def get_current_coverage(clients: dict[str, Any], config: dict[str, Any]) -> dic
         # Cost Explorer has 24-48 hour data lag, so we query multiple days for stability
         today = datetime.now(UTC).replace(hour=0, minute=0, second=0, microsecond=0)
         end_time = today
-        start_time = end_time - timedelta(days=config["lookback_days"])
+        start_time = end_time - timedelta(hours=config["lookback_hours"])
 
         # Get raw coverage from Cost Explorer
         raw_coverage = get_ce_coverage(clients["ce"], start_time, end_time, config)

@@ -78,7 +78,7 @@ def sample_config():
         "enable_compute_sp": True,
         "enable_database_sp": False,
         "enable_sagemaker_sp": False,
-        "lookback_days": 7,
+        "lookback_hours": 168,
         "renewal_window_days": 7,
         "min_commitment_per_plan": 0.001,
     }

@@ -240,7 +240,7 @@ class SpendingAnalyzer:
 
         Args:
             config: Configuration dictionary containing:
-                - lookback_days: Days to look back for coverage data (default: 7)
+                - lookback_hours: Hours to look back for coverage data (default: 336)
                 - enable_compute_sp: Whether to fetch Compute SP data
                 - enable_database_sp: Whether to fetch Database SP data
                 - enable_sagemaker_sp: Whether to fetch SageMaker SP data
@@ -274,8 +274,8 @@ class SpendingAnalyzer:
         unknown_services = self._validate_service_constants(now)
 
         # Step 2: Fetch coverage data from Cost Explorer
-        lookback_days = config.get("lookback_days", 7)
-        coverage_data = self._fetch_coverage_data(now, lookback_days, config)
+        lookback_hours = config.get("lookback_hours", 336)
+        coverage_data = self._fetch_coverage_data(now, lookback_hours, config)
 
         # Step 3: Group coverage by SP type with time series
         sp_type_data = group_coverage_by_sp_type(coverage_data)
@@ -344,17 +344,17 @@ class SpendingAnalyzer:
             item["Attributes"]["SERVICE"] = sp_type.lower()
 
     def _fetch_coverage_data(
-        self, now: datetime, lookback_days: int, config: dict[str, Any]
+        self, now: datetime, lookback_hours: int, config: dict[str, Any]
     ) -> list[dict[str, Any]]:
         """
         Fetch Savings Plans coverage data from Cost Explorer at HOURLY granularity.
 
-        AWS retains hourly data for 14 days.
+        AWS retains hourly data for 14 days (336 hours).
         Service filtering keeps each call under the 500-item limit.
 
         Args:
             now: Current timestamp
-            lookback_days: Number of days to look back (max 14)
+            lookback_hours: Number of hours to look back (max 336)
             config: Configuration dictionary with enable flags
 
         Returns:
@@ -365,7 +365,7 @@ class SpendingAnalyzer:
         """
         today = now.replace(hour=0, minute=0, second=0, microsecond=0)
         end_time = today
-        start_time = end_time - timedelta(days=lookback_days)
+        start_time = end_time - timedelta(hours=lookback_hours)
 
         service_filters = self._build_service_filters(config)
         if not service_filters:
@@ -373,7 +373,7 @@ class SpendingAnalyzer:
             return []
 
         logger.info(
-            f"Fetching hourly coverage data for {lookback_days} days "
+            f"Fetching hourly coverage data for {lookback_hours} hours "
             f"using {len(service_filters)} service-filtered calls"
         )
 
@@ -453,7 +453,7 @@ class SpendingAnalyzer:
             ClientError: If AWS API call fails
         """
         today = now.replace(hour=0, minute=0, second=0, microsecond=0)
-        end_time = today
+        end_time = today - timedelta(days=1)
         start_time = end_time - timedelta(days=1)
 
         logger.debug("Validating service constants against AWS API (1-day GROUP BY SERVICE call)")
