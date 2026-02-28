@@ -114,8 +114,8 @@ def _validate_sp_types_enabled(config: dict[str, Any], context: str = "") -> Non
         )
 
 
-def _validate_lookback_days(config: dict[str, Any], field_name: str = "lookback_days") -> None:
-    """Validate lookback_days is a positive integer within AWS HOURLY granularity limits."""
+def _validate_lookback_hours(config: dict[str, Any], field_name: str = "lookback_hours") -> None:
+    """Validate lookback_hours is a positive integer within AWS HOURLY granularity limits."""
     if field_name not in config:
         return
 
@@ -126,9 +126,9 @@ def _validate_lookback_days(config: dict[str, Any], field_name: str = "lookback_
             f"got {type(config[field_name]).__name__}: {config[field_name]}"
         )
 
-    if config[field_name] > 14:
+    if config[field_name] > 336:
         raise ValueError(
-            f"Field '{field_name}' must be 14 or less. "
+            f"Field '{field_name}' must be 336 or less (14 days). "
             f"AWS Cost Explorer retains hourly data for 14 days. "
             f"Got {config[field_name]}"
         )
@@ -219,18 +219,12 @@ def _validate_sp_payment_options(config: dict[str, Any]) -> None:
 
 def _validate_strategy_cross_rules(config: dict[str, Any]) -> None:
     """Validate cross-dependencies between target and split strategies."""
-    if config.get("target_strategy_type") == "dynamic":
-        risk_level = config.get("dynamic_risk_level")
-        if not risk_level:
-            raise ValueError(
-                "Dynamic target strategy requires 'dynamic_risk_level'. "
-                f"Must be one of: {', '.join(VALID_RISK_LEVELS)}"
-            )
-        if risk_level not in VALID_RISK_LEVELS:
-            raise ValueError(
-                f"Invalid dynamic_risk_level: '{risk_level}'. "
-                f"Must be one of: {', '.join(VALID_RISK_LEVELS)}"
-            )
+    risk_level = config.get("dynamic_risk_level")
+    if risk_level and risk_level not in VALID_RISK_LEVELS:
+        raise ValueError(
+            f"Invalid dynamic_risk_level: '{risk_level}'. "
+            f"Must be one of: {', '.join(VALID_RISK_LEVELS)}"
+        )
 
 
 def _validate_strategies(config: dict[str, Any]) -> None:
@@ -266,7 +260,7 @@ def validate_scheduler_config(config: dict[str, Any]) -> None:
     - Term values are valid (ONE_YEAR or THREE_YEAR)
     - Payment options are valid
     - Purchase strategy type is valid
-    - Logical constraints (min < max, lookback <= 14 days)
+    - Logical constraints (min < max, lookback_hours <= 336)
 
     Args:
         config: Dictionary containing scheduler configuration
@@ -299,7 +293,7 @@ def validate_scheduler_config(config: dict[str, Any]) -> None:
                 f"{config['purchase_cooldown_days']}"
             )
 
-    _validate_lookback_days(config)
+    _validate_lookback_hours(config)
 
     if "min_commitment_per_plan" in config:
         _validate_non_negative_number(config["min_commitment_per_plan"], "min_commitment_per_plan")
@@ -320,7 +314,7 @@ def validate_reporter_config(config: dict[str, Any]) -> None:
     - email_reports is a boolean
     - tags is a dictionary
     - String fields are non-empty strings
-    - lookback_days is within AWS limits
+    - lookback_hours is within AWS limits
     - low_utilization_threshold is within valid range (0-100)
 
     Args:
@@ -357,7 +351,7 @@ def validate_reporter_config(config: dict[str, Any]) -> None:
 
     _validate_tags_field(config)
 
-    _validate_lookback_days(config)
+    _validate_lookback_hours(config)
 
     # Validate low_utilization_threshold
     if "low_utilization_threshold" in config:
@@ -385,7 +379,7 @@ def validate_purchaser_config(config: dict[str, Any]) -> None:
 
     Validates:
     - renewal_window_days is a positive integer
-    - lookback_days is a positive integer within reasonable bounds
+    - lookback_hours is a positive integer within AWS limits
     - tags is a dictionary
     - String fields are non-empty strings
 
@@ -411,18 +405,7 @@ def validate_purchaser_config(config: dict[str, Any]) -> None:
                 f"{config['renewal_window_days']}"
             )
 
-    # Validate lookback_days
-    if "lookback_days" in config:
-        _validate_positive_number(config["lookback_days"], "lookback_days")
-        if not isinstance(config["lookback_days"], int):
-            raise ValueError(
-                f"Field 'lookback_days' must be an integer, "
-                f"got {type(config['lookback_days']).__name__}: {config['lookback_days']}"
-            )
-        if config["lookback_days"] > 365:
-            raise ValueError(
-                f"Field 'lookback_days' must be 365 or less. Got {config['lookback_days']}"
-            )
+    _validate_lookback_hours(config)
 
     _validate_tags_field(config)
 

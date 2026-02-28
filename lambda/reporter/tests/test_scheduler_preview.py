@@ -72,15 +72,22 @@ def sample_config():
         "fixed_step_percent": 10.0,
         "max_purchase_percent": 10.0,
         "min_purchase_percent": 1.0,
+        "gap_split_divider": 2.0,
+        "dynamic_risk_level": "min_hourly",
+        "savings_percentage": 30.0,
         "compute_sp_term": "THREE_YEAR",
         "compute_sp_payment_option": "ALL_UPFRONT",
         "coverage_target_percent": 90.0,
         "enable_compute_sp": True,
         "enable_database_sp": False,
         "enable_sagemaker_sp": False,
-        "lookback_days": 7,
+        "lookback_hours": 168,
         "renewal_window_days": 7,
         "min_commitment_per_plan": 0.001,
+        "spike_guard_enabled": True,
+        "spike_guard_long_lookback_days": 90,
+        "spike_guard_short_lookback_days": 14,
+        "spike_guard_threshold_percent": 20.0,
     }
 
 

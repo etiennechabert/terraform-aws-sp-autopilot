@@ -77,9 +77,9 @@ class TestFixedStepSplit:
         config = {"fixed_step_percent": 10.0}
         assert calculate_fixed_step_split(95.0, 90.0, config) == pytest.approx(0.0)
 
-    def test_falls_back_to_max_purchase_percent(self):
-        config = {"max_purchase_percent": 15.0}
-        assert calculate_fixed_step_split(50.0, 90.0, config) == pytest.approx(15.0)
+    def test_step_caps_at_gap(self):
+        config = {"fixed_step_percent": 10.0}
+        assert calculate_fixed_step_split(85.0, 90.0, config) == pytest.approx(5.0)
 
 
 # ============================================================================
@@ -98,22 +98,26 @@ class TestGapSplit:
 
     def test_basic_divide(self):
         # gap=40, divider=2 → 20.0
-        config = {"gap_split_divider": 2.0}
+        config = {"gap_split_divider": 2.0, "min_purchase_percent": 1.0}
         assert calculate_gap_split(50.0, 90.0, config) == pytest.approx(20.0)
 
     def test_large_gap(self):
         # gap=90, divider=2 → 45.0
-        config = {"gap_split_divider": 2.0}
+        config = {"gap_split_divider": 2.0, "min_purchase_percent": 1.0}
         assert calculate_gap_split(0.0, 90.0, config) == pytest.approx(45.0)
 
     def test_divider_3(self):
         # gap=40, divider=3 → 13.3
-        config = {"gap_split_divider": 3.0}
+        config = {"gap_split_divider": 3.0, "min_purchase_percent": 1.0}
         assert calculate_gap_split(50.0, 90.0, config) == pytest.approx(13.3, abs=0.1)
 
     def test_max_purchase_clamp(self):
         # gap=40, divider=2 → 20.0, but max=15 → 15.0
-        config = {"gap_split_divider": 2.0, "max_purchase_percent": 15.0}
+        config = {
+            "gap_split_divider": 2.0,
+            "min_purchase_percent": 1.0,
+            "max_purchase_percent": 15.0,
+        }
         assert calculate_gap_split(50.0, 90.0, config) == pytest.approx(15.0)
 
     def test_min_purchase_clamp(self):
@@ -127,11 +131,11 @@ class TestGapSplit:
         assert calculate_gap_split(89.5, 90.0, config) == pytest.approx(0.5)
 
     def test_defaults(self):
-        # gap=90, default divider=2, default min=1 → 45.0
-        config = {}
+        # gap=90, divider=2, min=1 → 45.0
+        config = {"gap_split_divider": 2.0, "min_purchase_percent": 1.0}
         assert calculate_gap_split(0.0, 90.0, config) == pytest.approx(45.0)
 
     def test_no_max_means_unlimited(self):
         # gap=80, divider=1 → 80.0 (no max set)
-        config = {"gap_split_divider": 1.0}
+        config = {"gap_split_divider": 1.0, "min_purchase_percent": 1.0}
         assert calculate_gap_split(10.0, 90.0, config) == pytest.approx(80.0)

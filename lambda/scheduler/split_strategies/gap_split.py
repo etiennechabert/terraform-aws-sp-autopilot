@@ -8,8 +8,8 @@ def calculate_gap_split(
     if gap <= 0:
         return 0.0
 
-    divider = config.get("gap_split_divider", 2.0)
-    min_purchase = config.get("min_purchase_percent", 1.0)
+    divider = config["gap_split_divider"]
+    min_purchase = config["min_purchase_percent"]
     max_purchase = config.get("max_purchase_percent")
 
     divided = gap / divider

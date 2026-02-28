@@ -58,12 +58,13 @@ if "LOCAL_DATA_DIR" not in os.environ:
     os.environ["LOCAL_DATA_DIR"] = str(default_data_dir)
     print(f"LOCAL_DATA_DIR not set, using default: {default_data_dir}")
 
-# Add lambda directories to Python path (now sibling directories)
+# Add lambda directories to Python path (shared first, then lambda-specific
+# so that lambda-specific modules like notifications.py shadow shared ones)
 lambda_dir = Path(__file__).parent
+sys.path.insert(0, str(lambda_dir / "shared"))
 sys.path.insert(0, str(lambda_dir / "scheduler"))
 sys.path.insert(0, str(lambda_dir / "purchaser"))
 sys.path.insert(0, str(lambda_dir / "reporter"))
-sys.path.insert(0, str(lambda_dir / "shared"))
 
 
 class MockContext:

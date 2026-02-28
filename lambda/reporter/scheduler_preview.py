@@ -50,19 +50,11 @@ def _build_preview_config(base_config: dict[str, Any], target: str, split: str) 
 
     if target == "fixed" and "coverage_target_percent" not in config:
         config["coverage_target_percent"] = 90.0
-    if target == "dynamic" and not config.get("dynamic_risk_level"):
-        config["dynamic_risk_level"] = "optimal"
-    if split == "fixed_step" and not config.get("fixed_step_percent"):
-        config["fixed_step_percent"] = config.get("max_purchase_percent", 10.0)
-    if split == "gap_split":
-        config.setdefault("min_purchase_percent", 1.0)
-        config.setdefault("gap_split_divider", 2.0)
-
     return config
 
 
 def _get_configured_key(config: dict[str, Any]) -> str:
-    return f"{config.get('target_strategy_type', 'fixed')}+{config.get('split_strategy_type', 'fixed_step')}"
+    return f"{config['target_strategy_type']}+{config['split_strategy_type']}"
 
 
 def _inject_actual_savings_rates(
@@ -97,8 +89,8 @@ def calculate_scheduler_preview(
     config = _inject_actual_savings_rates(config, savings_data)
 
     configured_key = _get_configured_key(config)
-    configured_target = config.get("target_strategy_type", "fixed")
-    configured_split = config.get("split_strategy_type", "fixed_step")
+    configured_target = config["target_strategy_type"]
+    configured_split = config["split_strategy_type"]
 
     combos = [
         {

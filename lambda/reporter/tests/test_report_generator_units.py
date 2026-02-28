@@ -393,6 +393,10 @@ class TestUsageGuardWarningBanner:
                 "change_percent": 40.0,
             },
         }
-        html = _render_spike_guard_warning_banner(results, {})
+        config = {
+            "spike_guard_long_lookback_days": 90,
+            "spike_guard_short_lookback_days": 14,
+        }
+        html = _render_spike_guard_warning_banner(results, config)
         assert "COMPUTE" in html
         assert "DATABASE" in html

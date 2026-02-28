@@ -89,9 +89,9 @@ def _prepare_html_report_data(
 ) -> dict[str, Any]:
     """Prepare all data needed for HTML report generation."""
     now = datetime.now(UTC)
-    lookback_days = config["lookback_days"]
+    lookback_hours = config["lookback_hours"]
     data_end_date = now.date()
-    data_start_date = data_end_date - timedelta(days=lookback_days)
+    data_start_date = data_end_date - timedelta(hours=lookback_hours)
 
     compute_summary = coverage_data["compute"]["summary"]
     database_summary = coverage_data["database"]["summary"]
@@ -126,7 +126,7 @@ def _prepare_html_report_data(
     return {
         "report_timestamp": now.strftime("%Y-%m-%d %H:%M:%S UTC"),
         "data_period": f"{data_start_date.isoformat()} to {data_end_date.isoformat()}",
-        "lookback_days": lookback_days,
+        "lookback_hours": lookback_hours,
         "compute_coverage": compute_coverage,
         "database_coverage": database_coverage,
         "sagemaker_coverage": sagemaker_coverage,
@@ -282,13 +282,18 @@ def _prepare_chart_data(
     coverage_data: dict[str, Any],
     savings_data: dict[str, Any],
     config: dict[str, Any] | None = None,
+    per_type_range: bool = False,
 ) -> tuple[str, dict[str, Any]]:
     """
     Prepare chart data from coverage timeseries for Chart.js visualization.
 
     Args:
         coverage_data: Coverage data from SpendingAnalyzer with timeseries
+        savings_data: Savings plans metrics data
         config: Configuration dict with savings_percentage (default: 30)
+        per_type_range: If True, each SP type chart only includes timestamps
+            where that type has actual data (total > 0). Used for daily charts
+            so per-type charts don't show empty bars from other types' date ranges.
 
     Returns:
         tuple: (JSON string with chart data, dict with optimal coverage results)
@@ -298,9 +303,23 @@ def _prepare_chart_data(
     sorted_timestamps = sorted(all_timestamps)
 
     all_chart_data = {
-        type_name: _build_chart_data_for_type(timeseries_maps[type_name], sorted_timestamps)
-        for type_name in ["global", "compute", "database", "sagemaker"]
+        "global": _build_chart_data_for_type(timeseries_maps["global"], sorted_timestamps),
     }
+
+    for type_name in ["compute", "database", "sagemaker"]:
+        if per_type_range:
+            type_ts = [
+                ts
+                for ts in sorted_timestamps
+                if timeseries_maps[type_name].get(ts, {}).get("total", 0) > 0
+            ]
+            all_chart_data[type_name] = _build_chart_data_for_type(
+                timeseries_maps[type_name], type_ts or sorted_timestamps
+            )
+        else:
+            all_chart_data[type_name] = _build_chart_data_for_type(
+                timeseries_maps[type_name], sorted_timestamps
+            )
 
     optimal_results = _calculate_optimal_coverage(all_chart_data, savings_data)
     return json.dumps(all_chart_data), optimal_results
@@ -381,23 +400,26 @@ def _build_strategy_tooltip(
 
     # Target line
     if target == "fixed":
-        cov = config.get("coverage_target_percent", 90.0)
+        cov = config["coverage_target_percent"]
         target_line = f"Target: fixed (coverage_percent: {cov:.0f}%)"
     elif target == "dynamic":
-        risk = config.get("dynamic_risk_level", "optimal")
+        risk = config["dynamic_risk_level"]
         target_line = f"Target: dynamic (risk_level: {risk})"
     else:
         target_line = "Target: aws"
 
     # Split line
     if split == "fixed_step":
-        step = config.get("fixed_step_percent", config.get("max_purchase_percent", 10.0))
+        step = config["fixed_step_percent"]
         split_line = f"Split: fixed_step (step_percent: {step:.0f}%)"
     elif split == "gap_split":
-        divider = config.get("gap_split_divider", 2.0)
-        min_pct = config.get("min_purchase_percent", 1.0)
-        max_pct = config.get("max_purchase_percent", 10.0)
-        split_line = f"Split: gap_split (divider: {divider:.0f}, min_purchase_percent: {min_pct:.0f}%, max_purchase_percent: {max_pct:.0f}%)"
+        divider = config["gap_split_divider"]
+        min_pct = config["min_purchase_percent"]
+        max_pct = config.get("max_purchase_percent")
+        parts = f"divider: {divider:.0f}, min_purchase_percent: {min_pct:.0f}%"
+        if max_pct is not None:
+            parts += f", max_purchase_percent: {max_pct:.0f}%"
+        split_line = f"Split: gap_split ({parts})"
     else:
         split_line = "Split: one_shot"
 
@@ -412,7 +434,7 @@ def _render_no_purchase_row(strategy_display: str, is_configured: bool, tooltip:
         else 'style="cursor: help;"'
     )
     configured_badge = (
-        ' <span style="background: #ff9900; color: white; padding: 2px 8px; border-radius: 3px; font-size: 0.75em; font-weight: 600;">CONFIGURED</span>'
+        ' <span style="background: rgb(0, 158, 115); color: white; padding: 2px 8px; border-radius: 3px; font-size: 0.75em; font-weight: 600;">CONFIGURED</span>'
         if is_configured
         else ""
     )
@@ -439,7 +461,7 @@ def _render_purchase_row(
         else 'style="cursor: help;"'
     )
     configured_badge = (
-        ' <span style="background: #ff9900; color: white; padding: 2px 8px; border-radius: 3px; font-size: 0.75em; font-weight: 600;">CONFIGURED</span>'
+        ' <span style="background: rgb(0, 158, 115); color: white; padding: 2px 8px; border-radius: 3px; font-size: 0.75em; font-weight: 600;">CONFIGURED</span>'
         if is_configured
         else ""
     )
@@ -492,7 +514,7 @@ def _render_sp_type_scheduler_preview(
 
     strategies = preview_data.get("strategies", {})
     configured_strategy = preview_data.get("configured_strategy", "fixed+fixed_step")
-    target_coverage = config.get("coverage_target_percent", 90.0)
+    target_coverage = config["coverage_target_percent"]
 
     strategy_purchases = {}
     for strategy_key, strategy_data in strategies.items():
@@ -576,20 +598,12 @@ def _build_breakdown_table_html(
                 <tbody>
 """
 
+    na_tooltip = "This SP type is not enabled in your configuration, so metrics are not collected"
+
     for plan_type, type_data in breakdown_by_type.items():
         plans_count_type = type_data.get("plans_count", 0)
         total_commitment_type = type_data.get("total_commitment", 0.0)
-        type_utilization = type_data.get("average_utilization", 0.0)
-        type_savings_pct = type_data.get("savings_percentage", 0.0)
-
-        # Calculate on-demand coverage capacity from commitment and discount rate
-        # This shows what on-demand usage the commitment COVERS, not actual usage
-        on_demand_coverage_capacity = sp_calculations.coverage_from_commitment(
-            total_commitment_type, type_savings_pct
-        )
-
-        # Calculate potential savings: what you'd pay on-demand minus what you pay with SP
-        potential_savings = on_demand_coverage_capacity - total_commitment_type
+        has_metrics = "average_utilization" in type_data
 
         plan_type_display = plan_type
         if "Compute" in plan_type:
@@ -601,7 +615,15 @@ def _build_breakdown_table_html(
         elif "EC2Instance" in plan_type:
             plan_type_display = "EC2 Instance Savings Plans"
 
-        html += f"""
+        if has_metrics:
+            type_utilization = type_data["average_utilization"]
+            type_savings_pct = type_data.get("savings_percentage", 0.0)
+            on_demand_coverage_capacity = sp_calculations.coverage_from_commitment(
+                total_commitment_type, type_savings_pct
+            )
+            potential_savings = on_demand_coverage_capacity - total_commitment_type
+
+            html += f"""
                     <tr>
                         <td><strong>{plan_type_display}</strong></td>
                         <td>{plans_count_type}</td>
@@ -609,6 +631,18 @@ def _build_breakdown_table_html(
                         <td class="metric">${total_commitment_type:.2f}/hr</td>
                         <td class="metric">${on_demand_coverage_capacity:.2f}/hr</td>
                         <td class="metric" style="color: #28a745;">${potential_savings:.2f}/hr</td>
+                    </tr>
+"""
+        else:
+            na_html = f'<span title="{na_tooltip}" style="cursor: help; color: #6c757d;">N/A</span>'
+            html += f"""
+                    <tr>
+                        <td><strong>{plan_type_display}</strong></td>
+                        <td>{plans_count_type}</td>
+                        <td class="metric">{na_html}</td>
+                        <td class="metric">${total_commitment_type:.2f}/hr</td>
+                        <td class="metric">{na_html}</td>
+                        <td class="metric">{na_html}</td>
                     </tr>
 """
 
@@ -825,8 +859,8 @@ def _render_spike_guard_warning_banner(
         return ""
 
     config = config or {}
-    long_days = config.get("spike_guard_long_lookback_days", 90)
-    short_days = config.get("spike_guard_short_lookback_days", 14)
+    long_days = config["spike_guard_long_lookback_days"]
+    short_days = config["spike_guard_short_lookback_days"]
 
     rows = ""
     for sp_type in sorted(flagged):
@@ -893,7 +927,7 @@ def generate_html_report(
 
     report_timestamp = data["report_timestamp"]
     data_period = data["data_period"]
-    lookback_days = data["lookback_days"]
+    lookback_hours = data["lookback_hours"]
     overall_coverage = data["overall_coverage"]
     overall_coverage_class = data["overall_coverage_class"]
     plans_count = data["plans_count"]
@@ -903,6 +937,18 @@ def generate_html_report(
     average_utilization = data["average_utilization"]
     utilization_class = data["utilization_class"]
     breakdown_by_type = data["breakdown_by_type"]
+
+    enabled_types = [
+        name
+        for name, key in [
+            ("compute", "enable_compute_sp"),
+            ("database", "enable_database_sp"),
+            ("sagemaker", "enable_sagemaker_sp"),
+        ]
+        if config[key]
+    ]
+    show_global_tab = len(enabled_types) != 1
+    single_type = enabled_types[0] if len(enabled_types) == 1 else None
 
     # Determine simulator base URL based on environment
     if is_local_mode():
@@ -1426,7 +1472,8 @@ def generate_html_report(
             <div class="summary-card green">
                 <h3>Hourly Savings</h3>
                 <div class="value">${net_savings_hourly:.2f}</div>
-                <div style="font-size: 0.7em; opacity: 0.85; margin-top: 4px; text-align: right;">${net_savings_hourly * 24 * 30:,.0f}/mo</div>
+                <div style="font-size: 0.7em; opacity: 0.85; margin-top: 4px; text-align: right;">${
+        net_savings_hourly * 24 * 30:,.0f}/mo</div>
             </div>
             <div class="summary-card blue">
                 <h3>Average Discount</h3>
@@ -1451,7 +1498,7 @@ def generate_html_report(
             <h2>Report Parameters</h2>
             <div class="params-grid">
                 <div class="param-item">
-                    <strong>Lookback Period:</strong> <span>{config["lookback_days"]} days</span>
+                    <strong>Lookback Period:</strong> <span>{config["lookback_hours"]} hours</span>
                 </div>
                 <span style="color: #dee2e6;">•</span>
                 <div class="param-item">
@@ -1459,11 +1506,25 @@ def generate_html_report(
                 </div>
                 <span style="color: #dee2e6;">•</span>
                 <div class="param-item">
-                    <strong>Enabled SP(s):</strong> <span>{", ".join([sp for sp, enabled in [("Compute", config["enable_compute_sp"]), ("Database", config["enable_database_sp"]), ("SageMaker", config["enable_sagemaker_sp"])] if enabled])}</span>
+                    <strong>Enabled SP(s):</strong> <span>{
+        ", ".join(
+            [
+                sp
+                for sp, enabled in [
+                    ("Compute", config["enable_compute_sp"]),
+                    ("Database", config["enable_database_sp"]),
+                    ("SageMaker", config["enable_sagemaker_sp"]),
+                ]
+                if enabled
+            ]
+        )
+    }</span>
                 </div>
                 <span style="color: #dee2e6;">•</span>
                 <div class="param-item">
-                    <strong>Low Util. Threshold:</strong> <span>{config["low_utilization_threshold"]}%</span>
+                    <strong>Low Util. Threshold:</strong> <span>{
+        config["low_utilization_threshold"]
+    }%</span>
                 </div>
             </div>
         </div>
@@ -1472,16 +1533,36 @@ def generate_html_report(
             <h2>Usage Over Time and Scheduler Preview</h2>
 
             <div class="tabs">
-                <button class="tab active" onclick="switchTab('global')">Global (All Types)</button>
-                <button class="tab" onclick="switchTab('compute')">Compute</button>
-                <button class="tab" onclick="switchTab('database')">Database</button>
-                <button class="tab" onclick="switchTab('sagemaker')">SageMaker</button>
+                {
+        '<button class="tab active" onclick="switchTab(\'global\')">Global (All Types)</button>'
+        if show_global_tab
+        else ""
+    }
+                {
+        ""
+        if not config["enable_compute_sp"]
+        else f'<button class="tab{"" if show_global_tab else " active"}" onclick="switchTab(\'compute\')">Compute</button>'
+    }
+                {
+        ""
+        if not config["enable_database_sp"]
+        else f'<button class="tab{"" if show_global_tab else " active"}" onclick="switchTab(\'database\')">Database</button>'
+    }
+                {
+        ""
+        if not config["enable_sagemaker_sp"]
+        else f'<button class="tab{"" if show_global_tab else " active"}" onclick="switchTab(\'sagemaker\')">SageMaker</button>'
+    }
                 <button class="color-toggle" onclick="toggleActiveTabColors()" title="Toggle color-blind friendly mode" style="margin-left: auto;">
                     🎨 Toggle Colors
                 </button>
             </div>
 
-            <div id="global-tab" class="tab-content active">
+            {
+        '<div id="global-tab" class="tab-content active">'
+        if show_global_tab
+        else '<div id="global-tab" class="tab-content" style="display:none;">'
+    }
                 <div class="chart-container" id="global-daily-container" style="display: none;">
                     <canvas id="globalDailyChart"></canvas>
                 </div>
@@ -1490,7 +1571,10 @@ def generate_html_report(
                 </div>
             </div>
 
-            <div id="compute-tab" class="tab-content">
+            {
+        ""
+        if not config["enable_compute_sp"]
+        else f'''<div id="compute-tab" class="tab-content{" active" if single_type == "compute" else ""}">
                 <div id="compute-metrics"></div>
                 <div class="chart-container" id="compute-daily-container" style="display: none;">
                     <canvas id="computeDailyChart"></canvas>
@@ -1499,9 +1583,13 @@ def generate_html_report(
                     <canvas id="computeChart"></canvas>
                 </div>
                 {_render_sp_type_scheduler_preview("compute", preview_data, config or {})}
-            </div>
+            </div>'''
+    }
 
-            <div id="database-tab" class="tab-content">
+            {
+        ""
+        if not config["enable_database_sp"]
+        else f'''<div id="database-tab" class="tab-content{" active" if single_type == "database" else ""}">
                 <div id="database-metrics"></div>
                 <div class="chart-container" id="database-daily-container" style="display: none;">
                     <canvas id="databaseDailyChart"></canvas>
@@ -1510,9 +1598,13 @@ def generate_html_report(
                     <canvas id="databaseChart"></canvas>
                 </div>
                 {_render_sp_type_scheduler_preview("database", preview_data, config or {})}
-            </div>
+            </div>'''
+    }
 
-            <div id="sagemaker-tab" class="tab-content">
+            {
+        ""
+        if not config["enable_sagemaker_sp"]
+        else f'''<div id="sagemaker-tab" class="tab-content{" active" if single_type == "sagemaker" else ""}">
                 <div id="sagemaker-metrics"></div>
                 <div class="chart-container" id="sagemaker-daily-container" style="display: none;">
                     <canvas id="sagemakerDailyChart"></canvas>
@@ -1521,7 +1613,8 @@ def generate_html_report(
                     <canvas id="sagemakerChart"></canvas>
                 </div>
                 {_render_sp_type_scheduler_preview("sagemaker", preview_data, config or {})}
-            </div>
+            </div>'''
+    }
         </div>
 
         <div class="section">
@@ -1553,7 +1646,9 @@ def generate_html_report(
 
     daily_chart_data = "null"
     if daily_coverage_data:
-        daily_chart_data, _ = _prepare_chart_data(daily_coverage_data, savings_data, config)
+        daily_chart_data, _ = _prepare_chart_data(
+            daily_coverage_data, savings_data, config, per_type_range=True
+        )
 
     compute_summary = coverage_data["compute"]["summary"]
     database_summary = coverage_data["database"]["summary"]
@@ -1586,6 +1681,23 @@ def generate_html_report(
             }
     follow_aws_json = json.dumps(follow_aws_by_type)
 
+    configured_target_by_type = {}
+    if preview_data:
+        configured_key = preview_data.get("configured_strategy", "")
+        configured_strategy_data = preview_data.get("strategies", {}).get(configured_key, {})
+        for purchase in configured_strategy_data.get("purchases", []):
+            sp = purchase["sp_type"]
+            projected_cov = purchase.get("projected_coverage", 0)
+            added_commitment = purchase.get("hourly_commitment", 0)
+            discount = purchase.get("discount_used", 0)
+            new_od_equiv = sp_calculations.coverage_from_commitment(added_commitment, discount)
+            configured_target_by_type[sp] = {
+                "projected_coverage": projected_cov,
+                "added_od_equiv": round(new_od_equiv, 4),
+                "added_commitment": round(added_commitment, 5),
+            }
+    configured_target_json = json.dumps(configured_target_by_type)
+
     html += f"""
     <script>
         const allChartData = {chart_data};
@@ -1593,7 +1705,8 @@ def generate_html_report(
         const metricsData = {metrics_json};
         const optimalCoverageFromPython = {optimal_coverage_json};
         const followAwsData = {follow_aws_json};
-        const lookbackDays = {lookback_days};
+        const configuredTargetData = {configured_target_json};
+        const lookbackHours = {lookback_hours};
 
         // Color palettes - Two combinations for different types of color vision deficiency
         const colorPalettes = {{
@@ -1602,14 +1715,18 @@ def generate_html_report(
                 covered: 'rgba(0, 114, 178, 0.7)',      // Deep Blue
                 ondemand: 'rgba(230, 159, 0, 0.7)',     // Bright Orange
                 coveredBorder: 'rgb(0, 114, 178)',
-                ondemandBorder: 'rgb(230, 159, 0)'
+                ondemandBorder: 'rgb(230, 159, 0)',
+                configuredTarget: 'rgba(0, 158, 115, 0.9)',      // Bluish Green
+                configuredTargetBg: 'rgba(0, 128, 90, 0.9)'
             }},
             palette2: {{
                 // Pink & Teal - Best for blue-yellow colorblind (Tritanopia)
                 covered: 'rgba(204, 121, 167, 0.7)',    // Pink/Magenta
                 ondemand: 'rgba(86, 180, 233, 0.7)',    // Teal/Cyan
                 coveredBorder: 'rgb(204, 121, 167)',
-                ondemandBorder: 'rgb(86, 180, 233)'
+                ondemandBorder: 'rgb(86, 180, 233)',
+                configuredTarget: 'rgba(213, 94, 0, 0.9)',       // Vermillion
+                configuredTargetBg: 'rgba(180, 75, 0, 0.9)'
             }}
         }};
 
@@ -1650,12 +1767,46 @@ def generate_html_report(
                 const chart = chartInstances[id];
                 if (!chart) return;
                 chartColorModes[id] = newMode;
+                // Dataset 0 is always "covered"
                 chart.data.datasets[0].backgroundColor = palette.covered;
                 chart.data.datasets[0].borderColor = palette.coveredBorder;
-                chart.data.datasets[1].backgroundColor = palette.ondemand;
-                chart.data.datasets[1].borderColor = palette.ondemandBorder;
+                // With 3 datasets: [covered, future, ondemand]; with 2: [covered, ondemand]
+                const lastIdx = chart.data.datasets.length - 1;
+                chart.data.datasets[lastIdx].backgroundColor = palette.ondemand;
+                chart.data.datasets[lastIdx].borderColor = palette.ondemandBorder;
+                if (chart.data.datasets.length === 3) {{
+                    chart.data.datasets[1].backgroundColor = palette.configuredTarget;
+                    chart.data.datasets[1].borderColor = palette.configuredTarget;
+                }}
+                // Update configured target annotation color if present
+                const ann = chart.options.plugins.annotation && chart.options.plugins.annotation.annotations;
+                if (ann) {{
+                    if (ann.currentCoverage) {{
+                        ann.currentCoverage.label.backgroundColor = palette.coveredBorder;
+                    }}
+                    if (ann.configuredTarget) {{
+                        ann.configuredTarget.label.backgroundColor = palette.configuredTargetBg;
+                    }}
+                }}
                 chart.update();
             }});
+
+            // Update legend colors in the header
+            if (activeTab) {{
+                activeTab.querySelectorAll('.chart-legend-color').forEach(function(el) {{
+                    const role = el.getAttribute('data-role');
+                    if (role === 'covered') {{
+                        el.style.background = palette.covered;
+                        el.style.borderColor = palette.coveredBorder;
+                    }} else if (role === 'future') {{
+                        el.style.background = palette.configuredTarget;
+                        el.style.borderColor = palette.configuredTarget;
+                    }} else if (role === 'ondemand') {{
+                        el.style.background = palette.ondemand;
+                        el.style.borderColor = palette.ondemandBorder;
+                    }}
+                }});
+            }}
         }}
 
         // Tab switching function (scoped to parent section)
@@ -1683,25 +1834,32 @@ def generate_html_report(
         }}
 
         // Function to create chart for a specific type
-        function _injectChartHeader(canvasId, title) {{
+        function _injectChartHeader(canvasId, title, spType) {{
             const canvas = document.getElementById(canvasId);
             const container = canvas.parentElement;
             if (!container.querySelector('.chart-header')) {{
+                const palette = colorPalettes['palette1'];
+                const hasTarget = spType && configuredTargetData[spType];
                 const header = document.createElement('div');
                 header.className = 'chart-header';
+                let legendHtml = `
+                    <span class="chart-legend-item"><span class="chart-legend-color" data-role="covered" style="background:${{palette.covered}};border-color:${{palette.coveredBorder}};"></span>Covered by existing Savings Plans</span>`;
+                if (hasTarget) {{
+                    legendHtml += `
+                    <span class="chart-legend-item"><span class="chart-legend-color" data-role="future" style="background:${{palette.configuredTarget}};border-color:${{palette.configuredTarget}};"></span>Covered by future Saving Plan</span>`;
+                }}
+                legendHtml += `
+                    <span class="chart-legend-item"><span class="chart-legend-color" data-role="ondemand" style="background:${{palette.ondemand}};border-color:${{palette.ondemandBorder}};"></span>On-Demand Cost</span>`;
                 header.innerHTML = `
                     <div class="chart-title">${{title}}</div>
-                    <div class="chart-legend">
-                        <span class="chart-legend-item"><span class="chart-legend-color" style="background:#5b9bd5;border-color:#4a8bc2;"></span>Covered by Savings Plans</span>
-                        <span class="chart-legend-item"><span class="chart-legend-color" style="background:#f0ad4e;border-color:#ec971f;"></span>On-Demand Cost</span>
-                    </div>`;
+                    <div class="chart-legend">${{legendHtml}}</div>`;
                 container.insertBefore(header, canvas);
             }}
         }}
 
         function createChart(canvasId, chartData, title, spType, showCoverageLine) {{
             const ctx = document.getElementById(canvasId);
-            _injectChartHeader(canvasId, title);
+            _injectChartHeader(canvasId, title, spType);
 
             // Initialize color mode for this chart
             chartColorModes[canvasId] = 'palette1';
@@ -1728,16 +1886,18 @@ def generate_html_report(
                 if (spCommitmentHourly > 0) {{
                     annotations.currentCoverage = {{
                         type: 'line',
+                        z: 1,
                         yMin: onDemandEquivalent,
                         yMax: onDemandEquivalent,
-                        borderColor: 'rgba(255, 255, 255, 0.9)',
-                        borderWidth: 3,
-                        borderDash: [8, 4],
+                        borderColor: 'rgba(255, 255, 255, 0.8)',
+                        borderWidth: 2,
+                        borderDash: [4, 3],
                         label: {{
                             display: true,
-                            content: 'Current: $' + spCommitmentHourly.toFixed(2) + '/hr (' + currentCoveragePct.toFixed(1) + '% coverage)',
+                            z: 10,
+                            content: 'Current: $' + onDemandEquivalent.toFixed(2) + '/hr (' + currentCoveragePct.toFixed(1) + '% coverage)',
                             position: 'center',
-                            backgroundColor: 'rgba(0, 0, 0, 0.85)',
+                            backgroundColor: palette.coveredBorder,
                             color: 'white',
                             font: {{
                                 size: 12,
@@ -1752,13 +1912,15 @@ def generate_html_report(
                 if (minHourly > 0) {{
                     annotations.minHourly = {{
                         type: 'line',
+                        z: 1,
                         yMin: minHourly,
                         yMax: minHourly,
                         borderColor: 'rgba(70, 70, 70, 0.9)',
-                        borderWidth: 3,
+                        borderWidth: 2,
                         borderDash: [8, 4],
                         label: {{
                             display: true,
+                            z: 10,
                             content: 'Min-hourly: $' + minHourly.toFixed(2) + '/hr',
                             position: 'end',
                             backgroundColor: 'rgba(0, 0, 0, 0.85)',
@@ -1771,30 +1933,93 @@ def generate_html_report(
                         }}
                     }};
                 }}
+
+                // Add configured target line (projected coverage after next purchase)
+                const targetData = configuredTargetData[spType];
+                if (targetData) {{
+                    const projectedOdEquiv = onDemandEquivalent + targetData.added_od_equiv;
+                    const projectedCov = targetData.projected_coverage;
+                    annotations.configuredTarget = {{
+                        type: 'line',
+                        z: 1,
+                        yMin: projectedOdEquiv,
+                        yMax: projectedOdEquiv,
+                        borderColor: 'rgba(255, 255, 255, 0.8)',
+                        borderWidth: 2,
+                        borderDash: [4, 3],
+                        label: {{
+                            display: true,
+                            z: 10,
+                            content: 'Configured target: $' + projectedOdEquiv.toFixed(2) + '/hr (' + projectedCov.toFixed(1) + '% coverage)',
+                            position: 'start',
+                            backgroundColor: palette.configuredTargetBg,
+                            color: 'white',
+                            font: {{
+                                size: 12,
+                                weight: 'bold'
+                            }},
+                            padding: 6
+                        }}
+                    }};
+                }}
+            }}
+
+            // Build "future" dataset: shows how much the configured purchase would cover
+            const futureTargetData = spType ? configuredTargetData[spType] : null;
+            let futureData = null;
+            if (futureTargetData) {{
+                const addedOd = futureTargetData.added_od_equiv;
+                futureData = chartData.ondemand.map(function(od) {{
+                    return Math.min(addedOd, od);
+                }});
+            }}
+
+            const datasets = [
+                {{
+                    label: 'Covered by existing Savings Plans',
+                    data: chartData.covered,
+                    backgroundColor: palette.covered,
+                    borderColor: palette.coveredBorder,
+                    borderWidth: 1,
+                    stack: 'stack0'
+                }}
+            ];
+            if (futureData) {{
+                datasets.push({{
+                    label: 'Covered by future Saving Plan',
+                    data: futureData,
+                    backgroundColor: palette.configuredTarget,
+                    borderColor: palette.configuredTarget,
+                    borderWidth: 1,
+                    stack: 'stack0'
+                }});
+                const adjustedOndemand = chartData.ondemand.map(function(od, i) {{
+                    return Math.max(0, od - futureData[i]);
+                }});
+                datasets.push({{
+                    label: 'On-Demand Cost',
+                    data: adjustedOndemand,
+                    backgroundColor: palette.ondemand,
+                    borderColor: palette.ondemandBorder,
+                    borderWidth: 1,
+                    stack: 'stack0'
+                }});
+            }} else {{
+                datasets.push({{
+                    label: 'On-Demand Cost',
+                    data: chartData.ondemand,
+                    backgroundColor: palette.ondemand,
+                    borderColor: palette.ondemandBorder,
+                    borderWidth: 1,
+                    stack: 'stack0'
+                }});
             }}
 
             chartInstances[canvasId] = new Chart(ctx, {{
                 type: 'bar',
                 data: {{
                     labels: chartData.labels,
-                    datasets: [
-                        {{
-                            label: 'Covered by Savings Plans',
-                            data: chartData.covered,
-                            backgroundColor: palette.covered,
-                            borderColor: palette.coveredBorder,
-                            borderWidth: 1,
-                            stack: 'stack0'
-                        }},
-                        {{
-                            label: 'On-Demand Cost',
-                            data: chartData.ondemand,
-                            backgroundColor: palette.ondemand,
-                            borderColor: palette.ondemandBorder,
-                            borderWidth: 1,
-                            stack: 'stack0'
-                        }}
-                    ]
+                    datasets: datasets
                 }},
                 options: {{
                     responsive: true,
@@ -1881,7 +2106,7 @@ def generate_html_report(
         // Function to create daily chart (simplified - no annotation lines)
         function createDailyChart(canvasId, chartData, title) {{
             const ctx = document.getElementById(canvasId);
-            _injectChartHeader(canvasId, title);
+            _injectChartHeader(canvasId, title, null);
             const palette = colorPalettes['palette1'];
 
             chartInstances[canvasId] = new Chart(ctx, {{
@@ -1890,7 +2115,7 @@ def generate_html_report(
                     labels: chartData.labels,
                     datasets: [
                         {{
-                            label: 'Covered by Savings Plans',
+                            label: 'Covered by existing Savings Plans',
                             data: chartData.covered,
                             backgroundColor: palette.covered,
                             borderColor: palette.coveredBorder,
@@ -2110,29 +2335,46 @@ def generate_html_report(
             container.innerHTML = html;
         }}
 
-        // Create all charts
-        createChart('globalChart', allChartData.global, 'Hourly Usage: On-Demand vs Covered (All Types) - ' + lookbackDays + ' days', null, false);
-        createChart('computeChart', allChartData.compute, 'Compute Savings Plans - Hourly Usage (' + lookbackDays + ' days)', 'compute', true);
-        createChart('databaseChart', allChartData.database, 'Database Savings Plans - Hourly Usage (' + lookbackDays + ' days)', 'database', true);
-        createChart('sagemakerChart', allChartData.sagemaker, 'SageMaker Savings Plans - Hourly Usage (' + lookbackDays + ' days)', 'sagemaker', true);
+        // Create all charts (only for enabled SP types whose DOM elements exist)
+        {"createChart('globalChart', allChartData.global, 'Hourly Usage: On-Demand vs Covered (All Types) - ' + lookbackHours + ' hours', null, false);" if show_global_tab else "// Global chart skipped (single type enabled)"}
+        if (document.getElementById('computeChart')) {{
+            createChart('computeChart', allChartData.compute, 'Compute Savings Plans - Hourly Usage (' + lookbackHours + ' hours)', 'compute', true);
+        }}
+        if (document.getElementById('databaseChart')) {{
+            createChart('databaseChart', allChartData.database, 'Database Savings Plans - Hourly Usage (' + lookbackHours + ' hours)', 'database', true);
+        }}
+        if (document.getElementById('sagemakerChart')) {{
+            createChart('sagemakerChart', allChartData.sagemaker, 'SageMaker Savings Plans - Hourly Usage (' + lookbackHours + ' hours)', 'sagemaker', true);
+        }}
 
         // Create daily charts if data is available
         if (dailyChartData) {{
             const dailyDays = dailyChartData.global.labels.length;
-            createDailyChart('globalDailyChart', dailyChartData.global, 'Daily Usage: On-Demand vs Covered (All Types) - ' + dailyDays + ' days');
-            document.getElementById('global-daily-container').style.display = '';
-            createDailyChart('computeDailyChart', dailyChartData.compute, 'Compute Savings Plans - Daily Usage (' + dailyDays + ' days)');
-            document.getElementById('compute-daily-container').style.display = '';
-            createDailyChart('databaseDailyChart', dailyChartData.database, 'Database Savings Plans - Daily Usage (' + dailyDays + ' days)');
-            document.getElementById('database-daily-container').style.display = '';
-            createDailyChart('sagemakerDailyChart', dailyChartData.sagemaker, 'SageMaker Savings Plans - Daily Usage (' + dailyDays + ' days)');
-            document.getElementById('sagemaker-daily-container').style.display = '';
+            {"createDailyChart('globalDailyChart', dailyChartData.global, 'Daily Usage: On-Demand vs Covered (All Types) - ' + dailyDays + ' days'); document.getElementById('global-daily-container').style.display = '';" if show_global_tab else "// Global daily chart skipped (single type enabled)"}
+            if (document.getElementById('computeDailyChart')) {{
+                createDailyChart('computeDailyChart', dailyChartData.compute, 'Compute Savings Plans - Daily Usage (' + dailyChartData.compute.labels.length + ' days)');
+                document.getElementById('compute-daily-container').style.display = '';
+            }}
+            if (document.getElementById('databaseDailyChart')) {{
+                createDailyChart('databaseDailyChart', dailyChartData.database, 'Database Savings Plans - Daily Usage (' + dailyChartData.database.labels.length + ' days)');
+                document.getElementById('database-daily-container').style.display = '';
+            }}
+            if (document.getElementById('sagemakerDailyChart')) {{
+                createDailyChart('sagemakerDailyChart', dailyChartData.sagemaker, 'SageMaker Savings Plans - Daily Usage (' + dailyChartData.sagemaker.labels.length + ' days)');
+                document.getElementById('sagemaker-daily-container').style.display = '';
+            }}
         }}
 
-        // Render metrics for each type
-        renderMetrics('compute-metrics', metricsData.compute, 'Compute', allChartData.compute.stats, 'compute');
-        renderMetrics('database-metrics', metricsData.database, 'Database', allChartData.database.stats, 'database');
-        renderMetrics('sagemaker-metrics', metricsData.sagemaker, 'SageMaker', allChartData.sagemaker.stats, 'sagemaker');
+        // Render metrics for each type (only if their container exists)
+        if (document.getElementById('compute-metrics')) {{
+            renderMetrics('compute-metrics', metricsData.compute, 'Compute', allChartData.compute.stats, 'compute');
+        }}
+        if (document.getElementById('database-metrics')) {{
+            renderMetrics('database-metrics', metricsData.database, 'Database', allChartData.database.stats, 'database');
+        }}
+        if (document.getElementById('sagemaker-metrics')) {{
+            renderMetrics('sagemaker-metrics', metricsData.sagemaker, 'SageMaker', allChartData.sagemaker.stats, 'sagemaker');
+        }}
     </script>"""
 
     # Add JSON viewer JavaScript if raw data is provided
@@ -2353,12 +2595,12 @@ def generate_json_report(
             "generator": "sp-autopilot-reporter",
         },
         "report_parameters": {
-            "lookback_days": config.get("lookback_days"),
+            "lookback_hours": config["lookback_hours"],
             "granularity": "HOURLY",
-            "enable_compute_sp": config.get("enable_compute_sp"),
-            "enable_database_sp": config.get("enable_database_sp"),
-            "enable_sagemaker_sp": config.get("enable_sagemaker_sp"),
-            "low_utilization_threshold": config.get("low_utilization_threshold"),
+            "enable_compute_sp": config["enable_compute_sp"],
+            "enable_database_sp": config["enable_database_sp"],
+            "enable_sagemaker_sp": config["enable_sagemaker_sp"],
+            "low_utilization_threshold": config["low_utilization_threshold"],
         },
         "coverage_summary": {
             "compute": {
