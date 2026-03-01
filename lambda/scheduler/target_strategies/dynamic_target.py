@@ -46,15 +46,15 @@ def resolve_dynamic(
     strategies = calculate_strategies(hourly_costs, savings_percentage)
     coverage_hourly = strategies[risk_level]
 
-    avg_hourly = sum(hourly_costs) / len(hourly_costs)
-    if avg_hourly <= 0:
+    min_hourly = min(hourly_costs)
+    if min_hourly <= 0:
         return 90.0
 
-    target_percent = (coverage_hourly / avg_hourly) * 100.0
+    target_percent = (coverage_hourly / min_hourly) * 100.0
 
     logger.info(
         f"Dynamic target ({risk_level}, {sp_type_key or 'all'}): "
-        f"coverage=${coverage_hourly:.4f}/hr, avg=${avg_hourly:.4f}/hr, target={target_percent:.1f}%"
+        f"coverage=${coverage_hourly:.4f}/hr, min=${min_hourly:.4f}/hr, target={target_percent:.1f}%"
     )
 
     return target_percent
