@@ -233,7 +233,7 @@ jobs:
           pytest
 
       - name: Upload coverage artifact
-        uses: actions/upload-artifact@v6
+        uses: actions/upload-artifact@v7
         with:
           name: scheduler-coverage
           path: lambda/scheduler/coverage.xml
@@ -302,7 +302,7 @@ jobs:
           pytest
 
       - name: Upload coverage artifact
-        uses: actions/upload-artifact@v6
+        uses: actions/upload-artifact@v7
         with:
           name: purchaser-coverage
           path: lambda/purchaser/coverage.xml
@@ -371,7 +371,7 @@ jobs:
           pytest
 
       - name: Upload coverage artifact
-        uses: actions/upload-artifact@v6
+        uses: actions/upload-artifact@v7
         with:
           name: reporter-coverage
           path: lambda/reporter/coverage.xml
