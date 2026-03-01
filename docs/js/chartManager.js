@@ -234,8 +234,7 @@ const ChartManager = (function() {
                             padding: 8,
                             font: { size: 11 },
                             filter: function(item, chartData) {
-                                const ds = chartData.datasets[item.datasetIndex];
-                                return !ds.hidden && !ds._hideLegend;
+                                return !chartData.datasets[item.datasetIndex].hidden;
                             }
                         }
                     },
@@ -409,7 +408,7 @@ const ChartManager = (function() {
         }
 
         // Show/hide split-only datasets and adjust spillover fill target
-        costChart.data.datasets[0]._hideLegend = !showSplit;
+        costChart.data.datasets[0].label = showSplit ? 'Covered by existing SP' : 'Covered by SP';
         costChart.data.datasets[1].hidden = !showSplit;
         costChart.data.datasets[2].fill = showSplit ? 1 : 0;
 
