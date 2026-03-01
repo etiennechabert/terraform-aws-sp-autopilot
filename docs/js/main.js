@@ -114,13 +114,19 @@
         // Actual existing SP coverage (0 when no SP)
         const currentCoverage = usageData.current_coverage || 0;
 
+        // If next purchase data is available, start slider at projected coverage level
+        const nextPurchase = usageData.next_purchase;
+        const initialCoverage = nextPurchase
+            ? currentCoverage + (nextPurchase.added_od_equiv || 0)
+            : (currentCoverage || minCost);
+
         // Update app state with real data
         appState = {
             ...appState,
             pattern: pattern,
             minCost: minCost,
             maxCost: maxCost,
-            coverageCost: currentCoverage || minCost,  // Start slider at min-hourly if no SP
+            coverageCost: initialCoverage,
             customCurve: customCurve,
             savingsPercentage: savingsPercentage,  // Use actual discount from user's SPs
             actualSavingsPercentage: savingsPercentage,  // Preserve original for restoring after AWS strategy
@@ -208,13 +214,23 @@
         const banner = document.createElement('div');
 
         if (fromReporter) {
+            const nextPurchase = appState.usageData?.next_purchase;
+            const currentCov = appState.currentCoverage || 0;
+            let purchaseInfo = '';
+            if (nextPurchase && nextPurchase.added_od_equiv > 0) {
+                const projectedCov = currentCov + nextPurchase.added_od_equiv;
+                const minCost = appState.minCost || 1;
+                const currentPct = (currentCov / minCost * 100).toFixed(1);
+                const projectedPct = (projectedCov / minCost * 100).toFixed(1);
+                purchaseInfo = `<br><small style="opacity:0.9">Coverage: <strong>${CostCalculator.formatCurrency(currentCov)}/h</strong> (${currentPct}%) → <strong>${CostCalculator.formatCurrency(projectedCov)}/h</strong> (${projectedPct}%) after next purchase</small>`;
+            }
             banner.className = 'usage-data-banner';
             banner.innerHTML = `
                 <div class="banner-content">
                     <span class="banner-icon">📊</span>
                     <span class="banner-text">
                         <strong>Real Usage Data Loaded</strong> - ${spType} Savings Plans<br>
-                        <small>Using your actual ${savingsPct.toFixed(1)}% discount rate</small>
+                        <small>Using your actual ${savingsPct.toFixed(1)}% discount rate</small>${purchaseInfo}
                     </span>
                 </div>
             `;
@@ -339,10 +355,10 @@
             toggleLoadPatternButton.addEventListener('click', handleToggleLoadPattern);
         }
 
-        // Color theme selector
-        const colorThemeSelect = document.getElementById('color-theme');
-        if (colorThemeSelect) {
-            colorThemeSelect.addEventListener('change', handleColorThemeChange);
+        // Color theme toggle button
+        const toggleColorsBtn = document.getElementById('toggle-colors');
+        if (toggleColorsBtn) {
+            toggleColorsBtn.addEventListener('click', handleToggleColors);
         }
 
         // Strategy button click handlers
@@ -538,17 +554,33 @@
     }
 
     /**
-     * Handle coverage level change
+     * Handle coverage level change (with magnetic snap to key positions)
      */
     function handleCoverageChange(event) {
-        const value = parseFloat(event.target.value);
+        let value = parseFloat(event.target.value);
         const sliderMax = parseFloat(event.target.max) || appState.maxCost;
-        if (!isNaN(value) && value >= 0 && value <= sliderMax) {
-            appState.coverageCost = value;
-            updateCoverageDisplay(value);
-            calculateAndUpdateCosts();
-            URLState.debouncedUpdateURL(appState);
+        if (isNaN(value) || value < 0 || value > sliderMax) return;
+
+        const nextPurchase = appState.usageData?.next_purchase;
+        if (nextPurchase && appState.currentCoverage > 0) {
+            const snapThreshold = sliderMax * 0.02;
+            const snapTargets = [
+                appState.currentCoverage,
+                appState.currentCoverage + (nextPurchase.added_od_equiv || 0)
+            ];
+            for (const target of snapTargets) {
+                if (Math.abs(value - target) < snapThreshold) {
+                    value = target;
+                    event.target.value = value;
+                    break;
+                }
+            }
         }
+
+        appState.coverageCost = value;
+        updateCoverageDisplay(value);
+        calculateAndUpdateCosts();
+        URLState.debouncedUpdateURL(appState);
     }
 
     /**
@@ -1049,23 +1081,21 @@
     }
 
     /**
-     * Handle color theme change
+     * Cycle through color themes on toggle button click
      */
-    function handleColorThemeChange(event) {
-        const themeName = event.target.value;
+    function handleToggleColors() {
+        const themeNames = Object.keys(ColorThemes.getAllThemes());
+        const currentIdx = themeNames.indexOf(ColorThemes.getCurrentTheme());
+        const nextIdx = (currentIdx + 1) % themeNames.length;
+        const themeName = themeNames[nextIdx];
 
-        // Update theme in ColorThemes module
         ColorThemes.setTheme(themeName);
-
-        // Update all chart colors
         ChartManager.updateChartColors(themeName);
-
-        // Update legend colors
         updateLegendColors(themeName);
+        calculateAndUpdateCosts();
 
-        // Show toast notification
         const themeColors = ColorThemes.getThemeColors(themeName);
-        showToast(`Color theme changed to: ${themeColors.name || themeName}`);
+        showToast(`Color theme: ${themeColors.name || themeName}`);
     }
 
     /**
@@ -1172,6 +1202,60 @@
     }
 
     /**
+     * Update the coverage slider with 3-zone gradient and tick markers
+     */
+    function updateSliderZones() {
+        const slider = document.getElementById('coverage-slider');
+        if (!slider) return;
+
+        const nextPurchase = appState.usageData?.next_purchase;
+        const currentCov = appState.currentCoverage || 0;
+        const sliderMax = parseFloat(slider.max) || appState.maxCost;
+
+        // Remove old markers
+        const oldMarkers = slider.parentElement.querySelector('.slider-zone-markers');
+        if (oldMarkers) oldMarkers.remove();
+
+        const theme = ColorThemes.getThemeColors();
+
+        if (!nextPurchase || currentCov <= 0 || sliderMax <= 0) {
+            // Default mode: covered / spillover split at thumb position
+            const thumbPct = Math.min((appState.coverageCost / sliderMax) * 100, 100);
+            const covColor = theme.covered.border;
+            const spillColor = theme.spillover.border;
+            slider.style.background = `linear-gradient(90deg, ${covColor} 0%, ${covColor} ${thumbPct}%, ${spillColor} ${thumbPct}%, ${spillColor} 100%)`;
+            return;
+        }
+
+        const currentPct = Math.min((currentCov / sliderMax) * 100, 100);
+        const nextPurchasePct = Math.min(((currentCov + (nextPurchase.added_od_equiv || 0)) / sliderMax) * 100, 100);
+
+        const covColor = theme.covered.border;
+        const nextColor = theme.nextPurchase.border;
+        const beyondColor = theme.spillover.border;
+        slider.style.background = `linear-gradient(90deg, ${covColor} 0%, ${covColor} ${currentPct}%, ${nextColor} ${currentPct}%, ${nextColor} ${nextPurchasePct}%, ${beyondColor} ${nextPurchasePct}%, ${beyondColor} 100%)`;
+
+        // Create zone markers
+        const markersDiv = document.createElement('div');
+        markersDiv.className = 'slider-zone-markers';
+
+        const markers = [
+            { pct: currentPct, label: 'Current' },
+            { pct: nextPurchasePct, label: 'Next purchase' }
+        ];
+
+        for (const m of markers) {
+            const marker = document.createElement('div');
+            marker.className = 'slider-zone-marker';
+            marker.style.left = `${m.pct}%`;
+            marker.innerHTML = `<div class="tick"></div><div class="label">${m.label}</div>`;
+            markersDiv.appendChild(marker);
+        }
+
+        slider.parentElement.appendChild(markersDiv);
+    }
+
+    /**
      * Calculate costs and update all visualizations
      */
     function calculateAndUpdateCosts() {
@@ -1197,7 +1281,7 @@
         ChartManager.setCurrentCostResults(currentCostResults);
 
         // Update cost chart with scaled costs
-        ChartManager.updateCostChart(currentCostResults);
+        ChartManager.updateCostChart(currentCostResults, appState.currentCoverage);
 
         // Update metrics display
         updateMetricsDisplay(currentCostResults);
@@ -1210,6 +1294,9 @@
 
         // Calculate and update savings curve with scaled costs
         updateSavingsCurveDisplay(scaledHourlyCosts);
+
+        // Update slider zones (3-color gradient + tick markers)
+        updateSliderZones();
     }
 
     /**
@@ -1311,6 +1398,11 @@
         const currentCoverageFromData = appState.coverageCost;
 
         // Update chart (use optimal from curve data for consistency)
+        const nextPurchase = appState.usageData?.next_purchase;
+        const nextPurchaseCoverage = (nextPurchase && appState.currentCoverage > 0)
+            ? appState.currentCoverage + (nextPurchase.added_od_equiv || 0)
+            : 0;
+
         ChartManager.updateSavingsCurveChart({
             curveData,
             minHourlySavings,
@@ -1319,6 +1411,7 @@
             baselineCost,
             currentCoverage: currentCoverageFromData,
             existingCoverage: appState.currentCoverage || 0,
+            nextPurchaseCoverage,
             savingsPercentage,
             numHours: hourlyCosts.length
         });
