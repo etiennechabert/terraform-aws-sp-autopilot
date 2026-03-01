@@ -1216,15 +1216,20 @@
         const oldMarkers = slider.parentElement.querySelector('.slider-zone-markers');
         if (oldMarkers) oldMarkers.remove();
 
+        const theme = ColorThemes.getThemeColors();
+
         if (!nextPurchase || currentCov <= 0 || sliderMax <= 0) {
-            slider.style.background = '';
+            // Default mode: covered / spillover split at thumb position
+            const thumbPct = Math.min((appState.coverageCost / sliderMax) * 100, 100);
+            const covColor = theme.covered.border;
+            const spillColor = theme.spillover.border;
+            slider.style.background = `linear-gradient(90deg, ${covColor} 0%, ${covColor} ${thumbPct}%, ${spillColor} ${thumbPct}%, ${spillColor} 100%)`;
             return;
         }
 
         const currentPct = Math.min((currentCov / sliderMax) * 100, 100);
         const nextPurchasePct = Math.min(((currentCov + (nextPurchase.added_od_equiv || 0)) / sliderMax) * 100, 100);
 
-        const theme = ColorThemes.getThemeColors();
         const covColor = theme.covered.border;
         const nextColor = theme.nextPurchase.border;
         const beyondColor = theme.spillover.border;
