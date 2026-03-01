@@ -159,7 +159,13 @@ def handler(event: dict[str, Any], context: Any) -> dict[str, Any]:
                 f"Blocked {len(blocked_plans)} purchase plan(s) due to usage spike: {flagged_types}"
             )
 
-    queue_module.queue_purchase_intents(clients["sqs"], config, purchase_plans, short_term_averages)
+    queue_module.queue_purchase_intents(
+        clients["sqs"],
+        config,
+        purchase_plans,
+        short_term_averages,
+        savingsplans_client=clients["savingsplans"],
+    )
     email_module.send_scheduled_email(
         clients["sns"],
         config,

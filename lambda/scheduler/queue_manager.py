@@ -14,9 +14,11 @@ from datetime import UTC, datetime
 from typing import TYPE_CHECKING, Any
 
 from botocore.exceptions import ClientError
+from offering_resolver import TERM_TO_DURATION, resolve_offering_id
 
 
 if TYPE_CHECKING:
+    from mypy_boto3_savingsplans.client import SavingsPlansClient
     from mypy_boto3_sqs.client import SQSClient
 
 from shared.queue_adapter import QueueAdapter
@@ -24,6 +26,12 @@ from shared.queue_adapter import QueueAdapter
 
 # Configure logging
 logger = logging.getLogger()
+
+SP_TYPE_KEY_TO_FILTER = {
+    "compute": "ComputeSavingsPlans",
+    "database": "DatabaseSavingsPlans",
+    "sagemaker": "SageMakerSavingsPlans",
+}
 
 
 def purge_queue(sqs_client: SQSClient, queue_url: str) -> None:
@@ -52,10 +60,15 @@ def queue_purchase_intents(
     config: dict[str, Any],
     purchase_plans: list[dict[str, Any]],
     scheduling_avg_hourly_total: dict[str, float] | None = None,
+    savingsplans_client: SavingsPlansClient | None = None,
 ) -> None:
     """
-    Queue purchase intents to queue.
+    Queue purchase intents to queue in the purchaser's expected format.
     Supports both AWS SQS and local filesystem modes.
+
+    Each SQS message contains a fully resolved purchase intent ready for
+    the purchaser to validate and execute (offering_id, commitment, term_seconds,
+    sp_type as CamelCase filter value).
 
     Args:
         sqs_client: Boto3 SQS client (not used in local mode)
@@ -63,6 +76,7 @@ def queue_purchase_intents(
         purchase_plans: List of planned purchases
         scheduling_avg_hourly_total: Average hourly spend per SP type at scheduling time
             (embedded in SQS messages for purchaser spike guard)
+        savingsplans_client: Boto3 Savings Plans client for offering resolution
     """
     logger.info(f"Queuing {len(purchase_plans)} purchase intents")
 
@@ -78,22 +92,36 @@ def queue_purchase_intents(
         try:
             # Generate unique client token for idempotency
             timestamp = datetime.now(UTC).isoformat()
-            sp_type = plan.get("sp_type", "unknown")
+            sp_type_key = plan.get("sp_type", "unknown")
             term = plan.get("term", "unknown")
             commitment = plan.get("hourly_commitment", 0.0)
-            client_token = f"scheduler-{sp_type}-{term}-{timestamp}"
+            payment_option = plan.get("payment_option", "ALL_UPFRONT")
+            client_token = f"scheduler-{sp_type_key}-{term}-{timestamp}"
 
-            # Create purchase intent message
+            # Resolve offering ID and convert to purchaser format
+            offering_id = resolve_offering_id(
+                savingsplans_client, sp_type_key, term, payment_option
+            )
+            sp_type = SP_TYPE_KEY_TO_FILTER.get(sp_type_key, sp_type_key)
+            term_seconds = TERM_TO_DURATION.get(term, term)
+
+            # Create purchase intent message in purchaser's expected format
             purchase_intent = {
                 "client_token": client_token,
+                "offering_id": offering_id,
                 "sp_type": sp_type,
-                "term": term,
-                "hourly_commitment": commitment,
-                "payment_option": plan.get("payment_option", "ALL_UPFRONT"),
+                "term_seconds": term_seconds,
+                "commitment": str(commitment),
+                "payment_option": payment_option,
                 "recommendation_id": plan.get("recommendation_id", "unknown"),
                 "queued_at": timestamp,
                 "tags": config["tags"],
             }
+
+            # Forward strategy context for purchaser email
+            for key in ("strategy", "estimated_savings_percentage", "details"):
+                if key in plan:
+                    purchase_intent[key] = plan[key]
 
             if scheduling_avg_hourly_total is not None:
                 purchase_intent["scheduling_avg_hourly_total"] = scheduling_avg_hourly_total

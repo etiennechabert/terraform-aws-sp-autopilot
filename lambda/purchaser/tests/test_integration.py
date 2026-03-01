@@ -28,6 +28,38 @@ from datetime import UTC
 import handler
 
 
+SP_TYPE_MAP = {
+    "compute": ("ComputeSavingsPlans", "offering-compute"),
+    "database": ("DatabaseSavingsPlans", "offering-database"),
+    "sagemaker": ("SageMakerSavingsPlans", "offering-sagemaker"),
+}
+
+TERM_MAP = {
+    "ONE_YEAR": 31536000,
+    "THREE_YEAR": 94608000,
+}
+
+
+def _purchase_intent(
+    sp_type="compute",
+    commitment="1.50",
+    term="THREE_YEAR",
+    payment_option="NO_UPFRONT",
+    **extra,
+):
+    """Build a purchase intent in the format the scheduler sends to SQS (purchaser-ready)."""
+    sp_filter, offering_id = SP_TYPE_MAP[sp_type]
+    return {
+        "client_token": f"test-{sp_type}-token",
+        "offering_id": offering_id,
+        "sp_type": sp_filter,
+        "term_seconds": TERM_MAP[term],
+        "commitment": commitment,
+        "payment_option": payment_option,
+        **extra,
+    }
+
+
 @pytest.fixture
 def mock_env_vars(monkeypatch):
     """Set up environment variables for testing."""
@@ -84,16 +116,11 @@ def test_empty_queue(mock_env_vars, mock_clients):
 
 def test_valid_purchase_success(aws_mock_builder, mock_env_vars, mock_clients):
     """Valid Compute SP purchase should execute successfully."""
-    # Mock SQS message with valid purchase intent
-    purchase_intent = {
-        "client_token": "test-token-123",
-        "offering_id": "sp-offering-123",
-        "commitment": "1.50",
-        "sp_type": "ComputeSavingsPlans",
-        "term_seconds": 94608000,  # 3 years
-        "payment_option": "NO_UPFRONT",
-        "upfront_amount": None,
-    }
+    purchase_intent = _purchase_intent(
+        sp_type="compute",
+        commitment="1.50",
+        term="THREE_YEAR",
+    )
 
     mock_clients["sqs"].receive_message.return_value = {
         "Messages": [{"Body": json.dumps(purchase_intent), "ReceiptHandle": "receipt-handle-123"}]
@@ -129,8 +156,7 @@ def test_valid_purchase_success(aws_mock_builder, mock_env_vars, mock_clients):
 
     # Verify CreateSavingsPlan parameters
     create_call = mock_clients["savingsplans"].create_savings_plan.call_args
-    assert create_call[1]["clientToken"] == "test-token-123"
-    assert create_call[1]["savingsPlanOfferingId"] == "sp-offering-123"
+    assert create_call[1]["savingsPlanOfferingId"] == "offering-compute"
 
     # Verify email content
     email_call = mock_clients["sns"].publish.call_args
@@ -144,22 +170,13 @@ def test_api_error_handling(mock_env_vars, mock_clients):
         # Mock boto3.client call in error handler
         mock_boto_client.return_value = mock_clients["sns"]
 
-        # Mock SQS message
-        purchase_intent = {
-            "client_token": "test-token-error",
-            "offering_id": "sp-offering-error",
-            "commitment": "1.00",
-            "sp_type": "ComputeSavingsPlans",
-            "term_seconds": 94608000,
-            "payment_option": "NO_UPFRONT",
-            "upfront_amount": None,
-        }
+        purchase_intent = _purchase_intent()
 
         mock_clients["sqs"].receive_message.return_value = {
             "Messages": [{"Body": json.dumps(purchase_intent), "ReceiptHandle": "receipt-error"}]
         }
 
-        # Mock API error
+        # Mock API error (happens before normalize is called)
         mock_clients["ce"].get_savings_plans_coverage.side_effect = ClientError(
             {"Error": {"Code": "AccessDenied", "Message": "Access denied"}},
             "GetSavingsPlansCoverage",
@@ -182,16 +199,11 @@ def test_api_error_handling(mock_env_vars, mock_clients):
 
 def test_database_sp_purchase(mock_env_vars, mock_clients):
     """Database Savings Plan purchase should execute successfully."""
-    # Mock SQS message with Database SP purchase intent
-    purchase_intent = {
-        "client_token": "test-db-token-123",
-        "offering_id": "sp-db-offering-123",
-        "commitment": "2.00",
-        "sp_type": "DatabaseSavingsPlans",
-        "term_seconds": 94608000,  # 3 years
-        "payment_option": "NO_UPFRONT",
-        "upfront_amount": None,
-    }
+    purchase_intent = _purchase_intent(
+        sp_type="database",
+        commitment="2.00",
+        term="ONE_YEAR",
+    )
 
     mock_clients["sqs"].receive_message.return_value = {
         "Messages": [
@@ -241,8 +253,7 @@ def test_database_sp_purchase(mock_env_vars, mock_clients):
 
     # Verify CreateSavingsPlan parameters
     create_call = mock_clients["savingsplans"].create_savings_plan.call_args
-    assert create_call[1]["clientToken"] == "test-db-token-123"
-    assert create_call[1]["savingsPlanOfferingId"] == "sp-db-offering-123"
+    assert create_call[1]["savingsPlanOfferingId"] == "offering-database"
 
     # Verify email content
     email_call = mock_clients["sns"].publish.call_args
@@ -252,9 +263,9 @@ def test_database_sp_purchase(mock_env_vars, mock_clients):
 
 def test_validation_errors(mock_env_vars, mock_clients):
     """Invalid purchase intents should fail validation and not be deleted from queue."""
-    # Test 1: Missing required fields
+    # Test 1: Missing required fields (pre-normalized format with offering_id but missing client_token)
     malformed_intent = {
-        # Missing client_token and offering_id
+        "offering_id": "sp-offering-bad",
         "commitment": "1.50",
         "sp_type": "ComputeSavingsPlans",
         "term_seconds": 94608000,
@@ -301,8 +312,9 @@ def test_validation_errors(mock_env_vars, mock_clients):
     mock_clients["sqs"].reset_mock()
     mock_clients["sns"].reset_mock()
     mock_clients["savingsplans"].reset_mock()
+    mock_clients["savingsplans"].describe_savings_plans.return_value = {"savingsPlans": []}
 
-    # Test 2: Invalid sp_type
+    # Test 2: Invalid sp_type (pre-normalized format)
     invalid_sp_type_intent = {
         "client_token": "test-token-invalid",
         "offering_id": "sp-offering-invalid",
@@ -341,16 +353,13 @@ def test_validation_errors(mock_env_vars, mock_clients):
 
 def test_upfront_payment_purchase(mock_env_vars, mock_clients):
     """Purchase with ALL_UPFRONT payment option should include upfront amount."""
-    # Mock SQS message with ALL_UPFRONT purchase intent
-    purchase_intent = {
-        "client_token": "test-token-upfront",
-        "offering_id": "sp-offering-upfront",
-        "commitment": "10.00",
-        "sp_type": "ComputeSavingsPlans",
-        "term_seconds": 94608000,  # 3 years
-        "payment_option": "ALL_UPFRONT",
-        "upfront_amount": "262800.00",  # 3 years * $10/hr * 8760 hrs/year
-    }
+    purchase_intent = _purchase_intent(
+        sp_type="compute",
+        commitment="10.00",
+        term="THREE_YEAR",
+        payment_option="ALL_UPFRONT",
+        upfront_amount="262800.00",
+    )
 
     mock_clients["sqs"].receive_message.return_value = {
         "Messages": [{"Body": json.dumps(purchase_intent), "ReceiptHandle": "receipt-upfront"}]
@@ -397,16 +406,11 @@ def test_upfront_payment_purchase(mock_env_vars, mock_clients):
 
 def test_sagemaker_sp_purchase(mock_env_vars, mock_clients):
     """SageMaker Savings Plan purchase should handle coverage tracking correctly."""
-    # Mock SQS message with SageMaker SP purchase intent
-    purchase_intent = {
-        "client_token": "test-sm-token-123",
-        "offering_id": "sp-sm-offering-123",
-        "commitment": "3.50",
-        "sp_type": "SageMakerSavingsPlans",
-        "term_seconds": 31536000,  # 1 year
-        "payment_option": "NO_UPFRONT",
-        "upfront_amount": None,
-    }
+    purchase_intent = _purchase_intent(
+        sp_type="sagemaker",
+        commitment="3.50",
+        term="ONE_YEAR",
+    )
 
     mock_clients["sqs"].receive_message.return_value = {
         "Messages": [{"Body": json.dumps(purchase_intent), "ReceiptHandle": "receipt-sm-123"}]
@@ -454,16 +458,11 @@ def test_sagemaker_sp_purchase(mock_env_vars, mock_clients):
 
 def test_purchase_api_error(mock_env_vars, mock_clients):
     """CreateSavingsPlan API error should be handled and message kept in queue."""
-    # Mock SQS message
-    purchase_intent = {
-        "client_token": "test-token-fail",
-        "offering_id": "sp-offering-fail",
-        "commitment": "1.00",
-        "sp_type": "ComputeSavingsPlans",
-        "term_seconds": 94608000,
-        "payment_option": "NO_UPFRONT",
-        "upfront_amount": None,
-    }
+    purchase_intent = _purchase_intent(
+        sp_type="compute",
+        commitment="1.00",
+        term="THREE_YEAR",
+    )
 
     mock_clients["sqs"].receive_message.return_value = {
         "Messages": [{"Body": json.dumps(purchase_intent), "ReceiptHandle": "receipt-fail"}]
@@ -510,16 +509,11 @@ def test_expiring_plans_renewal(mock_env_vars, mock_clients):
     """Expiring Compute SP should trigger coverage adjustment to force renewal."""
     from datetime import datetime, timedelta
 
-    # Mock SQS message
-    purchase_intent = {
-        "client_token": "test-token-renewal",
-        "offering_id": "sp-offering-renewal",
-        "commitment": "5.00",
-        "sp_type": "ComputeSavingsPlans",
-        "term_seconds": 94608000,
-        "payment_option": "NO_UPFRONT",
-        "upfront_amount": None,
-    }
+    purchase_intent = _purchase_intent(
+        sp_type="compute",
+        commitment="5.00",
+        term="THREE_YEAR",
+    )
 
     mock_clients["sqs"].receive_message.return_value = {
         "Messages": [{"Body": json.dumps(purchase_intent), "ReceiptHandle": "receipt-renewal"}]
@@ -574,16 +568,11 @@ def test_expiring_database_plans(mock_env_vars, mock_clients):
     """Expiring Database SP should trigger coverage adjustment."""
     from datetime import datetime, timedelta
 
-    # Mock SQS message for Database SP
-    purchase_intent = {
-        "client_token": "test-db-renewal",
-        "offering_id": "sp-db-offering-renewal",
-        "commitment": "3.00",
-        "sp_type": "DatabaseSavingsPlans",
-        "term_seconds": 94608000,
-        "payment_option": "NO_UPFRONT",
-        "upfront_amount": None,
-    }
+    purchase_intent = _purchase_intent(
+        sp_type="database",
+        commitment="3.00",
+        term="ONE_YEAR",
+    )
 
     mock_clients["sqs"].receive_message.return_value = {
         "Messages": [{"Body": json.dumps(purchase_intent), "ReceiptHandle": "receipt-db-renewal"}]
@@ -636,16 +625,11 @@ def test_expiring_database_plans(mock_env_vars, mock_clients):
 
 def test_general_exception_handling(mock_env_vars, mock_clients):
     """General exceptions should be caught and reported."""
-    # Mock SQS message
-    purchase_intent = {
-        "client_token": "test-exception",
-        "offering_id": "sp-offering-exception",
-        "commitment": "1.00",
-        "sp_type": "ComputeSavingsPlans",
-        "term_seconds": 94608000,
-        "payment_option": "NO_UPFRONT",
-        "upfront_amount": None,
-    }
+    purchase_intent = _purchase_intent(
+        sp_type="compute",
+        commitment="1.00",
+        term="THREE_YEAR",
+    )
 
     mock_clients["sqs"].receive_message.return_value = {
         "Messages": [{"Body": json.dumps(purchase_intent), "ReceiptHandle": "receipt-exception"}]
@@ -690,16 +674,11 @@ def test_expiring_sagemaker_plans(mock_env_vars, mock_clients):
     """Expiring SageMaker SP should trigger coverage adjustment."""
     from datetime import datetime, timedelta
 
-    # Mock SQS message for SageMaker SP
-    purchase_intent = {
-        "client_token": "test-sm-renewal",
-        "offering_id": "sp-sm-offering-renewal",
-        "commitment": "2.00",
-        "sp_type": "SageMakerSavingsPlans",
-        "term_seconds": 31536000,
-        "payment_option": "NO_UPFRONT",
-        "upfront_amount": None,
-    }
+    purchase_intent = _purchase_intent(
+        sp_type="sagemaker",
+        commitment="2.00",
+        term="ONE_YEAR",
+    )
 
     mock_clients["sqs"].receive_message.return_value = {
         "Messages": [{"Body": json.dumps(purchase_intent), "ReceiptHandle": "receipt-sm-renewal"}]
@@ -756,18 +735,14 @@ def test_spike_guard_blocks_purchase_on_usage_drop(mock_env_vars, mock_clients, 
     monkeypatch.setenv("ENABLE_DATABASE_SP", "false")
     monkeypatch.setenv("ENABLE_SAGEMAKER_SP", "false")
 
-    # sp_type uses lowercase keys matching what the scheduler actually queues
-    purchase_intent = {
-        "client_token": "test-guard-token",
-        "offering_id": "sp-offering-guard",
-        "commitment": "1.00",
-        "sp_type": "compute",
-        "hourly_commitment": 1.0,
-        "term_seconds": 31536000,
-        "payment_option": "ALL_UPFRONT",
-        "upfront_amount": "8760.00",
-        "scheduling_avg_hourly_total": {"compute": 10.0},
-    }
+    purchase_intent = _purchase_intent(
+        sp_type="compute",
+        commitment="1.00",
+        term="ONE_YEAR",
+        payment_option="ALL_UPFRONT",
+        upfront_amount="8760.00",
+        scheduling_avg_hourly_total={"compute": 10.0},
+    )
 
     mock_clients["sqs"].receive_message.return_value = {
         "Messages": [{"Body": json.dumps(purchase_intent), "ReceiptHandle": "receipt-guard"}]
@@ -809,16 +784,14 @@ def test_spike_guard_allows_purchase_when_no_drop(mock_env_vars, mock_clients, m
     monkeypatch.setenv("ENABLE_DATABASE_SP", "false")
     monkeypatch.setenv("ENABLE_SAGEMAKER_SP", "false")
 
-    purchase_intent = {
-        "client_token": "test-guard-token2",
-        "offering_id": "sp-offering-guard2",
-        "commitment": "1.00",
-        "sp_type": "ComputeSavingsPlans",
-        "term_seconds": 31536000,
-        "payment_option": "ALL_UPFRONT",
-        "upfront_amount": "8760.00",
-        "scheduling_avg_hourly_total": {"compute": 10.0},
-    }
+    purchase_intent = _purchase_intent(
+        sp_type="compute",
+        commitment="1.00",
+        term="ONE_YEAR",
+        payment_option="ALL_UPFRONT",
+        upfront_amount="8760.00",
+        scheduling_avg_hourly_total={"compute": 10.0},
+    )
 
     mock_clients["sqs"].receive_message.return_value = {
         "Messages": [{"Body": json.dumps(purchase_intent), "ReceiptHandle": "receipt-guard2"}]
@@ -870,15 +843,13 @@ def test_spike_guard_skips_without_scheduling_avgs(mock_env_vars, mock_clients, 
     monkeypatch.setenv("SPIKE_GUARD_THRESHOLD_PERCENT", "20")
     monkeypatch.setenv("SPIKE_GUARD_LONG_LOOKBACK_DAYS", "90")
 
-    purchase_intent = {
-        "client_token": "test-no-avg-token",
-        "offering_id": "sp-offering-no-avg",
-        "commitment": "1.00",
-        "sp_type": "ComputeSavingsPlans",
-        "term_seconds": 31536000,
-        "payment_option": "ALL_UPFRONT",
-        "upfront_amount": "8760.00",
-    }
+    purchase_intent = _purchase_intent(
+        sp_type="compute",
+        commitment="1.00",
+        term="ONE_YEAR",
+        payment_option="ALL_UPFRONT",
+        upfront_amount="8760.00",
+    )
 
     mock_clients["sqs"].receive_message.return_value = {
         "Messages": [{"Body": json.dumps(purchase_intent), "ReceiptHandle": "receipt-no-avg"}]
@@ -916,16 +887,13 @@ def test_cooldown_blocks_recently_purchased_type(mock_env_vars, mock_clients, mo
 
     monkeypatch.setenv("PURCHASE_COOLDOWN_DAYS", "7")
 
-    purchase_intent = {
-        "client_token": "test-cooldown-token",
-        "offering_id": "sp-offering-cooldown",
-        "commitment": "1.00",
-        "sp_type": "compute",
-        "hourly_commitment": 1.0,
-        "term_seconds": 31536000,
-        "payment_option": "ALL_UPFRONT",
-        "upfront_amount": "8760.00",
-    }
+    purchase_intent = _purchase_intent(
+        sp_type="compute",
+        commitment="1.00",
+        term="ONE_YEAR",
+        payment_option="ALL_UPFRONT",
+        upfront_amount="8760.00",
+    )
 
     mock_clients["sqs"].receive_message.return_value = {
         "Messages": [{"Body": json.dumps(purchase_intent), "ReceiptHandle": "receipt-cooldown"}]
@@ -960,15 +928,11 @@ def test_cooldown_allows_different_type(mock_env_vars, mock_clients, monkeypatch
 
     monkeypatch.setenv("PURCHASE_COOLDOWN_DAYS", "7")
 
-    purchase_intent = {
-        "client_token": "test-db-cooldown",
-        "offering_id": "sp-db-offering",
-        "commitment": "1.00",
-        "sp_type": "DatabaseSavingsPlans",
-        "term_seconds": 31536000,
-        "payment_option": "NO_UPFRONT",
-        "upfront_amount": None,
-    }
+    purchase_intent = _purchase_intent(
+        sp_type="database",
+        commitment="1.00",
+        term="ONE_YEAR",
+    )
 
     mock_clients["sqs"].receive_message.return_value = {
         "Messages": [{"Body": json.dumps(purchase_intent), "ReceiptHandle": "receipt-db-cd"}]
@@ -1013,3 +977,47 @@ def test_cooldown_allows_different_type(mock_env_vars, mock_clients, monkeypatch
     body = json.loads(response["body"])
     assert body["purchases_executed"] == 1
     assert mock_clients["savingsplans"].create_savings_plan.called
+
+
+def test_strategy_context_in_email(mock_env_vars, mock_clients):
+    """Strategy context from scheduler should appear in the purchase email."""
+    purchase_intent = _purchase_intent(
+        sp_type="compute",
+        commitment="1.50",
+        term="THREE_YEAR",
+        strategy="dynamic+gap_split",
+        estimated_savings_percentage=34.8,
+        details={
+            "coverage": {"current": 7.23, "target": 100.0, "gap": 92.77},
+            "spending": {"total": 5.0, "covered": 0.36, "uncovered": 4.64},
+        },
+    )
+
+    mock_clients["sqs"].receive_message.return_value = {
+        "Messages": [{"Body": json.dumps(purchase_intent), "ReceiptHandle": "receipt-strategy"}]
+    }
+    mock_clients["ce"].get_savings_plans_coverage.return_value = {
+        "SavingsPlansCoverages": [
+            {
+                "Groups": [
+                    {
+                        "Attributes": {"SAVINGS_PLANS_TYPE": "ComputeSavingsPlans"},
+                        "Coverage": {"CoveragePercentage": "50.0"},
+                    }
+                ]
+            }
+        ]
+    }
+    mock_clients["savingsplans"].describe_savings_plans.return_value = {"savingsPlans": []}
+    mock_clients["savingsplans"].create_savings_plan.return_value = {
+        "savingsPlanId": "sp-strategy-123"
+    }
+
+    response = handler.handler({}, {})
+
+    assert response["statusCode"] == 200
+    email_call = mock_clients["sns"].publish.call_args
+    email_body = email_call[1]["Message"]
+    assert "Strategy: dynamic+gap_split" in email_body
+    assert "Estimated Savings: 34.8%" in email_body
+    assert "Coverage: 7.23% -> 100.00%" in email_body

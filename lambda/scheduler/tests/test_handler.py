@@ -58,6 +58,9 @@ def mock_clients():
         mock_sqs.send_message.return_value = {"MessageId": "msg-default"}
         mock_sns = Mock()
         mock_sp = Mock()
+        mock_sp.describe_savings_plans_offerings.return_value = {
+            "searchResults": [{"offeringId": "mock-offering-id"}]
+        }
 
         mock_init.return_value = {
             "ce": mock_ce,
@@ -624,7 +627,9 @@ def test_handler_queues_purchases(mock_env_vars, mock_clients, aws_mock_builder)
 
     message_body = json.loads(send_call["MessageBody"])
     assert "sp_type" in message_body
-    assert "hourly_commitment" in message_body
+    assert "offering_id" in message_body
+    assert "commitment" in message_body
+    assert "term_seconds" in message_body
     assert "payment_option" in message_body
 
 

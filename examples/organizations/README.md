@@ -54,7 +54,8 @@ Create two roles for least privilege access:
       "ce:GetSavingsPlansPurchaseRecommendation",
       "ce:GetSavingsPlansCoverage",
       "ce:GetSavingsPlansUtilization",
-      "savingsplans:DescribeSavingsPlans"
+      "savingsplans:DescribeSavingsPlans",
+      "savingsplans:DescribeSavingsPlansOfferings"
     ],
     "Resource": "*"
   }]
@@ -88,6 +89,7 @@ Create two roles for least privilege access:
     "Action": [
       "savingsplans:CreateSavingsPlan",
       "savingsplans:DescribeSavingsPlans",
+      "savingsplans:DescribeSavingsPlansOfferings",
       "ce:GetSavingsPlansCoverage"
     ],
     "Resource": "*"
@@ -126,7 +128,8 @@ cat > readonly-permissions.json <<EOF
       "ce:GetSavingsPlansPurchaseRecommendation",
       "ce:GetSavingsPlansCoverage",
       "ce:GetSavingsPlansUtilization",
-      "savingsplans:DescribeSavingsPlans"
+      "savingsplans:DescribeSavingsPlans",
+      "savingsplans:DescribeSavingsPlansOfferings"
     ],
     "Resource": "*"
   }]
@@ -164,6 +167,7 @@ cat > purchaser-permissions.json <<EOF
     "Action": [
       "savingsplans:CreateSavingsPlan",
       "savingsplans:DescribeSavingsPlans",
+      "savingsplans:DescribeSavingsPlansOfferings",
       "ce:GetSavingsPlansCoverage"
     ],
     "Resource": "*"
