@@ -1038,9 +1038,9 @@ def generate_html_report(
         }}
         .summary-card h3 {{
             margin: 0 0 6px 0;
-            font-size: 0.8em;
-            font-weight: 500;
-            opacity: 0.9;
+            font-size: 0.85em;
+            font-weight: 600;
+            opacity: 0.95;
         }}
         .summary-card .value {{
             font-size: 1.6em;
@@ -1482,10 +1482,12 @@ def generate_html_report(
 
         <div class="summary">
             <div class="summary-card green">
-                <h3>Hourly Savings</h3>
-                <div class="value">${net_savings_hourly:.2f}</div>
-                <div style="font-size: 0.7em; opacity: 0.85; margin-top: 4px; text-align: right;">${
+                <h3>Savings</h3>
+                <div style="display: flex; justify-content: space-between; align-items: baseline;">
+                    <div class="value" style="margin: 0;">${net_savings_hourly:.2f}/hr</div>
+                    <div style="font-size: 0.8em; opacity: 0.9;">${
         net_savings_hourly * 24 * 30:,.0f}/mo</div>
+                </div>
             </div>
             <div class="summary-card blue">
                 <h3>Average Discount</h3>
@@ -1912,7 +1914,7 @@ def generate_html_report(
                             display: true,
                             z: 10,
                             content: 'Current: $' + onDemandEquivalent.toFixed(2) + '/hr (' + currentCoveragePct.toFixed(1) + '% coverage)',
-                            position: 'center',
+                            position: 'start',
                             backgroundColor: palette.coveredBorder,
                             color: 'white',
                             font: {{
@@ -1966,8 +1968,8 @@ def generate_html_report(
                         label: {{
                             display: true,
                             z: 10,
-                            content: 'Configured target: $' + projectedOdEquiv.toFixed(2) + '/hr (' + projectedCov.toFixed(1) + '% coverage)',
-                            position: 'start',
+                            content: 'Next purchase: $' + projectedOdEquiv.toFixed(2) + '/hr (' + projectedCov.toFixed(1) + '% coverage)',
+                            position: 'center',
                             backgroundColor: palette.configuredTargetBg,
                             color: 'white',
                             font: {{
