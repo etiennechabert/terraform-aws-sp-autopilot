@@ -9,11 +9,12 @@ const ColorThemes = (function() {
     function buildTheme(name, colors) {
         return {
             name,
-            covered:    { border: colors.covered[0],    background: colors.covered[1] },
-            spillover:  { border: colors.spillover[0],   background: colors.spillover[1] },
-            baseline:   { border: colors.baseline[0],    background: colors.baseline[1] },
-            commitment: { border: colors.commitment[0],  background: colors.commitment[1] },
-            loadPattern:{ border: colors.loadPattern[0], background: colors.loadPattern[1] },
+            covered:      { border: colors.covered[0],      background: colors.covered[1] },
+            nextPurchase: { border: colors.nextPurchase[0],  background: colors.nextPurchase[1] },
+            spillover:    { border: colors.spillover[0],     background: colors.spillover[1] },
+            baseline:     { border: colors.baseline[0],      background: colors.baseline[1] },
+            commitment:   { border: colors.commitment[0],    background: colors.commitment[1] },
+            loadPattern:  { border: colors.loadPattern[0],   background: colors.loadPattern[1] },
             savingsCurve: {
                 building:    { border: colors.building[0],    background: colors.building[1] },
                 gaining:     { border: colors.gaining[0],     background: colors.gaining[1] },
@@ -27,6 +28,7 @@ const ColorThemes = (function() {
     const themes = {
         default: buildTheme('Default', {
             covered:     ['#00ff88', 'rgba(0, 255, 136, 0.3)'],
+            nextPurchase:['#4dc8ff', 'rgba(77, 200, 255, 0.25)'],
             spillover:   ['#ffaa00', 'rgba(255, 170, 0, 0.5)'],
             baseline:    ['#8b95a8', 'transparent'],
             commitment:  ['#00ff88', 'transparent'],
@@ -39,6 +41,7 @@ const ColorThemes = (function() {
         }),
         protanopia: buildTheme('Protanopia (Red-blind)', {
             covered:     ['#0099ff', 'rgba(0, 153, 255, 0.3)'],
+            nextPurchase:['#66ccff', 'rgba(102, 204, 255, 0.25)'],
             spillover:   ['#ffcc00', 'rgba(255, 204, 0, 0.5)'],
             baseline:    ['#8b95a8', 'transparent'],
             commitment:  ['#0099ff', 'transparent'],
@@ -51,6 +54,7 @@ const ColorThemes = (function() {
         }),
         tritanopia: buildTheme('Tritanopia (Blue-blind)', {
             covered:     ['#00ff66', 'rgba(0, 255, 102, 0.3)'],
+            nextPurchase:['#ccff66', 'rgba(204, 255, 102, 0.25)'],
             spillover:   ['#ff0066', 'rgba(255, 0, 102, 0.5)'],
             baseline:    ['#999999', 'transparent'],
             commitment:  ['#00ff66', 'transparent'],
@@ -63,6 +67,7 @@ const ColorThemes = (function() {
         }),
         'high-contrast': buildTheme('High Contrast', {
             covered:     ['#00ff00', 'rgba(0, 255, 0, 0.4)'],
+            nextPurchase:['#00ffff', 'rgba(0, 255, 255, 0.35)'],
             spillover:   ['#ffff00', 'rgba(255, 255, 0, 0.6)'],
             baseline:    ['#ffffff', 'transparent'],
             commitment:  ['#00ff00', 'transparent'],

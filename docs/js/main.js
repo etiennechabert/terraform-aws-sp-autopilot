@@ -114,13 +114,19 @@
         // Actual existing SP coverage (0 when no SP)
         const currentCoverage = usageData.current_coverage || 0;
 
+        // If next purchase data is available, start slider at projected coverage level
+        const nextPurchase = usageData.next_purchase;
+        const initialCoverage = nextPurchase
+            ? currentCoverage + (nextPurchase.added_od_equiv || 0)
+            : (currentCoverage || minCost);
+
         // Update app state with real data
         appState = {
             ...appState,
             pattern: pattern,
             minCost: minCost,
             maxCost: maxCost,
-            coverageCost: currentCoverage || minCost,  // Start slider at min-hourly if no SP
+            coverageCost: initialCoverage,
             customCurve: customCurve,
             savingsPercentage: savingsPercentage,  // Use actual discount from user's SPs
             actualSavingsPercentage: savingsPercentage,  // Preserve original for restoring after AWS strategy
@@ -208,13 +214,23 @@
         const banner = document.createElement('div');
 
         if (fromReporter) {
+            const nextPurchase = appState.usageData?.next_purchase;
+            const currentCov = appState.currentCoverage || 0;
+            let purchaseInfo = '';
+            if (nextPurchase && nextPurchase.added_od_equiv > 0) {
+                const projectedCov = currentCov + nextPurchase.added_od_equiv;
+                const minCost = appState.minCost || 1;
+                const currentPct = (currentCov / minCost * 100).toFixed(1);
+                const projectedPct = (projectedCov / minCost * 100).toFixed(1);
+                purchaseInfo = `<br><small style="opacity:0.9">Coverage: <strong>${CostCalculator.formatCurrency(currentCov)}/h</strong> (${currentPct}%) → <strong>${CostCalculator.formatCurrency(projectedCov)}/h</strong> (${projectedPct}%) after next purchase</small>`;
+            }
             banner.className = 'usage-data-banner';
             banner.innerHTML = `
                 <div class="banner-content">
                     <span class="banner-icon">📊</span>
                     <span class="banner-text">
                         <strong>Real Usage Data Loaded</strong> - ${spType} Savings Plans<br>
-                        <small>Using your actual ${savingsPct.toFixed(1)}% discount rate</small>
+                        <small>Using your actual ${savingsPct.toFixed(1)}% discount rate</small>${purchaseInfo}
                     </span>
                 </div>
             `;
@@ -1197,7 +1213,7 @@
         ChartManager.setCurrentCostResults(currentCostResults);
 
         // Update cost chart with scaled costs
-        ChartManager.updateCostChart(currentCostResults);
+        ChartManager.updateCostChart(currentCostResults, appState.currentCoverage);
 
         // Update metrics display
         updateMetricsDisplay(currentCostResults);

@@ -2258,10 +2258,19 @@ def generate_html_report(
                 // Get pre-calculated on-demand equivalent (calculated in Python to eliminate duplication)
                 const currentCoverageDollars = metrics.on_demand_coverage_hourly || 0;
 
+                // Include next purchase data if available
+                const targetInfo = configuredTargetData[typeKey];
+                const nextPurchase = targetInfo ? {{
+                    added_od_equiv: targetInfo.added_od_equiv,
+                    added_commitment: targetInfo.added_commitment,
+                    projected_coverage: targetInfo.projected_coverage
+                }} : null;
+
                 const usageData = {{
                     hourly_costs: hourlyCosts,
                     stats: stats,
                     current_coverage: currentCoverageDollars,  // On-demand equivalent coverage in $/hour
+                    next_purchase: nextPurchase,  // Configured next purchase (od equiv + projected coverage)
                     optimal_from_python: typeOptimal,
                     sp_type: typeName,  // Indicate which SP type this data is for
                     savings_percentage: savingsPercentage  // Type-specific discount or 20% default

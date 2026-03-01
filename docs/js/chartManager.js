@@ -152,8 +152,8 @@ const ChartManager = (function() {
             data: {
                 labels: generateTimeLabels(),
                 datasets: [
-                    {
-                        label: 'Covered by SP (at discounted rate)',
+                    {   // 0: Existing SP coverage
+                        label: 'Covered by existing SP',
                         data: [],
                         borderColor: themeColors.covered.border,
                         backgroundColor: themeColors.covered.background,
@@ -162,21 +162,34 @@ const ChartManager = (function() {
                         tension: 0.4,
                         pointRadius: 0,
                         pointHoverRadius: 4,
-                        order: 3
+                        order: 4
                     },
-                    {
+                    {   // 1: Added coverage from next purchase
+                        label: 'Added by next purchase',
+                        data: [],
+                        borderColor: themeColors.nextPurchase.border,
+                        backgroundColor: themeColors.nextPurchase.background,
+                        borderWidth: 0,
+                        fill: 0,  // Fill from dataset 0
+                        tension: 0.4,
+                        pointRadius: 0,
+                        pointHoverRadius: 4,
+                        order: 3,
+                        hidden: true  // Hidden by default, shown when next_purchase data exists
+                    },
+                    {   // 2: Spillover
                         label: 'Spillover (at On-Demand rate)',
                         data: [],
                         borderColor: themeColors.spillover.border,
                         backgroundColor: themeColors.spillover.background,
                         borderWidth: 0,
-                        fill: 0,  // Fill from dataset 0 (covered costs)
+                        fill: 1,  // Fill from dataset 1 (next purchase top)
                         tension: 0.4,
                         pointRadius: 0,
                         pointHoverRadius: 4,
                         order: 2
                     },
-                    {
+                    {   // 3: Baseline
                         label: 'Total On-Demand Cost (baseline)',
                         data: [],
                         borderColor: themeColors.baseline.border,
@@ -189,7 +202,7 @@ const ChartManager = (function() {
                         pointHoverRadius: 4,
                         order: 0
                     },
-                    {
+                    {   // 4: Commitment level line
                         label: 'SP Commitment Level',
                         data: [],
                         borderColor: themeColors.commitment.border,
@@ -241,8 +254,8 @@ const ChartManager = (function() {
 
                                 const datasetIndex = context.datasetIndex;
 
-                                // For spillover dataset (index 1), show actual spillover amount, not cumulative
-                                if (datasetIndex === 1) {
+                                // For spillover dataset (index 2), show actual spillover amount, not cumulative
+                                if (datasetIndex === 2) {
                                     if (breakdown.spilloverCost === 0) return null;
                                     return `${context.dataset.label}: ${CostCalculator.formatCurrency(breakdown.spilloverCost)}`;
                                 }
@@ -267,6 +280,9 @@ const ChartManager = (function() {
                                 return lines;
                             }
                         }
+                    },
+                    annotation: {
+                        annotations: {}
                     }
                 },
                 scales: {
@@ -348,37 +364,81 @@ const ChartManager = (function() {
      * Update cost chart with cost breakdown
      * @param {Object} costResults - Results from CostCalculator
      */
-    function updateCostChart(costResults) {
+    function updateCostChart(costResults, existingCoverage) {
         if (!costChart) return;
 
         const { hourlyBreakdown, config } = costResults;
         const coverageUnits = config.coverageUnits;
+        const discountFactor = 1 - (config.savingsPercentage || 0) / 100;
+        const hasExisting = existingCoverage && existingCoverage > 0;
+        const showSplit = hasExisting && Math.abs(existingCoverage - coverageUnits) > 0.01;
 
-        // Extract data for each series
-        // Dataset 0: Covered cost (at savings plan rate) - from origin
-        const coveredCosts = hourlyBreakdown.map(h => h.coveredCost);
+        const numHours = hourlyBreakdown.length;
 
-        // Dataset 1: Spillover stacked on top (cumulative: covered + spillover)
-        // This creates the stacking effect since fill is set to dataset 0
+        // Dataset 0: Existing SP coverage area
+        // Dataset 1: Added coverage from next purchase (between existing and slider)
+        const existingCoveredCosts = [];
+        const totalCoveredCosts = [];
+        for (let i = 0; i < numHours; i++) {
+            const h = hourlyBreakdown[i];
+            if (showSplit) {
+                const existCov = Math.min(existingCoverage, h.onDemandCost) * discountFactor;
+                existingCoveredCosts.push(existCov);
+                totalCoveredCosts.push(h.coveredCost);
+            } else {
+                existingCoveredCosts.push(h.coveredCost);
+                totalCoveredCosts.push(h.coveredCost);  // Same as existing (no split)
+            }
+        }
+
+        // Dataset 2: Spillover stacked on top of total covered
         const spilloverStackedCosts = hourlyBreakdown.map(h => h.coveredCost + h.spilloverCost);
 
-        // Dataset 2: Total on-demand baseline (dashed line)
+        // Dataset 3: Total on-demand baseline (dashed line)
         const onDemandCosts = hourlyBreakdown.map(h => h.onDemandCost);
 
-        // Dataset 3: Commitment level (horizontal line showing coverage in $/h)
-        // This represents the on-demand cost equivalent you're committing to cover
-        const numHours = hourlyBreakdown.length;
+        // Dataset 4: Commitment level line
         const commitmentLine = new Array(numHours).fill(coverageUnits);
 
         if (costChart.data.labels.length !== numHours) {
             costChart.data.labels = generateTimeLabels(numHours);
         }
 
+        // Show/hide "Added by next purchase" dataset and adjust spillover fill target
+        costChart.data.datasets[1].hidden = !showSplit;
+        costChart.data.datasets[2].fill = showSplit ? 1 : 0;
+
         // Update datasets
-        costChart.data.datasets[0].data = coveredCosts;
-        costChart.data.datasets[1].data = spilloverStackedCosts;
-        costChart.data.datasets[2].data = onDemandCosts;
-        costChart.data.datasets[3].data = commitmentLine;
+        costChart.data.datasets[0].data = existingCoveredCosts;
+        costChart.data.datasets[1].data = totalCoveredCosts;
+        costChart.data.datasets[2].data = spilloverStackedCosts;
+        costChart.data.datasets[3].data = onDemandCosts;
+        costChart.data.datasets[4].data = commitmentLine;
+
+        // Add "Current" annotation line when split is visible
+        const annotations = {};
+        if (showSplit) {
+            const minCost = Math.min(...onDemandCosts.filter(c => c > 0));
+            const currentPct = minCost > 0 ? (existingCoverage / minCost * 100).toFixed(1) : '0';
+            annotations.currentCoverageLine = {
+                type: 'line',
+                yMin: existingCoverage,
+                yMax: existingCoverage,
+                borderColor: 'rgba(0, 180, 255, 0.7)',
+                borderWidth: 2,
+                borderDash: [4, 3],
+                label: {
+                    display: true,
+                    content: `Current: $${existingCoverage.toFixed(2)}/hr (${currentPct}%)`,
+                    position: 'start',
+                    backgroundColor: 'rgba(0, 140, 210, 0.85)',
+                    color: 'white',
+                    font: { size: 11, weight: 'bold' },
+                    padding: 4
+                }
+            };
+        }
+        costChart.options.plugins.annotation.annotations = annotations;
 
         costChart.update('none');
     }
@@ -438,19 +498,22 @@ const ChartManager = (function() {
     function updateChartColors(themeName = null) {
         const themeColors = ColorThemes.getThemeColors(themeName);
 
-        // Update cost chart colors
+        // Update cost chart colors (5 datasets: covered, nextPurchase, spillover, baseline, commitment)
         if (costChart) {
             costChart.data.datasets[0].borderColor = themeColors.covered.border;
             costChart.data.datasets[0].backgroundColor = themeColors.covered.background;
 
-            costChart.data.datasets[1].borderColor = themeColors.spillover.border;
-            costChart.data.datasets[1].backgroundColor = themeColors.spillover.background;
+            costChart.data.datasets[1].borderColor = themeColors.nextPurchase.border;
+            costChart.data.datasets[1].backgroundColor = themeColors.nextPurchase.background;
 
-            costChart.data.datasets[2].borderColor = themeColors.baseline.border;
-            costChart.data.datasets[2].backgroundColor = themeColors.baseline.background;
+            costChart.data.datasets[2].borderColor = themeColors.spillover.border;
+            costChart.data.datasets[2].backgroundColor = themeColors.spillover.background;
 
-            costChart.data.datasets[3].borderColor = themeColors.commitment.border;
-            costChart.data.datasets[3].backgroundColor = themeColors.commitment.background;
+            costChart.data.datasets[3].borderColor = themeColors.baseline.border;
+            costChart.data.datasets[3].backgroundColor = themeColors.baseline.background;
+
+            costChart.data.datasets[4].borderColor = themeColors.commitment.border;
+            costChart.data.datasets[4].backgroundColor = themeColors.commitment.background;
 
             costChart.update('none');
         }
