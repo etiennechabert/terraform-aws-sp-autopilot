@@ -2098,6 +2098,27 @@ h1, h2, h3, h4, h5, h6 {
     transform: translateY(0);
 }
 
+/* ===== Toggle Colors Button ===== */
+.toggle-colors-btn {
+    background: transparent;
+    border: 1px solid var(--card-border);
+    border-radius: var(--radius-sm);
+    padding: 4px 10px;
+    font-size: 0.8rem;
+    color: var(--text-muted);
+    cursor: pointer;
+    transition: all 0.2s ease;
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    white-space: nowrap;
+}
+.toggle-colors-btn:hover {
+    border-color: var(--accent-cyan);
+    background: rgba(0, 212, 255, 0.1);
+}
+
 /* ===== Slider Zone Markers ===== */
 .slider-zone-markers {
     position: relative;

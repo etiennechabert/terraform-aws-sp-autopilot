@@ -355,10 +355,10 @@
             toggleLoadPatternButton.addEventListener('click', handleToggleLoadPattern);
         }
 
-        // Color theme selector
-        const colorThemeSelect = document.getElementById('color-theme');
-        if (colorThemeSelect) {
-            colorThemeSelect.addEventListener('change', handleColorThemeChange);
+        // Color theme toggle button
+        const toggleColorsBtn = document.getElementById('toggle-colors');
+        if (toggleColorsBtn) {
+            toggleColorsBtn.addEventListener('click', handleToggleColors);
         }
 
         // Strategy button click handlers
@@ -1081,23 +1081,20 @@
     }
 
     /**
-     * Handle color theme change
+     * Cycle through color themes on toggle button click
      */
-    function handleColorThemeChange(event) {
-        const themeName = event.target.value;
+    function handleToggleColors() {
+        const themeNames = Object.keys(ColorThemes.getAllThemes());
+        const currentIdx = themeNames.indexOf(ColorThemes.getCurrentTheme());
+        const nextIdx = (currentIdx + 1) % themeNames.length;
+        const themeName = themeNames[nextIdx];
 
-        // Update theme in ColorThemes module
         ColorThemes.setTheme(themeName);
-
-        // Update all chart colors
         ChartManager.updateChartColors(themeName);
-
-        // Update legend colors
         updateLegendColors(themeName);
 
-        // Show toast notification
         const themeColors = ColorThemes.getThemeColors(themeName);
-        showToast(`Color theme changed to: ${themeColors.name || themeName}`);
+        showToast(`Color theme: ${themeColors.name || themeName}`);
     }
 
     /**
@@ -1391,6 +1388,11 @@
         const currentCoverageFromData = appState.coverageCost;
 
         // Update chart (use optimal from curve data for consistency)
+        const nextPurchase = appState.usageData?.next_purchase;
+        const nextPurchaseCoverage = (nextPurchase && appState.currentCoverage > 0)
+            ? appState.currentCoverage + (nextPurchase.added_od_equiv || 0)
+            : 0;
+
         ChartManager.updateSavingsCurveChart({
             curveData,
             minHourlySavings,
@@ -1399,6 +1401,7 @@
             baselineCost,
             currentCoverage: currentCoverageFromData,
             existingCoverage: appState.currentCoverage || 0,
+            nextPurchaseCoverage,
             savingsPercentage,
             numHours: hourlyCosts.length
         });

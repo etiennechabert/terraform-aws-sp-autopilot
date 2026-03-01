@@ -818,7 +818,7 @@ const ChartManager = (function() {
         return [dataset1, dataset2Extended, dataset3, dataset4, dataset5];
     }
 
-    function buildCoverageAnnotation(currentCoverage, existingCoverage, maxCost, minCost, savingsPercentage) {
+    function buildCoverageAnnotation(currentCoverage, existingCoverage, nextPurchaseCoverage, maxCost, minCost, savingsPercentage) {
         const annotations = {};
 
         if (existingCoverage && existingCoverage > 0) {
@@ -827,14 +827,35 @@ const ChartManager = (function() {
                 type: 'line',
                 xMin: existingCommitment,
                 xMax: existingCommitment,
-                borderColor: 'rgba(255, 153, 0, 0.7)',
+                borderColor: 'rgba(0, 255, 136, 0.7)',
                 borderWidth: 2,
                 borderDash: [4, 4],
                 label: {
                     display: true,
                     content: `Current ${CostCalculator.formatCurrency(existingCommitment)}/h`,
                     position: 'end',
-                    backgroundColor: 'rgba(255, 153, 0, 0.8)',
+                    backgroundColor: 'rgba(0, 255, 136, 0.85)',
+                    color: '#1a1f3a',
+                    font: { size: 11, weight: 'bold' }
+                }
+            };
+        }
+
+        if (nextPurchaseCoverage && nextPurchaseCoverage > 0) {
+            const nextCommitment = commitmentFromCoverage(nextPurchaseCoverage, savingsPercentage || 0);
+            annotations.nextPurchaseLine = {
+                type: 'line',
+                xMin: nextCommitment,
+                xMax: nextCommitment,
+                borderColor: 'rgba(77, 200, 255, 0.7)',
+                borderWidth: 2,
+                borderDash: [4, 4],
+                label: {
+                    display: true,
+                    content: `Next purchase ${CostCalculator.formatCurrency(nextCommitment)}/h`,
+                    position: 'end',
+                    yAdjust: 20,
+                    backgroundColor: 'rgba(77, 200, 255, 0.85)',
                     color: '#1a1f3a',
                     font: { size: 11, weight: 'bold' }
                 }
@@ -866,7 +887,7 @@ const ChartManager = (function() {
     }
 
     function updateSavingsCurveChart(opts) {
-        const { curveData, minHourlySavings, minCost, maxCost, baselineCost, currentCoverage, existingCoverage, savingsPercentage, numHours } = opts;
+        const { curveData, minHourlySavings, minCost, maxCost, baselineCost, currentCoverage, existingCoverage, nextPurchaseCoverage, savingsPercentage, numHours } = opts;
         if (!savingsCurveChart) return;
 
         savingsCurveChart.$minHourlySavings = minHourlySavings;
@@ -898,7 +919,7 @@ const ChartManager = (function() {
             savingsCurveChart.data.datasets[i].data = datasets[i];
         }
 
-        savingsCurveChart.options.plugins.annotation.annotations = buildCoverageAnnotation(currentCoverage, existingCoverage, maxCost, minCost, savingsPercentage);
+        savingsCurveChart.options.plugins.annotation.annotations = buildCoverageAnnotation(currentCoverage, existingCoverage, nextPurchaseCoverage, maxCost, minCost, savingsPercentage);
         savingsCurveChart.update('none');
     }
 

@@ -34,17 +34,6 @@
             </div>
         </header>
 
-        <!-- Global Color Theme Selector -->
-        <div class="global-theme-selector">
-            <label for="color-theme" class="theme-label">Color Theme:</label>
-            <select id="color-theme" class="theme-select">
-                <option value="default">Default</option>
-                <option value="high-contrast">High Contrast</option>
-                <option value="protanopia">Protanopia (Red-blind)</option>
-                <option value="tritanopia">Tritanopia (Blue-blind)</option>
-            </select>
-        </div>
-
         <!-- Main Content -->
         <main class="main-content">
 
@@ -182,9 +171,12 @@
 
             <!-- Section 2: Cost Comparison Chart (Full Width) -->
             <section class="card section-cost-comparison">
-                <div class="card-header">
-                    <h2 class="section-title">Cost Breakdown: Coverage vs Actual Usage</h2>
-                    <p class="section-description">Move the sliders below to see how coverage and savings affect costs</p>
+                <div class="card-header" style="display:flex;justify-content:space-between;align-items:flex-start;">
+                    <div>
+                        <h2 class="section-title">Cost Breakdown: Coverage vs Actual Usage</h2>
+                        <p class="section-description">Move the sliders below to see how coverage and savings affect costs</p>
+                    </div>
+                    <button id="toggle-colors" class="toggle-colors-btn" title="Toggle Colors">🎨 Toggle Colors</button>
                 </div>
 
                 <!-- Horizontal Metrics Row -->
