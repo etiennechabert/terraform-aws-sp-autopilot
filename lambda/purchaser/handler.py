@@ -673,6 +673,20 @@ def send_summary_email(
             if intent.get("upfront_amount") and float(intent["upfront_amount"]) > 0:
                 body_lines.append(f"   Upfront Payment: ${float(intent['upfront_amount']):,.2f}")
 
+            # Add strategy context if available
+            if intent.get("strategy"):
+                body_lines.append(f"   Strategy: {intent['strategy']}")
+            if intent.get("estimated_savings_percentage") is not None:
+                body_lines.append(
+                    f"   Estimated Savings: {intent['estimated_savings_percentage']}%"
+                )
+            details = intent.get("details", {})
+            coverage = details.get("coverage", {})
+            if coverage.get("current") is not None and coverage.get("target") is not None:
+                body_lines.append(
+                    f"   Coverage: {coverage['current']:.2f}% -> {coverage['target']:.2f}%"
+                )
+
             body_lines.append("")
     else:
         body_lines.append("No successful purchases.")
@@ -781,7 +795,8 @@ def _run_purchase_cooldown(
     blocked_messages = []
     for msg in messages:
         body = json.loads(msg["Body"])
-        if body.get("sp_type") in cooldown_types:
+        sp_key = constants.SP_FILTER_TO_KEY.get(body.get("sp_type", ""), body.get("sp_type", ""))
+        if sp_key in cooldown_types:
             blocked_messages.append(msg)
         else:
             processable.append(msg)
@@ -828,8 +843,8 @@ def _send_cooldown_notification(
     for i, msg in enumerate(blocked_messages, 1):
         body = json.loads(msg["Body"])
         lines.append(
-            f"  {i}. {body.get('sp_type', 'unknown').upper()} — "
-            f"${body.get('hourly_commitment', 0):.5f}/hour"
+            f"  {i}. {body.get('sp_type', 'unknown')} — "
+            f"${float(body.get('commitment', 0)):.5f}/hour"
         )
 
     lines.extend(
@@ -890,7 +905,8 @@ def _run_purchasing_spike_guard(
     blocked_messages = []
     for msg in messages:
         body = json.loads(msg["Body"])
-        if body.get("sp_type") in flagged_types:
+        sp_key = constants.SP_FILTER_TO_KEY.get(body.get("sp_type", ""), body.get("sp_type", ""))
+        if sp_key in flagged_types:
             blocked_messages.append(msg)
         else:
             processable.append(msg)
@@ -954,8 +970,8 @@ def _send_spike_guard_notification(
     for i, msg in enumerate(blocked_messages, 1):
         body = json.loads(msg["Body"])
         lines.append(
-            f"  {i}. {body.get('sp_type', 'unknown').upper()} — "
-            f"${body.get('hourly_commitment', 0):.5f}/hour"
+            f"  {i}. {body.get('sp_type', 'unknown')} — "
+            f"${float(body.get('commitment', 0)):.5f}/hour"
         )
 
     lines.extend(

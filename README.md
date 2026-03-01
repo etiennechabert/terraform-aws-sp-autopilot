@@ -265,10 +265,12 @@ lambda_config = {
    - `ce:GetSavingsPlansPurchaseRecommendation`
    - `ce:GetSavingsPlansCoverage`
    - `savingsplans:DescribeSavingsPlans`
+   - `savingsplans:DescribeSavingsPlansOfferings`
 
 2. **Purchaser Role** (write access):
    - `savingsplans:CreateSavingsPlan`
    - `savingsplans:DescribeSavingsPlans`
+   - `savingsplans:DescribeSavingsPlansOfferings`
    - `ce:GetSavingsPlansCoverage`
 
 See [organizations example](examples/organizations/README.md) for complete setup.

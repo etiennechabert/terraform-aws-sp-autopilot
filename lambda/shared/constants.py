@@ -48,6 +48,13 @@ AWS_TYPE_TO_KEY = {
     PLAN_TYPE_DATABASE: "database",
 }
 
+# Map Cost Explorer filter values to internal lowercase keys
+SP_FILTER_TO_KEY = {
+    SP_FILTER_COMPUTE: "compute",
+    SP_FILTER_SAGEMAKER: "sagemaker",
+    SP_FILTER_DATABASE: "database",
+}
+
 
 # ============================================================================
 # AWS Dimension Keys

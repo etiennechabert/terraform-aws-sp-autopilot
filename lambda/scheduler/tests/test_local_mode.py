@@ -53,6 +53,9 @@ def mock_aws_clients(aws_mock_builder):
         mock_sp.describe_savings_plans.return_value = aws_mock_builder.describe_savings_plans(
             plans_count=1
         )
+        mock_sp.describe_savings_plans_offerings.return_value = {
+            "searchResults": [{"offeringId": "mock-offering-id"}]
+        }
 
         mock_init.return_value = {
             "ce": mock_ce,
@@ -88,19 +91,25 @@ def test_handler_local_mode_queue_messages(mock_aws_clients, monkeypatch):
     for msg_file in message_files:
         msg = json.loads(msg_file.read_text())
 
-        # Validate required fields
+        # Validate required fields (purchaser-ready format)
         assert "sp_type" in msg
-        assert "term" in msg
+        assert "term_seconds" in msg
         assert "payment_option" in msg
-        assert "hourly_commitment" in msg
+        assert "commitment" in msg
+        assert "offering_id" in msg
         assert "client_token" in msg
 
         # Validate values
-        assert msg["sp_type"] in ["compute", "database", "sagemaker"]
-        assert msg["term"] in ["ONE_YEAR", "THREE_YEAR"]
+        assert msg["sp_type"] in [
+            "ComputeSavingsPlans",
+            "DatabaseSavingsPlans",
+            "SageMakerSavingsPlans",
+        ]
+        assert msg["term_seconds"] in [31536000, 94608000]
         assert msg["payment_option"] in ["NO_UPFRONT", "PARTIAL_UPFRONT", "ALL_UPFRONT"]
-        assert float(msg["hourly_commitment"]) > 0
-        assert len(msg["client_token"]) > 0  # Token exists and is not empty
+        assert float(msg["commitment"]) > 0
+        assert len(msg["client_token"]) > 0
+        assert len(msg["offering_id"]) > 0
 
 
 def test_handler_local_mode_no_purchases_needed(mock_aws_clients, monkeypatch):
@@ -148,7 +157,11 @@ def test_handler_local_mode_multiple_plan_types(mock_aws_clients, monkeypatch, a
     sp_types = set()
     for msg_file in message_files:
         msg = json.loads(msg_file.read_text())
-        assert msg["sp_type"] in ["compute", "database", "sagemaker"]
+        assert msg["sp_type"] in [
+            "ComputeSavingsPlans",
+            "DatabaseSavingsPlans",
+            "SageMakerSavingsPlans",
+        ]
         sp_types.add(msg["sp_type"])
 
     # At least one SP type should be present
