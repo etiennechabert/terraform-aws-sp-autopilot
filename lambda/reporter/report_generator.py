@@ -20,10 +20,11 @@ logger = logging.getLogger(__name__)
 
 
 def _get_type_metrics_for_report(
-    summary: dict[str, Any], sp_type_name: str, breakdown_by_type: dict[str, Any]
+    sp_type_data: dict[str, Any], sp_type_name: str, breakdown_by_type: dict[str, Any]
 ) -> dict[str, Any]:
     """Calculate metrics for a specific SP type for HTML report."""
-    current_coverage = summary.get("avg_coverage_total", 0.0)
+    summary = sp_type_data.get("summary", {})
+    current_coverage = _coverage_pct_of_min_hourly(sp_type_data)
     avg_total_cost = summary.get("avg_hourly_total", 0.0)
     avg_covered_cost = summary.get("avg_hourly_covered", 0.0)
     avg_uncovered_cost = avg_total_cost - avg_covered_cost
@@ -84,6 +85,17 @@ def _get_min_hourly_from_timeseries_data(sp_type_data: dict[str, Any]) -> float:
     return min(total_costs) if total_costs else 0.0
 
 
+def _coverage_pct_of_min_hourly(sp_type_data: dict[str, Any]) -> float:
+    """Convert avg_coverage_total (% of average spend) to % of min-hourly spend."""
+    summary = sp_type_data.get("summary", {})
+    avg_coverage = summary.get("avg_coverage_total", 0.0)
+    avg_total = summary.get("avg_hourly_total", 0.0)
+    min_hourly = _get_min_hourly_from_timeseries_data(sp_type_data)
+    if min_hourly <= 0 or avg_total <= 0:
+        return avg_coverage
+    return avg_coverage * (avg_total / min_hourly)
+
+
 def _prepare_html_report_data(
     coverage_data: dict[str, Any], savings_data: dict[str, Any], config: dict[str, Any]
 ) -> dict[str, Any]:
@@ -97,9 +109,9 @@ def _prepare_html_report_data(
     database_summary = coverage_data["database"]["summary"]
     sagemaker_summary = coverage_data["sagemaker"]["summary"]
 
-    compute_coverage = compute_summary["avg_coverage_total"]
-    database_coverage = database_summary["avg_coverage_total"]
-    sagemaker_coverage = sagemaker_summary["avg_coverage_total"]
+    compute_coverage = _coverage_pct_of_min_hourly(coverage_data["compute"])
+    database_coverage = _coverage_pct_of_min_hourly(coverage_data["database"])
+    sagemaker_coverage = _coverage_pct_of_min_hourly(coverage_data["sagemaker"])
 
     total_hourly_spend = (
         compute_summary["avg_hourly_total"]
@@ -1656,10 +1668,14 @@ def generate_html_report(
 
     breakdown_by_type = savings_data["actual_savings"]["breakdown_by_type"]
 
-    compute_metrics = _get_type_metrics_for_report(compute_summary, "Compute", breakdown_by_type)
-    database_metrics = _get_type_metrics_for_report(database_summary, "Database", breakdown_by_type)
+    compute_metrics = _get_type_metrics_for_report(
+        coverage_data["compute"], "Compute", breakdown_by_type
+    )
+    database_metrics = _get_type_metrics_for_report(
+        coverage_data["database"], "Database", breakdown_by_type
+    )
     sagemaker_metrics = _get_type_metrics_for_report(
-        sagemaker_summary, "SageMaker", breakdown_by_type
+        coverage_data["sagemaker"], "SageMaker", breakdown_by_type
     )
 
     metrics_json = json.dumps(
@@ -2604,18 +2620,20 @@ def generate_json_report(
         },
         "coverage_summary": {
             "compute": {
-                "avg_coverage_percentage": round(compute_summary.get("avg_coverage_total", 0.0), 2),
+                "avg_coverage_percentage": round(
+                    _coverage_pct_of_min_hourly(coverage_data["compute"]), 2
+                ),
                 "avg_hourly_spend": round(compute_summary.get("avg_hourly_total", 0.0), 4),
             },
             "database": {
                 "avg_coverage_percentage": round(
-                    database_summary.get("avg_coverage_total", 0.0), 2
+                    _coverage_pct_of_min_hourly(coverage_data["database"]), 2
                 ),
                 "avg_hourly_spend": round(database_summary.get("avg_hourly_total", 0.0), 4),
             },
             "sagemaker": {
                 "avg_coverage_percentage": round(
-                    sagemaker_summary.get("avg_coverage_total", 0.0), 2
+                    _coverage_pct_of_min_hourly(coverage_data["sagemaker"]), 2
                 ),
                 "avg_hourly_spend": round(sagemaker_summary.get("avg_hourly_total", 0.0), 4),
             },
@@ -2689,9 +2707,9 @@ def generate_csv_report(
         f"active_plans_count,{savings_data.get('plans_count', 0)}",
         f"total_hourly_commitment,{savings_data.get('total_commitment', 0.0):.5f}",
         f"average_utilization_percentage,{savings_data.get('average_utilization', 0.0):.2f}",
-        f"compute_avg_coverage,{compute_summary.get('avg_coverage_total', 0.0):.2f}",
-        f"database_avg_coverage,{database_summary.get('avg_coverage_total', 0.0):.2f}",
-        f"sagemaker_avg_coverage,{sagemaker_summary.get('avg_coverage_total', 0.0):.2f}",
+        f"compute_avg_coverage,{_coverage_pct_of_min_hourly(coverage_data['compute']):.2f}",
+        f"database_avg_coverage,{_coverage_pct_of_min_hourly(coverage_data['database']):.2f}",
+        f"sagemaker_avg_coverage,{_coverage_pct_of_min_hourly(coverage_data['sagemaker']):.2f}",
         f"actual_sp_cost_hourly,{actual_savings.get('actual_sp_cost_hourly', 0.0):.2f}",
         f"on_demand_equivalent_hourly,{actual_savings.get('on_demand_equivalent_hourly', 0.0):.2f}",
         f"net_savings_hourly,{actual_savings.get('net_savings_hourly', 0.0):.2f}",

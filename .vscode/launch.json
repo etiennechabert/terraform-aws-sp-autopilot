@@ -22,6 +22,7 @@
                 "SNS_TOPIC_ARN": "arn:aws:sns:us-east-1:123456789012:test-topic",
                 "DRY_RUN": "true",
                 "ENABLE_COMPUTE_SP": "true",
+                "ENABLE_DATABASE_SP": "true",
                 "ENABLE_SAGEMAKER_SP": "true",
                 "COVERAGE_TARGET_PERCENT": "100",
                 // Fixed target + Fixed Step split (matches single-account-compute example)
@@ -57,11 +58,12 @@
                 "SNS_TOPIC_ARN": "arn:aws:sns:us-east-1:123456789012:test-topic",
                 "DRY_RUN": "true",
                 "ENABLE_COMPUTE_SP": "true",
+                "ENABLE_DATABASE_SP": "true",
                 "ENABLE_SAGEMAKER_SP": "true",
                 // Dynamic target + Gap Split split (matches dynamic-strategy example)
                 "TARGET_STRATEGY_TYPE": "dynamic",
                 "SPLIT_STRATEGY_TYPE": "gap_split",
-                "DYNAMIC_RISK_LEVEL": "balanced",
+                "DYNAMIC_RISK_LEVEL": "optimal",
                 "GAP_SPLIT_DIVIDER": "2",
                 "MAX_PURCHASE_PERCENT": "50",
                 "MIN_PURCHASE_PERCENT": "1",
@@ -94,6 +96,7 @@
                 "SNS_TOPIC_ARN": "arn:aws:sns:us-east-1:123456789012:test-topic",
                 "DRY_RUN": "true",
                 "ENABLE_COMPUTE_SP": "true",
+                "ENABLE_DATABASE_SP": "true",
                 "ENABLE_SAGEMAKER_SP": "true",
                 // AWS target + One Shot split (matches organizations example)
                 "TARGET_STRATEGY_TYPE": "aws",
@@ -153,9 +156,9 @@
                 "REPORT_FORMAT": "html",
                 "EMAIL_REPORTS": "false",
                 // Savings Plans types to include in report
-                "ENABLE_COMPUTE_SP": "false",
+                "ENABLE_COMPUTE_SP": "true",
                 "ENABLE_DATABASE_SP": "true",
-                "ENABLE_SAGEMAKER_SP": "false",
+                "ENABLE_SAGEMAKER_SP": "true",
                 // Data collection settings
                 "GRANULARITY": "HOURLY",
                 // Alert settings

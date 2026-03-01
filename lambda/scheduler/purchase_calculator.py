@@ -50,7 +50,6 @@ def _process_sp_type(
         avg_hourly_total / min_hourly if min_hourly > 0 and avg_hourly_total > 0 else 1.0
     )
     current_coverage = current_coverage_avg * avg_to_min_ratio
-    target_coverage = target_coverage * avg_to_min_ratio
 
     coverage_gap = target_coverage - current_coverage
 

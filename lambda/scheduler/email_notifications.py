@@ -44,10 +44,13 @@ def _format_plans_block(
         target = plan.get("details", {}).get("coverage", {}).get("target")
         current_cov = coverage.get(sp_type, 0) if coverage else 0
 
+        purchase_pct = plan.get("purchase_percent", 0.0)
+
         plan_lines = [f"{i}. {sp_type.upper()} Savings Plan"]
         if target is not None:
             plan_lines.append(f"   Target Coverage:       {target:.2f}%")
         plan_lines.append(f"   Current Coverage:      {current_cov:.2f}%")
+        plan_lines.append(f"   Added Coverage:        {purchase_pct:.2f}%")
         plan_lines.append(f"   Added Commitment:      ${hourly_commitment:.5f}/hour")
         plan_lines.append(f"   Term:                  {term}")
         plan_lines.append(f"   Payment Option:        {payment_option}")
