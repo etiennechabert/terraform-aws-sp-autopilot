@@ -823,18 +823,19 @@ const ChartManager = (function() {
 
         if (existingCoverage && existingCoverage > 0) {
             const existingCommitment = commitmentFromCoverage(existingCoverage, savingsPercentage || 0);
+            const covColor = ColorThemes.getThemeColors().covered.border;
             annotations.existingLine = {
                 type: 'line',
                 xMin: existingCommitment,
                 xMax: existingCommitment,
-                borderColor: 'rgba(0, 255, 136, 0.7)',
+                borderColor: covColor,
                 borderWidth: 2,
                 borderDash: [4, 4],
                 label: {
                     display: true,
                     content: `Current ${CostCalculator.formatCurrency(existingCommitment)}/h`,
                     position: 'end',
-                    backgroundColor: 'rgba(0, 255, 136, 0.85)',
+                    backgroundColor: covColor,
                     color: '#1a1f3a',
                     font: { size: 11, weight: 'bold' }
                 }
@@ -843,11 +844,12 @@ const ChartManager = (function() {
 
         if (nextPurchaseCoverage && nextPurchaseCoverage > 0) {
             const nextCommitment = commitmentFromCoverage(nextPurchaseCoverage, savingsPercentage || 0);
+            const nextColor = ColorThemes.getThemeColors().nextPurchase.border;
             annotations.nextPurchaseLine = {
                 type: 'line',
                 xMin: nextCommitment,
                 xMax: nextCommitment,
-                borderColor: 'rgba(77, 200, 255, 0.7)',
+                borderColor: nextColor,
                 borderWidth: 2,
                 borderDash: [4, 4],
                 label: {
@@ -855,7 +857,7 @@ const ChartManager = (function() {
                     content: `Next purchase ${CostCalculator.formatCurrency(nextCommitment)}/h`,
                     position: 'end',
                     yAdjust: 20,
-                    backgroundColor: 'rgba(77, 200, 255, 0.85)',
+                    backgroundColor: nextColor,
                     color: '#1a1f3a',
                     font: { size: 11, weight: 'bold' }
                 }

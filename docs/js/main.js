@@ -1092,6 +1092,7 @@
         ColorThemes.setTheme(themeName);
         ChartManager.updateChartColors(themeName);
         updateLegendColors(themeName);
+        calculateAndUpdateCosts();
 
         const themeColors = ColorThemes.getThemeColors(themeName);
         showToast(`Color theme: ${themeColors.name || themeName}`);
@@ -1223,7 +1224,11 @@
         const currentPct = Math.min((currentCov / sliderMax) * 100, 100);
         const nextPurchasePct = Math.min(((currentCov + (nextPurchase.added_od_equiv || 0)) / sliderMax) * 100, 100);
 
-        slider.style.background = `linear-gradient(90deg, #00ff88 0%, #00ff88 ${currentPct}%, #4dc8ff ${currentPct}%, #4dc8ff ${nextPurchasePct}%, #b84dff ${nextPurchasePct}%, #b84dff 100%)`;
+        const theme = ColorThemes.getThemeColors();
+        const covColor = theme.covered.border;
+        const nextColor = theme.nextPurchase.border;
+        const beyondColor = theme.spillover.border;
+        slider.style.background = `linear-gradient(90deg, ${covColor} 0%, ${covColor} ${currentPct}%, ${nextColor} ${currentPct}%, ${nextColor} ${nextPurchasePct}%, ${beyondColor} ${nextPurchasePct}%, ${beyondColor} 100%)`;
 
         // Create zone markers
         const markersDiv = document.createElement('div');
