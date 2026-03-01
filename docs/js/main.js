@@ -554,17 +554,33 @@
     }
 
     /**
-     * Handle coverage level change
+     * Handle coverage level change (with magnetic snap to key positions)
      */
     function handleCoverageChange(event) {
-        const value = parseFloat(event.target.value);
+        let value = parseFloat(event.target.value);
         const sliderMax = parseFloat(event.target.max) || appState.maxCost;
-        if (!isNaN(value) && value >= 0 && value <= sliderMax) {
-            appState.coverageCost = value;
-            updateCoverageDisplay(value);
-            calculateAndUpdateCosts();
-            URLState.debouncedUpdateURL(appState);
+        if (isNaN(value) || value < 0 || value > sliderMax) return;
+
+        const nextPurchase = appState.usageData?.next_purchase;
+        if (nextPurchase && appState.currentCoverage > 0) {
+            const snapThreshold = sliderMax * 0.02;
+            const snapTargets = [
+                appState.currentCoverage,
+                appState.currentCoverage + (nextPurchase.added_od_equiv || 0)
+            ];
+            for (const target of snapTargets) {
+                if (Math.abs(value - target) < snapThreshold) {
+                    value = target;
+                    event.target.value = value;
+                    break;
+                }
+            }
         }
+
+        appState.coverageCost = value;
+        updateCoverageDisplay(value);
+        calculateAndUpdateCosts();
+        URLState.debouncedUpdateURL(appState);
     }
 
     /**
@@ -1188,6 +1204,51 @@
     }
 
     /**
+     * Update the coverage slider with 3-zone gradient and tick markers
+     */
+    function updateSliderZones() {
+        const slider = document.getElementById('coverage-slider');
+        if (!slider) return;
+
+        const nextPurchase = appState.usageData?.next_purchase;
+        const currentCov = appState.currentCoverage || 0;
+        const sliderMax = parseFloat(slider.max) || appState.maxCost;
+
+        // Remove old markers
+        const oldMarkers = slider.parentElement.querySelector('.slider-zone-markers');
+        if (oldMarkers) oldMarkers.remove();
+
+        if (!nextPurchase || currentCov <= 0 || sliderMax <= 0) {
+            slider.style.background = '';
+            return;
+        }
+
+        const currentPct = Math.min((currentCov / sliderMax) * 100, 100);
+        const nextPurchasePct = Math.min(((currentCov + (nextPurchase.added_od_equiv || 0)) / sliderMax) * 100, 100);
+
+        slider.style.background = `linear-gradient(90deg, #00ff88 0%, #00ff88 ${currentPct}%, #4dc8ff ${currentPct}%, #4dc8ff ${nextPurchasePct}%, #b84dff ${nextPurchasePct}%, #b84dff 100%)`;
+
+        // Create zone markers
+        const markersDiv = document.createElement('div');
+        markersDiv.className = 'slider-zone-markers';
+
+        const markers = [
+            { pct: currentPct, label: 'Current' },
+            { pct: nextPurchasePct, label: 'Next purchase' }
+        ];
+
+        for (const m of markers) {
+            const marker = document.createElement('div');
+            marker.className = 'slider-zone-marker';
+            marker.style.left = `${m.pct}%`;
+            marker.innerHTML = `<div class="tick"></div><div class="label">${m.label}</div>`;
+            markersDiv.appendChild(marker);
+        }
+
+        slider.parentElement.appendChild(markersDiv);
+    }
+
+    /**
      * Calculate costs and update all visualizations
      */
     function calculateAndUpdateCosts() {
@@ -1226,6 +1287,9 @@
 
         // Calculate and update savings curve with scaled costs
         updateSavingsCurveDisplay(scaledHourlyCosts);
+
+        // Update slider zones (3-color gradient + tick markers)
+        updateSliderZones();
     }
 
     /**

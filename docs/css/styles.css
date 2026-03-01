@@ -2097,3 +2097,29 @@ h1, h2, h3, h4, h5, h6 {
 .modal-btn-load:active {
     transform: translateY(0);
 }
+
+/* ===== Slider Zone Markers ===== */
+.slider-zone-markers {
+    position: relative;
+    height: 16px;
+    margin-top: -2px;
+    pointer-events: none;
+}
+.slider-zone-marker {
+    position: absolute;
+    transform: translateX(-50%);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+}
+.slider-zone-marker .tick {
+    width: 1px;
+    height: 4px;
+    background: var(--text-muted);
+}
+.slider-zone-marker .label {
+    font-size: 0.65em;
+    color: var(--text-muted);
+    white-space: nowrap;
+    margin-top: 1px;
+}
