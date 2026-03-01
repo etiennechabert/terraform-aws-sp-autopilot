@@ -232,7 +232,11 @@ const ChartManager = (function() {
                             color: '#e0e6ed',
                             usePointStyle: true,
                             padding: 8,
-                            font: { size: 11 }
+                            font: { size: 11 },
+                            filter: function(item, chartData) {
+                                const ds = chartData.datasets[item.datasetIndex];
+                                return !ds.hidden && !ds._hideLegend;
+                            }
                         }
                     },
                     tooltip: {
@@ -404,7 +408,8 @@ const ChartManager = (function() {
             costChart.data.labels = generateTimeLabels(numHours);
         }
 
-        // Show/hide "Added by next purchase" dataset and adjust spillover fill target
+        // Show/hide split-only datasets and adjust spillover fill target
+        costChart.data.datasets[0]._hideLegend = !showSplit;
         costChart.data.datasets[1].hidden = !showSplit;
         costChart.data.datasets[2].fill = showSplit ? 1 : 0;
 
