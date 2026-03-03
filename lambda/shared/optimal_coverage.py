@@ -296,7 +296,9 @@ def calculate_knee_point(
     return curve_points[knee_index]["coverage"]
 
 
-def calculate_strategies(hourly_costs: list[float], savings_percentage: float) -> dict[str, float]:
+def calculate_strategies(
+    hourly_costs: list[float], savings_percentage: float, prudent_pct: float = 90.0
+) -> dict[str, float]:
     """
     Calculate all dynamic target strategy levels.
 
@@ -307,6 +309,7 @@ def calculate_strategies(hourly_costs: list[float], savings_percentage: float) -
     Args:
         hourly_costs: List of hourly costs
         savings_percentage: Savings plan discount percentage (e.g., 30 for 30%)
+        prudent_pct: Percentage of min-hourly to use for prudent strategy (default: 90%)
 
     Returns:
         Dict with keys: prudent, min_hourly, optimal, maximum (all in $/hour)
@@ -320,7 +323,7 @@ def calculate_strategies(hourly_costs: list[float], savings_percentage: float) -
         }
 
     min_hourly = min(hourly_costs)
-    prudent = min_hourly * 0.80
+    prudent = min_hourly * (prudent_pct / 100.0)
 
     optimal_result = calculate_optimal_coverage(hourly_costs, savings_percentage)
     maximum = optimal_result["coverage_hourly"]

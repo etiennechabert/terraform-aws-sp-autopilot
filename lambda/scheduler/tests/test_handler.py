@@ -258,7 +258,7 @@ def test_handler_follow_aws_strategy(mock_env_vars, mock_clients, aws_mock_build
 
 def test_handler_fixed_strategy(mock_env_vars, mock_clients, aws_mock_builder, monkeypatch):
     """Test fixed strategy analyzes spending and calculates purchases."""
-    monkeypatch.setenv("TARGET_STRATEGY_TYPE", "fixed")
+    monkeypatch.setenv("TARGET_STRATEGY_TYPE", "dynamic")
     monkeypatch.setenv("SPLIT_STRATEGY_TYPE", "fixed_step")
     monkeypatch.setenv("FIXED_STEP_PERCENT", "10")
     monkeypatch.setenv("MAX_PURCHASE_PERCENT", "5")
@@ -400,7 +400,7 @@ def test_handler_applies_max_purchase_percent(
     mock_env_vars, mock_clients, aws_mock_builder, monkeypatch
 ):
     """Test max_purchase_percent is applied by fixed strategy."""
-    monkeypatch.setenv("TARGET_STRATEGY_TYPE", "fixed")
+    monkeypatch.setenv("TARGET_STRATEGY_TYPE", "dynamic")
     monkeypatch.setenv("SPLIT_STRATEGY_TYPE", "fixed_step")
     monkeypatch.setenv("FIXED_STEP_PERCENT", "10")
     monkeypatch.setenv("MIN_PURCHASE_PERCENT", "1")
@@ -500,7 +500,7 @@ def test_handler_queue_purge_error(mock_env_vars, mock_clients):
 
 def test_handler_term_mix_splitting(mock_env_vars, mock_clients, aws_mock_builder, monkeypatch):
     """Test fixed strategy with custom term configuration."""
-    monkeypatch.setenv("TARGET_STRATEGY_TYPE", "fixed")
+    monkeypatch.setenv("TARGET_STRATEGY_TYPE", "dynamic")
     monkeypatch.setenv("SPLIT_STRATEGY_TYPE", "fixed_step")
     monkeypatch.setenv("FIXED_STEP_PERCENT", "10")
     monkeypatch.setenv("COMPUTE_SP_TERM", "ONE_YEAR")  # Override default THREE_YEAR
@@ -524,7 +524,7 @@ def test_handler_expiring_plans_excluded_from_coverage(
     mock_env_vars, mock_clients, aws_mock_builder, monkeypatch
 ):
     """Test fixed strategy with existing coverage."""
-    monkeypatch.setenv("TARGET_STRATEGY_TYPE", "fixed")
+    monkeypatch.setenv("TARGET_STRATEGY_TYPE", "dynamic")
     monkeypatch.setenv("SPLIT_STRATEGY_TYPE", "fixed_step")
     monkeypatch.setenv("FIXED_STEP_PERCENT", "10")
 
@@ -659,7 +659,7 @@ def test_handler_assume_role_error(mock_env_vars, monkeypatch):
 
 def test_handler_gap_split_strategy(mock_env_vars, mock_clients, aws_mock_builder, monkeypatch):
     """Test gap_split strategy analyzes spending and uses gap split algorithm."""
-    monkeypatch.setenv("TARGET_STRATEGY_TYPE", "fixed")
+    monkeypatch.setenv("TARGET_STRATEGY_TYPE", "dynamic")
     monkeypatch.setenv("SPLIT_STRATEGY_TYPE", "gap_split")
     monkeypatch.setenv("GAP_SPLIT_DIVIDER", "2.0")
 

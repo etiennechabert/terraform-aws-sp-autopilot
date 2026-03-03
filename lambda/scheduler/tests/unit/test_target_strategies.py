@@ -2,7 +2,6 @@ import pytest
 from target_strategies import resolve_target
 from target_strategies.aws_target import resolve_aws
 from target_strategies.dynamic_target import resolve_dynamic
-from target_strategies.fixed_target import resolve_fixed
 
 
 # ============================================================================
@@ -11,11 +10,6 @@ from target_strategies.fixed_target import resolve_fixed
 
 
 class TestResolveTarget:
-    def test_dispatches_fixed(self):
-        config = {"target_strategy_type": "fixed", "coverage_target_percent": 85.0}
-        result = resolve_target(config)
-        assert result == pytest.approx(85.0)
-
     def test_dispatches_aws(self):
         config = {"target_strategy_type": "aws"}
         result = resolve_target(config)
@@ -26,24 +20,10 @@ class TestResolveTarget:
         with pytest.raises(ValueError, match="Unknown target strategy 'nonexistent'"):
             resolve_target(config)
 
-
-# ============================================================================
-# fixed_target tests
-# ============================================================================
-
-
-class TestFixedTarget:
-    def test_returns_config_value(self):
-        config = {"coverage_target_percent": 75.0}
-        assert resolve_fixed(config) == pytest.approx(75.0)
-
-    def test_ignores_spending_data(self):
-        config = {"coverage_target_percent": 90.0}
-        assert resolve_fixed(config, {"compute": {}}) == pytest.approx(90.0)
-
-    def test_ignores_sp_type_key(self):
-        config = {"coverage_target_percent": 90.0}
-        assert resolve_fixed(config, None, "compute") == pytest.approx(90.0)
+    def test_fixed_strategy_no_longer_exists(self):
+        config = {"target_strategy_type": "fixed", "coverage_target_percent": 85.0}
+        with pytest.raises(ValueError, match="Unknown target strategy 'fixed'"):
+            resolve_target(config)
 
 
 # ============================================================================
@@ -129,5 +109,30 @@ class TestDynamicTarget:
     def test_skips_sp_type_without_data(self):
         spending = {"database": {"timeseries": [{"total": 50.0}]}}
         config = {"dynamic_risk_level": "min_hourly", "savings_percentage": 30.0}
+        result = resolve_dynamic(config, spending, sp_type_key="compute")
+        assert result == pytest.approx(90.0)
+
+    def test_prudent_percentage_configurable(self):
+        """Test that prudent_percentage config controls the prudent strategy level."""
+        spending = self._spending_data([100.0, 100.0, 100.0])
+        # With default (90%), prudent should be 90% of min_hourly
+        config_default = {"dynamic_risk_level": "prudent", "savings_percentage": 30.0}
+        result_default = resolve_dynamic(config_default, spending, sp_type_key="compute")
+        assert result_default == pytest.approx(90.0)
+
+        # With custom 50%, prudent should be 50% of min_hourly
+        config_custom = {
+            "dynamic_risk_level": "prudent",
+            "savings_percentage": 30.0,
+            "prudent_percentage": 50.0,
+        }
+        result_custom = resolve_dynamic(config_custom, spending, sp_type_key="compute")
+        assert result_custom == pytest.approx(50.0)
+
+    def test_prudent_percentage_default_is_90(self):
+        """Test that the default prudent percentage is 90%."""
+        spending = self._spending_data([100.0, 100.0, 100.0])
+        # No prudent_percentage in config, should default to 90%
+        config = {"dynamic_risk_level": "prudent", "savings_percentage": 30.0}
         result = resolve_dynamic(config, spending, sp_type_key="compute")
         assert result == pytest.approx(90.0)
