@@ -43,7 +43,8 @@ def resolve_dynamic(
         else config["savings_percentage"]
     )
 
-    strategies = calculate_strategies(hourly_costs, savings_percentage)
+    prudent_pct = config.get("prudent_percentage", 90.0)
+    strategies = calculate_strategies(hourly_costs, savings_percentage, prudent_pct=prudent_pct)
     coverage_hourly = strategies[risk_level]
 
     min_hourly = min(hourly_costs)

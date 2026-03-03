@@ -411,10 +411,7 @@ def _build_strategy_tooltip(
     split = parts[1] if len(parts) > 1 else ""
 
     # Target line
-    if target == "fixed":
-        cov = config["coverage_target_percent"]
-        target_line = f"Target: fixed (coverage_percent: {cov:.0f}%)"
-    elif target == "dynamic":
+    if target == "dynamic":
         risk = config["dynamic_risk_level"]
         target_line = f"Target: dynamic (risk_level: {risk})"
     else:
