@@ -42,9 +42,11 @@ variable "purchase_strategy" {
     min_commitment_per_plan = optional(number, 0.001)
 
     target = object({
-      fixed   = optional(object({ coverage_percent = number }))
-      aws     = optional(object({}))
-      dynamic = optional(object({ risk_level = string }))
+      aws = optional(object({}))
+      dynamic = optional(object({
+        risk_level         = string
+        prudent_percentage = optional(number, 90)
+      }))
     })
 
     split = object({
@@ -78,11 +80,10 @@ variable "purchase_strategy" {
   # Exactly one target must be defined
   validation {
     condition = (
-      (var.purchase_strategy.target.fixed != null && var.purchase_strategy.target.aws == null && var.purchase_strategy.target.dynamic == null) ||
-      (var.purchase_strategy.target.fixed == null && var.purchase_strategy.target.aws != null && var.purchase_strategy.target.dynamic == null) ||
-      (var.purchase_strategy.target.fixed == null && var.purchase_strategy.target.aws == null && var.purchase_strategy.target.dynamic != null)
+      (var.purchase_strategy.target.aws != null && var.purchase_strategy.target.dynamic == null) ||
+      (var.purchase_strategy.target.aws == null && var.purchase_strategy.target.dynamic != null)
     )
-    error_message = "Exactly one target strategy (fixed, aws, or dynamic) must be defined."
+    error_message = "Exactly one target strategy (aws or dynamic) must be defined."
   }
 
   # Exactly one split must be defined
@@ -95,14 +96,14 @@ variable "purchase_strategy" {
     error_message = "Exactly one split strategy (one_shot, fixed_step, or gap_split) must be defined."
   }
 
-  # fixed.coverage_percent validation
+  # dynamic.prudent_percentage validation
   validation {
     condition = (
-      var.purchase_strategy.target.fixed != null ?
-      var.purchase_strategy.target.fixed.coverage_percent >= 1 && var.purchase_strategy.target.fixed.coverage_percent <= 300 :
+      var.purchase_strategy.target.dynamic != null ?
+      var.purchase_strategy.target.dynamic.prudent_percentage >= 1 && var.purchase_strategy.target.dynamic.prudent_percentage <= 100 :
       true
     )
-    error_message = "fixed.coverage_percent must be between 1 and 300."
+    error_message = "dynamic.prudent_percentage must be between 1 and 100."
   }
 
   # dynamic.risk_level validation

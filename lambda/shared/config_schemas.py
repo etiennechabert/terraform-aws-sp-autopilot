@@ -38,6 +38,12 @@ STRATEGY_PARAMS = {
         "default": "min_hourly",
         "env_var": "DYNAMIC_RISK_LEVEL",
     },
+    "prudent_percentage": {
+        "required": False,
+        "type": "float",
+        "default": "90.0",
+        "env_var": "PRUDENT_PERCENTAGE",
+    },
     "savings_percentage": {
         "required": False,
         "type": "float",

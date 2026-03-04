@@ -67,7 +67,7 @@ def sample_savings_data():
 def sample_config():
     """Sample reporter configuration with new target+split strategy."""
     return {
-        "target_strategy_type": "fixed",
+        "target_strategy_type": "dynamic",
         "split_strategy_type": "fixed_step",
         "fixed_step_percent": 10.0,
         "max_purchase_percent": 10.0,
@@ -159,7 +159,7 @@ def test_calculate_scheduler_preview_configured_strategy_marked(
     )
 
     config = sample_config.copy()
-    config["target_strategy_type"] = "fixed"
+    config["target_strategy_type"] = "dynamic"
     config["split_strategy_type"] = "gap_split"
     config["gap_split_divider"] = 2.0
     config["max_purchase_percent"] = 50.0
@@ -168,10 +168,10 @@ def test_calculate_scheduler_preview_configured_strategy_marked(
         config, mock_clients, sample_coverage_data
     )
 
-    assert result["configured_strategy"] == "fixed+gap_split"
+    assert result["configured_strategy"] == "dynamic+gap_split"
     assert result["error"] is None
-    # fixed+gap_split (configured) + fixed+fixed_step + dynamic+gap_split + aws+one_shot = 4
-    assert len(result["strategies"]) == 4
+    # dynamic+gap_split (configured, matches default) + dynamic+fixed_step + aws+one_shot = 3
+    assert len(result["strategies"]) == 3
 
 
 def test_calculate_scheduler_preview_no_recommendations(

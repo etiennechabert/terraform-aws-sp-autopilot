@@ -9,7 +9,7 @@ This example demonstrates the **dynamic target + gap split** strategy, which aut
 The dynamic target uses the **knee-point algorithm** to find the optimal coverage level where marginal savings efficiency starts dropping significantly. This adapts automatically to your workload patterns — no manual coverage target tuning needed.
 
 Available risk levels:
-- `prudent` — 80% of min-hourly (very conservative)
+- `prudent` — Configurable % of min-hourly (default: 90%, very conservative)
 - `min_hourly` — 100% of min-hourly (always-safe baseline)
 - `optimal` — Knee-point (where efficiency drops to 30% of peak)
 - `maximum` — Maximum net savings point
@@ -43,7 +43,7 @@ purchase_strategy = {
 - `optimal` (recommended): Best tradeoff between savings and risk
 - `maximum`: Maximizes savings but may over-commit
 - `min_hourly`: Never exceeds your minimum observed usage
-- `prudent`: Very conservative, 80% of minimum usage
+- `prudent`: Very conservative, configurable % of minimum usage (default: 90%, set via `prudent_percentage`)
 
 **divider**: How much to divide the gap each cycle (required)
 - `2` (recommended): Halves the gap each cycle — good balance of speed and safety
@@ -103,6 +103,6 @@ terraform destroy
 ## Learn More
 
 - [Main README](../../README.md) - Full module documentation
-- [Fixed + Fixed Step Example](../single-account-compute/) - Simple fixed target strategy
+- [Prudent + Fixed Step Example](../single-account-compute/) - Conservative prudent target strategy
 - [AWS Target Example](../organizations/) - Follow AWS recommendations directly
 - [AWS Savings Plans Documentation](https://docs.aws.amazon.com/savingsplans/latest/userguide/)
