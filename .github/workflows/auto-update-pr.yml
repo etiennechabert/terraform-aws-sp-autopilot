@@ -5,9 +5,9 @@ name: Auto Update PR Branches
 # GITHUB_TOKEN will be used but won't trigger workflows (to prevent infinite loops).
 #
 # Steps to set up PAT:
-# 1. Go to GitHub Settings → Developer settings → Personal access tokens → Tokens (classic)
+# 1. Go to GitHub Settings > Developer settings > Personal access tokens > Tokens (classic)
 # 2. Generate new token with 'repo' scope
-# 3. Add as repository secret: Settings → Secrets → Actions → New repository secret
+# 3. Add as repository secret: Settings > Secrets > Actions > New repository secret
 #    - Name: PAT_TOKEN
 #    - Value: your generated token
 
@@ -24,7 +24,7 @@ jobs:
       pull-requests: read
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v6
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
         with:
           fetch-depth: 0
           token: ${{ secrets.PAT_TOKEN || secrets.GITHUB_TOKEN }}
@@ -65,9 +65,9 @@ jobs:
               if git merge origin/main --no-edit -m "chore: auto-merge main to keep PR up to date"; then
                 # Push the updated branch
                 git push origin "$branch_name"
-                echo "✓ Successfully updated PR #$pr_number"
+                echo "Successfully updated PR #$pr_number"
               else
-                echo "✗ Merge conflict in PR #$pr_number - skipping automatic update"
+                echo "Merge conflict in PR #$pr_number - skipping automatic update"
                 git merge --abort
               fi
             else

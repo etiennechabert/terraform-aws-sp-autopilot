@@ -15,12 +15,12 @@ jobs:
 
     steps:
       - name: Checkout code
-        uses: actions/checkout@v6
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
         with:
           fetch-depth: 0
 
       - name: Set up Terraform
-        uses: hashicorp/setup-terraform@v4
+        uses: hashicorp/setup-terraform@5e8dbf3c6d9deaf4193ca7a8fb23f2ac83bb6c85 # v4
         with:
           terraform_version: "1.11.0"
 
@@ -36,29 +36,29 @@ jobs:
 
       - name: Generate changelog
         id: changelog
-        uses: mikepenz/release-changelog-builder-action@v6
+        uses: mikepenz/release-changelog-builder-action@a34a8009a9588bb86b02a873cf592440e96a5da8 # v6
         with:
           configuration: |
             {
               "categories": [
                 {
-                  "title": "## 🚀 Features",
+                  "title": "## Features",
                   "labels": ["feature", "enhancement"]
                 },
                 {
-                  "title": "## 🐛 Bug Fixes",
+                  "title": "## Bug Fixes",
                   "labels": ["bug", "fix"]
                 },
                 {
-                  "title": "## 📚 Documentation",
+                  "title": "## Documentation",
                   "labels": ["documentation", "docs"]
                 },
                 {
-                  "title": "## 🔧 Maintenance",
+                  "title": "## Maintenance",
                   "labels": ["maintenance", "chore"]
                 },
                 {
-                  "title": "## 📦 Dependencies",
+                  "title": "## Dependencies",
                   "labels": ["dependencies"]
                 }
               ],
@@ -99,7 +99,7 @@ jobs:
 
       - name: Create GitHub Release
         if: github.event_name == 'push'
-        uses: ncipollo/create-release@v1
+        uses: ncipollo/release-action@b7eabc95ff50cbeeedec83973935c8f306dfcd0b # v1
         with:
           tag: ${{ steps.version.outputs.version }}
           name: Release ${{ steps.version.outputs.version }}
