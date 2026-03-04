@@ -24,10 +24,10 @@ jobs:
 
     steps:
       - name: Checkout code
-        uses: actions/checkout@v6
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
 
       - name: Setup Terraform
-        uses: hashicorp/setup-terraform@v4
+        uses: hashicorp/setup-terraform@5e8dbf3c6d9deaf4193ca7a8fb23f2ac83bb6c85 # v4
         with:
           terraform_version: "1.11.0"
 
@@ -50,11 +50,11 @@ jobs:
 
       - name: Comment PR with Results
         if: false # Disabled: github.event_name == 'pull_request' && failure()
-        uses: actions/github-script@v8
+        uses: actions/github-script@ed597411d8f924073f98dfc5c65a23a2325f34cd # v8
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
           script: |
-            const output = `#### Terraform Validation Failed ❌
+            const output = `#### Terraform Validation Failed
 
             **Format Check:** \`${{ steps.fmt.outcome }}\`
             **Initialization:** \`${{ steps.init.outcome }}\`
@@ -78,10 +78,10 @@ jobs:
 
     steps:
       - name: Checkout code
-        uses: actions/checkout@v6
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
 
       - name: Run tfsec
-        uses: aquasecurity/tfsec-action@v1.0.3
+        uses: aquasecurity/tfsec-action@b466648d6e39e7c75324f25d83891162a721f2d6 # v1.0.3
         with:
           soft_fail: false
           format: default
@@ -90,7 +90,7 @@ jobs:
 
       - name: Run tfsec with SARIF output
         if: always()
-        uses: aquasecurity/tfsec-sarif-action@v0.1.4
+        uses: aquasecurity/tfsec-sarif-action@21ded20e8ca120cd9d3d6ab04ef746477542a608 # v0.1.4
         with:
           sarif_file: tfsec-results.sarif
           github_token: ${{ secrets.GITHUB_TOKEN }}
@@ -99,18 +99,18 @@ jobs:
 
       - name: Upload SARIF file
         if: always() && hashFiles('tfsec-results.sarif') != ''
-        uses: github/codeql-action/upload-sarif@v4
+        uses: github/codeql-action/upload-sarif@c793b717bc78562f491db7b0e93a3a178b099162 # v4
         with:
           sarif_file: tfsec-results.sarif
           category: tfsec
 
       - name: Comment PR with Security Issues
         if: false # Disabled: github.event_name == 'pull_request' && failure()
-        uses: actions/github-script@v8
+        uses: actions/github-script@ed597411d8f924073f98dfc5c65a23a2325f34cd # v8
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
           script: |
-            const output = `#### Security Scan Failed ❌
+            const output = `#### Security Scan Failed
 
             **tfsec found HIGH or CRITICAL security issues in your Terraform code.**
 
@@ -140,10 +140,10 @@ jobs:
 
     steps:
       - name: Checkout code
-        uses: actions/checkout@v6
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
 
       - name: Set up Python
-        uses: actions/setup-python@v6
+        uses: actions/setup-python@a309ff8b426b58ec0e2a45f0f869d46889d02405 # v6
         with:
           python-version: '3.13'
 
@@ -162,11 +162,11 @@ jobs:
 
       - name: Comment PR with Linting Results
         if: false # Disabled: github.event_name == 'pull_request' && failure()
-        uses: actions/github-script@v8
+        uses: actions/github-script@ed597411d8f924073f98dfc5c65a23a2325f34cd # v8
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
           script: |
-            const output = `#### Python Linting Failed ❌
+            const output = `#### Python Linting Failed
 
             **Ruff linting or formatting checks failed.**
 
@@ -189,7 +189,7 @@ jobs:
     permissions:
       contents: read
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
       - name: Setup terraform-docs
         run: |
           curl -sSLo terraform-docs.tar.gz https://terraform-docs.io/dl/v0.19.0/terraform-docs-v0.19.0-$(uname)-amd64.tar.gz
@@ -209,10 +209,10 @@ jobs:
 
     steps:
       - name: Checkout code
-        uses: actions/checkout@v6
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
 
       - name: Set up Python
-        uses: actions/setup-python@v6
+        uses: actions/setup-python@a309ff8b426b58ec0e2a45f0f869d46889d02405 # v6
         with:
           python-version: '3.13'
           cache: 'pip'
@@ -233,14 +233,14 @@ jobs:
           pytest
 
       - name: Upload coverage artifact
-        uses: actions/upload-artifact@v7
+        uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f # v7
         with:
           name: scheduler-coverage
           path: lambda/scheduler/coverage.xml
           retention-days: 1
 
       - name: Upload coverage reports to Codecov
-        uses: codecov/codecov-action@v5
+        uses: codecov/codecov-action@671740ac38dd9b0130fbe1cec585b89eea48d3de # v5
         with:
           token: ${{ secrets.CODECOV_TOKEN }}
           files: ./lambda/scheduler/coverage.xml
@@ -250,11 +250,11 @@ jobs:
 
       - name: Comment PR with Test Results
         if: false # Disabled: github.event_name == 'pull_request' && failure()
-        uses: actions/github-script@v8
+        uses: actions/github-script@ed597411d8f924073f98dfc5c65a23a2325f34cd # v8
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
           script: |
-            const output = `#### Scheduler Lambda Tests Failed ❌
+            const output = `#### Scheduler Lambda Tests Failed
 
             **Pytest execution failed or coverage is below 80%.**
 
@@ -278,10 +278,10 @@ jobs:
 
     steps:
       - name: Checkout code
-        uses: actions/checkout@v6
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
 
       - name: Set up Python
-        uses: actions/setup-python@v6
+        uses: actions/setup-python@a309ff8b426b58ec0e2a45f0f869d46889d02405 # v6
         with:
           python-version: '3.13'
           cache: 'pip'
@@ -302,14 +302,14 @@ jobs:
           pytest
 
       - name: Upload coverage artifact
-        uses: actions/upload-artifact@v7
+        uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f # v7
         with:
           name: purchaser-coverage
           path: lambda/purchaser/coverage.xml
           retention-days: 1
 
       - name: Upload coverage reports to Codecov
-        uses: codecov/codecov-action@v5
+        uses: codecov/codecov-action@671740ac38dd9b0130fbe1cec585b89eea48d3de # v5
         with:
           token: ${{ secrets.CODECOV_TOKEN }}
           files: ./lambda/purchaser/coverage.xml
@@ -319,11 +319,11 @@ jobs:
 
       - name: Comment PR with Test Results
         if: false # Disabled: github.event_name == 'pull_request' && failure()
-        uses: actions/github-script@v8
+        uses: actions/github-script@ed597411d8f924073f98dfc5c65a23a2325f34cd # v8
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
           script: |
-            const output = `#### Purchaser Lambda Tests Failed ❌
+            const output = `#### Purchaser Lambda Tests Failed
 
             **Pytest execution failed or coverage is below 80%.**
 
@@ -347,10 +347,10 @@ jobs:
 
     steps:
       - name: Checkout code
-        uses: actions/checkout@v6
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
 
       - name: Set up Python
-        uses: actions/setup-python@v6
+        uses: actions/setup-python@a309ff8b426b58ec0e2a45f0f869d46889d02405 # v6
         with:
           python-version: '3.13'
           cache: 'pip'
@@ -371,14 +371,14 @@ jobs:
           pytest
 
       - name: Upload coverage artifact
-        uses: actions/upload-artifact@v7
+        uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f # v7
         with:
           name: reporter-coverage
           path: lambda/reporter/coverage.xml
           retention-days: 1
 
       - name: Upload coverage reports to Codecov
-        uses: codecov/codecov-action@v5
+        uses: codecov/codecov-action@671740ac38dd9b0130fbe1cec585b89eea48d3de # v5
         with:
           token: ${{ secrets.CODECOV_TOKEN }}
           files: ./lambda/reporter/coverage.xml
@@ -388,11 +388,11 @@ jobs:
 
       - name: Comment PR with Test Results
         if: false # Disabled: github.event_name == 'pull_request' && failure()
-        uses: actions/github-script@v8
+        uses: actions/github-script@ed597411d8f924073f98dfc5c65a23a2325f34cd # v8
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
           script: |
-            const output = `#### Reporter Lambda Tests Failed ❌
+            const output = `#### Reporter Lambda Tests Failed
 
             **Pytest execution failed or coverage is below 80%.**
 
@@ -430,10 +430,10 @@ jobs:
 
     steps:
       - name: Checkout code
-        uses: actions/checkout@v6
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
 
       - name: Setup Terraform
-        uses: hashicorp/setup-terraform@v4
+        uses: hashicorp/setup-terraform@5e8dbf3c6d9deaf4193ca7a8fb23f2ac83bb6c85 # v4
         with:
           terraform_version: "1.11.0"
 
@@ -449,12 +449,12 @@ jobs:
             echo "ERROR: AWS credentials should not be set for these tests"
             exit 1
           fi
-          echo "✓ AWS credentials not set (as expected)"
+          echo "AWS credentials not set (as expected)"
 
       - name: Initialize Terraform
         run: |
           terraform init
-          echo "✓ Terraform initialized successfully"
+          echo "Terraform initialized successfully"
 
       - name: Run Terraform Unit Test - ${{ matrix.test_file }}
         run: |
@@ -464,9 +464,9 @@ jobs:
           echo "Test exit code: $TEST_EXIT_CODE"
 
           if [ $TEST_EXIT_CODE -eq 0 ]; then
-            echo "✅ ${{ matrix.test_file }} tests passed!"
+            echo "${{ matrix.test_file }} tests passed!"
           else
-            echo "❌ ${{ matrix.test_file }} tests failed with exit code $TEST_EXIT_CODE"
+            echo "${{ matrix.test_file }} tests failed with exit code $TEST_EXIT_CODE"
             exit $TEST_EXIT_CODE
           fi
 
@@ -477,8 +477,8 @@ jobs:
           echo "Terraform Unit Test Summary: ${{ matrix.test_file }}"
           echo "========================================="
           echo "Version: $(terraform version -json | jq -r '.terraform_version')"
-          echo "AWS Credentials: NOT REQUIRED ✓"
-          echo "Mock Provider: ENABLED ✓"
+          echo "AWS Credentials: NOT REQUIRED"
+          echo "Mock Provider: ENABLED"
           echo "Test File: terraform-tests/unit/${{ matrix.test_file }}.tftest.hcl"
           echo "========================================="
 
@@ -502,23 +502,23 @@ jobs:
 
     steps:
       - name: Checkout code
-        uses: actions/checkout@v6
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
 
       - name: Set up Go
-        uses: actions/setup-go@v6
+        uses: actions/setup-go@4b73464bb391d4059bd26b0524d20df3927bd417 # v6
         with:
           go-version: ${{ env.GO_VERSION }}
           cache: true
           cache-dependency-path: terraform-tests/integration/go.mod
 
       - name: Set up Terraform
-        uses: hashicorp/setup-terraform@v4
+        uses: hashicorp/setup-terraform@5e8dbf3c6d9deaf4193ca7a8fb23f2ac83bb6c85 # v4
         with:
           terraform_version: ${{ env.TERRAFORM_VERSION }}
           terraform_wrapper: false
 
       - name: Configure AWS Credentials
-        uses: aws-actions/configure-aws-credentials@v6
+        uses: aws-actions/configure-aws-credentials@8df5847569e6427dd6c4fb1cf565c83acfa8afa7 # v6
         with:
           aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
@@ -555,11 +555,11 @@ jobs:
 
       - name: Comment PR with Test Results
         if: false # Disabled: github.event_name == 'pull_request' && failure()
-        uses: actions/github-script@v8
+        uses: actions/github-script@ed597411d8f924073f98dfc5c65a23a2325f34cd # v8
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
           script: |
-            const output = `#### Terraform Integration Tests Failed ❌
+            const output = `#### Terraform Integration Tests Failed
 
             **Terratest integration tests failed.**
 
@@ -573,4 +573,3 @@ jobs:
               repo: context.repo.repo,
               body: output
             });
-

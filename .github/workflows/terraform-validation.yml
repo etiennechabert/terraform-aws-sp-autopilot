@@ -30,10 +30,10 @@ jobs:
 
     steps:
       - name: Checkout code
-        uses: actions/checkout@v6
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
 
       - name: Setup Terraform
-        uses: hashicorp/setup-terraform@v4
+        uses: hashicorp/setup-terraform@5e8dbf3c6d9deaf4193ca7a8fb23f2ac83bb6c85 # v4
         with:
           terraform_version: "1.11.0"
 
@@ -56,11 +56,11 @@ jobs:
 
       - name: Comment PR with Results
         if: github.event_name == 'pull_request' && failure()
-        uses: actions/github-script@v8
+        uses: actions/github-script@ed597411d8f924073f98dfc5c65a23a2325f34cd # v8
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
           script: |
-            const output = `#### Terraform Validation Failed ❌
+            const output = `#### Terraform Validation Failed
 
             **Format Check:** \`${{ steps.fmt.outcome }}\`
             **Initialization:** \`${{ steps.init.outcome }}\`
