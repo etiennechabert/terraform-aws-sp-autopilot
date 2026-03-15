@@ -31,16 +31,20 @@ run "test_scheduler_log_group_naming" {
 
   variables {
     purchase_strategy = {
-      coverage_target_percent = 80
-      simple = {
-        max_purchase_percent = 5
+      target = {
+        dynamic = { risk_level = "prudent" }
+      }
+      split = {
+        fixed_step = { step_percent = 5 }
       }
     }
     sp_plans = {
       compute = {
-        enabled              = true
-        all_upfront_one_year = 1
+        enabled   = true
+        plan_type = "all_upfront_one_year"
       }
+      database  = { enabled = false }
+      sagemaker = { enabled = false }
     }
     notifications = {
       emails = ["test@example.com"]
@@ -64,16 +68,20 @@ run "test_purchaser_log_group_naming" {
 
   variables {
     purchase_strategy = {
-      coverage_target_percent = 80
-      simple = {
-        max_purchase_percent = 5
+      target = {
+        dynamic = { risk_level = "prudent" }
+      }
+      split = {
+        fixed_step = { step_percent = 5 }
       }
     }
     sp_plans = {
       compute = {
-        enabled              = true
-        all_upfront_one_year = 1
+        enabled   = true
+        plan_type = "all_upfront_one_year"
       }
+      database  = { enabled = false }
+      sagemaker = { enabled = false }
     }
     notifications = {
       emails = ["test@example.com"]
@@ -97,16 +105,20 @@ run "test_reporter_log_group_naming" {
 
   variables {
     purchase_strategy = {
-      coverage_target_percent = 80
-      simple = {
-        max_purchase_percent = 5
+      target = {
+        dynamic = { risk_level = "prudent" }
+      }
+      split = {
+        fixed_step = { step_percent = 5 }
       }
     }
     sp_plans = {
       compute = {
-        enabled              = true
-        all_upfront_one_year = 1
+        enabled   = true
+        plan_type = "all_upfront_one_year"
       }
+      database  = { enabled = false }
+      sagemaker = { enabled = false }
     }
     notifications = {
       emails = ["test@example.com"]
@@ -130,16 +142,20 @@ run "test_log_groups_retention" {
 
   variables {
     purchase_strategy = {
-      coverage_target_percent = 80
-      simple = {
-        max_purchase_percent = 5
+      target = {
+        dynamic = { risk_level = "prudent" }
+      }
+      split = {
+        fixed_step = { step_percent = 5 }
       }
     }
     sp_plans = {
       compute = {
-        enabled              = true
-        all_upfront_one_year = 1
+        enabled   = true
+        plan_type = "all_upfront_one_year"
       }
+      database  = { enabled = false }
+      sagemaker = { enabled = false }
     }
     notifications = {
       emails = ["test@example.com"]
@@ -168,16 +184,20 @@ run "test_log_groups_tags" {
 
   variables {
     purchase_strategy = {
-      coverage_target_percent = 80
-      simple = {
-        max_purchase_percent = 5
+      target = {
+        dynamic = { risk_level = "prudent" }
+      }
+      split = {
+        fixed_step = { step_percent = 5 }
       }
     }
     sp_plans = {
       compute = {
-        enabled              = true
-        all_upfront_one_year = 1
+        enabled   = true
+        plan_type = "all_upfront_one_year"
       }
+      database  = { enabled = false }
+      sagemaker = { enabled = false }
     }
     notifications = {
       emails = ["test@example.com"]
@@ -229,16 +249,20 @@ run "test_lambda_error_alarms_enabled" {
 
   variables {
     purchase_strategy = {
-      coverage_target_percent = 80
-      simple = {
-        max_purchase_percent = 5
+      target = {
+        dynamic = { risk_level = "prudent" }
+      }
+      split = {
+        fixed_step = { step_percent = 5 }
       }
     }
     sp_plans = {
       compute = {
-        enabled              = true
-        all_upfront_one_year = 1
+        enabled   = true
+        plan_type = "all_upfront_one_year"
       }
+      database  = { enabled = false }
+      sagemaker = { enabled = false }
     }
     notifications = {
       emails = ["test@example.com"]
@@ -272,16 +296,20 @@ run "test_lambda_error_alarms_disabled" {
 
   variables {
     purchase_strategy = {
-      coverage_target_percent = 80
-      simple = {
-        max_purchase_percent = 5
+      target = {
+        dynamic = { risk_level = "prudent" }
+      }
+      split = {
+        fixed_step = { step_percent = 5 }
       }
     }
     sp_plans = {
       compute = {
-        enabled              = true
-        all_upfront_one_year = 1
+        enabled   = true
+        plan_type = "all_upfront_one_year"
       }
+      database  = { enabled = false }
+      sagemaker = { enabled = false }
     }
     notifications = {
       emails = ["test@example.com"]
@@ -315,16 +343,20 @@ run "test_scheduler_error_alarm_naming" {
 
   variables {
     purchase_strategy = {
-      coverage_target_percent = 80
-      simple = {
-        max_purchase_percent = 5
+      target = {
+        dynamic = { risk_level = "prudent" }
+      }
+      split = {
+        fixed_step = { step_percent = 5 }
       }
     }
     sp_plans = {
       compute = {
-        enabled              = true
-        all_upfront_one_year = 1
+        enabled   = true
+        plan_type = "all_upfront_one_year"
       }
+      database  = { enabled = false }
+      sagemaker = { enabled = false }
     }
     notifications = {
       emails = ["test@example.com"]
@@ -353,16 +385,20 @@ run "test_purchaser_error_alarm_naming" {
 
   variables {
     purchase_strategy = {
-      coverage_target_percent = 80
-      simple = {
-        max_purchase_percent = 5
+      target = {
+        dynamic = { risk_level = "prudent" }
+      }
+      split = {
+        fixed_step = { step_percent = 5 }
       }
     }
     sp_plans = {
       compute = {
-        enabled              = true
-        all_upfront_one_year = 1
+        enabled   = true
+        plan_type = "all_upfront_one_year"
       }
+      database  = { enabled = false }
+      sagemaker = { enabled = false }
     }
     notifications = {
       emails = ["test@example.com"]
@@ -391,16 +427,20 @@ run "test_reporter_error_alarm_naming" {
 
   variables {
     purchase_strategy = {
-      coverage_target_percent = 80
-      simple = {
-        max_purchase_percent = 5
+      target = {
+        dynamic = { risk_level = "prudent" }
+      }
+      split = {
+        fixed_step = { step_percent = 5 }
       }
     }
     sp_plans = {
       compute = {
-        enabled              = true
-        all_upfront_one_year = 1
+        enabled   = true
+        plan_type = "all_upfront_one_year"
       }
+      database  = { enabled = false }
+      sagemaker = { enabled = false }
     }
     notifications = {
       emails = ["test@example.com"]
@@ -429,16 +469,20 @@ run "test_error_alarms_metric_configuration" {
 
   variables {
     purchase_strategy = {
-      coverage_target_percent = 80
-      simple = {
-        max_purchase_percent = 5
+      target = {
+        dynamic = { risk_level = "prudent" }
+      }
+      split = {
+        fixed_step = { step_percent = 5 }
       }
     }
     sp_plans = {
       compute = {
-        enabled              = true
-        all_upfront_one_year = 1
+        enabled   = true
+        plan_type = "all_upfront_one_year"
       }
+      database  = { enabled = false }
+      sagemaker = { enabled = false }
     }
     notifications = {
       emails = ["test@example.com"]
@@ -482,16 +526,20 @@ run "test_error_alarms_threshold_configuration" {
 
   variables {
     purchase_strategy = {
-      coverage_target_percent = 80
-      simple = {
-        max_purchase_percent = 5
+      target = {
+        dynamic = { risk_level = "prudent" }
+      }
+      split = {
+        fixed_step = { step_percent = 5 }
       }
     }
     sp_plans = {
       compute = {
-        enabled              = true
-        all_upfront_one_year = 1
+        enabled   = true
+        plan_type = "all_upfront_one_year"
       }
+      database  = { enabled = false }
+      sagemaker = { enabled = false }
     }
     notifications = {
       emails = ["test@example.com"]
@@ -528,16 +576,20 @@ run "test_error_alarms_custom_threshold" {
 
   variables {
     purchase_strategy = {
-      coverage_target_percent = 80
-      simple = {
-        max_purchase_percent = 5
+      target = {
+        dynamic = { risk_level = "prudent" }
+      }
+      split = {
+        fixed_step = { step_percent = 5 }
       }
     }
     sp_plans = {
       compute = {
-        enabled              = true
-        all_upfront_one_year = 1
+        enabled   = true
+        plan_type = "all_upfront_one_year"
       }
+      database  = { enabled = false }
+      sagemaker = { enabled = false }
     }
     notifications = {
       emails = ["test@example.com"]
@@ -574,16 +626,20 @@ run "test_error_alarms_dimensions" {
 
   variables {
     purchase_strategy = {
-      coverage_target_percent = 80
-      simple = {
-        max_purchase_percent = 5
+      target = {
+        dynamic = { risk_level = "prudent" }
+      }
+      split = {
+        fixed_step = { step_percent = 5 }
       }
     }
     sp_plans = {
       compute = {
-        enabled              = true
-        all_upfront_one_year = 1
+        enabled   = true
+        plan_type = "all_upfront_one_year"
       }
+      database  = { enabled = false }
+      sagemaker = { enabled = false }
     }
     notifications = {
       emails = ["test@example.com"]
@@ -617,16 +673,20 @@ run "test_error_alarms_alarm_actions" {
 
   variables {
     purchase_strategy = {
-      coverage_target_percent = 80
-      simple = {
-        max_purchase_percent = 5
+      target = {
+        dynamic = { risk_level = "prudent" }
+      }
+      split = {
+        fixed_step = { step_percent = 5 }
       }
     }
     sp_plans = {
       compute = {
-        enabled              = true
-        all_upfront_one_year = 1
+        enabled   = true
+        plan_type = "all_upfront_one_year"
       }
+      database  = { enabled = false }
+      sagemaker = { enabled = false }
     }
     notifications = {
       emails = ["test@example.com"]
@@ -656,16 +716,20 @@ run "test_error_alarms_tags" {
 
   variables {
     purchase_strategy = {
-      coverage_target_percent = 80
-      simple = {
-        max_purchase_percent = 5
+      target = {
+        dynamic = { risk_level = "prudent" }
+      }
+      split = {
+        fixed_step = { step_percent = 5 }
       }
     }
     sp_plans = {
       compute = {
-        enabled              = true
-        all_upfront_one_year = 1
+        enabled   = true
+        plan_type = "all_upfront_one_year"
       }
+      database  = { enabled = false }
+      sagemaker = { enabled = false }
     }
     notifications = {
       emails = ["test@example.com"]

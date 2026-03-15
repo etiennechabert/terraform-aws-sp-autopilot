@@ -31,16 +31,20 @@ run "test_sqs_queue_policy_created" {
 
   variables {
     purchase_strategy = {
-      coverage_target_percent = 80
-      simple = {
-        max_purchase_percent = 5
+      target = {
+        dynamic = { risk_level = "prudent" }
+      }
+      split = {
+        fixed_step = { step_percent = 5 }
       }
     }
     sp_plans = {
       compute = {
-        enabled              = true
-        all_upfront_one_year = 1
+        enabled   = true
+        plan_type = "all_upfront_one_year"
       }
+      database  = { enabled = false }
+      sagemaker = { enabled = false }
     }
     notifications = {
       emails = ["test@example.com"]
@@ -59,9 +63,11 @@ run "test_sqs_queue_policy_with_database_sp" {
 
   variables {
     purchase_strategy = {
-      coverage_target_percent = 80
-      simple = {
-        max_purchase_percent = 5
+      target = {
+        dynamic = { risk_level = "prudent" }
+      }
+      split = {
+        fixed_step = { step_percent = 5 }
       }
     }
     sp_plans = {
@@ -69,8 +75,8 @@ run "test_sqs_queue_policy_with_database_sp" {
         enabled = false
       }
       database = {
-        enabled             = true
-        no_upfront_one_year = 1
+        enabled   = true
+        plan_type = "no_upfront_one_year"
       }
       sagemaker = {
         enabled = false

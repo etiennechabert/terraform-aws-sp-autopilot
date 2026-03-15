@@ -31,16 +31,20 @@ run "test_scheduler_eventbridge_rule_naming" {
 
   variables {
     purchase_strategy = {
-      coverage_target_percent = 80
-      simple = {
-        max_purchase_percent = 5
+      target = {
+        dynamic = { risk_level = "prudent" }
+      }
+      split = {
+        fixed_step = { step_percent = 5 }
       }
     }
     sp_plans = {
       compute = {
-        enabled              = true
-        all_upfront_one_year = 1
+        enabled   = true
+        plan_type = "all_upfront_one_year"
       }
+      database  = { enabled = false }
+      sagemaker = { enabled = false }
     }
     notifications = {
       emails = ["test@example.com"]
@@ -64,16 +68,20 @@ run "test_scheduler_eventbridge_rule_description" {
 
   variables {
     purchase_strategy = {
-      coverage_target_percent = 80
-      simple = {
-        max_purchase_percent = 5
+      target = {
+        dynamic = { risk_level = "prudent" }
+      }
+      split = {
+        fixed_step = { step_percent = 5 }
       }
     }
     sp_plans = {
       compute = {
-        enabled              = true
-        all_upfront_one_year = 1
+        enabled   = true
+        plan_type = "all_upfront_one_year"
       }
+      database  = { enabled = false }
+      sagemaker = { enabled = false }
     }
     notifications = {
       emails = ["test@example.com"]
@@ -92,16 +100,20 @@ run "test_scheduler_eventbridge_rule_default_schedule" {
 
   variables {
     purchase_strategy = {
-      coverage_target_percent = 80
-      simple = {
-        max_purchase_percent = 5
+      target = {
+        dynamic = { risk_level = "prudent" }
+      }
+      split = {
+        fixed_step = { step_percent = 5 }
       }
     }
     sp_plans = {
       compute = {
-        enabled              = true
-        all_upfront_one_year = 1
+        enabled   = true
+        plan_type = "all_upfront_one_year"
       }
+      database  = { enabled = false }
+      sagemaker = { enabled = false }
     }
     notifications = {
       emails = ["test@example.com"]
@@ -120,16 +132,20 @@ run "test_scheduler_eventbridge_rule_custom_schedule" {
 
   variables {
     purchase_strategy = {
-      coverage_target_percent = 80
-      simple = {
-        max_purchase_percent = 5
+      target = {
+        dynamic = { risk_level = "prudent" }
+      }
+      split = {
+        fixed_step = { step_percent = 5 }
       }
     }
     sp_plans = {
       compute = {
-        enabled              = true
-        all_upfront_one_year = 1
+        enabled   = true
+        plan_type = "all_upfront_one_year"
       }
+      database  = { enabled = false }
+      sagemaker = { enabled = false }
     }
     notifications = {
       emails = ["test@example.com"]
@@ -151,16 +167,20 @@ run "test_scheduler_eventbridge_rule_tags" {
 
   variables {
     purchase_strategy = {
-      coverage_target_percent = 80
-      simple = {
-        max_purchase_percent = 5
+      target = {
+        dynamic = { risk_level = "prudent" }
+      }
+      split = {
+        fixed_step = { step_percent = 5 }
       }
     }
     sp_plans = {
       compute = {
-        enabled              = true
-        all_upfront_one_year = 1
+        enabled   = true
+        plan_type = "all_upfront_one_year"
       }
+      database  = { enabled = false }
+      sagemaker = { enabled = false }
     }
     notifications = {
       emails = ["test@example.com"]
@@ -197,16 +217,20 @@ run "test_purchaser_eventbridge_rule_naming" {
 
   variables {
     purchase_strategy = {
-      coverage_target_percent = 80
-      simple = {
-        max_purchase_percent = 5
+      target = {
+        dynamic = { risk_level = "prudent" }
+      }
+      split = {
+        fixed_step = { step_percent = 5 }
       }
     }
     sp_plans = {
       compute = {
-        enabled              = true
-        all_upfront_one_year = 1
+        enabled   = true
+        plan_type = "all_upfront_one_year"
       }
+      database  = { enabled = false }
+      sagemaker = { enabled = false }
     }
     notifications = {
       emails = ["test@example.com"]
@@ -230,16 +254,20 @@ run "test_purchaser_eventbridge_rule_description" {
 
   variables {
     purchase_strategy = {
-      coverage_target_percent = 80
-      simple = {
-        max_purchase_percent = 5
+      target = {
+        dynamic = { risk_level = "prudent" }
+      }
+      split = {
+        fixed_step = { step_percent = 5 }
       }
     }
     sp_plans = {
       compute = {
-        enabled              = true
-        all_upfront_one_year = 1
+        enabled   = true
+        plan_type = "all_upfront_one_year"
       }
+      database  = { enabled = false }
+      sagemaker = { enabled = false }
     }
     notifications = {
       emails = ["test@example.com"]
@@ -258,16 +286,20 @@ run "test_purchaser_eventbridge_rule_default_schedule" {
 
   variables {
     purchase_strategy = {
-      coverage_target_percent = 80
-      simple = {
-        max_purchase_percent = 5
+      target = {
+        dynamic = { risk_level = "prudent" }
+      }
+      split = {
+        fixed_step = { step_percent = 5 }
       }
     }
     sp_plans = {
       compute = {
-        enabled              = true
-        all_upfront_one_year = 1
+        enabled   = true
+        plan_type = "all_upfront_one_year"
       }
+      database  = { enabled = false }
+      sagemaker = { enabled = false }
     }
     notifications = {
       emails = ["test@example.com"]
@@ -286,16 +318,20 @@ run "test_purchaser_eventbridge_rule_custom_schedule" {
 
   variables {
     purchase_strategy = {
-      coverage_target_percent = 80
-      simple = {
-        max_purchase_percent = 5
+      target = {
+        dynamic = { risk_level = "prudent" }
+      }
+      split = {
+        fixed_step = { step_percent = 5 }
       }
     }
     sp_plans = {
       compute = {
-        enabled              = true
-        all_upfront_one_year = 1
+        enabled   = true
+        plan_type = "all_upfront_one_year"
       }
+      database  = { enabled = false }
+      sagemaker = { enabled = false }
     }
     notifications = {
       emails = ["test@example.com"]
@@ -317,16 +353,20 @@ run "test_purchaser_eventbridge_rule_tags" {
 
   variables {
     purchase_strategy = {
-      coverage_target_percent = 80
-      simple = {
-        max_purchase_percent = 5
+      target = {
+        dynamic = { risk_level = "prudent" }
+      }
+      split = {
+        fixed_step = { step_percent = 5 }
       }
     }
     sp_plans = {
       compute = {
-        enabled              = true
-        all_upfront_one_year = 1
+        enabled   = true
+        plan_type = "all_upfront_one_year"
       }
+      database  = { enabled = false }
+      sagemaker = { enabled = false }
     }
     notifications = {
       emails = ["test@example.com"]
@@ -363,16 +403,20 @@ run "test_reporter_eventbridge_rule_enabled" {
 
   variables {
     purchase_strategy = {
-      coverage_target_percent = 80
-      simple = {
-        max_purchase_percent = 5
+      target = {
+        dynamic = { risk_level = "prudent" }
+      }
+      split = {
+        fixed_step = { step_percent = 5 }
       }
     }
     sp_plans = {
       compute = {
-        enabled              = true
-        all_upfront_one_year = 1
+        enabled   = true
+        plan_type = "all_upfront_one_year"
       }
+      database  = { enabled = false }
+      sagemaker = { enabled = false }
     }
     notifications = {
       emails = ["test@example.com"]
@@ -399,16 +443,20 @@ run "test_reporter_eventbridge_rule_disabled" {
 
   variables {
     purchase_strategy = {
-      coverage_target_percent = 80
-      simple = {
-        max_purchase_percent = 5
+      target = {
+        dynamic = { risk_level = "prudent" }
+      }
+      split = {
+        fixed_step = { step_percent = 5 }
       }
     }
     sp_plans = {
       compute = {
-        enabled              = true
-        all_upfront_one_year = 1
+        enabled   = true
+        plan_type = "all_upfront_one_year"
       }
+      database  = { enabled = false }
+      sagemaker = { enabled = false }
     }
     notifications = {
       emails = ["test@example.com"]
@@ -432,16 +480,20 @@ run "test_reporter_eventbridge_rule_description" {
 
   variables {
     purchase_strategy = {
-      coverage_target_percent = 80
-      simple = {
-        max_purchase_percent = 5
+      target = {
+        dynamic = { risk_level = "prudent" }
+      }
+      split = {
+        fixed_step = { step_percent = 5 }
       }
     }
     sp_plans = {
       compute = {
-        enabled              = true
-        all_upfront_one_year = 1
+        enabled   = true
+        plan_type = "all_upfront_one_year"
       }
+      database  = { enabled = false }
+      sagemaker = { enabled = false }
     }
     notifications = {
       emails = ["test@example.com"]
@@ -463,16 +515,20 @@ run "test_reporter_eventbridge_rule_default_schedule" {
 
   variables {
     purchase_strategy = {
-      coverage_target_percent = 80
-      simple = {
-        max_purchase_percent = 5
+      target = {
+        dynamic = { risk_level = "prudent" }
+      }
+      split = {
+        fixed_step = { step_percent = 5 }
       }
     }
     sp_plans = {
       compute = {
-        enabled              = true
-        all_upfront_one_year = 1
+        enabled   = true
+        plan_type = "all_upfront_one_year"
       }
+      database  = { enabled = false }
+      sagemaker = { enabled = false }
     }
     notifications = {
       emails = ["test@example.com"]
@@ -494,16 +550,20 @@ run "test_reporter_eventbridge_rule_custom_schedule" {
 
   variables {
     purchase_strategy = {
-      coverage_target_percent = 80
-      simple = {
-        max_purchase_percent = 5
+      target = {
+        dynamic = { risk_level = "prudent" }
+      }
+      split = {
+        fixed_step = { step_percent = 5 }
       }
     }
     sp_plans = {
       compute = {
-        enabled              = true
-        all_upfront_one_year = 1
+        enabled   = true
+        plan_type = "all_upfront_one_year"
       }
+      database  = { enabled = false }
+      sagemaker = { enabled = false }
     }
     notifications = {
       emails = ["test@example.com"]
@@ -528,16 +588,20 @@ run "test_reporter_eventbridge_rule_tags" {
 
   variables {
     purchase_strategy = {
-      coverage_target_percent = 80
-      simple = {
-        max_purchase_percent = 5
+      target = {
+        dynamic = { risk_level = "prudent" }
+      }
+      split = {
+        fixed_step = { step_percent = 5 }
       }
     }
     sp_plans = {
       compute = {
-        enabled              = true
-        all_upfront_one_year = 1
+        enabled   = true
+        plan_type = "all_upfront_one_year"
       }
+      database  = { enabled = false }
+      sagemaker = { enabled = false }
     }
     notifications = {
       emails = ["test@example.com"]
@@ -577,16 +641,20 @@ run "test_scheduler_eventbridge_target_configuration" {
 
   variables {
     purchase_strategy = {
-      coverage_target_percent = 80
-      simple = {
-        max_purchase_percent = 5
+      target = {
+        dynamic = { risk_level = "prudent" }
+      }
+      split = {
+        fixed_step = { step_percent = 5 }
       }
     }
     sp_plans = {
       compute = {
-        enabled              = true
-        all_upfront_one_year = 1
+        enabled   = true
+        plan_type = "all_upfront_one_year"
       }
+      database  = { enabled = false }
+      sagemaker = { enabled = false }
     }
     notifications = {
       emails = ["test@example.com"]
@@ -636,16 +704,20 @@ run "test_purchaser_eventbridge_target_configuration" {
 
   variables {
     purchase_strategy = {
-      coverage_target_percent = 80
-      simple = {
-        max_purchase_percent = 5
+      target = {
+        dynamic = { risk_level = "prudent" }
+      }
+      split = {
+        fixed_step = { step_percent = 5 }
       }
     }
     sp_plans = {
       compute = {
-        enabled              = true
-        all_upfront_one_year = 1
+        enabled   = true
+        plan_type = "all_upfront_one_year"
       }
+      database  = { enabled = false }
+      sagemaker = { enabled = false }
     }
     notifications = {
       emails = ["test@example.com"]
@@ -695,16 +767,20 @@ run "test_reporter_eventbridge_target_enabled" {
 
   variables {
     purchase_strategy = {
-      coverage_target_percent = 80
-      simple = {
-        max_purchase_percent = 5
+      target = {
+        dynamic = { risk_level = "prudent" }
+      }
+      split = {
+        fixed_step = { step_percent = 5 }
       }
     }
     sp_plans = {
       compute = {
-        enabled              = true
-        all_upfront_one_year = 1
+        enabled   = true
+        plan_type = "all_upfront_one_year"
       }
+      database  = { enabled = false }
+      sagemaker = { enabled = false }
     }
     notifications = {
       emails = ["test@example.com"]
@@ -739,16 +815,20 @@ run "test_reporter_eventbridge_target_disabled" {
 
   variables {
     purchase_strategy = {
-      coverage_target_percent = 80
-      simple = {
-        max_purchase_percent = 5
+      target = {
+        dynamic = { risk_level = "prudent" }
+      }
+      split = {
+        fixed_step = { step_percent = 5 }
       }
     }
     sp_plans = {
       compute = {
-        enabled              = true
-        all_upfront_one_year = 1
+        enabled   = true
+        plan_type = "all_upfront_one_year"
       }
+      database  = { enabled = false }
+      sagemaker = { enabled = false }
     }
     notifications = {
       emails = ["test@example.com"]
@@ -776,16 +856,20 @@ run "test_scheduler_lambda_permission_eventbridge" {
 
   variables {
     purchase_strategy = {
-      coverage_target_percent = 80
-      simple = {
-        max_purchase_percent = 5
+      target = {
+        dynamic = { risk_level = "prudent" }
+      }
+      split = {
+        fixed_step = { step_percent = 5 }
       }
     }
     sp_plans = {
       compute = {
-        enabled              = true
-        all_upfront_one_year = 1
+        enabled   = true
+        plan_type = "all_upfront_one_year"
       }
+      database  = { enabled = false }
+      sagemaker = { enabled = false }
     }
     notifications = {
       emails = ["test@example.com"]
@@ -826,16 +910,20 @@ run "test_purchaser_lambda_permission_eventbridge" {
 
   variables {
     purchase_strategy = {
-      coverage_target_percent = 80
-      simple = {
-        max_purchase_percent = 5
+      target = {
+        dynamic = { risk_level = "prudent" }
+      }
+      split = {
+        fixed_step = { step_percent = 5 }
       }
     }
     sp_plans = {
       compute = {
-        enabled              = true
-        all_upfront_one_year = 1
+        enabled   = true
+        plan_type = "all_upfront_one_year"
       }
+      database  = { enabled = false }
+      sagemaker = { enabled = false }
     }
     notifications = {
       emails = ["test@example.com"]
@@ -876,16 +964,20 @@ run "test_reporter_lambda_permission_enabled" {
 
   variables {
     purchase_strategy = {
-      coverage_target_percent = 80
-      simple = {
-        max_purchase_percent = 5
+      target = {
+        dynamic = { risk_level = "prudent" }
+      }
+      split = {
+        fixed_step = { step_percent = 5 }
       }
     }
     sp_plans = {
       compute = {
-        enabled              = true
-        all_upfront_one_year = 1
+        enabled   = true
+        plan_type = "all_upfront_one_year"
       }
+      database  = { enabled = false }
+      sagemaker = { enabled = false }
     }
     notifications = {
       emails = ["test@example.com"]
@@ -930,16 +1022,20 @@ run "test_reporter_lambda_permission_disabled" {
 
   variables {
     purchase_strategy = {
-      coverage_target_percent = 80
-      simple = {
-        max_purchase_percent = 5
+      target = {
+        dynamic = { risk_level = "prudent" }
+      }
+      split = {
+        fixed_step = { step_percent = 5 }
       }
     }
     sp_plans = {
       compute = {
-        enabled              = true
-        all_upfront_one_year = 1
+        enabled   = true
+        plan_type = "all_upfront_one_year"
       }
+      database  = { enabled = false }
+      sagemaker = { enabled = false }
     }
     notifications = {
       emails = ["test@example.com"]

@@ -31,16 +31,20 @@ run "test_s3_bucket_naming" {
 
   variables {
     purchase_strategy = {
-      coverage_target_percent = 80
-      simple = {
-        max_purchase_percent = 5
+      target = {
+        dynamic = { risk_level = "prudent" }
+      }
+      split = {
+        fixed_step = { step_percent = 5 }
       }
     }
     sp_plans = {
       compute = {
-        enabled              = true
-        all_upfront_one_year = 1
+        enabled   = true
+        plan_type = "all_upfront_one_year"
       }
+      database  = { enabled = false }
+      sagemaker = { enabled = false }
     }
     notifications = {
       emails = ["test@example.com"]
@@ -64,16 +68,20 @@ run "test_s3_versioning_enabled" {
 
   variables {
     purchase_strategy = {
-      coverage_target_percent = 80
-      simple = {
-        max_purchase_percent = 5
+      target = {
+        dynamic = { risk_level = "prudent" }
+      }
+      split = {
+        fixed_step = { step_percent = 5 }
       }
     }
     sp_plans = {
       compute = {
-        enabled              = true
-        all_upfront_one_year = 1
+        enabled   = true
+        plan_type = "all_upfront_one_year"
       }
+      database  = { enabled = false }
+      sagemaker = { enabled = false }
     }
     notifications = {
       emails = ["test@example.com"]
@@ -92,16 +100,20 @@ run "test_s3_encryption_configuration" {
 
   variables {
     purchase_strategy = {
-      coverage_target_percent = 80
-      simple = {
-        max_purchase_percent = 5
+      target = {
+        dynamic = { risk_level = "prudent" }
+      }
+      split = {
+        fixed_step = { step_percent = 5 }
       }
     }
     sp_plans = {
       compute = {
-        enabled              = true
-        all_upfront_one_year = 1
+        enabled   = true
+        plan_type = "all_upfront_one_year"
       }
+      database  = { enabled = false }
+      sagemaker = { enabled = false }
     }
     notifications = {
       emails = ["test@example.com"]
@@ -126,16 +138,20 @@ run "test_s3_public_access_blocks" {
 
   variables {
     purchase_strategy = {
-      coverage_target_percent = 80
-      simple = {
-        max_purchase_percent = 5
+      target = {
+        dynamic = { risk_level = "prudent" }
+      }
+      split = {
+        fixed_step = { step_percent = 5 }
       }
     }
     sp_plans = {
       compute = {
-        enabled              = true
-        all_upfront_one_year = 1
+        enabled   = true
+        plan_type = "all_upfront_one_year"
       }
+      database  = { enabled = false }
+      sagemaker = { enabled = false }
     }
     notifications = {
       emails = ["test@example.com"]
@@ -169,16 +185,20 @@ run "test_s3_lifecycle_rule_enabled" {
 
   variables {
     purchase_strategy = {
-      coverage_target_percent = 80
-      simple = {
-        max_purchase_percent = 5
+      target = {
+        dynamic = { risk_level = "prudent" }
+      }
+      split = {
+        fixed_step = { step_percent = 5 }
       }
     }
     sp_plans = {
       compute = {
-        enabled              = true
-        all_upfront_one_year = 1
+        enabled   = true
+        plan_type = "all_upfront_one_year"
       }
+      database  = { enabled = false }
+      sagemaker = { enabled = false }
     }
     notifications = {
       emails = ["test@example.com"]
@@ -202,16 +222,20 @@ run "test_s3_lifecycle_ia_transition" {
 
   variables {
     purchase_strategy = {
-      coverage_target_percent = 80
-      simple = {
-        max_purchase_percent = 5
+      target = {
+        dynamic = { risk_level = "prudent" }
+      }
+      split = {
+        fixed_step = { step_percent = 5 }
       }
     }
     sp_plans = {
       compute = {
-        enabled              = true
-        all_upfront_one_year = 1
+        enabled   = true
+        plan_type = "all_upfront_one_year"
       }
+      database  = { enabled = false }
+      sagemaker = { enabled = false }
     }
     notifications = {
       emails = ["test@example.com"]
@@ -238,16 +262,20 @@ run "test_s3_lifecycle_glacier_transition" {
 
   variables {
     purchase_strategy = {
-      coverage_target_percent = 80
-      simple = {
-        max_purchase_percent = 5
+      target = {
+        dynamic = { risk_level = "prudent" }
+      }
+      split = {
+        fixed_step = { step_percent = 5 }
       }
     }
     sp_plans = {
       compute = {
-        enabled              = true
-        all_upfront_one_year = 1
+        enabled   = true
+        plan_type = "all_upfront_one_year"
       }
+      database  = { enabled = false }
+      sagemaker = { enabled = false }
     }
     notifications = {
       emails = ["test@example.com"]
@@ -275,16 +303,20 @@ run "test_s3_lifecycle_expiration" {
 
   variables {
     purchase_strategy = {
-      coverage_target_percent = 80
-      simple = {
-        max_purchase_percent = 5
+      target = {
+        dynamic = { risk_level = "prudent" }
+      }
+      split = {
+        fixed_step = { step_percent = 5 }
       }
     }
     sp_plans = {
       compute = {
-        enabled              = true
-        all_upfront_one_year = 1
+        enabled   = true
+        plan_type = "all_upfront_one_year"
       }
+      database  = { enabled = false }
+      sagemaker = { enabled = false }
     }
     notifications = {
       emails = ["test@example.com"]
@@ -308,16 +340,20 @@ run "test_s3_lifecycle_noncurrent_expiration" {
 
   variables {
     purchase_strategy = {
-      coverage_target_percent = 80
-      simple = {
-        max_purchase_percent = 5
+      target = {
+        dynamic = { risk_level = "prudent" }
+      }
+      split = {
+        fixed_step = { step_percent = 5 }
       }
     }
     sp_plans = {
       compute = {
-        enabled              = true
-        all_upfront_one_year = 1
+        enabled   = true
+        plan_type = "all_upfront_one_year"
       }
+      database  = { enabled = false }
+      sagemaker = { enabled = false }
     }
     notifications = {
       emails = ["test@example.com"]
@@ -341,16 +377,20 @@ run "test_s3_bucket_tags" {
 
   variables {
     purchase_strategy = {
-      coverage_target_percent = 80
-      simple = {
-        max_purchase_percent = 5
+      target = {
+        dynamic = { risk_level = "prudent" }
+      }
+      split = {
+        fixed_step = { step_percent = 5 }
       }
     }
     sp_plans = {
       compute = {
-        enabled              = true
-        all_upfront_one_year = 1
+        enabled   = true
+        plan_type = "all_upfront_one_year"
       }
+      database  = { enabled = false }
+      sagemaker = { enabled = false }
     }
     notifications = {
       emails = ["test@example.com"]
@@ -388,16 +428,20 @@ run "test_s3_bucket_naming_different_account" {
 
   variables {
     purchase_strategy = {
-      coverage_target_percent = 80
-      simple = {
-        max_purchase_percent = 5
+      target = {
+        dynamic = { risk_level = "prudent" }
+      }
+      split = {
+        fixed_step = { step_percent = 5 }
       }
     }
     sp_plans = {
       compute = {
-        enabled              = true
-        all_upfront_one_year = 1
+        enabled   = true
+        plan_type = "all_upfront_one_year"
       }
+      database  = { enabled = false }
+      sagemaker = { enabled = false }
     }
     notifications = {
       emails = ["test@example.com"]
@@ -423,16 +467,20 @@ run "test_s3_lifecycle_custom_values" {
 
   variables {
     purchase_strategy = {
-      coverage_target_percent = 80
-      simple = {
-        max_purchase_percent = 5
+      target = {
+        dynamic = { risk_level = "prudent" }
+      }
+      split = {
+        fixed_step = { step_percent = 5 }
       }
     }
     sp_plans = {
       compute = {
-        enabled              = true
-        all_upfront_one_year = 1
+        enabled   = true
+        plan_type = "all_upfront_one_year"
       }
+      database  = { enabled = false }
+      sagemaker = { enabled = false }
     }
     notifications = {
       emails = ["test@example.com"]

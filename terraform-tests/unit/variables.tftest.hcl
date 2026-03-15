@@ -25,14 +25,14 @@ mock_provider "aws" {
 # Purchase Strategy - Target + Split Validations
 # ============================================================================
 
-# Test: fixed target with fixed_step split - valid
-run "test_fixed_fixed_step_valid" {
+# Test: dynamic target with fixed_step split - valid
+run "test_dynamic_fixed_step_valid_basic" {
   command = plan
 
   variables {
     purchase_strategy = {
       target = {
-        fixed = { coverage_percent = 80 }
+        dynamic = { risk_level = "prudent" }
       }
 
       split = {
@@ -53,14 +53,14 @@ run "test_fixed_fixed_step_valid" {
   }
 }
 
-# Test: fixed target with gap_split split - valid
-run "test_fixed_gap_split_valid" {
+# Test: dynamic target with gap_split split - valid
+run "test_dynamic_gap_split_valid" {
   command = plan
 
   variables {
     purchase_strategy = {
       target = {
-        fixed = { coverage_percent = 90 }
+        dynamic = { risk_level = "optimal" }
       }
 
       split = {
@@ -146,40 +146,12 @@ run "test_invalid_multiple_targets" {
   variables {
     purchase_strategy = {
       target = {
-        fixed   = { coverage_percent = 80 }
+        aws     = {}
         dynamic = { risk_level = "optimal" }
       }
 
       split = {
         fixed_step = { step_percent = 5 }
-      }
-    }
-    sp_plans = {
-      compute = {
-        enabled   = true
-        plan_type = "all_upfront_one_year"
-      }
-      database  = { enabled = false }
-      sagemaker = { enabled = false }
-    }
-    notifications = {
-      emails = ["test@example.com"]
-    }
-  }
-
-  expect_failures = [
-    var.purchase_strategy,
-  ]
-}
-
-# Test: invalid - fixed target without split
-run "test_invalid_fixed_without_split" {
-  command = plan
-
-  variables {
-    purchase_strategy = {
-      target = {
-        fixed = { coverage_percent = 80 }
       }
     }
     sp_plans = {
@@ -232,14 +204,14 @@ run "test_invalid_dynamic_risk_level" {
   ]
 }
 
-# Test: coverage_percent - valid range
-run "test_coverage_percent_valid" {
+# Test: dynamic target with min_hourly risk level - valid
+run "test_dynamic_min_hourly_valid" {
   command = plan
 
   variables {
     purchase_strategy = {
       target = {
-        fixed = { coverage_percent = 1 }
+        dynamic = { risk_level = "min_hourly" }
       }
 
       split = {
@@ -267,7 +239,7 @@ run "test_gap_split_invalid_divider_zero" {
   variables {
     purchase_strategy = {
       target = {
-        fixed = { coverage_percent = 80 }
+        dynamic = { risk_level = "prudent" }
       }
 
       split = {
@@ -301,7 +273,7 @@ run "test_fixed_step_step_percent_invalid" {
   variables {
     purchase_strategy = {
       target = {
-        fixed = { coverage_percent = 80 }
+        dynamic = { risk_level = "prudent" }
       }
 
       split = {
@@ -339,7 +311,7 @@ run "test_min_commitment_per_plan_valid_at_aws_min" {
       min_commitment_per_plan = 0.001
 
       target = {
-        fixed = { coverage_percent = 80 }
+        dynamic = { risk_level = "prudent" }
       }
 
       split = {
@@ -369,7 +341,7 @@ run "test_min_commitment_per_plan_invalid_below_min" {
       min_commitment_per_plan = 0.0009
 
       target = {
-        fixed = { coverage_percent = 80 }
+        dynamic = { risk_level = "prudent" }
       }
 
       split = {
@@ -405,7 +377,7 @@ run "test_at_least_one_sp_enabled" {
   variables {
     purchase_strategy = {
       target = {
-        fixed = { coverage_percent = 80 }
+        dynamic = { risk_level = "prudent" }
       }
 
       split = {
@@ -434,7 +406,7 @@ run "test_compute_plan_type_required" {
   variables {
     purchase_strategy = {
       target = {
-        fixed = { coverage_percent = 80 }
+        dynamic = { risk_level = "prudent" }
       }
 
       split = {
@@ -463,7 +435,7 @@ run "test_database_plan_type_valid" {
   variables {
     purchase_strategy = {
       target = {
-        fixed = { coverage_percent = 80 }
+        dynamic = { risk_level = "prudent" }
       }
 
       split = {
@@ -494,7 +466,7 @@ run "test_database_plan_type_invalid" {
   variables {
     purchase_strategy = {
       target = {
-        fixed = { coverage_percent = 80 }
+        dynamic = { risk_level = "prudent" }
       }
 
       split = {
@@ -533,7 +505,7 @@ run "test_report_format_valid_html" {
   variables {
     purchase_strategy = {
       target = {
-        fixed = { coverage_percent = 80 }
+        dynamic = { risk_level = "prudent" }
       }
 
       split = {
@@ -564,7 +536,7 @@ run "test_report_format_invalid" {
   variables {
     purchase_strategy = {
       target = {
-        fixed = { coverage_percent = 80 }
+        dynamic = { risk_level = "prudent" }
       }
 
       split = {
@@ -599,7 +571,7 @@ run "test_s3_lifecycle_glacier_invalid_less_than_ia" {
   variables {
     purchase_strategy = {
       target = {
-        fixed = { coverage_percent = 80 }
+        dynamic = { risk_level = "prudent" }
       }
 
       split = {
@@ -641,7 +613,7 @@ run "test_notifications_valid_emails" {
   variables {
     purchase_strategy = {
       target = {
-        fixed = { coverage_percent = 80 }
+        dynamic = { risk_level = "prudent" }
       }
 
       split = {
@@ -669,7 +641,7 @@ run "test_notifications_valid_slack" {
   variables {
     purchase_strategy = {
       target = {
-        fixed = { coverage_percent = 80 }
+        dynamic = { risk_level = "prudent" }
       }
 
       split = {
@@ -698,7 +670,7 @@ run "test_notifications_invalid_no_method" {
   variables {
     purchase_strategy = {
       target = {
-        fixed = { coverage_percent = 80 }
+        dynamic = { risk_level = "prudent" }
       }
 
       split = {
@@ -730,7 +702,7 @@ run "test_one_shot_split_valid" {
   variables {
     purchase_strategy = {
       target = {
-        fixed = { coverage_percent = 80 }
+        dynamic = { risk_level = "prudent" }
       }
 
       split = {
