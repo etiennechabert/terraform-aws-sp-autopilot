@@ -1,7 +1,10 @@
+from unittest.mock import Mock
+
 import pytest
 from target_strategies import resolve_target
 from target_strategies.aws_target import resolve_aws
 from target_strategies.dynamic_target import resolve_dynamic
+from target_strategies.static_target import calculate_purchase_need_static
 
 
 # ============================================================================
@@ -136,3 +139,115 @@ class TestDynamicTarget:
         config = {"dynamic_risk_level": "prudent", "savings_percentage": 30.0}
         result = resolve_dynamic(config, spending, sp_type_key="compute")
         assert result == pytest.approx(85.0)
+
+
+# ============================================================================
+# static_target tests
+# ============================================================================
+
+
+class TestStaticTarget:
+    def _base_config(self, **overrides):
+        config = {
+            "target_strategy_type": "static",
+            "split_strategy_type": "one_shot",
+            "static_commitment": 5.0,
+            "enable_compute_sp": True,
+            "enable_database_sp": False,
+            "enable_sagemaker_sp": False,
+            "compute_sp_payment_option": "ALL_UPFRONT",
+            "compute_sp_term": "THREE_YEAR",
+            "savings_percentage": 30.0,
+            "min_commitment_per_plan": 0.001,
+            "lookback_hours": 336,
+        }
+        config.update(overrides)
+        return config
+
+    def _spending_data(self, avg_covered, avg_total):
+        return {
+            "compute": {
+                "summary": {
+                    "avg_coverage_total": (avg_covered / avg_total * 100) if avg_total > 0 else 0,
+                    "avg_hourly_total": avg_total,
+                    "avg_hourly_covered": avg_covered,
+                },
+            }
+        }
+
+    def test_one_shot_purchases_full_gap(self):
+        """With $0 existing commitment, one_shot should purchase the full target."""
+        config = self._base_config(static_commitment=5.0)
+        spending = self._spending_data(avg_covered=0.0, avg_total=100.0)
+        clients = {"ce": Mock(), "savingsplans": Mock()}
+
+        result = calculate_purchase_need_static(config, clients, spending)
+
+        assert len(result) == 1
+        assert result[0]["sp_type"] == "compute"
+        assert result[0]["hourly_commitment"] == pytest.approx(5.0)
+        assert result[0]["strategy"] == "static+one_shot"
+
+    def test_gap_split_halves_gap(self):
+        """Gap split with divider=2 should purchase half the commitment gap."""
+        # Current covered = $14/h on-demand, with 30% savings -> commitment = 14 * 0.7 = $9.8/h
+        # Target = $15/h -> gap = $5.2/h -> divided by 2 = $2.6/h
+        config = self._base_config(
+            static_commitment=15.0,
+            split_strategy_type="gap_split",
+            gap_split_divider=2.0,
+            min_purchase_percent=0.1,
+        )
+        spending = self._spending_data(avg_covered=14.0, avg_total=100.0)
+        clients = {"ce": Mock(), "savingsplans": Mock()}
+
+        result = calculate_purchase_need_static(config, clients, spending)
+
+        assert len(result) == 1
+        assert result[0]["hourly_commitment"] == pytest.approx(2.6)
+
+    def test_already_at_target_skips(self):
+        """No purchase when existing commitment meets target."""
+        # Current covered = $20/h, with 30% savings -> commitment = 20 * 0.7 = $14/h
+        # Target = $10/h -> gap negative -> skip
+        config = self._base_config(static_commitment=10.0)
+        spending = self._spending_data(avg_covered=20.0, avg_total=100.0)
+        clients = {"ce": Mock(), "savingsplans": Mock()}
+
+        result = calculate_purchase_need_static(config, clients, spending)
+
+        assert len(result) == 0
+
+    def test_below_min_commitment_skips(self):
+        config = self._base_config(static_commitment=0.0005, min_commitment_per_plan=0.001)
+        spending = self._spending_data(avg_covered=0.0, avg_total=100.0)
+        clients = {"ce": Mock(), "savingsplans": Mock()}
+
+        result = calculate_purchase_need_static(config, clients, spending)
+
+        assert len(result) == 0
+
+    def test_uses_per_type_savings_percentage(self):
+        """Per-type savings rate should be used for commitment conversion."""
+        # With 40% savings: current_commitment = 10 * 0.6 = $6/h
+        # Target = $10/h -> gap = $4/h
+        config = self._base_config(
+            static_commitment=10.0,
+            compute_savings_percentage=40.0,
+        )
+        spending = self._spending_data(avg_covered=10.0, avg_total=100.0)
+        clients = {"ce": Mock(), "savingsplans": Mock()}
+
+        result = calculate_purchase_need_static(config, clients, spending)
+
+        assert len(result) == 1
+        assert result[0]["hourly_commitment"] == pytest.approx(4.0)
+
+    def test_disabled_sp_type_skipped(self):
+        config = self._base_config(enable_compute_sp=False)
+        spending = self._spending_data(avg_covered=0.0, avg_total=100.0)
+        clients = {"ce": Mock(), "savingsplans": Mock()}
+
+        result = calculate_purchase_need_static(config, clients, spending)
+
+        assert len(result) == 0

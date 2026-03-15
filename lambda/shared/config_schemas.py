@@ -44,6 +44,12 @@ STRATEGY_PARAMS = {
         "default": "85.0",
         "env_var": "PRUDENT_PERCENTAGE",
     },
+    "static_commitment": {
+        "required": False,
+        "type": "float",
+        "default": "0",
+        "env_var": "STATIC_COMMITMENT",
+    },
     "savings_percentage": {
         "required": False,
         "type": "float",

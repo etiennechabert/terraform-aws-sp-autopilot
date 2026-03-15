@@ -15,6 +15,7 @@ from follow_aws_strategy import calculate_purchase_need_follow_aws
 from sp_types import SP_TYPES, get_term
 from split_strategies import calculate_split
 from target_strategies import resolve_target
+from target_strategies.static_target import calculate_purchase_need_static
 
 from shared import sp_calculations
 
@@ -165,6 +166,10 @@ def calculate_purchase_need(
     # AWS target -> short-circuit to follow_aws special path
     if target_strategy == "aws":
         return calculate_purchase_need_follow_aws(config, clients)
+
+    # Static target -> short-circuit, works in $/h commitment space directly
+    if target_strategy == "static":
+        return calculate_purchase_need_static(config, clients, spending_data)
 
     # Fetch actual savings rates from existing SP plans (skips if already in config)
     config = _ensure_savings_rates(config, clients)
