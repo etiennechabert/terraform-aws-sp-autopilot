@@ -146,21 +146,21 @@ jobs:
           fetch-depth: 0  # Full git history for accurate blame and new code detection
 
       - name: Download Scheduler Coverage
-        uses: actions/download-artifact@70fc10c6e5e1ce46ad2ea6f2b72d43f7d47b13c3 # v8
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8
         with:
           name: scheduler-coverage
           path: lambda/scheduler/
         continue-on-error: true
 
       - name: Download Purchaser Coverage
-        uses: actions/download-artifact@70fc10c6e5e1ce46ad2ea6f2b72d43f7d47b13c3 # v8
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8
         with:
           name: purchaser-coverage
           path: lambda/purchaser/
         continue-on-error: true
 
       - name: Download Reporter Coverage
-        uses: actions/download-artifact@70fc10c6e5e1ce46ad2ea6f2b72d43f7d47b13c3 # v8
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8
         with:
           name: reporter-coverage
           path: lambda/reporter/
