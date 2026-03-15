@@ -9,9 +9,9 @@ This example demonstrates the **dynamic target + gap split** strategy, which aut
 The dynamic target uses the **knee-point algorithm** to find the optimal coverage level where marginal savings efficiency starts dropping significantly. This adapts automatically to your workload patterns — no manual coverage target tuning needed.
 
 Available risk levels:
-- `prudent` — Configurable % of min-hourly (default: 90%, very conservative)
-- `min_hourly` — 100% of min-hourly (always-safe baseline)
-- `optimal` — Knee-point (where efficiency drops to 30% of peak)
+- `prudent` — Configurable % of min-hourly (default: 85%, conservative). Best for flat/stable workloads where any usage reduction would cause over-commitment.
+- `min_hourly` — 100% of min-hourly. Good starting point when workloads have some variation (e.g. autoscaling), since the gap between min and max hourly provides a natural margin for change.
+- `optimal` — Knee-point (where efficiency drops to 30% of peak). Makes sense for workloads with significant variation, where spill-over from low-usage hours is offset by savings during high-usage hours.
 - `maximum` — Maximum net savings point
 
 ### Gap Split
@@ -43,7 +43,7 @@ purchase_strategy = {
 - `optimal` (recommended): Best tradeoff between savings and risk
 - `maximum`: Maximizes savings but may over-commit
 - `min_hourly`: Never exceeds your minimum observed usage
-- `prudent`: Very conservative, configurable % of minimum usage (default: 90%, set via `prudent_percentage`)
+- `prudent`: Conservative, configurable % of minimum usage (default: 85%, set via `prudent_percentage`). Ideal for stable workloads with little variation.
 
 **divider**: How much to divide the gap each cycle (required)
 - `2` (recommended): Halves the gap each cycle — good balance of speed and safety

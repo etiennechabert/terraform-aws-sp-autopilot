@@ -297,7 +297,7 @@ def calculate_knee_point(
 
 
 def calculate_strategies(
-    hourly_costs: list[float], savings_percentage: float, prudent_pct: float = 90.0
+    hourly_costs: list[float], savings_percentage: float, prudent_pct: float = 85.0
 ) -> dict[str, float]:
     """
     Calculate all dynamic target strategy levels.
@@ -309,7 +309,7 @@ def calculate_strategies(
     Args:
         hourly_costs: List of hourly costs
         savings_percentage: Savings plan discount percentage (e.g., 30 for 30%)
-        prudent_pct: Percentage of min-hourly to use for prudent strategy (default: 90%)
+        prudent_pct: Percentage of min-hourly to use for prudent strategy (default: 85%)
 
     Returns:
         Dict with keys: prudent, min_hourly, optimal, maximum (all in $/hour)

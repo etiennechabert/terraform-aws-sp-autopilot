@@ -682,8 +682,8 @@
         // Min-Hourly: Baseline only (minimum cost with load factor)
         const minHourly = Math.min(...hourlyCosts);
 
-        // Prudent: 90% of min-hourly (conservative default, configurable via prudent_percentage)
-        const prudent = minHourly * 0.90;
+        // Prudent: 85% of min-hourly (conservative default, configurable via prudent_percentage)
+        const prudent = minHourly * 0.85;
 
         // Optimal: Maximum savings (the peak)
         const optimalResult = CostCalculator.calculateOptimalCoverage(

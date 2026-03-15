@@ -115,10 +115,10 @@ class TestDynamicTarget:
     def test_prudent_percentage_configurable(self):
         """Test that prudent_percentage config controls the prudent strategy level."""
         spending = self._spending_data([100.0, 100.0, 100.0])
-        # With default (90%), prudent should be 90% of min_hourly
+        # With default (85%), prudent should be 85% of min_hourly
         config_default = {"dynamic_risk_level": "prudent", "savings_percentage": 30.0}
         result_default = resolve_dynamic(config_default, spending, sp_type_key="compute")
-        assert result_default == pytest.approx(90.0)
+        assert result_default == pytest.approx(85.0)
 
         # With custom 50%, prudent should be 50% of min_hourly
         config_custom = {
@@ -129,10 +129,10 @@ class TestDynamicTarget:
         result_custom = resolve_dynamic(config_custom, spending, sp_type_key="compute")
         assert result_custom == pytest.approx(50.0)
 
-    def test_prudent_percentage_default_is_90(self):
-        """Test that the default prudent percentage is 90%."""
+    def test_prudent_percentage_default_is_85(self):
+        """Test that the default prudent percentage is 85%."""
         spending = self._spending_data([100.0, 100.0, 100.0])
-        # No prudent_percentage in config, should default to 90%
+        # No prudent_percentage in config, should default to 85%
         config = {"dynamic_risk_level": "prudent", "savings_percentage": 30.0}
         result = resolve_dynamic(config, spending, sp_type_key="compute")
-        assert result == pytest.approx(90.0)
+        assert result == pytest.approx(85.0)

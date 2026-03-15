@@ -1,7 +1,7 @@
 # Dynamic Prudent Target + Fixed Step Split
 #
 # This example demonstrates the dynamic prudent target + fixed_step split strategy:
-# - Target: dynamic prudent (90% of minimum hourly spend)
+# - Target: dynamic prudent (85% of minimum hourly spend)
 # - Split: fixed steps of 10% per cycle
 # - Single AWS account (no Organizations)
 # - Compute Savings Plans only (EC2, Lambda, Fargate)
@@ -31,7 +31,7 @@ module "savings_plans" {
   # Purchase strategy - dynamic prudent target with fixed 10% steps
   purchase_strategy = {
     target = {
-      dynamic = { risk_level = "prudent" } # 90% of minimum hourly spend
+      dynamic = { risk_level = "prudent" } # 85% of minimum hourly spend
     }
 
     split = {

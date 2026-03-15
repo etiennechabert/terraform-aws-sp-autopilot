@@ -26,7 +26,7 @@ variable "purchase_strategy" {
       aws = optional(object({}))
       dynamic = optional(object({
         risk_level         = string
-        prudent_percentage = optional(number, 90)
+        prudent_percentage = optional(number, 85)
       }))
     })
 

@@ -41,7 +41,7 @@ STRATEGY_PARAMS = {
     "prudent_percentage": {
         "required": False,
         "type": "float",
-        "default": "90.0",
+        "default": "85.0",
         "env_var": "PRUDENT_PERCENTAGE",
     },
     "savings_percentage": {

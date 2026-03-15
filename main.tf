@@ -108,11 +108,11 @@ locals {
     ""
   )
 
-  # Prudent percentage (configurable, default 90%)
+  # Prudent percentage (configurable, default 85%)
   prudent_percentage = (
     local.target_strategy_type == "dynamic" ?
     var.purchase_strategy.target.dynamic.prudent_percentage :
-    90
+    85
   )
 
   # Split strategy params
