@@ -21,7 +21,7 @@ class TestResolveTarget:
             resolve_target(config)
 
     def test_fixed_strategy_no_longer_exists(self):
-        config = {"target_strategy_type": "fixed", "coverage_target_percent": 85.0}
+        config = {"target_strategy_type": "fixed"}
         with pytest.raises(ValueError, match="Unknown target strategy 'fixed'"):
             resolve_target(config)
 

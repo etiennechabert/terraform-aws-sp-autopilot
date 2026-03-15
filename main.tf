@@ -98,9 +98,6 @@ locals {
     "one_shot" # unreachable - validation ensures exactly one split is defined
   )
 
-  # Coverage target (dynamic/aws targets resolve at runtime)
-  coverage_target_percent = 90.0
-
   # Dynamic risk level
   dynamic_risk_level = (
     local.target_strategy_type == "dynamic" ?

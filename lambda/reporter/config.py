@@ -69,12 +69,6 @@ CONFIG_SCHEMA = {
         "type": "float",
         "env_var": "LOW_UTILIZATION_THRESHOLD",
     },
-    "coverage_target_percent": {
-        "required": False,
-        "type": "float",
-        "default": "90.0",
-        "env_var": "COVERAGE_TARGET_PERCENT",
-    },
     "min_commitment_per_plan": {
         "required": False,
         "type": "float",

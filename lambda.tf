@@ -28,7 +28,6 @@ resource "aws_lambda_function" "scheduler" {
       ENABLE_COMPUTE_SP               = tostring(local.compute_enabled)
       ENABLE_DATABASE_SP              = tostring(local.database_enabled)
       ENABLE_SAGEMAKER_SP             = tostring(local.sagemaker_enabled)
-      COVERAGE_TARGET_PERCENT         = tostring(local.coverage_target_percent)
       TARGET_STRATEGY_TYPE            = local.target_strategy_type
       SPLIT_STRATEGY_TYPE             = local.split_strategy_type
       DYNAMIC_RISK_LEVEL              = local.dynamic_risk_level
@@ -132,7 +131,6 @@ resource "aws_lambda_function" "reporter" {
       ENABLE_COMPUTE_SP               = tostring(local.compute_enabled)
       ENABLE_DATABASE_SP              = tostring(local.database_enabled)
       ENABLE_SAGEMAKER_SP             = tostring(local.sagemaker_enabled)
-      COVERAGE_TARGET_PERCENT         = tostring(local.coverage_target_percent)
       TARGET_STRATEGY_TYPE            = local.target_strategy_type
       SPLIT_STRATEGY_TYPE             = local.split_strategy_type
       DYNAMIC_RISK_LEVEL              = local.dynamic_risk_level

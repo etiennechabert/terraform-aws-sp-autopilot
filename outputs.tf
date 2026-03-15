@@ -148,7 +148,6 @@ output "module_configuration" {
     sagemaker_sp_enabled = local.sagemaker_enabled
     sagemaker_sp_term    = local.sagemaker_term
     sagemaker_sp_payment = local.sagemaker_payment_option
-    coverage_target      = local.coverage_target_percent
     scheduler_schedule   = local.scheduler_schedule
     purchaser_schedule   = local.purchaser_schedule
     notification_emails  = length(local.notification_emails)

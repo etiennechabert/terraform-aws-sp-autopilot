@@ -23,12 +23,6 @@ CONFIG_SCHEMA = {
     "queue_url": {"required": True, "type": "str", "env_var": "QUEUE_URL"},
     "sns_topic_arn": {"required": True, "type": "str", "env_var": "SNS_TOPIC_ARN"},
     **SP_TYPE_TOGGLES,
-    "coverage_target_percent": {
-        "required": False,
-        "type": "float",
-        "default": "90",
-        "env_var": "COVERAGE_TARGET_PERCENT",
-    },
     **STRATEGY_PARAMS,
     "renewal_window_days": {
         "required": False,

@@ -277,7 +277,7 @@ def validate_scheduler_config(config: dict[str, Any]) -> None:
     _validate_sp_types_enabled(config)
 
     # Validate percentage fields
-    for field in ["coverage_target_percent", "max_purchase_percent", "min_purchase_percent"]:
+    for field in ["max_purchase_percent", "min_purchase_percent"]:
         if field in config:
             _validate_percentage_range(config[field], field)
 
