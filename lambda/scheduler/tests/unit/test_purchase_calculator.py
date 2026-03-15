@@ -49,6 +49,7 @@ def fixed_gap_split_config():
         "compute_sp_term": "THREE_YEAR",
         "savings_percentage": 30.0,
         "lookback_hours": 336,
+        "dynamic_risk_level": "min_hourly",
     }
 
 
@@ -269,7 +270,7 @@ def test_fixed_gap_split_basic(fixed_gap_split_config):
     # commitment = avg_hourly(10) * purchase_pct(20%) * (1 - savings(30%)) = 1.4
     assert len(result) == 1
     assert result[0]["sp_type"] == "compute"
-    assert result[0]["strategy"] == "fixed+gap_split"
+    assert result[0]["strategy"] == "dynamic+gap_split"
     assert result[0]["purchase_percent"] == pytest.approx(20.0)
     assert result[0]["hourly_commitment"] == pytest.approx(1.4, abs=0.1)
 
@@ -369,6 +370,7 @@ def test_fixed_gap_split_multiple_sp_types():
         "sagemaker_sp_term": "THREE_YEAR",
         "savings_percentage": 30.0,
         "lookback_hours": 336,
+        "dynamic_risk_level": "min_hourly",
     }
 
     spending_data = {
@@ -434,6 +436,7 @@ def test_fixed_fixed_step_basic():
         "compute_sp_term": "THREE_YEAR",
         "savings_percentage": 30.0,
         "lookback_hours": 336,
+        "dynamic_risk_level": "min_hourly",
     }
 
     spending_data = {
@@ -452,6 +455,6 @@ def test_fixed_fixed_step_basic():
     # Gap is 40%, step is 10% → purchase 10%
     # commitment = avg_hourly(100) * purchase_pct(10%) * (1 - savings(30%)) = 7
     assert len(result) == 1
-    assert result[0]["strategy"] == "fixed+fixed_step"
+    assert result[0]["strategy"] == "dynamic+fixed_step"
     assert result[0]["purchase_percent"] == pytest.approx(10.0)
     assert result[0]["hourly_commitment"] == pytest.approx(7.0)
