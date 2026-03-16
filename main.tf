@@ -86,6 +86,7 @@ locals {
 
   target_strategy_type = (
     var.purchase_strategy.target.aws != null ? "aws" :
+    var.purchase_strategy.target.static != null ? "static" :
     "dynamic"
   )
 
@@ -110,6 +111,13 @@ locals {
     local.target_strategy_type == "dynamic" ?
     var.purchase_strategy.target.dynamic.prudent_percentage :
     85
+  )
+
+  # Static commitment target ($/h)
+  static_commitment = (
+    local.target_strategy_type == "static" ?
+    var.purchase_strategy.target.static.commitment :
+    0
   )
 
   # Split strategy params

@@ -28,6 +28,9 @@ variable "purchase_strategy" {
         risk_level         = string
         prudent_percentage = optional(number, 85)
       }))
+      static = optional(object({
+        commitment = number
+      }))
     })
 
     split = optional(object({
