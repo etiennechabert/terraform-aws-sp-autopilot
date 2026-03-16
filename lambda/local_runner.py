@@ -79,7 +79,7 @@ class MockContext:
         self.aws_request_id = f"local-request-{function_name}"
 
 
-def run_scheduler(args):
+def run_scheduler(_args):
     """Run the Scheduler Lambda locally."""
     print("\n" + "=" * 60)
     print("Running Scheduler Lambda in LOCAL mode")

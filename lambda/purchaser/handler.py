@@ -244,7 +244,7 @@ def get_ce_coverage(
     ce_client: CostExplorerClient,
     start_time: datetime,
     end_time: datetime,
-    config: dict[str, Any],
+    _config: dict[str, Any],
 ) -> dict[str, Any]:
     """
     Get Savings Plans coverage from Cost Explorer.
