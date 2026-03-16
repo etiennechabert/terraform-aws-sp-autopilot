@@ -47,6 +47,9 @@ variable "purchase_strategy" {
         risk_level         = string
         prudent_percentage = optional(number, 85)
       }))
+      static = optional(object({
+        commitment = number # Target hourly commitment in $/h
+      }))
     })
 
     split = object({
@@ -80,10 +83,9 @@ variable "purchase_strategy" {
   # Exactly one target must be defined
   validation {
     condition = (
-      (var.purchase_strategy.target.aws != null && var.purchase_strategy.target.dynamic == null) ||
-      (var.purchase_strategy.target.aws == null && var.purchase_strategy.target.dynamic != null)
+      length([for k in ["aws", "dynamic", "static"] : k if lookup(var.purchase_strategy.target, k, null) != null]) == 1
     )
-    error_message = "Exactly one target strategy (aws or dynamic) must be defined."
+    error_message = "Exactly one target strategy (aws, dynamic, or static) must be defined."
   }
 
   # Exactly one split must be defined
@@ -104,6 +106,16 @@ variable "purchase_strategy" {
       true
     )
     error_message = "dynamic.prudent_percentage must be between 1 and 100."
+  }
+
+  # static.commitment validation
+  validation {
+    condition = (
+      var.purchase_strategy.target.static != null ?
+      var.purchase_strategy.target.static.commitment > 0 :
+      true
+    )
+    error_message = "static.commitment must be greater than 0."
   }
 
   # dynamic.risk_level validation
