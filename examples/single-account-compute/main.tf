@@ -1,7 +1,7 @@
-# Fixed Target + Fixed Step Split
+# Dynamic Prudent Target + Fixed Step Split
 #
-# This example demonstrates the fixed target + fixed_step split strategy:
-# - Target: fixed at 100% coverage
+# This example demonstrates the dynamic prudent target + fixed_step split strategy:
+# - Target: dynamic prudent (85% of minimum hourly spend)
 # - Split: fixed steps of 10% per cycle
 # - Single AWS account (no Organizations)
 # - Compute Savings Plans only (EC2, Lambda, Fargate)
@@ -28,10 +28,10 @@ module "savings_plans" {
   # Resource naming (can be overridden for testing)
   name_prefix = var.name_prefix
 
-  # Purchase strategy - fixed target at 100% with fixed 10% steps
+  # Purchase strategy - dynamic prudent target with fixed 10% steps
   purchase_strategy = {
     target = {
-      fixed = { coverage_percent = 100 } # Target 100% coverage
+      dynamic = { risk_level = "prudent" } # 85% of minimum hourly spend
     }
 
     split = {

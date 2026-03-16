@@ -528,9 +528,9 @@ def test_handler_local_mode_auto_open(monkeypatch, mock_clients, aws_mock_builde
 
 
 def test_handler_with_scheduler_preview_fixed_strategy(monkeypatch, mock_clients, aws_mock_builder):
-    """Test scheduler preview with fixed strategy integration."""
+    """Test scheduler preview with dynamic strategy integration."""
     # Set scheduler strategy environment variables
-    monkeypatch.setenv("TARGET_STRATEGY_TYPE", "fixed")
+    monkeypatch.setenv("TARGET_STRATEGY_TYPE", "dynamic")
     monkeypatch.setenv("SPLIT_STRATEGY_TYPE", "fixed_step")
     monkeypatch.setenv("FIXED_STEP_PERCENT", "10")
     monkeypatch.setenv("MAX_PURCHASE_PERCENT", "10")
@@ -606,7 +606,7 @@ def test_handler_with_scheduler_preview_gap_split_strategy(
     monkeypatch, mock_clients, aws_mock_builder
 ):
     """Test scheduler preview with gap_split strategy integration."""
-    monkeypatch.setenv("TARGET_STRATEGY_TYPE", "fixed")
+    monkeypatch.setenv("TARGET_STRATEGY_TYPE", "dynamic")
     monkeypatch.setenv("SPLIT_STRATEGY_TYPE", "gap_split")
     monkeypatch.setenv("GAP_SPLIT_DIVIDER", "2.0")
     monkeypatch.setenv("MAX_PURCHASE_PERCENT", "50")

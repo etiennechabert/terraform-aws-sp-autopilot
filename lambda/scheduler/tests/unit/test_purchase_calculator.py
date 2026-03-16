@@ -18,7 +18,6 @@ def aws_config():
         "enable_sagemaker_sp": True,
         "target_strategy_type": "aws",
         "split_strategy_type": "one_shot",
-        "coverage_target_percent": 90.0,
         "max_purchase_percent": 10.0,
         "min_commitment_per_plan": 0.001,
         "lookback_hours": 336,
@@ -38,9 +37,8 @@ def fixed_gap_split_config():
         "enable_compute_sp": True,
         "enable_database_sp": False,
         "enable_sagemaker_sp": False,
-        "target_strategy_type": "fixed",
+        "target_strategy_type": "dynamic",
         "split_strategy_type": "gap_split",
-        "coverage_target_percent": 90.0,
         "gap_split_divider": 2.0,
         "max_purchase_percent": 50.0,
         "min_purchase_percent": 1.0,
@@ -49,6 +47,7 @@ def fixed_gap_split_config():
         "compute_sp_term": "THREE_YEAR",
         "savings_percentage": 30.0,
         "lookback_hours": 336,
+        "dynamic_risk_level": "min_hourly",
     }
 
 
@@ -269,7 +268,7 @@ def test_fixed_gap_split_basic(fixed_gap_split_config):
     # commitment = avg_hourly(10) * purchase_pct(20%) * (1 - savings(30%)) = 1.4
     assert len(result) == 1
     assert result[0]["sp_type"] == "compute"
-    assert result[0]["strategy"] == "fixed+gap_split"
+    assert result[0]["strategy"] == "dynamic+gap_split"
     assert result[0]["purchase_percent"] == pytest.approx(20.0)
     assert result[0]["hourly_commitment"] == pytest.approx(1.4, abs=0.1)
 
@@ -355,9 +354,8 @@ def test_fixed_gap_split_multiple_sp_types():
         "enable_compute_sp": True,
         "enable_database_sp": True,
         "enable_sagemaker_sp": True,
-        "target_strategy_type": "fixed",
+        "target_strategy_type": "dynamic",
         "split_strategy_type": "gap_split",
-        "coverage_target_percent": 90.0,
         "gap_split_divider": 2.0,
         "max_purchase_percent": 50.0,
         "min_purchase_percent": 1.0,
@@ -369,6 +367,7 @@ def test_fixed_gap_split_multiple_sp_types():
         "sagemaker_sp_term": "THREE_YEAR",
         "savings_percentage": 30.0,
         "lookback_hours": 336,
+        "dynamic_risk_level": "min_hourly",
     }
 
     spending_data = {
@@ -424,9 +423,8 @@ def test_fixed_fixed_step_basic():
         "enable_compute_sp": True,
         "enable_database_sp": False,
         "enable_sagemaker_sp": False,
-        "target_strategy_type": "fixed",
+        "target_strategy_type": "dynamic",
         "split_strategy_type": "fixed_step",
-        "coverage_target_percent": 90.0,
         "fixed_step_percent": 10.0,
         "max_purchase_percent": 10.0,
         "min_commitment_per_plan": 0.001,
@@ -434,6 +432,7 @@ def test_fixed_fixed_step_basic():
         "compute_sp_term": "THREE_YEAR",
         "savings_percentage": 30.0,
         "lookback_hours": 336,
+        "dynamic_risk_level": "min_hourly",
     }
 
     spending_data = {
@@ -452,6 +451,6 @@ def test_fixed_fixed_step_basic():
     # Gap is 40%, step is 10% → purchase 10%
     # commitment = avg_hourly(100) * purchase_pct(10%) * (1 - savings(30%)) = 7
     assert len(result) == 1
-    assert result[0]["strategy"] == "fixed+fixed_step"
+    assert result[0]["strategy"] == "dynamic+fixed_step"
     assert result[0]["purchase_percent"] == pytest.approx(10.0)
     assert result[0]["hourly_commitment"] == pytest.approx(7.0)

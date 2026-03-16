@@ -15,7 +15,7 @@ BASE_CONFIG = {
 
 class TestStrategyValidation:
     def test_valid_target_strategies(self):
-        for strategy in ["fixed", "aws", "dynamic"]:
+        for strategy in ["aws", "dynamic"]:
             config = {**BASE_CONFIG, "target_strategy_type": strategy}
             if strategy == "dynamic":
                 config["dynamic_risk_level"] = "optimal"

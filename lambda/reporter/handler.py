@@ -160,7 +160,6 @@ def handler(event: dict[str, Any], context: Any) -> dict[str, Any]:
             "savings_data": reorder_savings_data(savings_data),
             "config": {
                 "lookback_hours": config["lookback_hours"],
-                "coverage_target_percent": config["coverage_target_percent"],
                 "enable_compute_sp": config["enable_compute_sp"],
                 "enable_database_sp": config["enable_database_sp"],
                 "enable_sagemaker_sp": config["enable_sagemaker_sp"],

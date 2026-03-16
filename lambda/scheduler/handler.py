@@ -7,7 +7,7 @@ This Lambda:
 1. Purges existing queue messages
 2. Calculates current coverage (excluding plans expiring within renewal_window_days)
 3. Gets AWS purchase recommendations
-4. Calculates purchase need based on coverage_target_percent and selected strategy
+4. Calculates purchase need based on selected target + split strategy
 5. Applies purchase limits (min_commitment_per_plan)
 6. Queues purchase intents to SQS
 7. Sends notification email with analysis results
