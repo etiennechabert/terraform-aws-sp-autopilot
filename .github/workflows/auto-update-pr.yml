@@ -39,7 +39,7 @@ jobs:
           git config --global user.email "github-actions[bot]@users.noreply.github.com"
 
           # Get all open PRs
-          prs=$(gh pr list --state open --json number,headRefName --jq '.[] | "\(.number):\(.headRefName)"')
+          prs=$(gh pr list --state open --json number,headRefName,isDraft --jq '.[] | select(.isDraft | not) | "\(.number):\(.headRefName)"')
 
           if [ -z "$prs" ]; then
             echo "No open PRs found"
