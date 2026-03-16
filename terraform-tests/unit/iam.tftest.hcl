@@ -21,6 +21,28 @@ mock_provider "aws" {
   }
 }
 
+variables {
+  purchase_strategy = {
+    target = {
+      dynamic = { risk_level = "prudent" }
+    }
+    split = {
+      fixed_step = { step_percent = 5 }
+    }
+  }
+  sp_plans = {
+    compute = {
+      enabled   = true
+      plan_type = "all_upfront_one_year"
+    }
+    database  = { enabled = false }
+    sagemaker = { enabled = false }
+  }
+  notifications = {
+    emails = ["test@example.com"]
+  }
+}
+
 # ============================================================================
 # Scheduler Lambda IAM Role Tests
 # ============================================================================
@@ -28,28 +50,6 @@ mock_provider "aws" {
 # Test: Scheduler IAM role naming follows expected pattern
 run "test_scheduler_role_naming" {
   command = plan
-
-  variables {
-    purchase_strategy = {
-      target = {
-        dynamic = { risk_level = "prudent" }
-      }
-      split = {
-        fixed_step = { step_percent = 5 }
-      }
-    }
-    sp_plans = {
-      compute = {
-        enabled   = true
-        plan_type = "all_upfront_one_year"
-      }
-      database  = { enabled = false }
-      sagemaker = { enabled = false }
-    }
-    notifications = {
-      emails = ["test@example.com"]
-    }
-  }
 
   assert {
     condition     = aws_iam_role.scheduler[0].name == "sp-autopilot-scheduler"
@@ -65,28 +65,6 @@ run "test_scheduler_role_naming" {
 # Test: Scheduler IAM role assume role policy
 run "test_scheduler_role_assume_policy" {
   command = plan
-
-  variables {
-    purchase_strategy = {
-      target = {
-        dynamic = { risk_level = "prudent" }
-      }
-      split = {
-        fixed_step = { step_percent = 5 }
-      }
-    }
-    sp_plans = {
-      compute = {
-        enabled   = true
-        plan_type = "all_upfront_one_year"
-      }
-      database  = { enabled = false }
-      sagemaker = { enabled = false }
-    }
-    notifications = {
-      emails = ["test@example.com"]
-    }
-  }
 
   assert {
     condition     = can(jsondecode(aws_iam_role.scheduler[0].assume_role_policy))
@@ -109,25 +87,6 @@ run "test_scheduler_role_tags" {
   command = plan
 
   variables {
-    purchase_strategy = {
-      target = {
-        dynamic = { risk_level = "prudent" }
-      }
-      split = {
-        fixed_step = { step_percent = 5 }
-      }
-    }
-    sp_plans = {
-      compute = {
-        enabled   = true
-        plan_type = "all_upfront_one_year"
-      }
-      database  = { enabled = false }
-      sagemaker = { enabled = false }
-    }
-    notifications = {
-      emails = ["test@example.com"]
-    }
     tags = {
       Environment = "test"
       Owner       = "platform-team"
@@ -159,28 +118,6 @@ run "test_scheduler_role_tags" {
 run "test_scheduler_cloudwatch_logs_policy" {
   command = plan
 
-  variables {
-    purchase_strategy = {
-      target = {
-        dynamic = { risk_level = "prudent" }
-      }
-      split = {
-        fixed_step = { step_percent = 5 }
-      }
-    }
-    sp_plans = {
-      compute = {
-        enabled   = true
-        plan_type = "all_upfront_one_year"
-      }
-      database  = { enabled = false }
-      sagemaker = { enabled = false }
-    }
-    notifications = {
-      emails = ["test@example.com"]
-    }
-  }
-
   assert {
     condition     = aws_iam_role_policy.scheduler_cloudwatch_logs[0].name == "cloudwatch-logs"
     error_message = "Scheduler CloudWatch Logs policy should have correct name"
@@ -198,28 +135,6 @@ run "test_scheduler_cloudwatch_logs_policy" {
 run "test_scheduler_cost_explorer_policy" {
   command = plan
 
-  variables {
-    purchase_strategy = {
-      target = {
-        dynamic = { risk_level = "prudent" }
-      }
-      split = {
-        fixed_step = { step_percent = 5 }
-      }
-    }
-    sp_plans = {
-      compute = {
-        enabled   = true
-        plan_type = "all_upfront_one_year"
-      }
-      database  = { enabled = false }
-      sagemaker = { enabled = false }
-    }
-    notifications = {
-      emails = ["test@example.com"]
-    }
-  }
-
   assert {
     condition     = aws_iam_role_policy.scheduler_cost_explorer[0].name == "cost-explorer"
     error_message = "Scheduler Cost Explorer policy should have correct name"
@@ -235,28 +150,6 @@ run "test_scheduler_cost_explorer_policy" {
 # Test: Scheduler SQS policy
 run "test_scheduler_sqs_policy" {
   command = plan
-
-  variables {
-    purchase_strategy = {
-      target = {
-        dynamic = { risk_level = "prudent" }
-      }
-      split = {
-        fixed_step = { step_percent = 5 }
-      }
-    }
-    sp_plans = {
-      compute = {
-        enabled   = true
-        plan_type = "all_upfront_one_year"
-      }
-      database  = { enabled = false }
-      sagemaker = { enabled = false }
-    }
-    notifications = {
-      emails = ["test@example.com"]
-    }
-  }
 
   assert {
     condition     = aws_iam_role_policy.scheduler_sqs[0].name == "sqs"
@@ -274,28 +167,6 @@ run "test_scheduler_sqs_policy" {
 run "test_scheduler_sns_policy" {
   command = plan
 
-  variables {
-    purchase_strategy = {
-      target = {
-        dynamic = { risk_level = "prudent" }
-      }
-      split = {
-        fixed_step = { step_percent = 5 }
-      }
-    }
-    sp_plans = {
-      compute = {
-        enabled   = true
-        plan_type = "all_upfront_one_year"
-      }
-      database  = { enabled = false }
-      sagemaker = { enabled = false }
-    }
-    notifications = {
-      emails = ["test@example.com"]
-    }
-  }
-
   assert {
     condition     = aws_iam_role_policy.scheduler_sns[0].name == "sns"
     error_message = "Scheduler SNS policy should have correct name"
@@ -311,28 +182,6 @@ run "test_scheduler_sns_policy" {
 # Test: Scheduler Savings Plans policy
 run "test_scheduler_savingsplans_policy" {
   command = plan
-
-  variables {
-    purchase_strategy = {
-      target = {
-        dynamic = { risk_level = "prudent" }
-      }
-      split = {
-        fixed_step = { step_percent = 5 }
-      }
-    }
-    sp_plans = {
-      compute = {
-        enabled   = true
-        plan_type = "all_upfront_one_year"
-      }
-      database  = { enabled = false }
-      sagemaker = { enabled = false }
-    }
-    notifications = {
-      emails = ["test@example.com"]
-    }
-  }
 
   assert {
     condition     = aws_iam_role_policy.scheduler_savingsplans[0].name == "savingsplans"
@@ -351,25 +200,6 @@ run "test_scheduler_assume_role_policy_not_created" {
   command = plan
 
   variables {
-    purchase_strategy = {
-      target = {
-        dynamic = { risk_level = "prudent" }
-      }
-      split = {
-        fixed_step = { step_percent = 5 }
-      }
-    }
-    sp_plans = {
-      compute = {
-        enabled   = true
-        plan_type = "all_upfront_one_year"
-      }
-      database  = { enabled = false }
-      sagemaker = { enabled = false }
-    }
-    notifications = {
-      emails = ["test@example.com"]
-    }
     lambda_config = {
       scheduler = {
         assume_role_arn = null
@@ -394,25 +224,6 @@ run "test_scheduler_assume_role_policy_created" {
   command = plan
 
   variables {
-    purchase_strategy = {
-      target = {
-        dynamic = { risk_level = "prudent" }
-      }
-      split = {
-        fixed_step = { step_percent = 5 }
-      }
-    }
-    sp_plans = {
-      compute = {
-        enabled   = true
-        plan_type = "all_upfront_one_year"
-      }
-      database  = { enabled = false }
-      sagemaker = { enabled = false }
-    }
-    notifications = {
-      emails = ["test@example.com"]
-    }
     lambda_config = {
       scheduler = {
         assume_role_arn = "arn:aws:iam::999888777666:role/OrganizationAccountAccessRole"
@@ -460,28 +271,6 @@ run "test_scheduler_assume_role_policy_created" {
 run "test_purchaser_role_naming" {
   command = plan
 
-  variables {
-    purchase_strategy = {
-      target = {
-        dynamic = { risk_level = "prudent" }
-      }
-      split = {
-        fixed_step = { step_percent = 5 }
-      }
-    }
-    sp_plans = {
-      compute = {
-        enabled   = true
-        plan_type = "all_upfront_one_year"
-      }
-      database  = { enabled = false }
-      sagemaker = { enabled = false }
-    }
-    notifications = {
-      emails = ["test@example.com"]
-    }
-  }
-
   assert {
     condition     = aws_iam_role.purchaser[0].name == "sp-autopilot-purchaser"
     error_message = "Purchaser IAM role name should follow pattern: sp-autopilot-purchaser"
@@ -496,28 +285,6 @@ run "test_purchaser_role_naming" {
 # Test: Purchaser IAM role assume role policy
 run "test_purchaser_role_assume_policy" {
   command = plan
-
-  variables {
-    purchase_strategy = {
-      target = {
-        dynamic = { risk_level = "prudent" }
-      }
-      split = {
-        fixed_step = { step_percent = 5 }
-      }
-    }
-    sp_plans = {
-      compute = {
-        enabled   = true
-        plan_type = "all_upfront_one_year"
-      }
-      database  = { enabled = false }
-      sagemaker = { enabled = false }
-    }
-    notifications = {
-      emails = ["test@example.com"]
-    }
-  }
 
   assert {
     condition     = can(jsondecode(aws_iam_role.purchaser[0].assume_role_policy))
@@ -540,25 +307,6 @@ run "test_purchaser_role_tags" {
   command = plan
 
   variables {
-    purchase_strategy = {
-      target = {
-        dynamic = { risk_level = "prudent" }
-      }
-      split = {
-        fixed_step = { step_percent = 5 }
-      }
-    }
-    sp_plans = {
-      compute = {
-        enabled   = true
-        plan_type = "all_upfront_one_year"
-      }
-      database  = { enabled = false }
-      sagemaker = { enabled = false }
-    }
-    notifications = {
-      emails = ["test@example.com"]
-    }
     tags = {
       Environment = "test"
       Owner       = "platform-team"
@@ -589,28 +337,6 @@ run "test_purchaser_role_tags" {
 # Test: Purchaser CloudWatch Logs policy
 run "test_purchaser_cloudwatch_logs_policy" {
   command = plan
-
-  variables {
-    purchase_strategy = {
-      target = {
-        dynamic = { risk_level = "prudent" }
-      }
-      split = {
-        fixed_step = { step_percent = 5 }
-      }
-    }
-    sp_plans = {
-      compute = {
-        enabled   = true
-        plan_type = "all_upfront_one_year"
-      }
-      database  = { enabled = false }
-      sagemaker = { enabled = false }
-    }
-    notifications = {
-      emails = ["test@example.com"]
-    }
-  }
 
   override_resource {
     override_during = plan
@@ -648,28 +374,6 @@ run "test_purchaser_cloudwatch_logs_policy" {
 run "test_purchaser_cost_explorer_policy" {
   command = plan
 
-  variables {
-    purchase_strategy = {
-      target = {
-        dynamic = { risk_level = "prudent" }
-      }
-      split = {
-        fixed_step = { step_percent = 5 }
-      }
-    }
-    sp_plans = {
-      compute = {
-        enabled   = true
-        plan_type = "all_upfront_one_year"
-      }
-      database  = { enabled = false }
-      sagemaker = { enabled = false }
-    }
-    notifications = {
-      emails = ["test@example.com"]
-    }
-  }
-
   assert {
     condition     = aws_iam_role_policy.purchaser_cost_explorer[0].name == "cost-explorer"
     error_message = "Purchaser Cost Explorer policy should have correct name"
@@ -690,28 +394,6 @@ run "test_purchaser_cost_explorer_policy" {
 run "test_purchaser_sqs_policy" {
   command = plan
 
-  variables {
-    purchase_strategy = {
-      target = {
-        dynamic = { risk_level = "prudent" }
-      }
-      split = {
-        fixed_step = { step_percent = 5 }
-      }
-    }
-    sp_plans = {
-      compute = {
-        enabled   = true
-        plan_type = "all_upfront_one_year"
-      }
-      database  = { enabled = false }
-      sagemaker = { enabled = false }
-    }
-    notifications = {
-      emails = ["test@example.com"]
-    }
-  }
-
   assert {
     condition     = aws_iam_role_policy.purchaser_sqs[0].name == "sqs"
     error_message = "Purchaser SQS policy should have correct name"
@@ -726,28 +408,6 @@ run "test_purchaser_sqs_policy" {
 run "test_purchaser_sns_policy" {
   command = plan
 
-  variables {
-    purchase_strategy = {
-      target = {
-        dynamic = { risk_level = "prudent" }
-      }
-      split = {
-        fixed_step = { step_percent = 5 }
-      }
-    }
-    sp_plans = {
-      compute = {
-        enabled   = true
-        plan_type = "all_upfront_one_year"
-      }
-      database  = { enabled = false }
-      sagemaker = { enabled = false }
-    }
-    notifications = {
-      emails = ["test@example.com"]
-    }
-  }
-
   assert {
     condition     = aws_iam_role_policy.purchaser_sns[0].name == "sns"
     error_message = "Purchaser SNS policy should have correct name"
@@ -760,28 +420,6 @@ run "test_purchaser_sns_policy" {
 # Test: Purchaser Savings Plans policy
 run "test_purchaser_savingsplans_policy" {
   command = plan
-
-  variables {
-    purchase_strategy = {
-      target = {
-        dynamic = { risk_level = "prudent" }
-      }
-      split = {
-        fixed_step = { step_percent = 5 }
-      }
-    }
-    sp_plans = {
-      compute = {
-        enabled   = true
-        plan_type = "all_upfront_one_year"
-      }
-      database  = { enabled = false }
-      sagemaker = { enabled = false }
-    }
-    notifications = {
-      emails = ["test@example.com"]
-    }
-  }
 
   assert {
     condition     = aws_iam_role_policy.purchaser_savingsplans[0].name == "savingsplans"
@@ -809,25 +447,6 @@ run "test_purchaser_assume_role_policy_not_created" {
   command = plan
 
   variables {
-    purchase_strategy = {
-      target = {
-        dynamic = { risk_level = "prudent" }
-      }
-      split = {
-        fixed_step = { step_percent = 5 }
-      }
-    }
-    sp_plans = {
-      compute = {
-        enabled   = true
-        plan_type = "all_upfront_one_year"
-      }
-      database  = { enabled = false }
-      sagemaker = { enabled = false }
-    }
-    notifications = {
-      emails = ["test@example.com"]
-    }
     lambda_config = {
       scheduler = {
         assume_role_arn = null
@@ -852,25 +471,6 @@ run "test_purchaser_assume_role_policy_created" {
   command = plan
 
   variables {
-    purchase_strategy = {
-      target = {
-        dynamic = { risk_level = "prudent" }
-      }
-      split = {
-        fixed_step = { step_percent = 5 }
-      }
-    }
-    sp_plans = {
-      compute = {
-        enabled   = true
-        plan_type = "all_upfront_one_year"
-      }
-      database  = { enabled = false }
-      sagemaker = { enabled = false }
-    }
-    notifications = {
-      emails = ["test@example.com"]
-    }
     lambda_config = {
       scheduler = {
         assume_role_arn = "arn:aws:iam::999888777666:role/OrganizationAccountAccessRole"
@@ -918,28 +518,6 @@ run "test_purchaser_assume_role_policy_created" {
 run "test_reporter_role_naming" {
   command = plan
 
-  variables {
-    purchase_strategy = {
-      target = {
-        dynamic = { risk_level = "prudent" }
-      }
-      split = {
-        fixed_step = { step_percent = 5 }
-      }
-    }
-    sp_plans = {
-      compute = {
-        enabled   = true
-        plan_type = "all_upfront_one_year"
-      }
-      database  = { enabled = false }
-      sagemaker = { enabled = false }
-    }
-    notifications = {
-      emails = ["test@example.com"]
-    }
-  }
-
   assert {
     condition     = aws_iam_role.reporter[0].name == "sp-autopilot-reporter"
     error_message = "Reporter IAM role name should follow pattern: sp-autopilot-reporter"
@@ -954,28 +532,6 @@ run "test_reporter_role_naming" {
 # Test: Reporter IAM role assume role policy
 run "test_reporter_role_assume_policy" {
   command = plan
-
-  variables {
-    purchase_strategy = {
-      target = {
-        dynamic = { risk_level = "prudent" }
-      }
-      split = {
-        fixed_step = { step_percent = 5 }
-      }
-    }
-    sp_plans = {
-      compute = {
-        enabled   = true
-        plan_type = "all_upfront_one_year"
-      }
-      database  = { enabled = false }
-      sagemaker = { enabled = false }
-    }
-    notifications = {
-      emails = ["test@example.com"]
-    }
-  }
 
   assert {
     condition     = can(jsondecode(aws_iam_role.reporter[0].assume_role_policy))
@@ -998,25 +554,6 @@ run "test_reporter_role_tags" {
   command = plan
 
   variables {
-    purchase_strategy = {
-      target = {
-        dynamic = { risk_level = "prudent" }
-      }
-      split = {
-        fixed_step = { step_percent = 5 }
-      }
-    }
-    sp_plans = {
-      compute = {
-        enabled   = true
-        plan_type = "all_upfront_one_year"
-      }
-      database  = { enabled = false }
-      sagemaker = { enabled = false }
-    }
-    notifications = {
-      emails = ["test@example.com"]
-    }
     tags = {
       Environment = "test"
       Owner       = "platform-team"
@@ -1048,28 +585,6 @@ run "test_reporter_role_tags" {
 run "test_reporter_cloudwatch_logs_policy" {
   command = plan
 
-  variables {
-    purchase_strategy = {
-      target = {
-        dynamic = { risk_level = "prudent" }
-      }
-      split = {
-        fixed_step = { step_percent = 5 }
-      }
-    }
-    sp_plans = {
-      compute = {
-        enabled   = true
-        plan_type = "all_upfront_one_year"
-      }
-      database  = { enabled = false }
-      sagemaker = { enabled = false }
-    }
-    notifications = {
-      emails = ["test@example.com"]
-    }
-  }
-
   assert {
     condition     = aws_iam_role_policy.reporter_cloudwatch_logs[0].name == "cloudwatch-logs"
     error_message = "Reporter CloudWatch Logs policy should have correct name"
@@ -1082,28 +597,6 @@ run "test_reporter_cloudwatch_logs_policy" {
 # Test: Reporter Cost Explorer policy
 run "test_reporter_cost_explorer_policy" {
   command = plan
-
-  variables {
-    purchase_strategy = {
-      target = {
-        dynamic = { risk_level = "prudent" }
-      }
-      split = {
-        fixed_step = { step_percent = 5 }
-      }
-    }
-    sp_plans = {
-      compute = {
-        enabled   = true
-        plan_type = "all_upfront_one_year"
-      }
-      database  = { enabled = false }
-      sagemaker = { enabled = false }
-    }
-    notifications = {
-      emails = ["test@example.com"]
-    }
-  }
 
   assert {
     condition     = aws_iam_role_policy.reporter_cost_explorer[0].name == "cost-explorer"
@@ -1125,28 +618,6 @@ run "test_reporter_cost_explorer_policy" {
 run "test_reporter_s3_policy" {
   command = plan
 
-  variables {
-    purchase_strategy = {
-      target = {
-        dynamic = { risk_level = "prudent" }
-      }
-      split = {
-        fixed_step = { step_percent = 5 }
-      }
-    }
-    sp_plans = {
-      compute = {
-        enabled   = true
-        plan_type = "all_upfront_one_year"
-      }
-      database  = { enabled = false }
-      sagemaker = { enabled = false }
-    }
-    notifications = {
-      emails = ["test@example.com"]
-    }
-  }
-
   assert {
     condition     = aws_iam_role_policy.reporter_s3[0].name == "s3"
     error_message = "Reporter S3 policy should have correct name"
@@ -1160,28 +631,6 @@ run "test_reporter_s3_policy" {
 run "test_reporter_sns_policy" {
   command = plan
 
-  variables {
-    purchase_strategy = {
-      target = {
-        dynamic = { risk_level = "prudent" }
-      }
-      split = {
-        fixed_step = { step_percent = 5 }
-      }
-    }
-    sp_plans = {
-      compute = {
-        enabled   = true
-        plan_type = "all_upfront_one_year"
-      }
-      database  = { enabled = false }
-      sagemaker = { enabled = false }
-    }
-    notifications = {
-      emails = ["test@example.com"]
-    }
-  }
-
   assert {
     condition     = aws_iam_role_policy.reporter_sns[0].name == "sns"
     error_message = "Reporter SNS policy should have correct name"
@@ -1194,28 +643,6 @@ run "test_reporter_sns_policy" {
 # Test: Reporter Savings Plans policy
 run "test_reporter_savingsplans_policy" {
   command = plan
-
-  variables {
-    purchase_strategy = {
-      target = {
-        dynamic = { risk_level = "prudent" }
-      }
-      split = {
-        fixed_step = { step_percent = 5 }
-      }
-    }
-    sp_plans = {
-      compute = {
-        enabled   = true
-        plan_type = "all_upfront_one_year"
-      }
-      database  = { enabled = false }
-      sagemaker = { enabled = false }
-    }
-    notifications = {
-      emails = ["test@example.com"]
-    }
-  }
 
   assert {
     condition     = aws_iam_role_policy.reporter_savingsplans[0].name == "savingsplans"
@@ -1238,25 +665,6 @@ run "test_reporter_assume_role_policy_not_created" {
   command = plan
 
   variables {
-    purchase_strategy = {
-      target = {
-        dynamic = { risk_level = "prudent" }
-      }
-      split = {
-        fixed_step = { step_percent = 5 }
-      }
-    }
-    sp_plans = {
-      compute = {
-        enabled   = true
-        plan_type = "all_upfront_one_year"
-      }
-      database  = { enabled = false }
-      sagemaker = { enabled = false }
-    }
-    notifications = {
-      emails = ["test@example.com"]
-    }
     lambda_config = {
       scheduler = {
         assume_role_arn = null
@@ -1281,25 +689,6 @@ run "test_reporter_assume_role_policy_created" {
   command = plan
 
   variables {
-    purchase_strategy = {
-      target = {
-        dynamic = { risk_level = "prudent" }
-      }
-      split = {
-        fixed_step = { step_percent = 5 }
-      }
-    }
-    sp_plans = {
-      compute = {
-        enabled   = true
-        plan_type = "all_upfront_one_year"
-      }
-      database  = { enabled = false }
-      sagemaker = { enabled = false }
-    }
-    notifications = {
-      emails = ["test@example.com"]
-    }
     lambda_config = {
       scheduler = {
         assume_role_arn = "arn:aws:iam::999888777666:role/OrganizationAccountAccessRole"

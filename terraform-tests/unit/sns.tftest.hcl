@@ -21,6 +21,28 @@ mock_provider "aws" {
   }
 }
 
+variables {
+  purchase_strategy = {
+    target = {
+      dynamic = { risk_level = "prudent" }
+    }
+    split = {
+      fixed_step = { step_percent = 5 }
+    }
+  }
+  sp_plans = {
+    compute = {
+      enabled   = true
+      plan_type = "all_upfront_one_year"
+    }
+    database  = { enabled = false }
+    sagemaker = { enabled = false }
+  }
+  notifications = {
+    emails = ["test@example.com"]
+  }
+}
+
 # ============================================================================
 # SNS Topic Tests
 # ============================================================================
@@ -28,28 +50,6 @@ mock_provider "aws" {
 # Test: SNS topic naming follows expected pattern
 run "test_sns_topic_naming" {
   command = plan
-
-  variables {
-    purchase_strategy = {
-      target = {
-        dynamic = { risk_level = "prudent" }
-      }
-      split = {
-        fixed_step = { step_percent = 5 }
-      }
-    }
-    sp_plans = {
-      compute = {
-        enabled   = true
-        plan_type = "all_upfront_one_year"
-      }
-      database  = { enabled = false }
-      sagemaker = { enabled = false }
-    }
-    notifications = {
-      emails = ["test@example.com"]
-    }
-  }
 
   assert {
     condition     = aws_sns_topic.notifications.name == "sp-autopilot-notifications"
@@ -66,28 +66,6 @@ run "test_sns_topic_naming" {
 run "test_sns_topic_display_name" {
   command = plan
 
-  variables {
-    purchase_strategy = {
-      target = {
-        dynamic = { risk_level = "prudent" }
-      }
-      split = {
-        fixed_step = { step_percent = 5 }
-      }
-    }
-    sp_plans = {
-      compute = {
-        enabled   = true
-        plan_type = "all_upfront_one_year"
-      }
-      database  = { enabled = false }
-      sagemaker = { enabled = false }
-    }
-    notifications = {
-      emails = ["test@example.com"]
-    }
-  }
-
   assert {
     condition     = aws_sns_topic.notifications.display_name == "AWS Savings Plans Automation Notifications"
     error_message = "SNS topic should have display name: AWS Savings Plans Automation Notifications"
@@ -99,25 +77,6 @@ run "test_sns_topic_tags" {
   command = plan
 
   variables {
-    purchase_strategy = {
-      target = {
-        dynamic = { risk_level = "prudent" }
-      }
-      split = {
-        fixed_step = { step_percent = 5 }
-      }
-    }
-    sp_plans = {
-      compute = {
-        enabled   = true
-        plan_type = "all_upfront_one_year"
-      }
-      database  = { enabled = false }
-      sagemaker = { enabled = false }
-    }
-    notifications = {
-      emails = ["test@example.com"]
-    }
     tags = {
       Environment = "test"
       Owner       = "platform-team"
@@ -154,22 +113,6 @@ run "test_email_subscriptions_empty" {
   command = plan
 
   variables {
-    purchase_strategy = {
-      target = {
-        dynamic = { risk_level = "prudent" }
-      }
-      split = {
-        fixed_step = { step_percent = 5 }
-      }
-    }
-    sp_plans = {
-      compute = {
-        enabled   = true
-        plan_type = "all_upfront_one_year"
-      }
-      database  = { enabled = false }
-      sagemaker = { enabled = false }
-    }
     notifications = {
       emails        = []
       slack_webhook = "https://hooks.slack.com/services/test"
@@ -187,22 +130,6 @@ run "test_email_subscription_single" {
   command = plan
 
   variables {
-    purchase_strategy = {
-      target = {
-        dynamic = { risk_level = "prudent" }
-      }
-      split = {
-        fixed_step = { step_percent = 5 }
-      }
-    }
-    sp_plans = {
-      compute = {
-        enabled   = true
-        plan_type = "all_upfront_one_year"
-      }
-      database  = { enabled = false }
-      sagemaker = { enabled = false }
-    }
     notifications = {
       emails = ["admin@example.com"]
     }
@@ -225,22 +152,6 @@ run "test_email_subscriptions_multiple" {
   command = plan
 
   variables {
-    purchase_strategy = {
-      target = {
-        dynamic = { risk_level = "prudent" }
-      }
-      split = {
-        fixed_step = { step_percent = 5 }
-      }
-    }
-    sp_plans = {
-      compute = {
-        enabled   = true
-        plan_type = "all_upfront_one_year"
-      }
-      database  = { enabled = false }
-      sagemaker = { enabled = false }
-    }
     notifications = {
       emails = ["admin@example.com", "ops@example.com", "platform@example.com"]
     }
@@ -272,22 +183,6 @@ run "test_email_subscriptions_protocol" {
   command = plan
 
   variables {
-    purchase_strategy = {
-      target = {
-        dynamic = { risk_level = "prudent" }
-      }
-      split = {
-        fixed_step = { step_percent = 5 }
-      }
-    }
-    sp_plans = {
-      compute = {
-        enabled   = true
-        plan_type = "all_upfront_one_year"
-      }
-      database  = { enabled = false }
-      sagemaker = { enabled = false }
-    }
     notifications = {
       emails = ["admin@example.com", "ops@example.com"]
     }
@@ -309,22 +204,6 @@ run "test_email_subscriptions_topic_arn" {
   command = plan
 
   variables {
-    purchase_strategy = {
-      target = {
-        dynamic = { risk_level = "prudent" }
-      }
-      split = {
-        fixed_step = { step_percent = 5 }
-      }
-    }
-    sp_plans = {
-      compute = {
-        enabled   = true
-        plan_type = "all_upfront_one_year"
-      }
-      database  = { enabled = false }
-      sagemaker = { enabled = false }
-    }
     notifications = {
       emails = ["admin@example.com", "ops@example.com"]
     }
