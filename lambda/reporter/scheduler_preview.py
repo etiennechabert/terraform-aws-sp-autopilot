@@ -36,6 +36,9 @@ STRATEGY_LABELS = {
     "dynamic+fixed_step": "Dynamic + Fixed Step",
     "dynamic+gap_split": "Dynamic + Gap Split",
     "dynamic+one_shot": "Dynamic + One Shot",
+    "static+fixed_step": "Static + Fixed Step",
+    "static+gap_split": "Static + Gap Split",
+    "static+one_shot": "Static + One Shot",
     "aws+one_shot": "AWS Reco + One Shot",
 }
 

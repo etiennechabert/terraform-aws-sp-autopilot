@@ -63,3 +63,29 @@ Verify report created in S3 bucket.
 - [Scheduler Lambda](../scheduler/README.md) — Analyzes usage and queues purchases
 - [Purchaser Lambda](../purchaser/README.md) — Executes queued purchases
 - [Main README](../../README.md) — Complete documentation
+
+<!-- BEGIN_TF_DOCS -->
+## Requirements
+
+No requirements.
+
+## Providers
+
+No providers.
+
+## Modules
+
+No modules.
+
+## Resources
+
+No resources.
+
+## Inputs
+
+No inputs.
+
+## Outputs
+
+No outputs.
+<!-- END_TF_DOCS -->
