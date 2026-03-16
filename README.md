@@ -138,7 +138,7 @@ Conservative target at 90% of minimum hourly spend, purchasing a fixed step each
 
 ```hcl
 purchase_strategy = {
-  target = { dynamic = { risk_level = "prudent" } }
+  target = { dynamic = { risk_level = "prudent", prudent_percentage = 90 } }
   split  = { fixed_step = { step_percent = 10 } }
 }
 ```
@@ -153,8 +153,6 @@ purchase_strategy = {
   split  = { one_shot = {} }
 }
 ```
-
-**Use with caution:** AWS recommendations can be aggressive.
 
 #### Other Settings
 
