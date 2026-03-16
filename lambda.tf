@@ -32,6 +32,7 @@ resource "aws_lambda_function" "scheduler" {
       SPLIT_STRATEGY_TYPE             = local.split_strategy_type
       DYNAMIC_RISK_LEVEL              = local.dynamic_risk_level
       PRUDENT_PERCENTAGE              = tostring(local.prudent_percentage)
+      STATIC_COMMITMENT               = tostring(local.static_commitment)
       FIXED_STEP_PERCENT              = tostring(local.fixed_step_percent)
       MAX_PURCHASE_PERCENT            = tostring(local.max_purchase_percent)
       MIN_PURCHASE_PERCENT            = tostring(local.min_purchase_percent)
@@ -135,6 +136,7 @@ resource "aws_lambda_function" "reporter" {
       SPLIT_STRATEGY_TYPE             = local.split_strategy_type
       DYNAMIC_RISK_LEVEL              = local.dynamic_risk_level
       PRUDENT_PERCENTAGE              = tostring(local.prudent_percentage)
+      STATIC_COMMITMENT               = tostring(local.static_commitment)
       FIXED_STEP_PERCENT              = tostring(local.fixed_step_percent)
       MAX_PURCHASE_PERCENT            = tostring(local.max_purchase_percent)
       MIN_PURCHASE_PERCENT            = tostring(local.min_purchase_percent)
