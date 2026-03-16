@@ -85,10 +85,8 @@ locals {
   # Target Strategy
 
   target_strategy_type = (
-    var.purchase_strategy.target.fixed != null ? "fixed" :
     var.purchase_strategy.target.aws != null ? "aws" :
-    var.purchase_strategy.target.dynamic != null ? "dynamic" :
-    "fixed" # default
+    "dynamic"
   )
 
   # Split Strategy
@@ -100,18 +98,18 @@ locals {
     "one_shot" # unreachable - validation ensures exactly one split is defined
   )
 
-  # Coverage target (only for fixed target)
-  coverage_target_percent = (
-    local.target_strategy_type == "fixed" ?
-    var.purchase_strategy.target.fixed.coverage_percent :
-    90.0 # dynamic/aws targets resolve at runtime
-  )
-
   # Dynamic risk level
   dynamic_risk_level = (
     local.target_strategy_type == "dynamic" ?
     var.purchase_strategy.target.dynamic.risk_level :
     ""
+  )
+
+  # Prudent percentage (configurable, default 85%)
+  prudent_percentage = (
+    local.target_strategy_type == "dynamic" ?
+    var.purchase_strategy.target.dynamic.prudent_percentage :
+    85
   )
 
   # Split strategy params

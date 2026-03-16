@@ -14,7 +14,7 @@ VALID_PAYMENT_OPTIONS = ["NO_UPFRONT", "ALL_UPFRONT", "PARTIAL_UPFRONT"]
 # Valid values for term field
 VALID_TERMS = ["ONE_YEAR", "THREE_YEAR"]
 
-VALID_TARGET_STRATEGIES = ["fixed", "aws", "dynamic"]
+VALID_TARGET_STRATEGIES = ["aws", "dynamic"]
 
 VALID_SPLIT_STRATEGIES = ["one_shot", "fixed_step", "gap_split"]
 
@@ -277,7 +277,7 @@ def validate_scheduler_config(config: dict[str, Any]) -> None:
     _validate_sp_types_enabled(config)
 
     # Validate percentage fields
-    for field in ["coverage_target_percent", "max_purchase_percent", "min_purchase_percent"]:
+    for field in ["max_purchase_percent", "min_purchase_percent"]:
         if field in config:
             _validate_percentage_range(config[field], field)
 

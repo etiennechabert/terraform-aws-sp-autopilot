@@ -23,9 +23,11 @@ variable "purchase_strategy" {
     min_commitment_per_plan = optional(number, 0.001)
 
     target = object({
-      fixed   = optional(object({ coverage_percent = number }))
-      aws     = optional(object({}))
-      dynamic = optional(object({ risk_level = string }))
+      aws = optional(object({}))
+      dynamic = optional(object({
+        risk_level         = string
+        prudent_percentage = optional(number, 85)
+      }))
     })
 
     split = optional(object({
@@ -43,7 +45,7 @@ variable "purchase_strategy" {
     min_commitment_per_plan = 0.001
 
     target = {
-      fixed = { coverage_percent = 80 }
+      dynamic = { risk_level = "prudent" }
     }
 
     split = {

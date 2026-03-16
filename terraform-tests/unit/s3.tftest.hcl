@@ -21,6 +21,28 @@ mock_provider "aws" {
   }
 }
 
+variables {
+  purchase_strategy = {
+    target = {
+      dynamic = { risk_level = "prudent" }
+    }
+    split = {
+      fixed_step = { step_percent = 5 }
+    }
+  }
+  sp_plans = {
+    compute = {
+      enabled   = true
+      plan_type = "all_upfront_one_year"
+    }
+    database  = { enabled = false }
+    sagemaker = { enabled = false }
+  }
+  notifications = {
+    emails = ["test@example.com"]
+  }
+}
+
 # ============================================================================
 # S3 Bucket Tests
 # ============================================================================
@@ -28,24 +50,6 @@ mock_provider "aws" {
 # Test: S3 bucket naming follows expected pattern
 run "test_s3_bucket_naming" {
   command = plan
-
-  variables {
-    purchase_strategy = {
-      coverage_target_percent = 80
-      simple = {
-        max_purchase_percent = 5
-      }
-    }
-    sp_plans = {
-      compute = {
-        enabled              = true
-        all_upfront_one_year = 1
-      }
-    }
-    notifications = {
-      emails = ["test@example.com"]
-    }
-  }
 
   assert {
     condition     = aws_s3_bucket.reports.bucket == "sp-autopilot-reports-123456789012"
@@ -62,24 +66,6 @@ run "test_s3_bucket_naming" {
 run "test_s3_versioning_enabled" {
   command = plan
 
-  variables {
-    purchase_strategy = {
-      coverage_target_percent = 80
-      simple = {
-        max_purchase_percent = 5
-      }
-    }
-    sp_plans = {
-      compute = {
-        enabled              = true
-        all_upfront_one_year = 1
-      }
-    }
-    notifications = {
-      emails = ["test@example.com"]
-    }
-  }
-
   assert {
     condition     = aws_s3_bucket_versioning.reports.versioning_configuration[0].status == "Enabled"
     error_message = "S3 bucket versioning should be enabled"
@@ -89,24 +75,6 @@ run "test_s3_versioning_enabled" {
 # Test: S3 bucket encryption configuration
 run "test_s3_encryption_configuration" {
   command = plan
-
-  variables {
-    purchase_strategy = {
-      coverage_target_percent = 80
-      simple = {
-        max_purchase_percent = 5
-      }
-    }
-    sp_plans = {
-      compute = {
-        enabled              = true
-        all_upfront_one_year = 1
-      }
-    }
-    notifications = {
-      emails = ["test@example.com"]
-    }
-  }
 
   # Note: Cannot test encryption configuration attributes during plan phase
   # Both bucket ID and encryption config bucket attribute are computed
@@ -123,24 +91,6 @@ run "test_s3_encryption_configuration" {
 # Test: S3 bucket public access blocks are all enabled
 run "test_s3_public_access_blocks" {
   command = plan
-
-  variables {
-    purchase_strategy = {
-      coverage_target_percent = 80
-      simple = {
-        max_purchase_percent = 5
-      }
-    }
-    sp_plans = {
-      compute = {
-        enabled              = true
-        all_upfront_one_year = 1
-      }
-    }
-    notifications = {
-      emails = ["test@example.com"]
-    }
-  }
 
   assert {
     condition     = aws_s3_bucket_public_access_block.reports.block_public_acls == true
@@ -167,24 +117,6 @@ run "test_s3_public_access_blocks" {
 run "test_s3_lifecycle_rule_enabled" {
   command = plan
 
-  variables {
-    purchase_strategy = {
-      coverage_target_percent = 80
-      simple = {
-        max_purchase_percent = 5
-      }
-    }
-    sp_plans = {
-      compute = {
-        enabled              = true
-        all_upfront_one_year = 1
-      }
-    }
-    notifications = {
-      emails = ["test@example.com"]
-    }
-  }
-
   assert {
     condition     = aws_s3_bucket_lifecycle_configuration.reports.rule[0].id == "cleanup-old-reports"
     error_message = "S3 lifecycle rule should have id 'cleanup-old-reports'"
@@ -201,21 +133,6 @@ run "test_s3_lifecycle_ia_transition" {
   command = plan
 
   variables {
-    purchase_strategy = {
-      coverage_target_percent = 80
-      simple = {
-        max_purchase_percent = 5
-      }
-    }
-    sp_plans = {
-      compute = {
-        enabled              = true
-        all_upfront_one_year = 1
-      }
-    }
-    notifications = {
-      emails = ["test@example.com"]
-    }
     reporting = {
       s3_lifecycle = {
         transition_ia_days = 90
@@ -237,21 +154,6 @@ run "test_s3_lifecycle_glacier_transition" {
   command = plan
 
   variables {
-    purchase_strategy = {
-      coverage_target_percent = 80
-      simple = {
-        max_purchase_percent = 5
-      }
-    }
-    sp_plans = {
-      compute = {
-        enabled              = true
-        all_upfront_one_year = 1
-      }
-    }
-    notifications = {
-      emails = ["test@example.com"]
-    }
     reporting = {
       s3_lifecycle = {
         transition_ia_days      = 90
@@ -274,21 +176,6 @@ run "test_s3_lifecycle_expiration" {
   command = plan
 
   variables {
-    purchase_strategy = {
-      coverage_target_percent = 80
-      simple = {
-        max_purchase_percent = 5
-      }
-    }
-    sp_plans = {
-      compute = {
-        enabled              = true
-        all_upfront_one_year = 1
-      }
-    }
-    notifications = {
-      emails = ["test@example.com"]
-    }
     reporting = {
       s3_lifecycle = {
         expiration_days = 365
@@ -307,21 +194,6 @@ run "test_s3_lifecycle_noncurrent_expiration" {
   command = plan
 
   variables {
-    purchase_strategy = {
-      coverage_target_percent = 80
-      simple = {
-        max_purchase_percent = 5
-      }
-    }
-    sp_plans = {
-      compute = {
-        enabled              = true
-        all_upfront_one_year = 1
-      }
-    }
-    notifications = {
-      emails = ["test@example.com"]
-    }
     reporting = {
       s3_lifecycle = {
         noncurrent_expiration_days = 90
@@ -340,21 +212,6 @@ run "test_s3_bucket_tags" {
   command = plan
 
   variables {
-    purchase_strategy = {
-      coverage_target_percent = 80
-      simple = {
-        max_purchase_percent = 5
-      }
-    }
-    sp_plans = {
-      compute = {
-        enabled              = true
-        all_upfront_one_year = 1
-      }
-    }
-    notifications = {
-      emails = ["test@example.com"]
-    }
     tags = {
       Environment = "test"
       Owner       = "platform-team"
@@ -386,24 +243,6 @@ run "test_s3_bucket_tags" {
 run "test_s3_bucket_naming_different_account" {
   command = plan
 
-  variables {
-    purchase_strategy = {
-      coverage_target_percent = 80
-      simple = {
-        max_purchase_percent = 5
-      }
-    }
-    sp_plans = {
-      compute = {
-        enabled              = true
-        all_upfront_one_year = 1
-      }
-    }
-    notifications = {
-      emails = ["test@example.com"]
-    }
-  }
-
   override_data {
     target = data.aws_caller_identity.current
     values = {
@@ -422,21 +261,6 @@ run "test_s3_lifecycle_custom_values" {
   command = plan
 
   variables {
-    purchase_strategy = {
-      coverage_target_percent = 80
-      simple = {
-        max_purchase_percent = 5
-      }
-    }
-    sp_plans = {
-      compute = {
-        enabled              = true
-        all_upfront_one_year = 1
-      }
-    }
-    notifications = {
-      emails = ["test@example.com"]
-    }
     reporting = {
       s3_lifecycle = {
         transition_ia_days         = 30
