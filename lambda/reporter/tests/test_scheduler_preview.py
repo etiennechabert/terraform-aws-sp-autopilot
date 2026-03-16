@@ -67,7 +67,7 @@ def sample_savings_data():
 def sample_config():
     """Sample reporter configuration with new target+split strategy."""
     return {
-        "target_strategy_type": "fixed",
+        "target_strategy_type": "dynamic",
         "split_strategy_type": "fixed_step",
         "fixed_step_percent": 10.0,
         "max_purchase_percent": 10.0,
@@ -77,7 +77,6 @@ def sample_config():
         "savings_percentage": 30.0,
         "compute_sp_term": "THREE_YEAR",
         "compute_sp_payment_option": "ALL_UPFRONT",
-        "coverage_target_percent": 90.0,
         "enable_compute_sp": True,
         "enable_database_sp": False,
         "enable_sagemaker_sp": False,
@@ -120,12 +119,12 @@ def test_calculate_scheduler_preview_all_combinations(
     assert "strategies" in result
     assert "error" in result
 
-    assert result["configured_strategy"] == "fixed+fixed_step"
+    assert result["configured_strategy"] == "dynamic+fixed_step"
     assert result["error"] is None
 
-    # Configured (fixed+fixed_step) + 2 defaults (dynamic+gap_split, aws+one_shot)
-    # fixed+fixed_step is both configured and a default, so 3 total
-    assert "fixed+fixed_step" in result["strategies"]
+    # Configured (dynamic+fixed_step) + 2 defaults (dynamic+gap_split, aws+one_shot)
+    # dynamic+fixed_step is both configured and a default, so 3 total
+    assert "dynamic+fixed_step" in result["strategies"]
     assert "dynamic+gap_split" in result["strategies"]
     assert "aws+one_shot" in result["strategies"]
     assert len(result["strategies"]) == 3
@@ -159,7 +158,7 @@ def test_calculate_scheduler_preview_configured_strategy_marked(
     )
 
     config = sample_config.copy()
-    config["target_strategy_type"] = "fixed"
+    config["target_strategy_type"] = "dynamic"
     config["split_strategy_type"] = "gap_split"
     config["gap_split_divider"] = 2.0
     config["max_purchase_percent"] = 50.0
@@ -168,10 +167,10 @@ def test_calculate_scheduler_preview_configured_strategy_marked(
         config, mock_clients, sample_coverage_data
     )
 
-    assert result["configured_strategy"] == "fixed+gap_split"
+    assert result["configured_strategy"] == "dynamic+gap_split"
     assert result["error"] is None
-    # fixed+gap_split (configured) + fixed+fixed_step + dynamic+gap_split + aws+one_shot = 4
-    assert len(result["strategies"]) == 4
+    # dynamic+gap_split (configured, matches default) + dynamic+fixed_step + aws+one_shot = 3
+    assert len(result["strategies"]) == 3
 
 
 def test_calculate_scheduler_preview_no_recommendations(
@@ -200,11 +199,11 @@ def test_calculate_scheduler_preview_no_recommendations(
         sample_config, mock_clients, coverage_data
     )
 
-    assert result["configured_strategy"] == "fixed+fixed_step"
+    assert result["configured_strategy"] == "dynamic+fixed_step"
     assert result["error"] is None
 
     # Fixed+fixed_step (configured) should report no recommendations (already at 95%)
-    assert result["strategies"]["fixed+fixed_step"]["has_recommendations"] is False
+    assert result["strategies"]["dynamic+fixed_step"]["has_recommendations"] is False
 
 
 def test_calculate_scheduler_preview_strategy_error_handling(
@@ -218,8 +217,8 @@ def test_calculate_scheduler_preview_strategy_error_handling(
     assert result["error"] is None
     assert len(result["strategies"]) == 3
 
-    # Configured strategy (fixed+fixed_step) should work (no AWS call needed)
-    assert result["strategies"]["fixed+fixed_step"]["error"] is None
+    # Configured strategy (dynamic+fixed_step) should work (no AWS call needed)
+    assert result["strategies"]["dynamic+fixed_step"]["error"] is None
 
 
 def test_coverage_is_min_hourly_based(sample_config, mock_clients, aws_mock_builder):
@@ -276,8 +275,8 @@ def test_coverage_is_min_hourly_based(sample_config, mock_clients, aws_mock_buil
         config, mock_clients, coverage_data, savings_data
     )
 
-    # Find database purchase from fixed+fixed_step strategy
-    fixed_linear_purchases = result["strategies"]["fixed+fixed_step"]["purchases"]
+    # Find database purchase from dynamic+fixed_step strategy
+    fixed_linear_purchases = result["strategies"]["dynamic+fixed_step"]["purchases"]
     db_purchase = next((p for p in fixed_linear_purchases if p["sp_type"] == "database"), None)
     assert db_purchase is not None
 

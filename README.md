@@ -34,7 +34,7 @@ module "savings_plans" {
   version = "~> 1.0"
 
   purchase_strategy = {
-    target = { fixed = { coverage_percent = 90 } }
+    target = { dynamic = { risk_level = "prudent" } }
     split  = { fixed_step = { step_percent = 10 } }
   }
 
@@ -109,8 +109,8 @@ Strategy is configured with two orthogonal dimensions: **target** (what coverage
 
 #### Targets
 
-- **`fixed`** — Target a fixed coverage percentage you define (`coverage_percent`).
-- **`dynamic`** — Automatically determines the optimal coverage target based on usage patterns using a knee-point algorithm (`risk_level`: `prudent`, `min_hourly`, `optimal`, `maximum`).
+- **`dynamic`** — Automatically determines the optimal coverage target based on usage patterns using a knee-point algorithm (`risk_level`: `prudent`, `min_hourly`, `optimal`, `maximum`). The `prudent` level targets a configurable percentage of minimum hourly spend (`prudent_percentage`, default: 85%) — conservative, best for stable workloads. As workloads gain more variation (e.g. autoscaling), `min_hourly` and `optimal` become more appropriate since the spread between min and max hourly spend provides a natural margin where spill-over from low-usage hours is offset by savings during high-usage hours.
+- **`static`** — Sets a fixed hourly commitment target (`commitment` in $/h). The split strategy divides the gap between your current commitment and the target, purchasing incrementally each cycle. Same approach as the AWS path, but with a user-defined target instead of an AWS recommendation.
 - **`aws`** — Uses AWS Cost Explorer recommendations directly without modification.
 
 #### Splits
@@ -132,13 +132,13 @@ purchase_strategy = {
 }
 ```
 
-##### Fixed Target + Fixed Step Split
+##### Dynamic Prudent + Fixed Step Split
 
-Target a fixed coverage percentage, purchasing a fixed step each cycle.
+Conservative target at 90% of minimum hourly spend, purchasing a fixed step each cycle.
 
 ```hcl
 purchase_strategy = {
-  target = { fixed = { coverage_percent = 100 } }
+  target = { dynamic = { risk_level = "prudent" } }
   split  = { fixed_step = { step_percent = 10 } }
 }
 ```
@@ -328,21 +328,21 @@ Disable with `spike_guard = { enabled = false }`. The reporter includes a yellow
 | Name | Version |
 |------|---------|
 | <a name="requirement_terraform"></a> [terraform](#requirement\_terraform) | >= 1.7 |
-| <a name="requirement_aws"></a> [aws](#requirement\_aws) | >= 5.0, < 6.35 |
+| <a name="requirement_aws"></a> [aws](#requirement\_aws) | >= 5.0, < 6.37 |
 
 ## Providers
 
 | Name | Version |
 |------|---------|
 | <a name="provider_archive"></a> [archive](#provider\_archive) | 2.7.1 |
-| <a name="provider_aws"></a> [aws](#provider\_aws) | 6.34.0 |
+| <a name="provider_aws"></a> [aws](#provider\_aws) | 6.36.0 |
 
 ## Inputs
 
 | Name | Description | Type | Default | Required |
 |------|-------------|------|---------|:--------:|
 | <a name="input_notifications"></a> [notifications](#input\_notifications) | Notification configuration for email, Slack, and Teams | <pre>object({<br/>    emails        = list(string)<br/>    slack_webhook = optional(string)<br/>    teams_webhook = optional(string)<br/>  })</pre> | n/a | yes |
-| <a name="input_purchase_strategy"></a> [purchase\_strategy](#input\_purchase\_strategy) | Purchase strategy configuration with orthogonal target + split dimensions | <pre>object({<br/>    renewal_window_days     = optional(number, 7)<br/>    purchase_cooldown_days  = optional(number, 7)<br/>    min_commitment_per_plan = optional(number, 0.001)<br/><br/>    target = object({<br/>      fixed   = optional(object({ coverage_percent = number }))<br/>      aws     = optional(object({}))<br/>      dynamic = optional(object({ risk_level = string }))<br/>    })<br/><br/>    split = object({<br/>      one_shot   = optional(object({}))<br/>      fixed_step = optional(object({ step_percent = number }))<br/>      gap_split = optional(object({<br/>        divider              = number<br/>        min_purchase_percent = optional(number, 1)<br/>        max_purchase_percent = optional(number)<br/>      }))<br/>    })<br/><br/>    spike_guard = optional(object({<br/>      enabled             = optional(bool, true)<br/>      long_lookback_days  = optional(number, 90)<br/>      short_lookback_days = optional(number, 14)<br/>      threshold_percent   = optional(number, 20)<br/>    }), {})<br/>  })</pre> | n/a | yes |
+| <a name="input_purchase_strategy"></a> [purchase\_strategy](#input\_purchase\_strategy) | Purchase strategy configuration with orthogonal target + split dimensions | <pre>object({<br/>    renewal_window_days     = optional(number, 7)<br/>    purchase_cooldown_days  = optional(number, 7)<br/>    min_commitment_per_plan = optional(number, 0.001)<br/><br/>    target = object({<br/>      aws = optional(object({}))<br/>      dynamic = optional(object({<br/>        risk_level         = string<br/>        prudent_percentage = optional(number, 85)<br/>      }))<br/>      static = optional(object({<br/>        commitment = number # Target hourly commitment in $/h<br/>      }))<br/>    })<br/><br/>    split = object({<br/>      one_shot   = optional(object({}))<br/>      fixed_step = optional(object({ step_percent = number }))<br/>      gap_split = optional(object({<br/>        divider              = number<br/>        min_purchase_percent = optional(number, 1)<br/>        max_purchase_percent = optional(number)<br/>      }))<br/>    })<br/><br/>    spike_guard = optional(object({<br/>      enabled             = optional(bool, true)<br/>      long_lookback_days  = optional(number, 90)<br/>      short_lookback_days = optional(number, 14)<br/>      threshold_percent   = optional(number, 20)<br/>    }), {})<br/>  })</pre> | n/a | yes |
 | <a name="input_sp_plans"></a> [sp\_plans](#input\_sp\_plans) | Savings Plans configuration for Compute, Database, and SageMaker | <pre>object({<br/>    compute = object({<br/>      enabled   = bool<br/>      plan_type = optional(string)<br/>    })<br/><br/>    database = object({<br/>      enabled   = bool<br/>      plan_type = optional(string) # AWS only supports "no_upfront_one_year" for Database SPs<br/>    })<br/><br/>    sagemaker = object({<br/>      enabled   = bool<br/>      plan_type = optional(string)<br/>    })<br/>  })</pre> | n/a | yes |
 | <a name="input_cron_schedules"></a> [cron\_schedules](#input\_cron\_schedules) | EventBridge cron schedules for each Lambda function. Set to null to disable a schedule. | <pre>object({<br/>    scheduler = optional(string) # Set to null to disable. Default: "cron(0 8 1 * ? *)"<br/>    purchaser = optional(string) # Set to null to disable. Default: "cron(0 8 10 * ? *)"<br/>    reporter  = optional(string) # Set to null to disable. Default: "cron(0 9 24 * ? *)"<br/>  })</pre> | <pre>{<br/>  "purchaser": "cron(0 8 10 * ? *)",<br/>  "reporter": "cron(0 9 24 * ? *)",<br/>  "scheduler": "cron(0 8 1 * ? *)"<br/>}</pre> | no |
 | <a name="input_encryption"></a> [encryption](#input\_encryption) | Encryption configuration for SNS, SQS, and S3 | <pre>object({<br/>    sns_kms_key = optional(string, "alias/aws/sns") # Default: AWS managed KMS key. Set to null to disable.<br/>    sqs_kms_key = optional(string, "alias/aws/sqs") # Default: AWS managed KMS key. Set to null to disable.<br/>    s3 = optional(object({<br/>      kms_key = optional(string) # null = AES256 (SSE-S3, free), set to KMS key ARN for SSE-KMS<br/>    }), {})<br/>  })</pre> | `{}` | no |

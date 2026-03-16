@@ -411,10 +411,7 @@ def _build_strategy_tooltip(
     split = parts[1] if len(parts) > 1 else ""
 
     # Target line
-    if target == "fixed":
-        cov = config["coverage_target_percent"]
-        target_line = f"Target: fixed (coverage_percent: {cov:.0f}%)"
-    elif target == "dynamic":
+    if target == "dynamic":
         risk = config["dynamic_risk_level"]
         target_line = f"Target: dynamic (risk_level: {risk})"
     else:
@@ -464,7 +461,6 @@ def _render_purchase_row(
     is_configured: bool,
     tooltip: str,
     purchase: dict[str, Any],
-    target_coverage: float,
 ) -> str:
     """Render a table row for a purchase recommendation."""
     row_style = (
@@ -526,8 +522,6 @@ def _render_sp_type_scheduler_preview(
 
     strategies = preview_data.get("strategies", {})
     configured_strategy = preview_data.get("configured_strategy", "fixed+fixed_step")
-    target_coverage = config["coverage_target_percent"]
-
     strategy_purchases = {}
     for strategy_key, strategy_data in strategies.items():
         for purchase in strategy_data.get("purchases", []):
@@ -572,7 +566,7 @@ def _render_sp_type_scheduler_preview(
             html += _render_no_purchase_row(strategy_display, is_configured, tooltip)
         else:
             html += _render_purchase_row(
-                strategy_key, strategy_display, is_configured, tooltip, purchase, target_coverage
+                strategy_key, strategy_display, is_configured, tooltip, purchase
             )
 
     html += """

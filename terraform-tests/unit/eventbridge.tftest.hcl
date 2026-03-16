@@ -21,6 +21,28 @@ mock_provider "aws" {
   }
 }
 
+variables {
+  purchase_strategy = {
+    target = {
+      dynamic = { risk_level = "prudent" }
+    }
+    split = {
+      fixed_step = { step_percent = 5 }
+    }
+  }
+  sp_plans = {
+    compute = {
+      enabled   = true
+      plan_type = "all_upfront_one_year"
+    }
+    database  = { enabled = false }
+    sagemaker = { enabled = false }
+  }
+  notifications = {
+    emails = ["test@example.com"]
+  }
+}
+
 # ============================================================================
 # EventBridge Rules Tests - Scheduler
 # ============================================================================
@@ -28,24 +50,6 @@ mock_provider "aws" {
 # Test: Scheduler EventBridge rule naming follows expected pattern
 run "test_scheduler_eventbridge_rule_naming" {
   command = plan
-
-  variables {
-    purchase_strategy = {
-      coverage_target_percent = 80
-      simple = {
-        max_purchase_percent = 5
-      }
-    }
-    sp_plans = {
-      compute = {
-        enabled              = true
-        all_upfront_one_year = 1
-      }
-    }
-    notifications = {
-      emails = ["test@example.com"]
-    }
-  }
 
   assert {
     condition     = aws_cloudwatch_event_rule.scheduler[0].name == "sp-autopilot-scheduler"
@@ -62,24 +66,6 @@ run "test_scheduler_eventbridge_rule_naming" {
 run "test_scheduler_eventbridge_rule_description" {
   command = plan
 
-  variables {
-    purchase_strategy = {
-      coverage_target_percent = 80
-      simple = {
-        max_purchase_percent = 5
-      }
-    }
-    sp_plans = {
-      compute = {
-        enabled              = true
-        all_upfront_one_year = 1
-      }
-    }
-    notifications = {
-      emails = ["test@example.com"]
-    }
-  }
-
   assert {
     condition     = aws_cloudwatch_event_rule.scheduler[0].description == "Triggers Scheduler Lambda to analyze usage and recommend Savings Plans purchases"
     error_message = "Scheduler EventBridge rule should have correct description"
@@ -89,24 +75,6 @@ run "test_scheduler_eventbridge_rule_description" {
 # Test: Scheduler EventBridge rule uses default schedule
 run "test_scheduler_eventbridge_rule_default_schedule" {
   command = plan
-
-  variables {
-    purchase_strategy = {
-      coverage_target_percent = 80
-      simple = {
-        max_purchase_percent = 5
-      }
-    }
-    sp_plans = {
-      compute = {
-        enabled              = true
-        all_upfront_one_year = 1
-      }
-    }
-    notifications = {
-      emails = ["test@example.com"]
-    }
-  }
 
   assert {
     condition     = aws_cloudwatch_event_rule.scheduler[0].schedule_expression == "cron(0 8 1 * ? *)"
@@ -119,21 +87,6 @@ run "test_scheduler_eventbridge_rule_custom_schedule" {
   command = plan
 
   variables {
-    purchase_strategy = {
-      coverage_target_percent = 80
-      simple = {
-        max_purchase_percent = 5
-      }
-    }
-    sp_plans = {
-      compute = {
-        enabled              = true
-        all_upfront_one_year = 1
-      }
-    }
-    notifications = {
-      emails = ["test@example.com"]
-    }
     cron_schedules = {
       scheduler = "cron(0 2 1 * ? *)"
     }
@@ -150,21 +103,6 @@ run "test_scheduler_eventbridge_rule_tags" {
   command = plan
 
   variables {
-    purchase_strategy = {
-      coverage_target_percent = 80
-      simple = {
-        max_purchase_percent = 5
-      }
-    }
-    sp_plans = {
-      compute = {
-        enabled              = true
-        all_upfront_one_year = 1
-      }
-    }
-    notifications = {
-      emails = ["test@example.com"]
-    }
     tags = {
       Environment = "test"
       Owner       = "platform-team"
@@ -195,24 +133,6 @@ run "test_scheduler_eventbridge_rule_tags" {
 run "test_purchaser_eventbridge_rule_naming" {
   command = plan
 
-  variables {
-    purchase_strategy = {
-      coverage_target_percent = 80
-      simple = {
-        max_purchase_percent = 5
-      }
-    }
-    sp_plans = {
-      compute = {
-        enabled              = true
-        all_upfront_one_year = 1
-      }
-    }
-    notifications = {
-      emails = ["test@example.com"]
-    }
-  }
-
   assert {
     condition     = aws_cloudwatch_event_rule.purchaser[0].name == "sp-autopilot-purchaser"
     error_message = "Purchaser EventBridge rule name should follow pattern: sp-autopilot-purchaser"
@@ -228,24 +148,6 @@ run "test_purchaser_eventbridge_rule_naming" {
 run "test_purchaser_eventbridge_rule_description" {
   command = plan
 
-  variables {
-    purchase_strategy = {
-      coverage_target_percent = 80
-      simple = {
-        max_purchase_percent = 5
-      }
-    }
-    sp_plans = {
-      compute = {
-        enabled              = true
-        all_upfront_one_year = 1
-      }
-    }
-    notifications = {
-      emails = ["test@example.com"]
-    }
-  }
-
   assert {
     condition     = aws_cloudwatch_event_rule.purchaser[0].description == "Triggers Purchaser Lambda to process and execute Savings Plans purchases from SQS queue"
     error_message = "Purchaser EventBridge rule should have correct description"
@@ -255,24 +157,6 @@ run "test_purchaser_eventbridge_rule_description" {
 # Test: Purchaser EventBridge rule uses default schedule
 run "test_purchaser_eventbridge_rule_default_schedule" {
   command = plan
-
-  variables {
-    purchase_strategy = {
-      coverage_target_percent = 80
-      simple = {
-        max_purchase_percent = 5
-      }
-    }
-    sp_plans = {
-      compute = {
-        enabled              = true
-        all_upfront_one_year = 1
-      }
-    }
-    notifications = {
-      emails = ["test@example.com"]
-    }
-  }
 
   assert {
     condition     = aws_cloudwatch_event_rule.purchaser[0].schedule_expression == "cron(0 8 10 * ? *)"
@@ -285,21 +169,6 @@ run "test_purchaser_eventbridge_rule_custom_schedule" {
   command = plan
 
   variables {
-    purchase_strategy = {
-      coverage_target_percent = 80
-      simple = {
-        max_purchase_percent = 5
-      }
-    }
-    sp_plans = {
-      compute = {
-        enabled              = true
-        all_upfront_one_year = 1
-      }
-    }
-    notifications = {
-      emails = ["test@example.com"]
-    }
     cron_schedules = {
       purchaser = "cron(0 3 1 * ? *)"
     }
@@ -316,21 +185,6 @@ run "test_purchaser_eventbridge_rule_tags" {
   command = plan
 
   variables {
-    purchase_strategy = {
-      coverage_target_percent = 80
-      simple = {
-        max_purchase_percent = 5
-      }
-    }
-    sp_plans = {
-      compute = {
-        enabled              = true
-        all_upfront_one_year = 1
-      }
-    }
-    notifications = {
-      emails = ["test@example.com"]
-    }
     tags = {
       Environment = "test"
       Owner       = "platform-team"
@@ -362,21 +216,6 @@ run "test_reporter_eventbridge_rule_enabled" {
   command = plan
 
   variables {
-    purchase_strategy = {
-      coverage_target_percent = 80
-      simple = {
-        max_purchase_percent = 5
-      }
-    }
-    sp_plans = {
-      compute = {
-        enabled              = true
-        all_upfront_one_year = 1
-      }
-    }
-    notifications = {
-      emails = ["test@example.com"]
-    }
     reporting = {
       enabled = true
     }
@@ -398,21 +237,6 @@ run "test_reporter_eventbridge_rule_disabled" {
   command = plan
 
   variables {
-    purchase_strategy = {
-      coverage_target_percent = 80
-      simple = {
-        max_purchase_percent = 5
-      }
-    }
-    sp_plans = {
-      compute = {
-        enabled              = true
-        all_upfront_one_year = 1
-      }
-    }
-    notifications = {
-      emails = ["test@example.com"]
-    }
     lambda_config = {
       reporter = {
         enabled = false
@@ -431,21 +255,6 @@ run "test_reporter_eventbridge_rule_description" {
   command = plan
 
   variables {
-    purchase_strategy = {
-      coverage_target_percent = 80
-      simple = {
-        max_purchase_percent = 5
-      }
-    }
-    sp_plans = {
-      compute = {
-        enabled              = true
-        all_upfront_one_year = 1
-      }
-    }
-    notifications = {
-      emails = ["test@example.com"]
-    }
     reporting = {
       enabled = true
     }
@@ -462,21 +271,6 @@ run "test_reporter_eventbridge_rule_default_schedule" {
   command = plan
 
   variables {
-    purchase_strategy = {
-      coverage_target_percent = 80
-      simple = {
-        max_purchase_percent = 5
-      }
-    }
-    sp_plans = {
-      compute = {
-        enabled              = true
-        all_upfront_one_year = 1
-      }
-    }
-    notifications = {
-      emails = ["test@example.com"]
-    }
     reporting = {
       enabled = true
     }
@@ -493,21 +287,6 @@ run "test_reporter_eventbridge_rule_custom_schedule" {
   command = plan
 
   variables {
-    purchase_strategy = {
-      coverage_target_percent = 80
-      simple = {
-        max_purchase_percent = 5
-      }
-    }
-    sp_plans = {
-      compute = {
-        enabled              = true
-        all_upfront_one_year = 1
-      }
-    }
-    notifications = {
-      emails = ["test@example.com"]
-    }
     reporting = {
       enabled = true
     }
@@ -527,21 +306,6 @@ run "test_reporter_eventbridge_rule_tags" {
   command = plan
 
   variables {
-    purchase_strategy = {
-      coverage_target_percent = 80
-      simple = {
-        max_purchase_percent = 5
-      }
-    }
-    sp_plans = {
-      compute = {
-        enabled              = true
-        all_upfront_one_year = 1
-      }
-    }
-    notifications = {
-      emails = ["test@example.com"]
-    }
     reporting = {
       enabled = true
     }
@@ -574,24 +338,6 @@ run "test_reporter_eventbridge_rule_tags" {
 # Test: Scheduler EventBridge target is configured correctly
 run "test_scheduler_eventbridge_target_configuration" {
   command = plan
-
-  variables {
-    purchase_strategy = {
-      coverage_target_percent = 80
-      simple = {
-        max_purchase_percent = 5
-      }
-    }
-    sp_plans = {
-      compute = {
-        enabled              = true
-        all_upfront_one_year = 1
-      }
-    }
-    notifications = {
-      emails = ["test@example.com"]
-    }
-  }
 
   override_resource {
     override_during = plan
@@ -633,24 +379,6 @@ run "test_scheduler_eventbridge_target_configuration" {
 # Test: Purchaser EventBridge target is configured correctly
 run "test_purchaser_eventbridge_target_configuration" {
   command = plan
-
-  variables {
-    purchase_strategy = {
-      coverage_target_percent = 80
-      simple = {
-        max_purchase_percent = 5
-      }
-    }
-    sp_plans = {
-      compute = {
-        enabled              = true
-        all_upfront_one_year = 1
-      }
-    }
-    notifications = {
-      emails = ["test@example.com"]
-    }
-  }
 
   override_resource {
     override_during = plan
@@ -694,21 +422,6 @@ run "test_reporter_eventbridge_target_enabled" {
   command = plan
 
   variables {
-    purchase_strategy = {
-      coverage_target_percent = 80
-      simple = {
-        max_purchase_percent = 5
-      }
-    }
-    sp_plans = {
-      compute = {
-        enabled              = true
-        all_upfront_one_year = 1
-      }
-    }
-    notifications = {
-      emails = ["test@example.com"]
-    }
     reporting = {
       enabled = true
     }
@@ -738,21 +451,6 @@ run "test_reporter_eventbridge_target_disabled" {
   command = plan
 
   variables {
-    purchase_strategy = {
-      coverage_target_percent = 80
-      simple = {
-        max_purchase_percent = 5
-      }
-    }
-    sp_plans = {
-      compute = {
-        enabled              = true
-        all_upfront_one_year = 1
-      }
-    }
-    notifications = {
-      emails = ["test@example.com"]
-    }
     lambda_config = {
       reporter = {
         enabled = false
@@ -773,24 +471,6 @@ run "test_reporter_eventbridge_target_disabled" {
 # Test: Scheduler Lambda permission for EventBridge is configured correctly
 run "test_scheduler_lambda_permission_eventbridge" {
   command = plan
-
-  variables {
-    purchase_strategy = {
-      coverage_target_percent = 80
-      simple = {
-        max_purchase_percent = 5
-      }
-    }
-    sp_plans = {
-      compute = {
-        enabled              = true
-        all_upfront_one_year = 1
-      }
-    }
-    notifications = {
-      emails = ["test@example.com"]
-    }
-  }
 
   assert {
     condition     = aws_lambda_permission.scheduler_eventbridge[0].statement_id == "AllowExecutionFromEventBridge"
@@ -823,24 +503,6 @@ run "test_scheduler_lambda_permission_eventbridge" {
 # Test: Purchaser Lambda permission for EventBridge is configured correctly
 run "test_purchaser_lambda_permission_eventbridge" {
   command = plan
-
-  variables {
-    purchase_strategy = {
-      coverage_target_percent = 80
-      simple = {
-        max_purchase_percent = 5
-      }
-    }
-    sp_plans = {
-      compute = {
-        enabled              = true
-        all_upfront_one_year = 1
-      }
-    }
-    notifications = {
-      emails = ["test@example.com"]
-    }
-  }
 
   assert {
     condition     = aws_lambda_permission.purchaser_eventbridge[0].statement_id == "AllowExecutionFromEventBridge"
@@ -875,21 +537,6 @@ run "test_reporter_lambda_permission_enabled" {
   command = plan
 
   variables {
-    purchase_strategy = {
-      coverage_target_percent = 80
-      simple = {
-        max_purchase_percent = 5
-      }
-    }
-    sp_plans = {
-      compute = {
-        enabled              = true
-        all_upfront_one_year = 1
-      }
-    }
-    notifications = {
-      emails = ["test@example.com"]
-    }
     reporting = {
       enabled = true
     }
@@ -929,21 +576,6 @@ run "test_reporter_lambda_permission_disabled" {
   command = plan
 
   variables {
-    purchase_strategy = {
-      coverage_target_percent = 80
-      simple = {
-        max_purchase_percent = 5
-      }
-    }
-    sp_plans = {
-      compute = {
-        enabled              = true
-        all_upfront_one_year = 1
-      }
-    }
-    notifications = {
-      emails = ["test@example.com"]
-    }
     lambda_config = {
       reporter = {
         enabled = false

@@ -21,6 +21,28 @@ mock_provider "aws" {
   }
 }
 
+variables {
+  purchase_strategy = {
+    target = {
+      dynamic = { risk_level = "prudent" }
+    }
+    split = {
+      fixed_step = { step_percent = 5 }
+    }
+  }
+  sp_plans = {
+    compute = {
+      enabled   = true
+      plan_type = "all_upfront_one_year"
+    }
+    database  = { enabled = false }
+    sagemaker = { enabled = false }
+  }
+  notifications = {
+    emails = ["test@example.com"]
+  }
+}
+
 # ============================================================================
 # SQS Main Queue Tests
 # ============================================================================
@@ -28,24 +50,6 @@ mock_provider "aws" {
 # Test: SQS main queue naming follows expected pattern
 run "test_sqs_main_queue_naming" {
   command = plan
-
-  variables {
-    purchase_strategy = {
-      coverage_target_percent = 80
-      simple = {
-        max_purchase_percent = 5
-      }
-    }
-    sp_plans = {
-      compute = {
-        enabled              = true
-        all_upfront_one_year = 1
-      }
-    }
-    notifications = {
-      emails = ["test@example.com"]
-    }
-  }
 
   assert {
     condition     = aws_sqs_queue.purchase_intents.name == "sp-autopilot-purchase-intents"
@@ -62,24 +66,6 @@ run "test_sqs_main_queue_naming" {
 run "test_sqs_visibility_timeout" {
   command = plan
 
-  variables {
-    purchase_strategy = {
-      coverage_target_percent = 80
-      simple = {
-        max_purchase_percent = 5
-      }
-    }
-    sp_plans = {
-      compute = {
-        enabled              = true
-        all_upfront_one_year = 1
-      }
-    }
-    notifications = {
-      emails = ["test@example.com"]
-    }
-  }
-
   assert {
     condition     = aws_sqs_queue.purchase_intents.visibility_timeout_seconds == 300
     error_message = "SQS main queue visibility timeout should be 300 seconds (5 minutes) to match Lambda timeout"
@@ -89,24 +75,6 @@ run "test_sqs_visibility_timeout" {
 # Test: SQS main queue has redrive policy configured
 run "test_sqs_redrive_policy_configured" {
   command = plan
-
-  variables {
-    purchase_strategy = {
-      coverage_target_percent = 80
-      simple = {
-        max_purchase_percent = 5
-      }
-    }
-    sp_plans = {
-      compute = {
-        enabled              = true
-        all_upfront_one_year = 1
-      }
-    }
-    notifications = {
-      emails = ["test@example.com"]
-    }
-  }
 
   # Note: redrive_policy is a computed JSON string attribute
   # Cannot reliably test JSON content during plan phase even with override
@@ -121,24 +89,6 @@ run "test_sqs_redrive_policy_configured" {
 run "test_sqs_redrive_policy_max_receive_count" {
   command = plan
 
-  variables {
-    purchase_strategy = {
-      coverage_target_percent = 80
-      simple = {
-        max_purchase_percent = 5
-      }
-    }
-    sp_plans = {
-      compute = {
-        enabled              = true
-        all_upfront_one_year = 1
-      }
-    }
-    notifications = {
-      emails = ["test@example.com"]
-    }
-  }
-
   # Note: redrive_policy JSON content cannot be inspected during plan phase
   # The redrive_policy attribute is a computed JSON string
   # Redrive policy contents are validated through integration tests instead
@@ -151,24 +101,6 @@ run "test_sqs_redrive_policy_max_receive_count" {
 # Test: SQS redrive policy points to correct DLQ
 run "test_sqs_redrive_policy_dlq_target" {
   command = plan
-
-  variables {
-    purchase_strategy = {
-      coverage_target_percent = 80
-      simple = {
-        max_purchase_percent = 5
-      }
-    }
-    sp_plans = {
-      compute = {
-        enabled              = true
-        all_upfront_one_year = 1
-      }
-    }
-    notifications = {
-      emails = ["test@example.com"]
-    }
-  }
 
   # Note: Cannot test redrive_policy JSON contents during plan phase
   # Both redrive_policy and DLQ ARN are computed values
@@ -187,24 +119,6 @@ run "test_sqs_redrive_policy_dlq_target" {
 run "test_sqs_dlq_naming" {
   command = plan
 
-  variables {
-    purchase_strategy = {
-      coverage_target_percent = 80
-      simple = {
-        max_purchase_percent = 5
-      }
-    }
-    sp_plans = {
-      compute = {
-        enabled              = true
-        all_upfront_one_year = 1
-      }
-    }
-    notifications = {
-      emails = ["test@example.com"]
-    }
-  }
-
   assert {
     condition     = aws_sqs_queue.purchase_intents_dlq.name == "sp-autopilot-purchase-intents-dlq"
     error_message = "SQS DLQ name should follow pattern: sp-autopilot-purchase-intents-dlq"
@@ -219,24 +133,6 @@ run "test_sqs_dlq_naming" {
 # Test: SQS DLQ message retention is set to maximum
 run "test_sqs_dlq_message_retention" {
   command = plan
-
-  variables {
-    purchase_strategy = {
-      coverage_target_percent = 80
-      simple = {
-        max_purchase_percent = 5
-      }
-    }
-    sp_plans = {
-      compute = {
-        enabled              = true
-        all_upfront_one_year = 1
-      }
-    }
-    notifications = {
-      emails = ["test@example.com"]
-    }
-  }
 
   assert {
     condition     = aws_sqs_queue.purchase_intents_dlq.message_retention_seconds == 1209600
@@ -253,21 +149,6 @@ run "test_sqs_main_queue_tags" {
   command = plan
 
   variables {
-    purchase_strategy = {
-      coverage_target_percent = 80
-      simple = {
-        max_purchase_percent = 5
-      }
-    }
-    sp_plans = {
-      compute = {
-        enabled              = true
-        all_upfront_one_year = 1
-      }
-    }
-    notifications = {
-      emails = ["test@example.com"]
-    }
     tags = {
       Environment = "test"
       Owner       = "platform-team"
@@ -300,21 +181,6 @@ run "test_sqs_dlq_tags" {
   command = plan
 
   variables {
-    purchase_strategy = {
-      coverage_target_percent = 80
-      simple = {
-        max_purchase_percent = 5
-      }
-    }
-    sp_plans = {
-      compute = {
-        enabled              = true
-        all_upfront_one_year = 1
-      }
-    }
-    notifications = {
-      emails = ["test@example.com"]
-    }
     tags = {
       Environment = "test"
       Owner       = "platform-team"
@@ -351,21 +217,6 @@ run "test_dlq_alarm_enabled" {
   command = plan
 
   variables {
-    purchase_strategy = {
-      coverage_target_percent = 80
-      simple = {
-        max_purchase_percent = 5
-      }
-    }
-    sp_plans = {
-      compute = {
-        enabled              = true
-        all_upfront_one_year = 1
-      }
-    }
-    notifications = {
-      emails = ["test@example.com"]
-    }
     monitoring = {
       dlq_alarm = true
     }
@@ -387,21 +238,6 @@ run "test_dlq_alarm_disabled" {
   command = plan
 
   variables {
-    purchase_strategy = {
-      coverage_target_percent = 80
-      simple = {
-        max_purchase_percent = 5
-      }
-    }
-    sp_plans = {
-      compute = {
-        enabled              = true
-        all_upfront_one_year = 1
-      }
-    }
-    notifications = {
-      emails = ["test@example.com"]
-    }
     monitoring = {
       dlq_alarm = false
     }
@@ -418,21 +254,6 @@ run "test_dlq_alarm_configuration" {
   command = plan
 
   variables {
-    purchase_strategy = {
-      coverage_target_percent = 80
-      simple = {
-        max_purchase_percent = 5
-      }
-    }
-    sp_plans = {
-      compute = {
-        enabled              = true
-        all_upfront_one_year = 1
-      }
-    }
-    notifications = {
-      emails = ["test@example.com"]
-    }
     monitoring = {
       dlq_alarm = true
     }
@@ -479,21 +300,6 @@ run "test_dlq_alarm_queue_dimensions" {
   command = plan
 
   variables {
-    purchase_strategy = {
-      coverage_target_percent = 80
-      simple = {
-        max_purchase_percent = 5
-      }
-    }
-    sp_plans = {
-      compute = {
-        enabled              = true
-        all_upfront_one_year = 1
-      }
-    }
-    notifications = {
-      emails = ["test@example.com"]
-    }
     monitoring = {
       dlq_alarm = true
     }
@@ -510,21 +316,6 @@ run "test_dlq_alarm_sns_action" {
   command = plan
 
   variables {
-    purchase_strategy = {
-      coverage_target_percent = 80
-      simple = {
-        max_purchase_percent = 5
-      }
-    }
-    sp_plans = {
-      compute = {
-        enabled              = true
-        all_upfront_one_year = 1
-      }
-    }
-    notifications = {
-      emails = ["test@example.com"]
-    }
     monitoring = {
       dlq_alarm = true
     }
@@ -544,21 +335,6 @@ run "test_dlq_alarm_tags" {
   command = plan
 
   variables {
-    purchase_strategy = {
-      coverage_target_percent = 80
-      simple = {
-        max_purchase_percent = 5
-      }
-    }
-    sp_plans = {
-      compute = {
-        enabled              = true
-        all_upfront_one_year = 1
-      }
-    }
-    notifications = {
-      emails = ["test@example.com"]
-    }
     monitoring = {
       dlq_alarm = true
     }

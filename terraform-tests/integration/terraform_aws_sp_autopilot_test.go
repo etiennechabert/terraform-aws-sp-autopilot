@@ -50,8 +50,8 @@ func TestFullDeploymentAndCleanup(t *testing.T) {
 			// Purchase strategy configuration
 			"purchase_strategy": map[string]interface{}{
 				"target": map[string]interface{}{
-					"fixed": map[string]interface{}{
-						"coverage_percent": 80,
+					"dynamic": map[string]interface{}{
+						"risk_level": "prudent",
 					},
 				},
 				"split": map[string]interface{}{

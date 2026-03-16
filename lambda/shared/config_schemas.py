@@ -38,6 +38,18 @@ STRATEGY_PARAMS = {
         "default": "min_hourly",
         "env_var": "DYNAMIC_RISK_LEVEL",
     },
+    "prudent_percentage": {
+        "required": False,
+        "type": "float",
+        "default": "85.0",
+        "env_var": "PRUDENT_PERCENTAGE",
+    },
+    "static_commitment": {
+        "required": False,
+        "type": "float",
+        "default": "0",
+        "env_var": "STATIC_COMMITMENT",
+    },
     "savings_percentage": {
         "required": False,
         "type": "float",
@@ -136,4 +148,44 @@ AWS_COMMON = {
         "env_var": "MANAGEMENT_ACCOUNT_ROLE_ARN",
     },
     "tags": {"required": False, "type": "json", "default": "{}", "env_var": "TAGS"},
+}
+
+TIMING_PARAMS = {
+    "lookback_hours": {
+        "required": False,
+        "type": "int",
+        "default": "336",
+        "env_var": "LOOKBACK_HOURS",
+    },
+    "renewal_window_days": {
+        "required": False,
+        "type": "int",
+        "default": "7",
+        "env_var": "RENEWAL_WINDOW_DAYS",
+    },
+    "purchase_cooldown_days": {
+        "required": False,
+        "type": "int",
+        "default": "7",
+        "env_var": "PURCHASE_COOLDOWN_DAYS",
+    },
+    "min_commitment_per_plan": {
+        "required": False,
+        "type": "float",
+        "default": "0.001",
+        "env_var": "MIN_COMMITMENT_PER_PLAN",
+    },
+}
+
+NOTIFICATION_PARAMS = {
+    "slack_webhook_url": {
+        "required": False,
+        "type": "str",
+        "env_var": "SLACK_WEBHOOK_URL",
+    },
+    "teams_webhook_url": {
+        "required": False,
+        "type": "str",
+        "env_var": "TEAMS_WEBHOOK_URL",
+    },
 }
