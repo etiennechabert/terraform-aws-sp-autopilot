@@ -1,24 +1,21 @@
 """
 Configuration schema and constants for the Reporter Lambda.
-
-This module defines the configuration schema used for loading environment
-variables and validating configuration parameters for the Savings Plans
-Autopilot Reporter Lambda function.
 """
 
 from typing import Any
 
 from shared.config_schemas import (
     AWS_COMMON,
+    NOTIFICATION_PARAMS,
     SP_TERM_PAYMENT_OPTIONS,
     SP_TYPE_TOGGLES,
     SPIKE_GUARD_PARAMS,
     STRATEGY_PARAMS,
+    TIMING_PARAMS,
 )
 from shared.handler_utils import load_config_from_env
 
 
-# Configuration schema for environment variable loading
 CONFIG_SCHEMA = {
     "reports_bucket": {"required": True, "type": "str", "env_var": "REPORTS_BUCKET"},
     "sns_topic_arn": {"required": True, "type": "str", "env_var": "SNS_TOPIC_ARN"},
@@ -41,12 +38,6 @@ CONFIG_SCHEMA = {
         "env_var": "INCLUDE_DEBUG_DATA",
     },
     **SP_TYPE_TOGGLES,
-    "lookback_hours": {
-        "required": False,
-        "type": "int",
-        "default": "336",
-        "env_var": "LOOKBACK_HOURS",
-    },
     "lookback_days": {
         "required": False,
         "type": "int",
@@ -54,27 +45,13 @@ CONFIG_SCHEMA = {
         "env_var": "LOOKBACK_DAYS",
     },
     **AWS_COMMON,
-    "slack_webhook_url": {
-        "required": False,
-        "type": "str",
-        "env_var": "SLACK_WEBHOOK_URL",
-    },
-    "teams_webhook_url": {
-        "required": False,
-        "type": "str",
-        "env_var": "TEAMS_WEBHOOK_URL",
-    },
+    **NOTIFICATION_PARAMS,
     "low_utilization_threshold": {
         "required": True,
         "type": "float",
         "env_var": "LOW_UTILIZATION_THRESHOLD",
     },
-    "min_commitment_per_plan": {
-        "required": False,
-        "type": "float",
-        "default": "0.001",
-        "env_var": "MIN_COMMITMENT_PER_PLAN",
-    },
+    **TIMING_PARAMS,
     **STRATEGY_PARAMS,
     **SP_TERM_PAYMENT_OPTIONS,
     **SPIKE_GUARD_PARAMS,
@@ -82,12 +59,6 @@ CONFIG_SCHEMA = {
 
 
 def load_configuration() -> dict[str, Any]:
-    """
-    Load and validate configuration from environment variables.
-
-    Returns:
-        dict: Validated configuration dictionary
-    """
     from shared.config_validation import validate_reporter_config
 
     return load_config_from_env(CONFIG_SCHEMA, validator=validate_reporter_config)

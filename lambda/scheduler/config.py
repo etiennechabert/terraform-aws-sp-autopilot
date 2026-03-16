@@ -1,9 +1,5 @@
 """
 Configuration schema and constants for the Scheduler Lambda.
-
-This module defines the configuration schema used for loading environment
-variables and validating configuration parameters for the Savings Plans
-Autopilot Scheduler Lambda function.
 """
 
 from typing import Any
@@ -14,40 +10,17 @@ from shared.config_schemas import (
     SP_TYPE_TOGGLES,
     SPIKE_GUARD_PARAMS,
     STRATEGY_PARAMS,
+    TIMING_PARAMS,
 )
 from shared.handler_utils import load_config_from_env
 
 
-# Configuration schema for environment variable loading
 CONFIG_SCHEMA = {
     "queue_url": {"required": True, "type": "str", "env_var": "QUEUE_URL"},
     "sns_topic_arn": {"required": True, "type": "str", "env_var": "SNS_TOPIC_ARN"},
     **SP_TYPE_TOGGLES,
     **STRATEGY_PARAMS,
-    "renewal_window_days": {
-        "required": False,
-        "type": "int",
-        "default": "7",
-        "env_var": "RENEWAL_WINDOW_DAYS",
-    },
-    "purchase_cooldown_days": {
-        "required": False,
-        "type": "int",
-        "default": "7",
-        "env_var": "PURCHASE_COOLDOWN_DAYS",
-    },
-    "lookback_hours": {
-        "required": False,
-        "type": "int",
-        "default": "336",
-        "env_var": "LOOKBACK_HOURS",
-    },
-    "min_commitment_per_plan": {
-        "required": False,
-        "type": "float",
-        "default": "0.001",
-        "env_var": "MIN_COMMITMENT_PER_PLAN",
-    },
+    **TIMING_PARAMS,
     **SP_TERM_PAYMENT_OPTIONS,
     **SPIKE_GUARD_PARAMS,
     **AWS_COMMON,
@@ -55,12 +28,6 @@ CONFIG_SCHEMA = {
 
 
 def load_configuration() -> dict[str, Any]:
-    """
-    Load and validate configuration from environment variables.
-
-    Returns:
-        dict: Validated configuration dictionary
-    """
     from shared.config_validation import validate_scheduler_config
 
     return load_config_from_env(CONFIG_SCHEMA, validator=validate_scheduler_config)

@@ -143,3 +143,43 @@ AWS_COMMON = {
     },
     "tags": {"required": False, "type": "json", "default": "{}", "env_var": "TAGS"},
 }
+
+TIMING_PARAMS = {
+    "lookback_hours": {
+        "required": False,
+        "type": "int",
+        "default": "336",
+        "env_var": "LOOKBACK_HOURS",
+    },
+    "renewal_window_days": {
+        "required": False,
+        "type": "int",
+        "default": "7",
+        "env_var": "RENEWAL_WINDOW_DAYS",
+    },
+    "purchase_cooldown_days": {
+        "required": False,
+        "type": "int",
+        "default": "7",
+        "env_var": "PURCHASE_COOLDOWN_DAYS",
+    },
+    "min_commitment_per_plan": {
+        "required": False,
+        "type": "float",
+        "default": "0.001",
+        "env_var": "MIN_COMMITMENT_PER_PLAN",
+    },
+}
+
+NOTIFICATION_PARAMS = {
+    "slack_webhook_url": {
+        "required": False,
+        "type": "str",
+        "env_var": "SLACK_WEBHOOK_URL",
+    },
+    "teams_webhook_url": {
+        "required": False,
+        "type": "str",
+        "env_var": "TEAMS_WEBHOOK_URL",
+    },
+}
