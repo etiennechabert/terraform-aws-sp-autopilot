@@ -106,8 +106,8 @@ func TestFullDeploymentAndCleanup(t *testing.T) {
 		NoColor: true,
 	})
 
-	// Ensure resources are destroyed at the end of the test
-	defer terraform.Destroy(t, terraformOptions)
+	// Cleanup is handled by the CI workflow's post-test step (TestCleanupAllOrphanedResources)
+	// which runs asynchronously, so test results are reported immediately.
 
 	t.Log(logSeparator)
 	t.Log("Phase 1: Infrastructure Deployment")

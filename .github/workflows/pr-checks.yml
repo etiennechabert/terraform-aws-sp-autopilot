@@ -546,13 +546,6 @@ jobs:
           TF_VAR_environment: ci-test
           TF_VAR_project_name: sp-autopilot-ci
 
-      - name: Cleanup AWS Resources
-        if: always()
-        working-directory: terraform-tests/integration
-        run: |
-          echo "Cleaning up any remaining test resources..."
-          go test -v -timeout 10m -run TestCleanupAllOrphanedResources || true
-
       - name: Comment PR with Test Results
         if: false # Disabled: github.event_name == 'pull_request' && failure()
         uses: actions/github-script@ed597411d8f924073f98dfc5c65a23a2325f34cd # v8
@@ -573,3 +566,45 @@ jobs:
               repo: context.repo.repo,
               body: output
             });
+
+  # Async cleanup: runs after integration tests regardless of outcome
+  terraform-integration-cleanup:
+    name: Integration Test Cleanup
+    runs-on: ubuntu-latest
+    needs: [terraform-integration-tests]
+    if: always() && needs.terraform-integration-tests.result != 'skipped'
+    environment: aws-integration
+    concurrency:
+      group: aws-integration-tests
+      cancel-in-progress: false
+    timeout-minutes: 15
+    permissions:
+      contents: read
+
+    env:
+      AWS_DEFAULT_REGION: us-east-1
+      GO_VERSION: '1.24'
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
+
+      - name: Set up Go
+        uses: actions/setup-go@4b73464bb391d4059bd26b0524d20df3927bd417 # v6
+        with:
+          go-version: ${{ env.GO_VERSION }}
+          cache: true
+          cache-dependency-path: terraform-tests/integration/go.mod
+
+      - name: Configure AWS Credentials
+        uses: aws-actions/configure-aws-credentials@8df5847569e6427dd6c4fb1cf565c83acfa8afa7 # v6
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ env.AWS_DEFAULT_REGION }}
+
+      - name: Cleanup Orphaned Resources
+        working-directory: terraform-tests/integration
+        run: |
+          go mod download
+          go test -v -timeout 10m -run TestCleanupAllOrphanedResources || true
