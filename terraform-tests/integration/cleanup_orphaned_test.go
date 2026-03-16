@@ -324,24 +324,6 @@ func cleanupAllSNSTopics(t *testing.T, sess *session.Session) {
 	}
 }
 
-func deleteOrphanedSubscription(t *testing.T, snsClient *sns.SNS, sub *sns.Subscription, testPrefixes []string) bool {
-	if *sub.SubscriptionArn == "PendingConfirmation" {
-		return false
-	}
-	if !containsTestPrefix(*sub.TopicArn, testPrefixes) {
-		return false
-	}
-	_, err := snsClient.Unsubscribe(&sns.UnsubscribeInput{
-		SubscriptionArn: sub.SubscriptionArn,
-	})
-	if err != nil {
-		t.Logf("  Warning: Failed to unsubscribe %s: %v", *sub.SubscriptionArn, err)
-		return false
-	}
-	t.Logf("  Deleted orphaned subscription: %s", *sub.SubscriptionArn)
-	return true
-}
-
 func cleanupOrphanedSNSSubscriptions(t *testing.T, sess *session.Session) {
 	t.Log("\n[Orphaned SNS Subscriptions]")
 	snsClient := sns.New(sess)
@@ -363,8 +345,19 @@ func cleanupOrphanedSNSSubscriptions(t *testing.T, sess *session.Session) {
 		}
 
 		for _, sub := range output.Subscriptions {
-			if deleteOrphanedSubscription(t, snsClient, sub, testPrefixes) {
-				deletedCount++
+			if *sub.SubscriptionArn == "PendingConfirmation" {
+				continue
+			}
+			if containsTestPrefix(*sub.TopicArn, testPrefixes) {
+				_, err := snsClient.Unsubscribe(&sns.UnsubscribeInput{
+					SubscriptionArn: sub.SubscriptionArn,
+				})
+				if err != nil {
+					t.Logf("  Warning: Failed to unsubscribe %s: %v", *sub.SubscriptionArn, err)
+				} else {
+					t.Logf("  Deleted orphaned subscription: %s", *sub.SubscriptionArn)
+					deletedCount++
+				}
 			}
 		}
 

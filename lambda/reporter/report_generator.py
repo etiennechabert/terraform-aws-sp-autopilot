@@ -903,111 +903,6 @@ def _render_spike_guard_warning_banner(
 """
 
 
-def _render_sp_type_tab_button(
-    sp_type: str, label: str, config: dict[str, Any], show_global_tab: bool
-) -> str:
-    config_key = f"enable_{sp_type}_sp"
-    if not config[config_key]:
-        return ""
-    active_class = "" if show_global_tab else " active"
-    return f'<button class="tab{active_class}" onclick="switchTab(\'{sp_type}\')">{label}</button>'
-
-
-def _render_sp_type_tab_content(
-    sp_type: str,
-    config: dict[str, Any],
-    single_type: str | None,
-    preview_data: dict[str, Any] | None,
-) -> str:
-    config_key = f"enable_{sp_type}_sp"
-    if not config[config_key]:
-        return ""
-    active_class = " active" if single_type == sp_type else ""
-    return f'''<div id="{sp_type}-tab" class="tab-content{active_class}">
-                <div id="{sp_type}-metrics"></div>
-                <div class="chart-container" id="{sp_type}-daily-container" style="display: none;">
-                    <canvas id="{sp_type}DailyChart"></canvas>
-                </div>
-                <div class="chart-container">
-                    <canvas id="{sp_type}Chart"></canvas>
-                </div>
-                {_render_sp_type_scheduler_preview(sp_type, preview_data, config or {})}
-            </div>'''
-
-
-def _prepare_chart_and_preview_json(
-    coverage_data: dict[str, Any],
-    savings_data: dict[str, Any],
-    config: dict[str, Any],
-    daily_coverage_data: dict[str, Any] | None,
-    preview_data: dict[str, Any] | None,
-) -> tuple[str, str, str, str, str, str]:
-    chart_data, optimal_coverage_results = _prepare_chart_data(coverage_data, savings_data, config)
-
-    daily_chart_data = "null"
-    if daily_coverage_data:
-        daily_chart_data, _ = _prepare_chart_data(
-            daily_coverage_data, savings_data, config, per_type_range=True
-        )
-
-    breakdown_by_type = savings_data["actual_savings"]["breakdown_by_type"]
-
-    compute_metrics = _get_type_metrics_for_report(
-        coverage_data["compute"], "Compute", breakdown_by_type
-    )
-    database_metrics = _get_type_metrics_for_report(
-        coverage_data["database"], "Database", breakdown_by_type
-    )
-    sagemaker_metrics = _get_type_metrics_for_report(
-        coverage_data["sagemaker"], "SageMaker", breakdown_by_type
-    )
-
-    metrics_json = json.dumps(
-        {"compute": compute_metrics, "database": database_metrics, "sagemaker": sagemaker_metrics}
-    )
-
-    optimal_coverage_json = (
-        json.dumps(optimal_coverage_results) if optimal_coverage_results else "{}"
-    )
-
-    follow_aws_by_type = {}
-    if preview_data:
-        aws_strategy = preview_data["strategies"].get("aws+one_shot", {})
-        for purchase in aws_strategy.get("purchases", []):
-            sp = purchase["sp_type"]
-            follow_aws_by_type[sp] = {
-                "hourly_commitment": purchase["hourly_commitment"],
-                "estimated_savings_percentage": purchase.get("estimated_savings_percentage", 0),
-            }
-    follow_aws_json = json.dumps(follow_aws_by_type)
-
-    configured_target_by_type = {}
-    if preview_data:
-        configured_key = preview_data.get("configured_strategy", "")
-        configured_strategy_data = preview_data.get("strategies", {}).get(configured_key, {})
-        for purchase in configured_strategy_data.get("purchases", []):
-            sp = purchase["sp_type"]
-            projected_cov = purchase.get("projected_coverage", 0)
-            added_commitment = purchase.get("hourly_commitment", 0)
-            discount = purchase.get("discount_used", 0)
-            new_od_equiv = sp_calculations.coverage_from_commitment(added_commitment, discount)
-            configured_target_by_type[sp] = {
-                "projected_coverage": projected_cov,
-                "added_od_equiv": round(new_od_equiv, 4),
-                "added_commitment": round(added_commitment, 5),
-            }
-    configured_target_json = json.dumps(configured_target_by_type)
-
-    return (
-        chart_data,
-        daily_chart_data,
-        metrics_json,
-        optimal_coverage_json,
-        follow_aws_json,
-        configured_target_json,
-    )
-
-
 def generate_html_report(
     coverage_data: dict[str, Any],
     savings_data: dict[str, Any],
@@ -1651,9 +1546,21 @@ def generate_html_report(
         if show_global_tab
         else ""
     }
-                {_render_sp_type_tab_button("compute", "Compute", config, show_global_tab)}
-                {_render_sp_type_tab_button("database", "Database", config, show_global_tab)}
-                {_render_sp_type_tab_button("sagemaker", "SageMaker", config, show_global_tab)}
+                {
+        ""
+        if not config["enable_compute_sp"]
+        else f'<button class="tab{"" if show_global_tab else " active"}" onclick="switchTab(\'compute\')">Compute</button>'
+    }
+                {
+        ""
+        if not config["enable_database_sp"]
+        else f'<button class="tab{"" if show_global_tab else " active"}" onclick="switchTab(\'database\')">Database</button>'
+    }
+                {
+        ""
+        if not config["enable_sagemaker_sp"]
+        else f'<button class="tab{"" if show_global_tab else " active"}" onclick="switchTab(\'sagemaker\')">SageMaker</button>'
+    }
                 <button class="color-toggle" onclick="toggleActiveTabColors()" title="Toggle color-blind friendly mode" style="margin-left: auto;">
                     🎨 Toggle Colors
                 </button>
@@ -1672,11 +1579,50 @@ def generate_html_report(
                 </div>
             </div>
 
-            {_render_sp_type_tab_content("compute", config, single_type, preview_data)}
+            {
+        ""
+        if not config["enable_compute_sp"]
+        else f'''<div id="compute-tab" class="tab-content{" active" if single_type == "compute" else ""}">
+                <div id="compute-metrics"></div>
+                <div class="chart-container" id="compute-daily-container" style="display: none;">
+                    <canvas id="computeDailyChart"></canvas>
+                </div>
+                <div class="chart-container">
+                    <canvas id="computeChart"></canvas>
+                </div>
+                {_render_sp_type_scheduler_preview("compute", preview_data, config or {})}
+            </div>'''
+    }
 
-            {_render_sp_type_tab_content("database", config, single_type, preview_data)}
+            {
+        ""
+        if not config["enable_database_sp"]
+        else f'''<div id="database-tab" class="tab-content{" active" if single_type == "database" else ""}">
+                <div id="database-metrics"></div>
+                <div class="chart-container" id="database-daily-container" style="display: none;">
+                    <canvas id="databaseDailyChart"></canvas>
+                </div>
+                <div class="chart-container">
+                    <canvas id="databaseChart"></canvas>
+                </div>
+                {_render_sp_type_scheduler_preview("database", preview_data, config or {})}
+            </div>'''
+    }
 
-            {_render_sp_type_tab_content("sagemaker", config, single_type, preview_data)}
+            {
+        ""
+        if not config["enable_sagemaker_sp"]
+        else f'''<div id="sagemaker-tab" class="tab-content{" active" if single_type == "sagemaker" else ""}">
+                <div id="sagemaker-metrics"></div>
+                <div class="chart-container" id="sagemaker-daily-container" style="display: none;">
+                    <canvas id="sagemakerDailyChart"></canvas>
+                </div>
+                <div class="chart-container">
+                    <canvas id="sagemakerChart"></canvas>
+                </div>
+                {_render_sp_type_scheduler_preview("sagemaker", preview_data, config or {})}
+            </div>'''
+    }
         </div>
 
         <div class="section">
@@ -1703,16 +1649,66 @@ def generate_html_report(
     monthly_savings = net_savings_hourly * 24 * 30
     html += _build_raw_data_section_html(raw_data, report_timestamp, monthly_savings)
 
-    (
-        chart_data,
-        daily_chart_data,
-        metrics_json,
-        optimal_coverage_json,
-        follow_aws_json,
-        configured_target_json,
-    ) = _prepare_chart_and_preview_json(
-        coverage_data, savings_data, config, daily_coverage_data, preview_data
+    # Prepare chart data from coverage timeseries and calculate optimal coverage
+    chart_data, optimal_coverage_results = _prepare_chart_data(coverage_data, savings_data, config)
+
+    daily_chart_data = "null"
+    if daily_coverage_data:
+        daily_chart_data, _ = _prepare_chart_data(
+            daily_coverage_data, savings_data, config, per_type_range=True
+        )
+
+    compute_summary = coverage_data["compute"]["summary"]
+    database_summary = coverage_data["database"]["summary"]
+    sagemaker_summary = coverage_data["sagemaker"]["summary"]
+
+    breakdown_by_type = savings_data["actual_savings"]["breakdown_by_type"]
+
+    compute_metrics = _get_type_metrics_for_report(
+        coverage_data["compute"], "Compute", breakdown_by_type
     )
+    database_metrics = _get_type_metrics_for_report(
+        coverage_data["database"], "Database", breakdown_by_type
+    )
+    sagemaker_metrics = _get_type_metrics_for_report(
+        coverage_data["sagemaker"], "SageMaker", breakdown_by_type
+    )
+
+    metrics_json = json.dumps(
+        {"compute": compute_metrics, "database": database_metrics, "sagemaker": sagemaker_metrics}
+    )
+
+    optimal_coverage_json = (
+        json.dumps(optimal_coverage_results) if optimal_coverage_results else "{}"
+    )
+
+    follow_aws_by_type = {}
+    if preview_data:
+        aws_strategy = preview_data["strategies"].get("aws+one_shot", {})
+        for purchase in aws_strategy.get("purchases", []):
+            sp = purchase["sp_type"]
+            follow_aws_by_type[sp] = {
+                "hourly_commitment": purchase["hourly_commitment"],
+                "estimated_savings_percentage": purchase.get("estimated_savings_percentage", 0),
+            }
+    follow_aws_json = json.dumps(follow_aws_by_type)
+
+    configured_target_by_type = {}
+    if preview_data:
+        configured_key = preview_data.get("configured_strategy", "")
+        configured_strategy_data = preview_data.get("strategies", {}).get(configured_key, {})
+        for purchase in configured_strategy_data.get("purchases", []):
+            sp = purchase["sp_type"]
+            projected_cov = purchase.get("projected_coverage", 0)
+            added_commitment = purchase.get("hourly_commitment", 0)
+            discount = purchase.get("discount_used", 0)
+            new_od_equiv = sp_calculations.coverage_from_commitment(added_commitment, discount)
+            configured_target_by_type[sp] = {
+                "projected_coverage": projected_cov,
+                "added_od_equiv": round(new_od_equiv, 4),
+                "added_commitment": round(added_commitment, 5),
+            }
+    configured_target_json = json.dumps(configured_target_by_type)
 
     html += f"""
     <script>
@@ -2701,6 +2697,10 @@ def generate_csv_report(
 
     report_timestamp = datetime.now(UTC).strftime("%Y-%m-%d %H:%M:%S UTC")
 
+    # Extract summaries
+    compute_summary = coverage_data["compute"]["summary"]
+    database_summary = coverage_data["database"]["summary"]
+    sagemaker_summary = coverage_data["sagemaker"]["summary"]
     actual_savings = savings_data["actual_savings"]
 
     csv_parts = [
