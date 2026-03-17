@@ -1387,6 +1387,38 @@ h1, h2, h3, h4, h5, h6 {
     background: #ff9900;
 }
 
+/* ===== Compact Strategy Buttons (when cost breakdown collapsed) ===== */
+.strategy-container.compact .strategy-button {
+    padding: 8px 12px;
+    flex-direction: row;
+    gap: 8px;
+    align-items: center;
+}
+
+.strategy-container.compact .strategy-icon {
+    font-size: 1.2rem;
+}
+
+.strategy-container.compact .strategy-metrics,
+.strategy-container.compact .strategy-desc,
+.strategy-container.compact .strategy-badge {
+    display: none;
+}
+
+.strategy-container.compact .strategy-content {
+    flex-direction: row;
+    gap: 6px;
+    align-items: center;
+}
+
+.strategy-container.compact .strategy-name {
+    font-size: 0.85rem;
+}
+
+.strategy-container.compact .purchase-amount {
+    font-size: 0.85rem;
+}
+
 /* ===== Legacy Optimal Suggestion (kept for reference) ===== */
 .optimal-suggestion {
     display: flex;

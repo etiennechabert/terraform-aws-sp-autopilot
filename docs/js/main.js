@@ -355,9 +355,13 @@
         if (toggleCostBreakdownButton) {
             toggleCostBreakdownButton.addEventListener('click', () => {
                 const content = document.getElementById('cost-breakdown-content');
+                const strategyContainer = document.querySelector('.strategy-container');
                 if (!content) return;
                 content.classList.toggle('collapsed');
                 toggleCostBreakdownButton.classList.toggle('collapsed');
+                if (strategyContainer) {
+                    strategyContainer.classList.toggle('compact', content.classList.contains('collapsed'));
+                }
             });
         }
 
