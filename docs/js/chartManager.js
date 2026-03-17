@@ -383,7 +383,7 @@ const ChartManager = (function() {
             z: 1,
             label: {
                 display: true,
-                content: `Current: $${existingCoverage.toFixed(2)}/hr (${currentPct}% coverage)`,
+                content: `Current coverage: $${existingCoverage.toFixed(2)}/hr (${currentPct}%)`,
                 position: 'start',
                 backgroundColor: covColor,
                 color: '#1a1f3a',
@@ -405,7 +405,7 @@ const ChartManager = (function() {
                 z: 2,
                 label: {
                     display: true,
-                    content: `Next purchase: $${nextPurchaseCoverage.toFixed(2)}/hr (${nextPct}% coverage)`,
+                    content: `Next coverage: $${nextPurchaseCoverage.toFixed(2)}/hr (${nextPct}%)`,
                     position: 'center',
                     backgroundColor: nextColor,
                     color: '#1a1f3a',
@@ -868,7 +868,7 @@ const ChartManager = (function() {
                 z: 2,
                 label: {
                     display: true,
-                    content: `Current ${CostCalculator.formatCurrency(existingCommitment)}/h`,
+                    content: `Current commitment ${CostCalculator.formatCurrency(existingCommitment)}/h`,
                     position: 'end',
                     backgroundColor: covColor,
                     color: '#1a1f3a',
@@ -890,7 +890,7 @@ const ChartManager = (function() {
                 z: 3,
                 label: {
                     display: true,
-                    content: `Next purchase ${CostCalculator.formatCurrency(nextCommitment)}/h`,
+                    content: `Next commitment ${CostCalculator.formatCurrency(nextCommitment)}/h`,
                     position: 'end',
                     yAdjust: 20,
                     backgroundColor: nextColor,

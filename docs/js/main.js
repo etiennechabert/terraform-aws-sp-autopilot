@@ -1666,7 +1666,7 @@
             const coveragePct = avgOnDemandPerHour > 0
                 ? (appState.coverageCost / avgOnDemandPerHour) * 100
                 : 0;
-            commitmentPctElement.textContent = `Covering ${CostCalculator.formatCurrency(appState.coverageCost)}/h - ${coveragePct.toFixed(1)}% of on-demand`;
+            commitmentPctElement.textContent = `On-demand covered ${CostCalculator.formatCurrency(appState.coverageCost)}/h - ${coveragePct.toFixed(1)}% of usage`;
             commitmentPctElement.style.color = getPercentageColor(coveragePct, 'commitment');
         }
 
