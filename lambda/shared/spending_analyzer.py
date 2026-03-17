@@ -24,6 +24,14 @@ if TYPE_CHECKING:
 
 logger = logging.getLogger(__name__)
 
+# TODO: temporary cap — remove once data after 2026-03-07 is stable
+_DATA_CUTOFF = datetime(2026, 3, 7, tzinfo=UTC)
+
+
+def _capped_now() -> datetime:
+    now = datetime.now(UTC)
+    return min(now, _DATA_CUTOFF)
+
 
 # Service name constants for Savings Plans type mapping
 # These are the actual SERVICE dimension values returned by AWS Cost Explorer API
@@ -269,7 +277,7 @@ class SpendingAnalyzer:
         Raises:
             ClientError: If AWS API calls fail
         """
-        now = datetime.now(UTC)
+        now = _capped_now()
 
         # Step 1: Validate our service constants are complete
         unknown_services = self._validate_service_constants(now)
@@ -298,7 +306,7 @@ class SpendingAnalyzer:
 
     def analyze_daily_spending(self, config: dict[str, Any]) -> dict[str, dict[str, Any]]:
         """Fetch coverage at DAILY granularity for long-term trend charts (up to 365 days)."""
-        now = datetime.now(UTC)
+        now = _capped_now()
         lookback_days = config["lookback_days"]
         end_time = now - timedelta(days=1)
         start_time = end_time - timedelta(days=lookback_days)
