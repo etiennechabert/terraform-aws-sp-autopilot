@@ -356,12 +356,14 @@
             toggleCostBreakdownButton.addEventListener('click', () => {
                 const content = document.getElementById('cost-breakdown-content');
                 const metricsRow = document.getElementById('metrics-row');
+                const compactMetrics = document.getElementById('compact-metrics');
                 const strategyContainer = document.querySelector('.strategy-container');
                 if (!content) return;
                 const collapsed = !content.classList.contains('collapsed');
                 content.classList.toggle('collapsed');
                 toggleCostBreakdownButton.classList.toggle('collapsed');
                 if (metricsRow) metricsRow.classList.toggle('compact', collapsed);
+                if (compactMetrics) compactMetrics.classList.toggle('hidden', !collapsed);
                 if (strategyContainer) strategyContainer.classList.toggle('compact', collapsed);
             });
         }
@@ -1705,6 +1707,14 @@
             wastePctElement.style.color = getPercentageColor(results.wastePercentage, 'waste');
         }
 
+        // Update compact header metrics
+        const fmt = CostCalculator.formatCurrency;
+        const cmCommit = SPCalculations.commitmentFromCoverage(appState.coverageCost, appState.savingsPercentage);
+        const cmSet = (id, val) => { const e = document.getElementById(id); if (e) e.textContent = val; };
+        cmSet('cm-commitment', fmt(cmCommit) + '/h');
+        cmSet('cm-ondemand', fmt(results.onDemandCost / numHours) + '/h');
+        cmSet('cm-total', fmt(results.savingsPlanCost / numHours) + '/h');
+        cmSet('cm-savings', fmt(results.savings / numHours) + '/h (' + results.savingsPercentageActual.toFixed(1) + '%)');
     }
 
     /**
