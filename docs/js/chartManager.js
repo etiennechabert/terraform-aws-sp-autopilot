@@ -152,8 +152,8 @@ const ChartManager = (function() {
             data: {
                 labels: generateTimeLabels(),
                 datasets: [
-                    {   // 0: Existing SP coverage
-                        label: 'Covered by existing SP',
+                    {   // 0: Existing SP commitment cost (after discount)
+                        label: 'SP Commitment',
                         data: [],
                         borderColor: themeColors.covered.border,
                         backgroundColor: themeColors.covered.background,
@@ -202,8 +202,8 @@ const ChartManager = (function() {
                         pointHoverRadius: 4,
                         order: 0
                     },
-                    {   // 4: Commitment level line
-                        label: 'SP Commitment Level',
+                    {   // 4: On-demand coverage level (what the SP covers at OD rates)
+                        label: 'On-Demand Covered by SP',
                         data: [],
                         borderColor: themeColors.commitment.border,
                         backgroundColor: themeColors.commitment.background,
@@ -425,7 +425,7 @@ const ChartManager = (function() {
         const coverageUnits = config.coverageUnits;
         const discountFactor = 1 - (config.savingsPercentage || 0) / 100;
         const hasExisting = existingCoverage && existingCoverage > 0;
-        const showSplit = hasExisting && Math.abs(existingCoverage - coverageUnits) > 0.01;
+        const showSplit = hasExisting && coverageUnits > existingCoverage + 0.01;
 
         const numHours = hourlyBreakdown.length;
 
@@ -459,7 +459,7 @@ const ChartManager = (function() {
         }
 
         // Show/hide split-only datasets and adjust spillover fill target
-        costChart.data.datasets[0].label = showSplit ? 'Covered by existing SP' : 'Covered by SP';
+        costChart.data.datasets[0].label = showSplit ? 'Existing SP Commitment' : 'SP Commitment';
         costChart.data.datasets[1].hidden = !showSplit;
         costChart.data.datasets[2].fill = showSplit ? 1 : 0;
 
