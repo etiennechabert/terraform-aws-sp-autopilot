@@ -355,13 +355,14 @@
         if (toggleCostBreakdownButton) {
             toggleCostBreakdownButton.addEventListener('click', () => {
                 const content = document.getElementById('cost-breakdown-content');
+                const summary = document.getElementById('cost-breakdown-summary');
                 const strategyContainer = document.querySelector('.strategy-container');
                 if (!content) return;
+                const collapsed = !content.classList.contains('collapsed');
                 content.classList.toggle('collapsed');
                 toggleCostBreakdownButton.classList.toggle('collapsed');
-                if (strategyContainer) {
-                    strategyContainer.classList.toggle('compact', content.classList.contains('collapsed'));
-                }
+                if (summary) summary.classList.toggle('hidden', !collapsed);
+                if (strategyContainer) strategyContainer.classList.toggle('compact', collapsed);
             });
         }
 
@@ -1702,6 +1703,20 @@
         if (wastePctElement) {
             wastePctElement.textContent = `${CostCalculator.formatPercentage(results.wastePercentage)} of commitment`;
             wastePctElement.style.color = getPercentageColor(results.wastePercentage, 'waste');
+        }
+
+        // Update condensed summary (shown when collapsed)
+        const fmt = CostCalculator.formatCurrency;
+        const commitmentCost = SPCalculations.commitmentFromCoverage(appState.coverageCost, appState.savingsPercentage);
+        const el = (id) => document.getElementById(id);
+        const s = el('summary-commitment');
+        if (s) {
+            s.textContent = fmt(commitmentCost) + '/h';
+            el('summary-ondemand').textContent = fmt(results.onDemandCost / numHours) + '/h';
+            el('summary-total').textContent = fmt(results.savingsPlanCost / numHours) + '/h';
+            el('summary-spillover').textContent = fmt(results.spilloverCost / numHours) + '/h';
+            el('summary-savings').textContent = fmt(results.savings / numHours) + '/h';
+            el('summary-savings-pct').textContent = results.savingsPercentageActual.toFixed(1) + '%';
         }
     }
 

@@ -184,28 +184,17 @@
                     </div>
                 </div>
 
-                <!-- Sliders always visible -->
-                <div class="sliders-row">
-                    <div class="control-group">
-                        <label for="coverage-slider" class="control-label">
-                            Commitment
-                            <span class="control-value" id="coverage-display">$50/h</span>
-                        </label>
-                        <input type="range" id="coverage-slider" class="slider" min="0" max="100" value="50" step="1" aria-label="Savings Plan commitment in dollars per hour">
-                        <div class="slider-hints">
-                            <div class="control-hint" id="savings-rate">$0.070/h vs $0.100/h On-Demand</div>
-                            <div class="control-hint net-savings-hint" id="slider-net-savings">Net Savings: 0.0%</div>
-                        </div>
-                    </div>
-
-                    <div class="control-group">
-                        <label for="savings-percentage" class="control-label">
-                            Savings Percentage
-                            <span class="control-value" id="savings-display">30%</span>
-                        </label>
-                        <input type="range" id="savings-percentage" class="slider" min="10" max="90" value="30" step="1" aria-label="Savings percentage">
-                        <div class="control-hint savings-source hidden" id="savings-source"></div>
-                    </div>
+                <!-- Condensed metrics shown when collapsed -->
+                <div id="cost-breakdown-summary" class="metrics-summary hidden">
+                    <span class="summary-item"><strong>Commitment:</strong> <span id="summary-commitment">$0/h</span></span>
+                    <span class="summary-sep">·</span>
+                    <span class="summary-item"><strong>On-Demand:</strong> <span id="summary-ondemand">$0/h</span></span>
+                    <span class="summary-sep">·</span>
+                    <span class="summary-item"><strong>With SP:</strong> <span id="summary-total">$0/h</span></span>
+                    <span class="summary-sep">·</span>
+                    <span class="summary-item"><strong>Spillover:</strong> <span id="summary-spillover">$0/h</span></span>
+                    <span class="summary-sep">·</span>
+                    <span class="summary-item summary-savings"><strong>Savings:</strong> <span id="summary-savings">$0/h</span> (<span id="summary-savings-pct">0%</span>)</span>
                 </div>
 
                 <div id="cost-breakdown-content" class="collapsible-content">
@@ -247,6 +236,30 @@
 
                 <div class="chart-container">
                         <canvas id="cost-chart" aria-label="Cost comparison chart"></canvas>
+                    </div>
+                </div>
+
+                <!-- Sliders always visible -->
+                <div class="sliders-row">
+                    <div class="control-group">
+                        <label for="coverage-slider" class="control-label">
+                            Commitment
+                            <span class="control-value" id="coverage-display">$50/h</span>
+                        </label>
+                        <input type="range" id="coverage-slider" class="slider" min="0" max="100" value="50" step="1" aria-label="Savings Plan commitment in dollars per hour">
+                        <div class="slider-hints">
+                            <div class="control-hint" id="savings-rate">$0.070/h vs $0.100/h On-Demand</div>
+                            <div class="control-hint net-savings-hint" id="slider-net-savings">Net Savings: 0.0%</div>
+                        </div>
+                    </div>
+
+                    <div class="control-group">
+                        <label for="savings-percentage" class="control-label">
+                            Savings Percentage
+                            <span class="control-value" id="savings-display">30%</span>
+                        </label>
+                        <input type="range" id="savings-percentage" class="slider" min="10" max="90" value="30" step="1" aria-label="Savings percentage">
+                        <div class="control-hint savings-source hidden" id="savings-source"></div>
                     </div>
                 </div>
 

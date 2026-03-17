@@ -1387,36 +1387,64 @@ h1, h2, h3, h4, h5, h6 {
     background: #ff9900;
 }
 
+/* ===== Condensed Metrics Summary (when collapsed) ===== */
+.metrics-summary {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 8px 12px;
+    font-size: 0.85rem;
+    color: var(--text-secondary);
+    flex-wrap: wrap;
+}
+
+.metrics-summary.hidden {
+    display: none;
+}
+
+.summary-sep {
+    color: var(--text-muted);
+}
+
+.summary-item strong {
+    color: var(--text-primary);
+    font-weight: 500;
+}
+
+.summary-savings {
+    color: var(--color-success);
+}
+
 /* ===== Compact Strategy Buttons (when cost breakdown collapsed) ===== */
 .strategy-container.compact .strategy-button {
     padding: 8px 12px;
-    flex-direction: row;
-    gap: 8px;
-    align-items: center;
 }
 
 .strategy-container.compact .strategy-icon {
     font-size: 1.2rem;
 }
 
-.strategy-container.compact .strategy-metrics,
 .strategy-container.compact .strategy-desc,
-.strategy-container.compact .strategy-badge {
+.strategy-container.compact .strategy-badge,
+.strategy-container.compact .strategy-metric-label,
+.strategy-container.compact .strategy-savings-tooltip {
     display: none;
-}
-
-.strategy-container.compact .strategy-content {
-    flex-direction: row;
-    gap: 6px;
-    align-items: center;
 }
 
 .strategy-container.compact .strategy-name {
     font-size: 0.85rem;
 }
 
+.strategy-container.compact .strategy-value {
+    font-size: 1rem;
+}
+
+.strategy-container.compact .strategy-metrics {
+    margin-top: 4px;
+}
+
 .strategy-container.compact .purchase-amount {
-    font-size: 0.85rem;
+    font-size: 0.8rem;
 }
 
 /* ===== Legacy Optimal Suggestion (kept for reference) ===== */
