@@ -367,7 +367,58 @@ const ChartManager = (function() {
      * Update cost chart with cost breakdown
      * @param {Object} costResults - Results from CostCalculator
      */
-    function updateCostChart(costResults, existingCoverage) {
+    function buildCostChartAnnotations(existingCoverage, nextPurchaseCoverage, onDemandCosts) {
+        const annotations = {};
+        const minCost = Math.min(...onDemandCosts.filter(c => c > 0));
+        const covColor = ColorThemes.getThemeColors().covered.border;
+        const currentPct = minCost > 0 ? (existingCoverage / minCost * 100).toFixed(1) : '0';
+
+        annotations.currentCoverageLine = {
+            type: 'line',
+            yMin: existingCoverage,
+            yMax: existingCoverage,
+            borderColor: covColor,
+            borderWidth: 2,
+            borderDash: [4, 3],
+            z: 1,
+            label: {
+                display: true,
+                content: `Current: $${existingCoverage.toFixed(2)}/hr (${currentPct}% coverage)`,
+                position: 'start',
+                backgroundColor: covColor,
+                color: '#1a1f3a',
+                font: { size: 11, weight: 'bold' },
+                padding: 4
+            }
+        };
+
+        if (nextPurchaseCoverage && nextPurchaseCoverage > 0) {
+            const nextPct = minCost > 0 ? (nextPurchaseCoverage / minCost * 100).toFixed(1) : '0';
+            const nextColor = ColorThemes.getThemeColors().nextPurchase.border;
+            annotations.nextPurchaseLine = {
+                type: 'line',
+                yMin: nextPurchaseCoverage,
+                yMax: nextPurchaseCoverage,
+                borderColor: nextColor,
+                borderWidth: 2,
+                borderDash: [4, 3],
+                z: 2,
+                label: {
+                    display: true,
+                    content: `Next purchase: $${nextPurchaseCoverage.toFixed(2)}/hr (${nextPct}% coverage)`,
+                    position: 'center',
+                    backgroundColor: nextColor,
+                    color: '#1a1f3a',
+                    font: { size: 11, weight: 'bold' },
+                    padding: 4
+                }
+            };
+        }
+
+        return annotations;
+    }
+
+    function updateCostChart(costResults, existingCoverage, nextPurchaseCoverage) {
         if (!costChart) return;
 
         const { hourlyBreakdown, config } = costResults;
@@ -419,30 +470,9 @@ const ChartManager = (function() {
         costChart.data.datasets[3].data = onDemandCosts;
         costChart.data.datasets[4].data = commitmentLine;
 
-        // Add "Current" annotation line when split is visible
-        const annotations = {};
-        if (showSplit) {
-            const minCost = Math.min(...onDemandCosts.filter(c => c > 0));
-            const currentPct = minCost > 0 ? (existingCoverage / minCost * 100).toFixed(1) : '0';
-            annotations.currentCoverageLine = {
-                type: 'line',
-                yMin: existingCoverage,
-                yMax: existingCoverage,
-                borderColor: 'rgba(0, 180, 255, 0.7)',
-                borderWidth: 2,
-                borderDash: [4, 3],
-                label: {
-                    display: true,
-                    content: `Current: $${existingCoverage.toFixed(2)}/hr (${currentPct}%)`,
-                    position: 'start',
-                    backgroundColor: 'rgba(0, 140, 210, 0.85)',
-                    color: 'white',
-                    font: { size: 11, weight: 'bold' },
-                    padding: 4
-                }
-            };
-        }
-        costChart.options.plugins.annotation.annotations = annotations;
+        costChart.options.plugins.annotation.annotations = showSplit
+            ? buildCostChartAnnotations(existingCoverage, nextPurchaseCoverage, onDemandCosts)
+            : {};
 
         costChart.update('none');
     }
@@ -835,6 +865,7 @@ const ChartManager = (function() {
                 borderColor: covColor,
                 borderWidth: 2,
                 borderDash: [4, 4],
+                z: 2,
                 label: {
                     display: true,
                     content: `Current ${CostCalculator.formatCurrency(existingCommitment)}/h`,
@@ -856,6 +887,7 @@ const ChartManager = (function() {
                 borderColor: nextColor,
                 borderWidth: 2,
                 borderDash: [4, 4],
+                z: 3,
                 label: {
                     display: true,
                     content: `Next purchase ${CostCalculator.formatCurrency(nextCommitment)}/h`,
@@ -878,6 +910,7 @@ const ChartManager = (function() {
                 borderColor: 'rgba(0, 212, 255, 0.9)',
                 borderWidth: 3,
                 borderDash: [10, 5],
+                z: 1,
                 label: {
                     display: true,
                     content: `📍 ${CostCalculator.formatCurrency(currentCommitment)}/h (${percentOfMin}% of min)`,

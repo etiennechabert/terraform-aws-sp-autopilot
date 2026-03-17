@@ -1281,7 +1281,11 @@
         ChartManager.setCurrentCostResults(currentCostResults);
 
         // Update cost chart with scaled costs
-        ChartManager.updateCostChart(currentCostResults, appState.currentCoverage);
+        const nextPurchase = appState.usageData?.next_purchase;
+        const nextPurchaseCoverageForChart = (nextPurchase && appState.currentCoverage > 0)
+            ? appState.currentCoverage + (nextPurchase.added_od_equiv || 0)
+            : 0;
+        ChartManager.updateCostChart(currentCostResults, appState.currentCoverage, nextPurchaseCoverageForChart);
 
         // Update metrics display
         updateMetricsDisplay(currentCostResults);
