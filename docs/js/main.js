@@ -1241,7 +1241,7 @@
 
         const markers = [
             { pct: currentPct, label: 'Current' },
-            { pct: nextPurchasePct, label: 'Next purchase' }
+            { pct: nextPurchasePct, label: 'Next' }
         ];
 
         for (const m of markers) {
@@ -1456,7 +1456,7 @@
                 : 0;
 
             const coverageCommitment = appState.coverageCost || 0;
-            rateElement.textContent = `Coverage $${coverageCommitment.toFixed(2)}/h vs $${avgUsage.toFixed(2)}/h Avg Usage`;
+            rateElement.textContent = `On-demand covered $${coverageCommitment.toFixed(2)}/h vs $${avgUsage.toFixed(2)}/h Avg Usage`;
         }
     }
 
