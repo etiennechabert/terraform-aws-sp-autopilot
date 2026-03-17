@@ -1387,32 +1387,21 @@ h1, h2, h3, h4, h5, h6 {
     background: #ff9900;
 }
 
-/* ===== Condensed Metrics Summary (when collapsed) ===== */
-.metrics-summary {
-    display: flex;
-    align-items: center;
-    gap: 6px;
-    padding: 8px 12px;
-    font-size: 0.85rem;
-    color: var(--text-secondary);
-    flex-wrap: wrap;
+/* ===== Compact Metrics Row (when collapsed) ===== */
+.metrics-row.compact .metric-card {
+    padding: 6px 8px;
 }
 
-.metrics-summary.hidden {
+.metrics-row.compact .metric-value {
+    font-size: 0.95rem;
+}
+
+.metrics-row.compact .metric-label {
+    font-size: 0.65rem;
+}
+
+.metrics-row.compact .metric-subvalue {
     display: none;
-}
-
-.summary-sep {
-    color: var(--text-muted);
-}
-
-.summary-item strong {
-    color: var(--text-primary);
-    font-weight: 500;
-}
-
-.summary-savings {
-    color: var(--color-success);
 }
 
 /* ===== Compact Strategy Buttons (when cost breakdown collapsed) ===== */

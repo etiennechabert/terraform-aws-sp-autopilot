@@ -184,22 +184,8 @@
                     </div>
                 </div>
 
-                <!-- Condensed metrics shown when collapsed -->
-                <div id="cost-breakdown-summary" class="metrics-summary hidden">
-                    <span class="summary-item"><strong>Commitment:</strong> <span id="summary-commitment">$0/h</span></span>
-                    <span class="summary-sep">·</span>
-                    <span class="summary-item"><strong>On-Demand:</strong> <span id="summary-ondemand">$0/h</span></span>
-                    <span class="summary-sep">·</span>
-                    <span class="summary-item"><strong>With SP:</strong> <span id="summary-total">$0/h</span></span>
-                    <span class="summary-sep">·</span>
-                    <span class="summary-item"><strong>Spillover:</strong> <span id="summary-spillover">$0/h</span></span>
-                    <span class="summary-sep">·</span>
-                    <span class="summary-item summary-savings"><strong>Savings:</strong> <span id="summary-savings">$0/h</span> (<span id="summary-savings-pct">0%</span>)</span>
-                </div>
-
-                <div id="cost-breakdown-content" class="collapsible-content">
-                <!-- Horizontal Metrics Row -->
-                <div class="metrics-row">
+                <!-- Metrics Row (always visible, compact when collapsed) -->
+                <div class="metrics-row" id="metrics-row">
                     <div class="metric-card highlight">
                         <div class="metric-value" id="metric-commitment">$0.00/h</div>
                         <div class="metric-label">SP Commitment</div>
@@ -234,6 +220,7 @@
                     </div>
                 </div>
 
+                <div id="cost-breakdown-content" class="collapsible-content">
                 <div class="chart-container">
                         <canvas id="cost-chart" aria-label="Cost comparison chart"></canvas>
                     </div>
