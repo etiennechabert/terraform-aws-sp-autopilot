@@ -51,7 +51,7 @@ const ColorThemes = (function() {
         // Matching report palette2: covered=#CC79A7, ondemand=#56B4E9, target=#D55E00
         alt: buildTheme('Pink / Teal', {
             covered:     ['rgb(204, 121, 167)', 'rgba(204, 121, 167, 0.35)'],
-            nextPurchase:['rgb(213, 94, 0)',    'rgba(213, 94, 0, 0.3)'],
+            nextPurchase:['rgb(213, 94, 0)',    'rgba(213, 94, 0, 0.5)'],
             spillover:   ['rgb(86, 180, 233)',  'rgba(86, 180, 233, 0.5)'],
             baseline:    ['#999999',            'transparent'],
             commitment:  ['rgb(213, 94, 0)',    'transparent'],
