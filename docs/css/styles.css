@@ -1388,16 +1388,23 @@ h1, h2, h3, h4, h5, h6 {
 }
 
 /* ===== Compact Metrics Row (when collapsed) ===== */
+.metrics-row.compact {
+    gap: 4px;
+    margin-top: -8px;
+    margin-bottom: 4px;
+}
+
 .metrics-row.compact .metric-card {
-    padding: 6px 8px;
+    padding: 4px 8px;
+    min-width: 0;
 }
 
 .metrics-row.compact .metric-value {
-    font-size: 0.95rem;
+    font-size: 0.85rem;
 }
 
 .metrics-row.compact .metric-label {
-    font-size: 0.65rem;
+    font-size: 0.6rem;
 }
 
 .metrics-row.compact .metric-subvalue {

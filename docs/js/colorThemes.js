@@ -35,7 +35,7 @@ const ColorThemes = (function() {
     const themes = {
         default: buildTheme('Blue / Orange', {
             covered:     ['rgb(0, 114, 178)',   'rgba(0, 114, 178, 0.35)'],
-            nextPurchase:['rgb(0, 158, 115)',   'rgba(0, 158, 115, 0.3)'],
+            nextPurchase:['rgb(0, 158, 115)',   'rgba(0, 158, 115, 0.5)'],
             spillover:   ['rgb(230, 159, 0)',   'rgba(230, 159, 0, 0.5)'],
             baseline:    ['#8b95a8',            'transparent'],
             commitment:  ['rgb(0, 158, 115)',   'transparent'],
