@@ -217,8 +217,9 @@
             const nextPurchase = appState.usageData?.next_purchase;
             const currentCov = appState.currentCoverage || 0;
             banner.className = 'usage-data-banner';
+            const minCost = appState.minCost || 1;
             const coverageInfo = (nextPurchase && nextPurchase.added_od_equiv > 0)
-                ? ` · ${CostCalculator.formatCurrency(currentCov)}/h (${(currentCov / (appState.minCost || 1) * 100).toFixed(1)}%) → ${CostCalculator.formatCurrency(currentCov + nextPurchase.added_od_equiv)}/h (${((currentCov + nextPurchase.added_od_equiv) / (appState.minCost || 1) * 100).toFixed(1)}%) after next`
+                ? ` · Current ${(currentCov / minCost * 100).toFixed(1)}% → Next ${((currentCov + nextPurchase.added_od_equiv) / minCost * 100).toFixed(1)}%`
                 : '';
             banner.innerHTML = `
                 <div class="banner-content">
