@@ -61,6 +61,7 @@ DATABASE_SP_SERVICES = [
     "Amazon ElastiCache",
     "Amazon DocumentDB (with MongoDB compatibility)",  # Note: exact name includes parenthetical
     "Amazon Neptune",
+    "Amazon OpenSearch Service",
     "Amazon Timestream",
     "Amazon Keyspaces (for Apache Cassandra)",  # Note: exact name includes parenthetical
     "AWS Database Migration Service",
