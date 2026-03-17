@@ -1241,7 +1241,7 @@
 
         const markers = [
             { pct: currentPct, label: 'Current' },
-            { pct: nextPurchasePct, label: 'Next purchase' }
+            { pct: nextPurchasePct, label: 'Next' }
         ];
 
         for (const m of markers) {
@@ -1281,7 +1281,11 @@
         ChartManager.setCurrentCostResults(currentCostResults);
 
         // Update cost chart with scaled costs
-        ChartManager.updateCostChart(currentCostResults, appState.currentCoverage);
+        const nextPurchase = appState.usageData?.next_purchase;
+        const nextPurchaseCoverageForChart = (nextPurchase && appState.currentCoverage > 0)
+            ? appState.currentCoverage + (nextPurchase.added_od_equiv || 0)
+            : 0;
+        ChartManager.updateCostChart(currentCostResults, appState.currentCoverage, nextPurchaseCoverageForChart);
 
         // Update metrics display
         updateMetricsDisplay(currentCostResults);
@@ -1452,7 +1456,7 @@
                 : 0;
 
             const coverageCommitment = appState.coverageCost || 0;
-            rateElement.textContent = `Coverage $${coverageCommitment.toFixed(2)}/h vs $${avgUsage.toFixed(2)}/h Avg Usage`;
+            rateElement.textContent = `On-demand covered $${coverageCommitment.toFixed(2)}/h vs $${avgUsage.toFixed(2)}/h Avg Usage`;
         }
     }
 
@@ -1662,7 +1666,7 @@
             const coveragePct = avgOnDemandPerHour > 0
                 ? (appState.coverageCost / avgOnDemandPerHour) * 100
                 : 0;
-            commitmentPctElement.textContent = `Covering ${CostCalculator.formatCurrency(appState.coverageCost)}/h - ${coveragePct.toFixed(1)}% of on-demand`;
+            commitmentPctElement.textContent = `On-demand covered ${CostCalculator.formatCurrency(appState.coverageCost)}/h - ${coveragePct.toFixed(1)}% of usage`;
             commitmentPctElement.style.color = getPercentageColor(coveragePct, 'commitment');
         }
 

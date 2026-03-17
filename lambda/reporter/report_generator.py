@@ -597,7 +597,7 @@ def _build_breakdown_table_html(
                         <th>Active Plans</th>
                         <th>Utilization</th>
                         <th>Commitment/hr</th>
-                        <th>Would Pay On-Demand/hr</th>
+                        <th>On-Demand Covered/hr</th>
                         <th>Savings/hr</th>
                     </tr>
                 </thead>
@@ -1593,7 +1593,7 @@ def generate_html_report(
                 <div class="value">{savings_percentage:.1f}%</div>
             </div>
             <div class="summary-card {overall_coverage_class}">
-                <h3>SP Coverage min-hourly</h3>
+                <h3>Coverage (% of min-hourly)</h3>
                 <div class="value">{overall_coverage:.1f}%</div>
             </div>
             <div class="summary-card {utilization_class}">
@@ -1859,10 +1859,10 @@ def generate_html_report(
                 const header = document.createElement('div');
                 header.className = 'chart-header';
                 let legendHtml = `
-                    <span class="chart-legend-item"><span class="chart-legend-color" data-role="covered" style="background:${{palette.covered}};border-color:${{palette.coveredBorder}};"></span>Covered by existing Savings Plans</span>`;
+                    <span class="chart-legend-item"><span class="chart-legend-color" data-role="covered" style="background:${{palette.covered}};border-color:${{palette.coveredBorder}};"></span>Existing SP Commitment</span>`;
                 if (hasTarget) {{
                     legendHtml += `
-                    <span class="chart-legend-item"><span class="chart-legend-color" data-role="future" style="background:${{palette.configuredTarget}};border-color:${{palette.configuredTarget}};"></span>Covered by future Saving Plan</span>`;
+                    <span class="chart-legend-item"><span class="chart-legend-color" data-role="future" style="background:${{palette.configuredTarget}};border-color:${{palette.configuredTarget}};"></span>Added by next purchase</span>`;
                 }}
                 legendHtml += `
                     <span class="chart-legend-item"><span class="chart-legend-color" data-role="ondemand" style="background:${{palette.ondemand}};border-color:${{palette.ondemandBorder}};"></span>On-Demand Cost</span>`;
@@ -1911,7 +1911,7 @@ def generate_html_report(
                         label: {{
                             display: true,
                             z: 10,
-                            content: 'Current: $' + onDemandEquivalent.toFixed(2) + '/hr (' + currentCoveragePct.toFixed(1) + '% coverage)',
+                            content: 'Current coverage: $' + onDemandEquivalent.toFixed(2) + '/hr (' + currentCoveragePct.toFixed(1) + '%)',
                             position: 'start',
                             backgroundColor: palette.coveredBorder,
                             color: 'white',
@@ -1966,7 +1966,7 @@ def generate_html_report(
                         label: {{
                             display: true,
                             z: 10,
-                            content: 'Next purchase: $' + projectedOdEquiv.toFixed(2) + '/hr (' + projectedCov.toFixed(1) + '% coverage)',
+                            content: 'Next coverage: $' + projectedOdEquiv.toFixed(2) + '/hr (' + projectedCov.toFixed(1) + '%)',
                             position: 'center',
                             backgroundColor: palette.configuredTargetBg,
                             color: 'white',
@@ -1992,7 +1992,7 @@ def generate_html_report(
 
             const datasets = [
                 {{
-                    label: 'Covered by existing Savings Plans',
+                    label: 'Existing SP Commitment',
                     data: chartData.covered,
                     backgroundColor: palette.covered,
                     borderColor: palette.coveredBorder,
@@ -2002,7 +2002,7 @@ def generate_html_report(
             ];
             if (futureData) {{
                 datasets.push({{
-                    label: 'Covered by future Saving Plan',
+                    label: 'Added by next purchase',
                     data: futureData,
                     backgroundColor: palette.configuredTarget,
                     borderColor: palette.configuredTarget,
@@ -2065,7 +2065,7 @@ def generate_html_report(
                                     let ondemand = 0;
 
                                     tooltipItems.forEach(function(item) {{
-                                        if (item.dataset.label.includes('Covered')) {{
+                                        if (item.dataset.label.includes('Commitment') || item.dataset.label.includes('next purchase')) {{
                                             covered = item.parsed.y;
                                         }} else {{
                                             ondemand = item.parsed.y;
@@ -2131,7 +2131,7 @@ def generate_html_report(
                     labels: chartData.labels,
                     datasets: [
                         {{
-                            label: 'Covered by existing Savings Plans',
+                            label: 'Existing SP Commitment',
                             data: chartData.covered,
                             backgroundColor: palette.covered,
                             borderColor: palette.coveredBorder,
@@ -2177,7 +2177,7 @@ def generate_html_report(
                                     let covered = 0;
                                     let ondemand = 0;
                                     tooltipItems.forEach(function(item) {{
-                                        if (item.dataset.label.includes('Covered')) {{
+                                        if (item.dataset.label.includes('Commitment') || item.dataset.label.includes('next purchase')) {{
                                             covered = item.parsed.y;
                                         }} else {{
                                             ondemand = item.parsed.y;
