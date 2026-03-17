@@ -523,7 +523,7 @@ h1, h2, h3, h4, h5, h6 {
 
 /* ===== Collapsible Content ===== */
 .collapsible-content {
-    max-height: 1000px;
+    max-height: 3000px;
     overflow: hidden;
     transition: max-height 0.3s ease, opacity 0.3s ease;
     opacity: 1;

@@ -171,14 +171,20 @@
 
             <!-- Section 2: Cost Comparison Chart (Full Width) -->
             <section class="card section-cost-comparison">
-                <div class="card-header" style="display:flex;justify-content:space-between;align-items:flex-start;">
+                <div class="card-header-with-toggle">
                     <div>
                         <h2 class="section-title">Cost Breakdown: Coverage vs Actual Usage</h2>
                         <p class="section-description">Move the sliders below to see how coverage and savings affect costs</p>
                     </div>
-                    <button id="toggle-colors" class="toggle-colors-btn" title="Toggle Colors">🎨 Toggle Colors</button>
+                    <div class="header-right">
+                        <button id="toggle-colors" class="toggle-colors-btn" title="Toggle Colors">🎨 Toggle Colors</button>
+                        <button id="toggle-cost-breakdown" class="button-toggle" aria-label="Toggle cost breakdown section">
+                            <span class="toggle-icon">▼</span>
+                        </button>
+                    </div>
                 </div>
 
+                <div id="cost-breakdown-content" class="collapsible-content">
                 <!-- Horizontal Metrics Row -->
                 <div class="metrics-row">
                     <div class="metric-card highlight">
@@ -362,6 +368,7 @@
                             </div>
                         </div>
                     </div>
+                </div>
                 </section>
 
             <!-- Section 3: Savings Optimization Chart -->

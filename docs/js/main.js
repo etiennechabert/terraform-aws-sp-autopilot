@@ -216,21 +216,15 @@
         if (fromReporter) {
             const nextPurchase = appState.usageData?.next_purchase;
             const currentCov = appState.currentCoverage || 0;
-            let purchaseInfo = '';
-            if (nextPurchase && nextPurchase.added_od_equiv > 0) {
-                const projectedCov = currentCov + nextPurchase.added_od_equiv;
-                const minCost = appState.minCost || 1;
-                const currentPct = (currentCov / minCost * 100).toFixed(1);
-                const projectedPct = (projectedCov / minCost * 100).toFixed(1);
-                purchaseInfo = `<br><small style="opacity:0.9">Coverage: <strong>${CostCalculator.formatCurrency(currentCov)}/h</strong> (${currentPct}%) → <strong>${CostCalculator.formatCurrency(projectedCov)}/h</strong> (${projectedPct}%) after next purchase</small>`;
-            }
             banner.className = 'usage-data-banner';
+            const coverageInfo = (nextPurchase && nextPurchase.added_od_equiv > 0)
+                ? ` · ${CostCalculator.formatCurrency(currentCov)}/h (${(currentCov / (appState.minCost || 1) * 100).toFixed(1)}%) → ${CostCalculator.formatCurrency(currentCov + nextPurchase.added_od_equiv)}/h (${((currentCov + nextPurchase.added_od_equiv) / (appState.minCost || 1) * 100).toFixed(1)}%) after next`
+                : '';
             banner.innerHTML = `
                 <div class="banner-content">
                     <span class="banner-icon">📊</span>
                     <span class="banner-text">
-                        <strong>Real Usage Data Loaded</strong> - ${spType} Savings Plans<br>
-                        <small>Using your actual ${savingsPct.toFixed(1)}% discount rate</small>${purchaseInfo}
+                        <strong>Real Usage Data Loaded</strong> – ${spType} · ${savingsPct.toFixed(1)}% discount${coverageInfo}
                     </span>
                 </div>
             `;
@@ -353,6 +347,17 @@
         const toggleLoadPatternButton = document.getElementById('toggle-load-pattern');
         if (toggleLoadPatternButton) {
             toggleLoadPatternButton.addEventListener('click', handleToggleLoadPattern);
+        }
+
+        // Toggle cost breakdown section
+        const toggleCostBreakdownButton = document.getElementById('toggle-cost-breakdown');
+        if (toggleCostBreakdownButton) {
+            toggleCostBreakdownButton.addEventListener('click', () => {
+                const content = document.getElementById('cost-breakdown-content');
+                if (!content) return;
+                content.classList.toggle('collapsed');
+                toggleCostBreakdownButton.classList.toggle('collapsed');
+            });
         }
 
         // Color theme toggle button
