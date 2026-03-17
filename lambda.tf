@@ -243,6 +243,7 @@ data "archive_file" "reporter" {
     for_each = toset([
       "sp_types.py",
       "follow_aws_strategy.py",
+      "follow_static_strategy.py",
       "recommendations.py",
       "purchase_calculator.py",
     ])

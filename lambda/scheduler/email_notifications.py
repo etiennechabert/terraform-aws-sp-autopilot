@@ -108,7 +108,10 @@ def _format_unknown_services_warning(
     lines.extend(
         [
             "",
-            "   Please update lambda/shared/spending_analyzer.py",
+            "   Please add them to the appropriate constant in lambda/shared/spending_analyzer.py:",
+            "   - COMPUTE_SP_SERVICES (EC2, Lambda, Fargate)",
+            "   - DATABASE_SP_SERVICES (RDS, DynamoDB, ElastiCache, etc.)",
+            "   - SAGEMAKER_SP_SERVICES (SageMaker)",
             "",
             "=" * 50,
             "",
