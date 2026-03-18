@@ -94,7 +94,6 @@ jobs:
         uses: aquasecurity/tfsec-sarif-action@21ded20e8ca120cd9d3d6ab04ef746477542a608 # v0.1.4
         with:
           sarif_file: tfsec-results.sarif
-          github_token: ${{ secrets.GITHUB_TOKEN }}
           tfsec_args: --minimum-severity HIGH --exclude aws-s3-encryption-customer-key,aws-sqs-queue-encryption-use-cmk,aws-iam-no-policy-wildcards
         continue-on-error: true
 
