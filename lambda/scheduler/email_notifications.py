@@ -74,21 +74,42 @@ def _format_plans_block(
     return lines
 
 
-def _format_static_strategy_warning(
+def _format_strategy_warnings(
+    config: dict[str, Any],
     purchase_plans: list[dict[str, Any]],
 ) -> list[str]:
-    """Format over-commitment warnings for the static strategy."""
+    """Format warnings about the selected target and split strategies."""
+    lines: list[str] = []
+    lines.extend(_format_target_strategy_warning(config, purchase_plans))
+    lines.extend(_format_split_strategy_warning(config))
+    return lines
+
+
+def _format_target_strategy_warning(
+    config: dict[str, Any],
+    purchase_plans: list[dict[str, Any]],
+) -> list[str]:
+    """Format warning about the target strategy."""
+    target = config.get("target_strategy_type")
+
+    if target == "static":
+        return _format_static_target_warning(purchase_plans)
+    if target == "aws":
+        return _format_aws_target_warning()
+    return []
+
+
+def _format_static_target_warning(
+    purchase_plans: list[dict[str, Any]],
+) -> list[str]:
     warnings = []
     for plan in purchase_plans:
         for w in plan.get("static_warnings", []):
             if w not in warnings:
                 warnings.append(w)
 
-    if not warnings:
-        return []
-
     lines = [
-        "⚠️  STATIC STRATEGY — OVER-COMMITMENT RISK",
+        "⚠️  TARGET STRATEGY: STATIC — OVER-COMMITMENT RISK",
         "=" * 50,
         "",
         "The static strategy uses a fixed $/h target that does NOT adapt",
@@ -110,9 +131,11 @@ def _format_static_strategy_warning(
                 f"${w['avg_hourly']:.4f}/h — at risk if usage drops"
             )
 
+    if warnings:
+        lines.append("")
+
     lines.extend(
         [
-            "",
             "RECOMMENDATION: Switch to the 'dynamic' strategy which automatically",
             "derives targets from actual usage patterns and adjusts as workloads change.",
             '  target_strategy_type = "dynamic"',
@@ -122,6 +145,50 @@ def _format_static_strategy_warning(
         ]
     )
     return lines
+
+
+def _format_aws_target_warning() -> list[str]:
+    return [
+        "NOTE — TARGET STRATEGY: AWS RECOMMENDATIONS",
+        "=" * 50,
+        "",
+        "AWS Cost Explorer recommendations tend to use conservative discount",
+        "assumptions, which can lead to higher commitment amounts than needed.",
+        "The actual discount you receive is often better than what AWS estimates,",
+        "meaning you may end up over-committed.",
+        "",
+        "RECOMMENDATION: Consider the 'dynamic' strategy which derives targets",
+        "from your actual usage and observed discount rates, giving you more",
+        "accurate commitment sizing.",
+        '  target_strategy_type = "dynamic"',
+        "",
+        "=" * 50,
+        "",
+    ]
+
+
+def _format_split_strategy_warning(config: dict[str, Any]) -> list[str]:
+    """Format warning about the split strategy."""
+    split = config.get("split_strategy_type")
+
+    if split != "one_shot":
+        return []
+
+    return [
+        "NOTE — SPLIT STRATEGY: ONE SHOT",
+        "=" * 50,
+        "",
+        "The one_shot split purchases the entire gap to target in a single cycle.",
+        "There is no gradual ramp-up — if the target or usage estimate is off,",
+        "you commit the full amount immediately with no chance to adjust.",
+        "",
+        "For a more cautious approach, consider:",
+        '  split_strategy_type = "gap_split"   (halves the gap each cycle)',
+        '  split_strategy_type = "fixed_step"  (fixed % increment per cycle)',
+        "",
+        "=" * 50,
+        "",
+    ]
 
 
 def _format_unknown_services_warning(
@@ -184,7 +251,7 @@ def _format_and_send(
     log_label: str,
 ) -> None:
     email_lines = [
-        *_format_static_strategy_warning(purchase_plans),
+        *_format_strategy_warnings(config, purchase_plans),
         *header_lines,
         plans_heading,
         "-" * 50,
