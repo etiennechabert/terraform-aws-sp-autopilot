@@ -167,7 +167,7 @@
                 // Debug data
                 "INCLUDE_DEBUG_DATA": "true",
                 // Demo mode - randomize financial data for safe screenshots/videos
-                "DEMO_MODE": "false",
+                "DEMO_MODE": "true",
                 // Scheduler strategy (for preview simulation)
                 "TARGET_STRATEGY_TYPE": "dynamic",
                 "SPLIT_STRATEGY_TYPE": "gap_split",
@@ -216,7 +216,7 @@
                 // Debug data
                 "INCLUDE_DEBUG_DATA": "true",
                 // Demo mode - randomize financial data for safe screenshots/videos
-                "DEMO_MODE": "false"
+                "DEMO_MODE": "true"
             },
             "console": "integratedTerminal",
             "cwd": "${workspaceFolder}/lambda/reporter"
@@ -255,7 +255,7 @@
                 // Debug data
                 "INCLUDE_DEBUG_DATA": "true",
                 // Demo mode - randomize financial data for safe screenshots/videos
-                "DEMO_MODE": "false"
+                "DEMO_MODE": "true"
             },
             "console": "integratedTerminal",
             "cwd": "${workspaceFolder}/lambda/reporter"
