@@ -133,43 +133,15 @@ def generate_chart(output_path: str = "docs/images/gap-split-lifecycle.png") -> 
     ax.axhline(y=100, color="#ff9900", linewidth=2, linestyle="--", label="Target (100%)")
     ax.plot(time_points, coverages, color="#232f3e", linewidth=0.8, label="Total coverage")
 
-    # Annotate coverage at the first purchase of each year (only during ramp-up)
-    for y in range(total_years + 1):
-        target_time = float(y)
-        closest_idx = min(
-            range(len(time_points)),
-            key=lambda i: abs(time_points[i] - target_time) if time_points[i] >= target_time else float("inf"),
-        )
-        cov = coverages[closest_idx]
-        if cov <= 0:
-            continue
-        # Stop annotating once we've reached 100%
-        if cov >= 99.9 and y > 0:
-            ax.annotate(
-                f"Coverage: {cov:.0f}%",
-                xy=(time_points[closest_idx], cov),
-                xytext=(0, 8), textcoords="offset points",
-                fontsize=7, color="#232f3e", fontweight="bold",
-                ha="center",
-            )
-            break
-        ax.annotate(
-            f"Coverage: {cov:.0f}%",
-            xy=(time_points[closest_idx], cov),
-            xytext=(0, 8), textcoords="offset points",
-            fontsize=7, color="#232f3e", fontweight="bold",
-            ha="center",
-        )
-
     ax.annotate(
-        "First renewals — large plans\nreplaced by smaller distributed ones",
-        xy=(1.0, 75), xytext=(1.5, 35),
+        "Initially large purchases\nto reach target quickly",
+        xy=(0.2, 50), xytext=(0.8, 30),
         fontsize=7, color="#555",
         arrowprops=dict(arrowstyle="->", color="#999", lw=0.8),
     )
     ax.annotate(
-        "Plans distribute\nrenewals smooth out",
-        xy=(4.0, 97), xytext=(4.0, 55),
+        "Over time, more plans\nbut smaller ones",
+        xy=(4.5, 97), xytext=(4.5, 55),
         fontsize=7, color="#555", ha="center",
         arrowprops=dict(arrowstyle="->", color="#999", lw=0.8),
     )
