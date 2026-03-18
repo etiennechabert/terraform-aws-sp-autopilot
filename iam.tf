@@ -58,8 +58,7 @@ resource "aws_iam_role_policy" "scheduler_cost_explorer" {
       Action = [
         "ce:GetSavingsPlansPurchaseRecommendation",
         "ce:GetSavingsPlansUtilization",
-        "ce:GetSavingsPlansCoverage",
-        "ce:GetCostAndUsage"
+        "ce:GetSavingsPlansCoverage"
       ]
       Resource = "*"
     }]
@@ -116,7 +115,6 @@ resource "aws_iam_role_policy" "scheduler_savingsplans" {
       Effect = "Allow"
       Action = [
         "savingsplans:DescribeSavingsPlans",
-        "savingsplans:DescribeSavingsPlansOfferingRates",
         "savingsplans:DescribeSavingsPlansOfferings"
       ]
       Resource = "*"
@@ -198,8 +196,7 @@ resource "aws_iam_role_policy" "purchaser_cost_explorer" {
       Action = [
         "ce:GetSavingsPlansPurchaseRecommendation",
         "ce:GetSavingsPlansUtilization",
-        "ce:GetSavingsPlansCoverage",
-        "ce:GetCostAndUsage"
+        "ce:GetSavingsPlansCoverage"
       ]
       Resource = "*"
     }]
@@ -256,7 +253,6 @@ resource "aws_iam_role_policy" "purchaser_savingsplans" {
       Effect = "Allow"
       Action = [
         "savingsplans:DescribeSavingsPlans",
-        "savingsplans:DescribeSavingsPlansOfferingRates",
         "savingsplans:DescribeSavingsPlansOfferings",
         "savingsplans:CreateSavingsPlan"
       ]
@@ -339,8 +335,7 @@ resource "aws_iam_role_policy" "reporter_cost_explorer" {
       Action = [
         "ce:GetSavingsPlansPurchaseRecommendation",
         "ce:GetSavingsPlansUtilization",
-        "ce:GetSavingsPlansCoverage",
-        "ce:GetCostAndUsage"
+        "ce:GetSavingsPlansCoverage"
       ]
       Resource = "*"
     }]
@@ -397,7 +392,6 @@ resource "aws_iam_role_policy" "reporter_savingsplans" {
       Effect = "Allow"
       Action = [
         "savingsplans:DescribeSavingsPlans",
-        "savingsplans:DescribeSavingsPlansOfferingRates",
         "savingsplans:DescribeSavingsPlansOfferings"
       ]
       Resource = "*"
