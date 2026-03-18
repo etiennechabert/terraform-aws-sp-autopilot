@@ -94,7 +94,7 @@ def build_plan_history(
 def generate_chart(output_path: str = "docs/images/gap-split-lifecycle.png") -> None:
     divider = 2.0
     term_years = 1
-    total_years = 10
+    total_years = 3
 
     # min_purchase = 1/12 of total — at most 12 plans per 1-year term
     min_purchase_pct = 100.0 / 12
@@ -140,14 +140,14 @@ def generate_chart(output_path: str = "docs/images/gap-split-lifecycle.png") -> 
         ha="center", va="center",
     )
     ax.annotate(
-        "First renewals — large plans\nreplaced by distributed smaller ones",
-        xy=(1.0, 75), xytext=(2.0, 40),
+        "First renewals — large plans\nreplaced by smaller distributed ones",
+        xy=(1.0, 75), xytext=(1.5, 35),
         fontsize=7, color="#555",
         arrowprops=dict(arrowstyle="->", color="#999", lw=0.8),
     )
     ax.annotate(
-        "Steady state\nsmooth renewals",
-        xy=(8.0, 98), xytext=(8.0, 55),
+        "Plans distribute\nrenewals smooth out",
+        xy=(2.5, 97), xytext=(2.5, 55),
         fontsize=7, color="#555", ha="center",
         arrowprops=dict(arrowstyle="->", color="#999", lw=0.8),
     )
