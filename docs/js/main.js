@@ -1716,7 +1716,20 @@
         cmSet('cm-total', fmt(results.savingsPlanCost / numHours) + '/h');
         cmSet('cm-waste', fmt(results.wastedCommitment / numHours) + '/h');
         cmSet('cm-spillover', fmt(results.spilloverCost / numHours) + '/h');
-        cmSet('cm-savings', fmt(results.savings / numHours) + '/h (' + results.savingsPercentageActual.toFixed(1) + '%)');
+        const cmSavingsEl = document.getElementById('cm-savings');
+        if (cmSavingsEl) {
+            cmSavingsEl.textContent = fmt(results.savings / numHours) + '/h (' + results.savingsPercentageActual.toFixed(1) + '%)';
+            const pct = results.savingsPercentageActual;
+            const optimalPct = results.optimalCoverage?.coveragePercentage || 100;
+            const currentPct = appState.minCost > 0 ? (appState.coverageCost / appState.minCost * 100) : 0;
+            if (pct < 0) {
+                cmSavingsEl.style.color = 'var(--accent-red, #ff5252)';
+            } else if (currentPct > optimalPct) {
+                cmSavingsEl.style.color = 'var(--color-warning, #e6a000)';
+            } else {
+                cmSavingsEl.style.color = 'var(--color-success, #00ff88)';
+            }
+        }
     }
 
     /**
