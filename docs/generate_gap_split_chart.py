@@ -111,7 +111,8 @@ def generate_chart(output_path: str = "docs/images/gap-split-lifecycle.png") -> 
 
     # === Top: coverage over time ===
     sample_step = 7
-    sample_days = list(range(0, total_years * DAYS_PER_YEAR + 1, sample_step))
+    padding = 30
+    sample_days = list(range(-padding, total_years * DAYS_PER_YEAR + padding + 1, sample_step))
     sample_years = [d / DAYS_PER_YEAR for d in sample_days]
 
     unique_plans = sorted(
