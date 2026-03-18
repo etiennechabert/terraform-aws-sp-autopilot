@@ -68,7 +68,8 @@ def _get_env_value(env_var: str, is_required: bool, default_value: Any) -> str |
         return os.environ[env_var]
     if default_value is not None:
         return os.environ.get(env_var, default_value)
-    return os.environ.get(env_var)
+    value = os.environ.get(env_var)
+    return value if value else None  # treat empty string as unset
 
 
 def _convert_field_value(raw_value: str, field_type: str, field_name: str) -> Any:

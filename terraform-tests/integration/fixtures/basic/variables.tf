@@ -38,7 +38,7 @@ variable "purchase_strategy" {
       fixed_step = optional(object({ step_percent = number }))
       gap_split = optional(object({
         divider              = number
-        min_purchase_percent = optional(number, 1)
+        min_purchase_percent = optional(number)
         max_purchase_percent = optional(number)
       }))
     }))

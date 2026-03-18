@@ -424,9 +424,10 @@ def _build_strategy_tooltip(
         split_line = f"Split: fixed_step (step_percent: {step:.0f}%)"
     elif split == "gap_split":
         divider = config["gap_split_divider"]
-        min_pct = config["min_purchase_percent"]
+        min_pct = config.get("min_purchase_percent")
         max_pct = config.get("max_purchase_percent")
-        parts = f"divider: {divider:.0f}, min_purchase_percent: {min_pct:.0f}%"
+        min_pct_str = f"{min_pct:.0f}%" if min_pct is not None else "auto"
+        parts = f"divider: {divider:.0f}, min_purchase_percent: {min_pct_str}"
         if max_pct is not None:
             parts += f", max_purchase_percent: {max_pct:.0f}%"
         split_line = f"Split: gap_split ({parts})"
