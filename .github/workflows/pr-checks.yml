@@ -306,7 +306,7 @@ jobs:
     if: github.event.pull_request.draft != true
     runs-on: ubuntu-latest
     needs: [terraform-validation, tfsec-scan, lint, docs-check]
-    environment: aws-integration
+    environment: ${{ github.event_name == 'pull_request' && 'aws-integration' || 'aws-integration-auto' }}
     concurrency:
       group: aws-integration-tests
       cancel-in-progress: false
