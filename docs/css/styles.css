@@ -523,7 +523,7 @@ h1, h2, h3, h4, h5, h6 {
 
 /* ===== Collapsible Content ===== */
 .collapsible-content {
-    max-height: 1000px;
+    max-height: 3000px;
     overflow: hidden;
     transition: max-height 0.3s ease, opacity 0.3s ease;
     opacity: 1;
@@ -1385,6 +1385,100 @@ h1, h2, h3, h4, h5, h6 {
 }
 .strategy-badge-aws {
     background: #ff9900;
+}
+
+/* ===== Compact Sliders (when collapsed) ===== */
+.sliders-row.compact {
+    gap: 4px;
+    margin-top: 4px;
+    padding-top: 4px;
+}
+
+.sliders-row.compact .control-label {
+    font-size: 0.8rem;
+}
+
+.sliders-row.compact .control-value {
+    font-size: 0.8rem;
+}
+
+.sliders-row.compact .slider-hints,
+.sliders-row.compact .control-hint {
+    font-size: 0.7rem;
+    margin-top: 0;
+}
+
+/* ===== Compact Metrics in Header (when collapsed) ===== */
+.metrics-row.compact {
+    display: none;
+}
+
+.compact-metrics {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    font-size: 0.8rem;
+}
+
+.compact-metrics.hidden {
+    display: none;
+}
+
+.cm-item {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 1px;
+}
+
+.cm-val {
+    font-family: Consolas, Monaco, 'Courier New', monospace;
+    font-weight: 700;
+    color: var(--accent-cyan);
+    font-size: 0.85rem;
+}
+
+.cm-savings {
+    color: var(--color-success);
+}
+
+.cm-label {
+    font-size: 0.55rem;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+/* ===== Compact Strategy Buttons (when cost breakdown collapsed) ===== */
+.strategy-container.compact .strategy-button {
+    padding: 8px 12px;
+}
+
+.strategy-container.compact .strategy-icon {
+    font-size: 1.2rem;
+}
+
+.strategy-container.compact .strategy-desc,
+.strategy-container.compact .strategy-badge,
+.strategy-container.compact .strategy-metric-label,
+.strategy-container.compact .strategy-savings-tooltip {
+    display: none;
+}
+
+.strategy-container.compact .strategy-name {
+    font-size: 0.85rem;
+}
+
+.strategy-container.compact .strategy-value {
+    font-size: 1rem;
+}
+
+.strategy-container.compact .strategy-metrics {
+    margin-top: 4px;
+}
+
+.strategy-container.compact .purchase-amount {
+    font-size: 0.8rem;
 }
 
 /* ===== Legacy Optimal Suggestion (kept for reference) ===== */
