@@ -14,7 +14,7 @@ VALID_PAYMENT_OPTIONS = ["NO_UPFRONT", "ALL_UPFRONT", "PARTIAL_UPFRONT"]
 # Valid values for term field
 VALID_TERMS = ["ONE_YEAR", "THREE_YEAR"]
 
-VALID_TARGET_STRATEGIES = ["aws", "dynamic"]
+VALID_TARGET_STRATEGIES = ["aws", "dynamic", "static"]
 
 VALID_SPLIT_STRATEGIES = ["one_shot", "fixed_step", "gap_split"]
 
