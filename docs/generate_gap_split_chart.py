@@ -104,7 +104,7 @@ def generate_chart(output_path: str = "docs/images/gap-split-lifecycle.png") -> 
         divider, term_years, total_years, min_purchase_pct
     )
 
-    fig, (ax, ax2, ax3) = plt.subplots(
+    _fig, (ax, ax2, ax3) = plt.subplots(
         3, 1, figsize=(12, 6.5), height_ratios=[3, 1, 1], sharex=True,
         gridspec_kw={"hspace": 0.08},
     )
@@ -137,13 +137,13 @@ def generate_chart(output_path: str = "docs/images/gap-split-lifecycle.png") -> 
         "Initially large purchases\nto reach target quickly",
         xy=(0.2, 50), xytext=(0.8, 30),
         fontsize=7, color="#555",
-        arrowprops=dict(arrowstyle="->", color="#999", lw=0.8),
+        arrowprops={"arrowstyle": "->", "color": "#999", "lw": 0.8},
     )
     ax.annotate(
         "Over time, more plans\nbut smaller ones",
         xy=(4.5, 97), xytext=(4.5, 55),
         fontsize=7, color="#555", ha="center",
-        arrowprops=dict(arrowstyle="->", color="#999", lw=0.8),
+        arrowprops={"arrowstyle": "->", "color": "#999", "lw": 0.8},
     )
 
     ax.set_ylabel("Coverage (%)", fontsize=9)
