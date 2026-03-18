@@ -57,7 +57,7 @@ variable "purchase_strategy" {
       fixed_step = optional(object({ step_percent = number }))
       gap_split = optional(object({
         divider              = number
-        min_purchase_percent = optional(number, 1)
+        min_purchase_percent = optional(number)
         max_purchase_percent = optional(number)
       }))
     })
@@ -150,11 +150,11 @@ variable "purchase_strategy" {
 
   validation {
     condition = (
-      try(var.purchase_strategy.split.gap_split, null) != null ?
-      try(var.purchase_strategy.split.gap_split.min_purchase_percent, 1) > 0 :
+      try(var.purchase_strategy.split.gap_split.min_purchase_percent, null) != null ?
+      var.purchase_strategy.split.gap_split.min_purchase_percent > 0 :
       true
     )
-    error_message = "For gap_split split: min_purchase_percent must be greater than 0."
+    error_message = "For gap_split split: min_purchase_percent must be greater than 0 (or omit for auto)."
   }
 
   # spike_guard validations

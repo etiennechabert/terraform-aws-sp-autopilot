@@ -64,7 +64,6 @@ STRATEGY_PARAMS = {
     "min_purchase_percent": {
         "required": False,
         "type": "float",
-        "default": "1.0",
         "env_var": "MIN_PURCHASE_PERCENT",
     },
     "fixed_step_percent": {

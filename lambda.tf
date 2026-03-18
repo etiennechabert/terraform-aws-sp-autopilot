@@ -35,7 +35,7 @@ resource "aws_lambda_function" "scheduler" {
       STATIC_COMMITMENT               = tostring(local.static_commitment)
       FIXED_STEP_PERCENT              = tostring(local.fixed_step_percent)
       MAX_PURCHASE_PERCENT            = tostring(local.max_purchase_percent)
-      MIN_PURCHASE_PERCENT            = tostring(local.min_purchase_percent)
+      MIN_PURCHASE_PERCENT            = local.min_purchase_percent != null ? tostring(local.min_purchase_percent) : ""
       GAP_SPLIT_DIVIDER               = tostring(local.gap_split_divider)
       RENEWAL_WINDOW_DAYS             = tostring(local.renewal_window_days)
       PURCHASE_COOLDOWN_DAYS          = tostring(local.purchase_cooldown_days)
@@ -139,7 +139,7 @@ resource "aws_lambda_function" "reporter" {
       STATIC_COMMITMENT               = tostring(local.static_commitment)
       FIXED_STEP_PERCENT              = tostring(local.fixed_step_percent)
       MAX_PURCHASE_PERCENT            = tostring(local.max_purchase_percent)
-      MIN_PURCHASE_PERCENT            = tostring(local.min_purchase_percent)
+      MIN_PURCHASE_PERCENT            = local.min_purchase_percent != null ? tostring(local.min_purchase_percent) : ""
       GAP_SPLIT_DIVIDER               = tostring(local.gap_split_divider)
       COMPUTE_SP_TERM                 = local.compute_term
       COMPUTE_SP_PAYMENT_OPTION       = local.compute_payment_option
