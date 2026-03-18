@@ -356,6 +356,7 @@
             toggleCostBreakdownButton.addEventListener('click', () => {
                 const content = document.getElementById('cost-breakdown-content');
                 const metricsRow = document.getElementById('metrics-row');
+                const slidersRow = document.getElementById('sliders-row');
                 const compactMetrics = document.getElementById('compact-metrics');
                 const strategyContainer = document.querySelector('.strategy-container');
                 if (!content) return;
@@ -363,6 +364,7 @@
                 content.classList.toggle('collapsed');
                 toggleCostBreakdownButton.classList.toggle('collapsed');
                 if (metricsRow) metricsRow.classList.toggle('compact', collapsed);
+                if (slidersRow) slidersRow.classList.toggle('compact', collapsed);
                 if (compactMetrics) compactMetrics.classList.toggle('hidden', !collapsed);
                 if (strategyContainer) strategyContainer.classList.toggle('compact', collapsed);
             });

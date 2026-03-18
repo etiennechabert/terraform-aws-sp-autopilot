@@ -1387,6 +1387,27 @@ h1, h2, h3, h4, h5, h6 {
     background: #ff9900;
 }
 
+/* ===== Compact Sliders (when collapsed) ===== */
+.sliders-row.compact {
+    gap: 4px;
+    margin-top: 4px;
+    padding-top: 4px;
+}
+
+.sliders-row.compact .control-label {
+    font-size: 0.8rem;
+}
+
+.sliders-row.compact .control-value {
+    font-size: 0.8rem;
+}
+
+.sliders-row.compact .slider-hints,
+.sliders-row.compact .control-hint {
+    font-size: 0.7rem;
+    margin-top: 0;
+}
+
 /* ===== Compact Metrics in Header (when collapsed) ===== */
 .metrics-row.compact {
     display: none;
