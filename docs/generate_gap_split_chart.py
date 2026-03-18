@@ -54,12 +54,13 @@ def build_plan_history(
     total_days = total_years * DAYS_PER_YEAR
     purchase_days = set(_monthly_purchase_days(total_years))
 
+    padding_days = 30
     all_plans: list[Plan] = []
     time_points: list[float] = []
     coverages: list[float] = []
     active_plans: list[Plan] = []
 
-    for day in range(total_days + 1):
+    for day in range(-padding_days, total_days + padding_days + 1):
         # Expire plans
         active_plans = [p for p in active_plans if p.end_day > day]
         current = sum(p.coverage_pct for p in active_plans)
