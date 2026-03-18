@@ -410,24 +410,11 @@ jobs:
 
   # Stage 3: Terraform unit tests (runs after Lambda tests complete successfully)
   terraform-unit-tests:
-    name: Terraform Unit Tests (${{ matrix.test_file }})
+    name: Terraform Unit Tests
     runs-on: ubuntu-latest
     needs: [terraform-validation, tfsec-scan, lint, docs-check, scheduler-tests, purchaser-tests, reporter-tests]
     permissions:
       contents: read
-
-    strategy:
-      fail-fast: false
-      matrix:
-        test_file:
-          - cloudwatch
-          - eventbridge
-          - iam
-          - s3
-          - sns
-          - sqs
-          - sqs_policy
-          - variables
 
     steps:
       - name: Checkout code
@@ -445,43 +432,28 @@ jobs:
 
       - name: Verify AWS Credentials NOT Set
         run: |
-          echo "Verifying tests run without AWS credentials..."
           if [ -n "$AWS_ACCESS_KEY_ID" ] || [ -n "$AWS_SECRET_ACCESS_KEY" ]; then
             echo "ERROR: AWS credentials should not be set for these tests"
             exit 1
           fi
-          echo "AWS credentials not set (as expected)"
 
       - name: Initialize Terraform
-        run: |
-          terraform init
-          echo "Terraform initialized successfully"
+        run: terraform init
 
-      - name: Run Terraform Unit Test - ${{ matrix.test_file }}
+      - name: Run all Terraform Unit Tests
         run: |
-          echo "Running ${{ matrix.test_file }} tests..."
-          terraform test terraform-tests/unit/${{ matrix.test_file }}.tftest.hcl
-          TEST_EXIT_CODE=$?
-          echo "Test exit code: $TEST_EXIT_CODE"
-
-          if [ $TEST_EXIT_CODE -eq 0 ]; then
-            echo "${{ matrix.test_file }} tests passed!"
-          else
-            echo "${{ matrix.test_file }} tests failed with exit code $TEST_EXIT_CODE"
-            exit $TEST_EXIT_CODE
-          fi
-
-      - name: Test Summary
-        if: always()
-        run: |
-          echo "========================================="
-          echo "Terraform Unit Test Summary: ${{ matrix.test_file }}"
-          echo "========================================="
-          echo "Version: $(terraform version -json | jq -r '.terraform_version')"
-          echo "AWS Credentials: NOT REQUIRED"
-          echo "Mock Provider: ENABLED"
-          echo "Test File: terraform-tests/unit/${{ matrix.test_file }}.tftest.hcl"
-          echo "========================================="
+          FAILED=0
+          for test_file in cloudwatch eventbridge iam s3 sns sqs sqs_policy variables; do
+            echo "::group::$test_file"
+            if terraform test terraform-tests/unit/${test_file}.tftest.hcl; then
+              echo "✓ ${test_file} passed"
+            else
+              echo "✗ ${test_file} failed"
+              FAILED=1
+            fi
+            echo "::endgroup::"
+          done
+          exit $FAILED
 
   # Stage 2b: Terraform integration tests (runs after fast checks, parallel with Lambda tests)
   terraform-integration-tests:
