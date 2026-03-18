@@ -24,6 +24,7 @@ import report_generator
 import scheduler_preview
 from config import CONFIG_SCHEMA
 
+from shared.demo_mode import is_demo_mode, randomize_report_data
 from shared.handler_utils import (
     get_enabled_plan_types,
     initialize_clients,
@@ -108,6 +109,12 @@ def handler(event: dict[str, Any], context: Any) -> dict[str, Any]:
 
         _, guard_results = run_scheduling_spike_guard(analyzer, config)
 
+    # Apply demo mode randomization (for safe public sharing of screenshots/videos)
+    if is_demo_mode():
+        coverage_data, daily_coverage_data, savings_data = randomize_report_data(
+            coverage_data, daily_coverage_data, savings_data
+        )
+
     # Check for low utilization and alert if needed
     notifications_module.check_and_alert_low_utilization(clients["sns"], config, savings_data)
 
@@ -151,6 +158,7 @@ def handler(event: dict[str, Any], context: Any) -> dict[str, Any]:
         return reordered
 
     # Only include raw data section if debug data is enabled
+    # In demo mode, suppress raw AWS API responses (they contain real data)
     raw_data = None
     if config["include_debug_data"]:
         from shared.aws_debug import get_responses
@@ -167,7 +175,9 @@ def handler(event: dict[str, Any], context: Any) -> dict[str, Any]:
                 "report_format": config["report_format"],
                 "email_reports": config["email_reports"],
             },
-            "aws_api_responses": get_responses(),
+            "aws_api_responses": {"redacted": "demo mode active"}
+            if is_demo_mode()
+            else get_responses(),
         }
 
     # Generate report
