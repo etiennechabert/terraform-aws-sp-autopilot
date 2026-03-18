@@ -320,6 +320,37 @@ purchase_strategy = {
 
 Disable with `spike_guard = { enabled = false }`. The reporter includes a yellow warning banner when a spike is detected.
 
+### AWS API Endpoints
+
+This module calls several AWS APIs through its Lambda functions. Understanding these calls helps with IAM audits, security reviews, and troubleshooting.
+
+#### Cost Explorer (`ce`)
+
+| API Call | Used By | Purpose |
+|----------|---------|---------|
+| `GetSavingsPlansCoverage` | Scheduler, Purchaser, Reporter | Core data source. Fetches hourly/daily coverage data to determine what percentage of eligible spend is covered by Savings Plans. The scheduler uses this to calculate the coverage gap; the purchaser re-checks at purchase time; the reporter uses it for trend charts. |
+| `GetSavingsPlansUtilization` | Scheduler, Purchaser, Reporter | Fetches utilization metrics (how much of your committed spend is actually being used). Low utilization means you're paying for unused commitments — the reporter flags this and triggers alerts. |
+| `GetSavingsPlansPurchaseRecommendation` | Scheduler, Reporter | Retrieves AWS's own purchase recommendations based on your historical usage. The scheduler uses this when `target = { aws = {} }` instead of computing a target internally. The reporter always calls it to display the AWS recommendation alongside other strategies in the scheduler preview section of the report. |
+#### Savings Plans (`savingsplans`)
+
+| API Call | Used By | Purpose |
+|----------|---------|---------|
+| `DescribeSavingsPlans` | Scheduler, Purchaser, Reporter | Lists all active Savings Plans with their commitment amounts, terms, and expiration dates. The scheduler uses this to detect plans expiring within the `renewal_window_days` window. The purchaser checks for recently purchased plans to enforce cooldown. |
+| `DescribeSavingsPlansOfferings` | Scheduler | Resolves the offering ID needed for purchases. Translates the human-readable `plan_type` (e.g., `all_upfront_one_year`) into the AWS offering ID that `CreateSavingsPlan` requires. |
+| `CreateSavingsPlan` | Purchaser | The only write call. Executes the actual Savings Plan purchase with the resolved offering ID and computed hourly commitment amount. Only granted to the purchaser role. |
+
+#### Infrastructure APIs
+
+These are standard AWS service calls for the module's internal plumbing:
+
+| Service | API Calls | Purpose |
+|---------|-----------|---------|
+| **SQS** | `SendMessage`, `ReceiveMessage`, `DeleteMessage`, `PurgeQueue` | The scheduler queues purchase intents; the purchaser consumes them. `PurgeQueue` clears stale messages at the start of each scheduler run. |
+| **SNS** | `Publish` | Sends email/Slack/Teams notifications for scheduled purchases, completed purchases, spike guard blocks, errors, and reports. |
+| **S3** | `PutObject`, `GetObject`, `ListObjectsV2` | The reporter stores HTML/JSON/CSV reports in S3 and generates pre-signed URLs for sharing via email. |
+| **STS** | `AssumeRole` | Only used in AWS Organizations setups. Lambdas assume a cross-account role in the management account to access Cost Explorer and Savings Plans APIs. |
+| **CloudWatch Logs** | `CreateLogStream`, `PutLogEvents` | Standard Lambda logging. |
+
 ## Terraform Reference
 
 <!-- BEGIN_TF_DOCS -->
