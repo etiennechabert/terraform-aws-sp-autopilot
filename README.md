@@ -15,16 +15,16 @@
 
 Automates AWS Savings Plans purchases based on usage analysis, maintaining consistent coverage while limiting financial exposure through incremental commitments.
 
-[**Try the interactive simulator**](https://etiennechabert.github.io/terraform-aws-sp-autopilot/) — Visualize strategies and find the optimal Savings Plan for your workload before deploying.
+[**Try the interactive simulator**](https://etiennechabert.github.io/terraform-aws-sp-autopilot/) to visualize strategies and find the optimal Savings Plan for your workload before deploying.
 
 ## Key Features
 
-- **Automated Savings Plans purchasing** — Maintains target coverage without manual intervention
-- **Three purchase strategies** — Fixed Step, Gap Split, and Follow-AWS for different workload patterns
-- **Three SP types supported** — Compute, Database, and SageMaker independently tracked
-- **Human review window** — Configurable delay between scheduling and purchasing allows cancellation
-- **Risk management** — Spreads financial commitments over time with configurable purchase limits
-- **Email & webhook notifications** — SNS, Slack, and Microsoft Teams integration
+- **Automated Savings Plans purchasing**: maintains target coverage without manual intervention
+- **Three purchase strategies**: Fixed Step, Gap Split, and Follow-AWS for different workload patterns
+- **Three SP types supported**: Compute, Database, and SageMaker independently tracked
+- **Human review window**: configurable delay between scheduling and purchasing allows cancellation
+- **Risk management**: spreads financial commitments over time with configurable purchase limits
+- **Email & webhook notifications**: SNS, Slack, and Microsoft Teams integration
 
 ## Quick Start
 
@@ -61,9 +61,9 @@ module "savings_plans" {
 
 See the [`examples/`](examples/) directory for complete, working examples:
 
-- **[single-account-compute](examples/single-account-compute/)** — Basic single-account Compute SP deployment
-- **[organizations](examples/organizations/)** — AWS Organizations multi-account setup
-- **[dynamic-strategy](examples/dynamic-strategy/)** — Dynamic target with gap split
+- **[single-account-compute](examples/single-account-compute/)**: basic single-account Compute SP deployment
+- **[organizations](examples/organizations/)**: AWS Organizations multi-account setup
+- **[dynamic-strategy](examples/dynamic-strategy/)**: dynamic target with gap split
 
 ## Architecture
 
@@ -109,15 +109,15 @@ Strategy is configured with two orthogonal dimensions: **target** (what coverage
 
 #### Targets
 
-- **`dynamic`** — Automatically determines the optimal coverage target based on usage patterns using a knee-point algorithm (`risk_level`: `prudent`, `min_hourly`, `optimal`, `maximum`). The `prudent` level targets a configurable percentage of minimum hourly spend (`prudent_percentage`, default: 85%) — conservative, best for stable workloads. As workloads gain more variation (e.g. autoscaling), `min_hourly` and `optimal` become more appropriate since the spread between min and max hourly spend provides a natural margin where spill-over from low-usage hours is offset by savings during high-usage hours.
-- **`static`** — Sets a fixed hourly commitment target (`commitment` in $/h). The split strategy divides the gap between your current commitment and the target, purchasing incrementally each cycle. Same approach as the AWS path, but with a user-defined target instead of an AWS recommendation.
-- **`aws`** — Uses AWS Cost Explorer recommendations directly without modification.
+- **`dynamic`**: automatically determines the optimal coverage target based on usage patterns using a knee-point algorithm (`risk_level`: `prudent`, `min_hourly`, `optimal`, `maximum`). The `prudent` level targets a configurable percentage of minimum hourly spend (`prudent_percentage`, default: 85%), conservative and best for stable workloads. As workloads gain more variation (e.g. autoscaling), `min_hourly` and `optimal` become more appropriate since the spread between min and max hourly spend provides a natural margin where spill-over from low-usage hours is offset by savings during high-usage hours.
+- **`static`**: sets a fixed hourly commitment target (`commitment` in $/h). The split strategy divides the gap between your current commitment and the target, purchasing incrementally each cycle. Same approach as the AWS path, but with a user-defined target instead of an AWS recommendation.
+- **`aws`**: uses AWS Cost Explorer recommendations directly without modification.
 
 #### Splits
 
-- **`one_shot`** — Purchases the entire gap to the target in a single cycle.
-- **`fixed_step`** — Purchases a fixed percentage of spend per cycle (`step_percent`).
-- **`gap_split`** — Divides the remaining coverage gap by a configurable divider each cycle (`divider`), with optional `min_purchase_percent` (auto-derived from term: ~8.3% for 1Y, ~2.8% for 3Y) and `max_purchase_percent` bounds.
+- **`one_shot`**: purchases the entire gap to the target in a single cycle.
+- **`fixed_step`**: purchases a fixed percentage of spend per cycle (`step_percent`).
+- **`gap_split`**: divides the remaining coverage gap by a configurable divider each cycle (`divider`), with optional `min_purchase_percent` (auto-derived from term: ~8.3% for 1Y, ~2.8% for 3Y) and `max_purchase_percent` bounds.
 
   ![Gap Split Lifecycle](docs/images/gap-split-lifecycle.png)
 
@@ -158,9 +158,9 @@ purchase_strategy = {
 
 #### Other Settings
 
-- **`renewal_window_days`** (default: `7`) — How many days before a Savings Plan expires to schedule its replacement. The scheduler will include expiring plans in its coverage gap calculation so replacements are purchased before expiration.
-- **`purchase_cooldown_days`** (default: `7`) — After purchasing a Savings Plan, block new purchases for that specific SP type (Compute, Database, or SageMaker) for this many days. Prevents duplicates while Cost Explorer data catches up (24-48h lag).
-- **`min_commitment_per_plan`** (default: `0.001`) — Minimum hourly commitment per plan in USD. AWS minimum is $0.001/hr.
+- **`renewal_window_days`** (default: `7`): how many days before a Savings Plan expires to schedule its replacement. The scheduler will include expiring plans in its coverage gap calculation so replacements are purchased before expiration.
+- **`purchase_cooldown_days`** (default: `7`): after purchasing a Savings Plan, block new purchases for that specific SP type (Compute, Database, or SageMaker) for this many days. Prevents duplicates while Cost Explorer data catches up (24-48h lag).
+- **`min_commitment_per_plan`** (default: `0.001`): minimum hourly commitment per plan in USD. AWS minimum is $0.001/hr.
 
 ### `sp_plans`
 
@@ -198,9 +198,9 @@ cron_schedules = {
 **Review Window:** Time between `scheduler` and `purchaser` runs allows canceling unwanted purchases.
 
 **Scheduling guidelines:**
-- Purchaser should run **within 13 days** of the scheduler — SQS messages expire after 14 days, so purchase intents are lost if the purchaser runs too late.
-- Purchaser should run **at least 2 days after** the scheduler — provides a review window and accounts for Cost Explorer data lag.
-- Reporter should run **at least 2 days after** the purchaser — Cost Explorer needs 24-48h to reflect newly purchased Savings Plans.
+- Purchaser should run **within 13 days** of the scheduler. SQS messages expire after 14 days, so purchase intents are lost if the purchaser runs too late.
+- Purchaser should run **at least 2 days after** the scheduler. This provides a review window and accounts for Cost Explorer data lag.
+- Reporter should run **at least 2 days after** the purchaser. Cost Explorer needs 24-48h to reflect newly purchased Savings Plans.
 
 The default schedules (1st, 10th, 24th of the month) satisfy all guidelines. Note that manual Savings Plan purchases via the AWS console also cause Cost Explorer data lag, so be mindful of timing regardless of automation schedules.
 
@@ -215,9 +215,9 @@ lambda_config = {
 }
 ```
 
-- **`enabled`** — Enable/disable individual Lambda functions (default: `true`). Disable the purchaser to review scheduler recommendations without executing purchases.
-- **`assume_role_arn`** — Cross-account role for AWS Organizations deployments (see [AWS Organizations Setup](#aws-organizations-setup))
-- **`error_alarm`** — Enable CloudWatch error alarm for the Lambda (default: `true`)
+- **`enabled`**: enable/disable individual Lambda functions (default: `true`). Disable the purchaser to review scheduler recommendations without executing purchases.
+- **`assume_role_arn`**: cross-account role for AWS Organizations deployments (see [AWS Organizations Setup](#aws-organizations-setup))
+- **`error_alarm`**: enable CloudWatch error alarm for the Lambda (default: `true`)
 
 ### `notifications`
 
@@ -243,7 +243,7 @@ notifications = {
 
 Savings Plans are purchased as hourly commitments ($/hour). This module always analyzes data at hourly granularity for accurate purchase sizing.
 
-**Prerequisite:** You must enable **"Hourly and resource level granularity"** in [AWS Cost Explorer settings](https://console.aws.amazon.com/cost-management/home#/settings). Cost: ~$0.10-$1.00/month. The Scheduler Lambda will fail with an explicit error if hourly granularity is not enabled — no purchases will be scheduled.
+**Prerequisite:** You must enable **"Hourly and resource level granularity"** in [AWS Cost Explorer settings](https://console.aws.amazon.com/cost-management/home#/settings). Cost: ~$0.10-$1.00/month. The Scheduler Lambda will fail with an explicit error if hourly granularity is not enabled, no purchases will be scheduled.
 
 ## Advanced Topics
 
@@ -277,13 +277,13 @@ See [organizations example](examples/organizations/README.md) for complete setup
 
 ### Recommended Rollout
 
-1. **Reporter only** — Deploy with scheduler and purchaser disabled. Review spending reports to understand your current coverage and savings opportunities.
+1. **Reporter only**: deploy with scheduler and purchaser disabled. Review spending reports to understand your current coverage and savings opportunities.
 
-2. **Reporter + Scheduler** — Enable the scheduler. It queues purchase intents to SQS where you can inspect them, but nothing gets purchased. Review the analysis emails and SQS messages to validate recommendations. You can also purchase manually via the AWS console to understand what the purchaser will do when enabled.
+2. **Reporter + Scheduler**: enable the scheduler. It queues purchase intents to SQS where you can inspect them, but nothing gets purchased. Review the analysis emails and SQS messages to validate recommendations. You can also purchase manually via the AWS console to understand what the purchaser will do when enabled.
 
-3. **Full automation** — Enable the purchaser and start with `no_upfront_one_year` plan types. You have a configurable window between scheduler and purchaser runs to delete SQS messages and cancel unwanted purchases. Once confident after the first year, switch to `all_upfront_three_year` — 3-year plans offer significantly higher discount rates, allowing you to push coverage further above min-hourly spend. Expiring 1Y plans will naturally get replaced by 3Y over time.
+3. **Full automation**: enable the purchaser and start with `no_upfront_one_year` plan types. You have a configurable window between scheduler and purchaser runs to delete SQS messages and cancel unwanted purchases. Once confident after the first year, switch to `all_upfront_three_year`. 3-year plans offer significantly higher discount rates, allowing you to push coverage further above min-hourly spend. Expiring 1Y plans will naturally get replaced by 3Y over time.
 
-4. **Sit back and relax** — Check your purchase notification emails each month, and if everything looks fine, admire your report showing coverage and savings grow over time. And maybe [buy Etienne a coffee](https://buymeacoffee.com/etiennechak) if the module saved you time and money.
+4. **Sit back and relax**: check your purchase notification emails each month, and if everything looks fine, admire your report showing coverage and savings grow over time. And maybe [buy Etienne a coffee](https://buymeacoffee.com/etiennechak) if the module saved you time and money.
 
 ### Canceling Purchases
 
@@ -301,10 +301,10 @@ To cancel scheduled purchases before execution:
 Prevents over-committing to Savings Plans during temporary usage spikes (e.g. Black Friday, seasonal peaks, one-off migrations). Enabled by default, it compares recent average hourly spend against historical baselines and blocks purchases when recent usage is abnormally high.
 
 Two independent checks run automatically:
-- **At scheduling time** — compares 14-day avg vs 90-day avg. Blocks scheduling if recent usage spiked above the threshold.
-- **At purchase time** — compares current 14-day avg vs the 14-day avg recorded at scheduling time. Blocks purchase if usage dropped since scheduling (confirming the spike was temporary).
+- **At scheduling time**: compares 14-day avg vs 90-day avg. Blocks scheduling if recent usage spiked above the threshold.
+- **At purchase time**: compares current 14-day avg vs the 14-day avg recorded at scheduling time. Blocks purchase if usage dropped since scheduling (confirming the spike was temporary).
 
-Only the specific SP types showing anomalies are blocked — other types proceed normally.
+Only the specific SP types showing anomalies are blocked, other types proceed normally.
 
 ```hcl
 purchase_strategy = {
@@ -329,7 +329,7 @@ This module calls several AWS APIs through its Lambda functions. Understanding t
 | API Call | Used By | Purpose |
 |----------|---------|---------|
 | `GetSavingsPlansCoverage` | Scheduler, Purchaser, Reporter | Core data source. Fetches hourly/daily coverage data to determine what percentage of eligible spend is covered by Savings Plans. The scheduler uses this to calculate the coverage gap; the purchaser re-checks at purchase time; the reporter uses it for trend charts. |
-| `GetSavingsPlansUtilization` | Scheduler, Purchaser, Reporter | Fetches utilization metrics (how much of your committed spend is actually being used). Low utilization means you're paying for unused commitments — the reporter flags this and triggers alerts. |
+| `GetSavingsPlansUtilization` | Scheduler, Purchaser, Reporter | Fetches utilization metrics (how much of your committed spend is actually being used). Low utilization means you're paying for unused commitments; the reporter flags this and triggers alerts. |
 | `GetSavingsPlansPurchaseRecommendation` | Scheduler, Reporter | Retrieves AWS's own purchase recommendations based on your historical usage. The scheduler uses this when `target = { aws = {} }` instead of computing a target internally. The reporter always calls it to display the AWS recommendation alongside other strategies in the scheduler preview section of the report. |
 #### Savings Plans (`savingsplans`)
 
