@@ -74,6 +74,56 @@ def _format_plans_block(
     return lines
 
 
+def _format_static_strategy_warning(
+    purchase_plans: list[dict[str, Any]],
+) -> list[str]:
+    """Format over-commitment warnings for the static strategy."""
+    warnings = []
+    for plan in purchase_plans:
+        for w in plan.get("static_warnings", []):
+            if w not in warnings:
+                warnings.append(w)
+
+    if not warnings:
+        return []
+
+    lines = [
+        "⚠️  STATIC STRATEGY — OVER-COMMITMENT RISK",
+        "=" * 50,
+        "",
+        "The static strategy uses a fixed $/h target that does NOT adapt",
+        "to your actual usage. If your workloads change, you may be paying",
+        "for unused commitment with no way to cancel.",
+        "",
+    ]
+
+    for w in warnings:
+        sp = w["sp_type"].upper()
+        if w["level"] == "critical":
+            lines.append(
+                f"  🔴 {sp}: Target ${w['target']:.4f}/h EXCEEDS actual spend "
+                f"${w['avg_hourly']:.4f}/h ({w['ratio']:.1f}x over-committed)"
+            )
+        else:
+            lines.append(
+                f"  🟡 {sp}: Target ${w['target']:.4f}/h is near actual spend "
+                f"${w['avg_hourly']:.4f}/h — at risk if usage drops"
+            )
+
+    lines.extend(
+        [
+            "",
+            "RECOMMENDATION: Switch to the 'dynamic' strategy which automatically",
+            "derives targets from actual usage patterns and adjusts as workloads change.",
+            '  target_strategy_type = "dynamic"',
+            "",
+            "=" * 50,
+            "",
+        ]
+    )
+    return lines
+
+
 def _format_unknown_services_warning(
     unknown_services: list[str] | None,
 ) -> list[str]:
@@ -134,6 +184,7 @@ def _format_and_send(
     log_label: str,
 ) -> None:
     email_lines = [
+        *_format_static_strategy_warning(purchase_plans),
         *header_lines,
         plans_heading,
         "-" * 50,

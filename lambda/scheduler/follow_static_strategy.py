@@ -31,12 +31,13 @@ def _get_current_commitments(savingsplans_client: Any) -> dict[str, float]:
     return commitments
 
 
-def _warn_over_commitment(
+def check_over_commitment(
     config: dict[str, Any],
     clients: dict[str, Any],
     target_commitment: float,
-) -> None:
-    """Emit warnings if the static target exceeds actual usage."""
+) -> list[dict[str, Any]]:
+    """Check if the static target exceeds actual usage. Returns a list of warnings."""
+    warnings: list[dict[str, Any]] = []
     try:
         analyzer = SpendingAnalyzer(clients["savingsplans"], clients["ce"])
         spending_data = analyzer.analyze_current_spending(config)
@@ -46,7 +47,7 @@ def _warn_over_commitment(
             "Could not fetch spending data to validate static target — "
             "proceeding without over-commitment check"
         )
-        return
+        return warnings
 
     for sp_type in SP_TYPES:
         if not config[sp_type["enabled_config"]]:
@@ -61,20 +62,36 @@ def _warn_over_commitment(
             continue
 
         if target_commitment > avg_hourly:
+            warnings.append(
+                {
+                    "sp_type": key,
+                    "level": "critical",
+                    "target": target_commitment,
+                    "avg_hourly": avg_hourly,
+                    "ratio": target_commitment / avg_hourly,
+                }
+            )
             logger.warning(
-                f"⚠️  OVER-COMMITMENT RISK: {sp_type['name']} SP static target "
-                f"(${target_commitment:.4f}/h) exceeds average hourly spend "
-                f"(${avg_hourly:.4f}/h). "
-                f"You would be committing to {target_commitment / avg_hourly:.0f}x your actual usage. "
-                f"Consider switching to the 'dynamic' strategy which adapts to actual spend."
+                f"OVER-COMMITMENT RISK: {sp_type['name']} SP static target "
+                f"(${target_commitment:.4f}/h) exceeds average spend "
+                f"(${avg_hourly:.4f}/h) by {target_commitment / avg_hourly:.1f}x"
             )
         elif target_commitment > avg_hourly * 0.9:
-            logger.warning(
-                f"⚠️  {sp_type['name']} SP static target (${target_commitment:.4f}/h) "
-                f"is near average hourly spend (${avg_hourly:.4f}/h). "
-                f"If usage drops, this commitment becomes waste. "
-                f"Consider the 'dynamic' strategy for automatic adjustment."
+            warnings.append(
+                {
+                    "sp_type": key,
+                    "level": "warning",
+                    "target": target_commitment,
+                    "avg_hourly": avg_hourly,
+                    "ratio": target_commitment / avg_hourly,
+                }
             )
+            logger.warning(
+                f"{sp_type['name']} SP static target (${target_commitment:.4f}/h) "
+                f"is near average spend (${avg_hourly:.4f}/h)"
+            )
+
+    return warnings
 
 
 def calculate_purchase_need_static(
@@ -96,7 +113,7 @@ def calculate_purchase_need_static(
         f"(target: ${target_commitment:.5f}/h, split: {split_type})"
     )
 
-    _warn_over_commitment(config, clients, target_commitment)
+    over_commitment_warnings = check_over_commitment(config, clients, target_commitment)
 
     current_commitments = _get_current_commitments(clients["savingsplans"])
 
@@ -151,6 +168,11 @@ def calculate_purchase_need_static(
                 },
             }
         )
+
+    # Attach over-commitment warnings to all purchase plans for email notifications
+    if over_commitment_warnings:
+        for plan in purchase_plans:
+            plan["static_warnings"] = over_commitment_warnings
 
     logger.info(f"Static strategy purchase need calculated: {len(purchase_plans)} plans")
     return purchase_plans
