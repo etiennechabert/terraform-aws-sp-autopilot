@@ -154,7 +154,7 @@ def generate_chart(output_path: str = "docs/images/gap-split-lifecycle.png") -> 
     ax.grid(axis="y", alpha=0.2)
     ax.legend(loc="lower right", fontsize=8, framealpha=0.9)
     ax.set_title(
-        "Gap Split Lifecycle — Monthly Purchases (1st), 1-Year Terms, divider=2",
+        "Gap Split Lifecycle — Monthly Purchases, 1-Year Terms, divider=2",
         fontsize=11, fontweight="bold", pad=8,
     )
 
