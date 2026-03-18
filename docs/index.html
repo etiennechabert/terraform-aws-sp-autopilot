@@ -185,7 +185,6 @@
                             <span class="cm-item"><span class="cm-val" id="cm-spillover">$0/h</span> <span class="cm-label">Spillover</span></span>
                             <span class="cm-item"><span class="cm-val cm-savings" id="cm-savings">$0/h</span> <span class="cm-label">Savings</span></span>
                         </div>
-                        <button id="toggle-colors" class="toggle-colors-btn" title="Toggle Colors">🎨 Toggle Colors</button>
                         <button id="toggle-cost-breakdown" class="button-toggle" aria-label="Toggle cost breakdown section">
                             <span class="toggle-icon">▼</span>
                         </button>
@@ -380,9 +379,12 @@
 
             <!-- Section 3: Savings Optimization Chart -->
             <section class="card section-savings-curve">
-                <div class="card-header">
-                    <h2 class="section-title">Savings vs Commitment Level</h2>
-                    <p class="section-description">Net savings (% of baseline cost) at different commitment levels - zoomed to viable range</p>
+                <div class="card-header" style="display:flex;justify-content:space-between;align-items:flex-start;">
+                    <div>
+                        <h2 class="section-title">Savings vs Commitment Level</h2>
+                        <p class="section-description">Net savings (% of baseline cost) at different commitment levels - zoomed to viable range</p>
+                    </div>
+                    <button id="toggle-colors" class="toggle-colors-btn" title="Toggle Colors">🎨 Toggle Colors</button>
                 </div>
 
                 <!-- Chart and Load Factor Control -->
