@@ -134,14 +134,6 @@ def generate_chart(output_path: str = "docs/images/gap-split-lifecycle.png") -> 
     ax.plot(time_points, coverages, color="#232f3e", linewidth=0.8, label="Total coverage")
 
     ax.annotate(
-        "50%", xy=(0.01, 25), fontsize=8, color="white", fontweight="bold",
-        ha="center", va="center",
-    )
-    ax.annotate(
-        "75%", xy=(0.1, 62), fontsize=8, color="white", fontweight="bold",
-        ha="center", va="center",
-    )
-    ax.annotate(
         "First renewals — large plans\nreplaced by smaller distributed ones",
         xy=(1.0, 75), xytext=(1.5, 35),
         fontsize=7, color="#555",
