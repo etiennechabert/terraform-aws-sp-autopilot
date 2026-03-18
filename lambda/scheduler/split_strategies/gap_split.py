@@ -19,10 +19,10 @@ def _resolve_min_purchase(config: dict[str, Any]) -> float:
     terms = []
     if config.get("enable_compute_sp"):
         terms.append(config.get("compute_sp_term", "ONE_YEAR"))
+    if config.get("enable_database_sp"):
+        terms.append(config.get("database_sp_term", "ONE_YEAR"))
     if config.get("enable_sagemaker_sp"):
         terms.append(config.get("sagemaker_sp_term", "ONE_YEAR"))
-    if config.get("enable_database_sp"):
-        terms.append("ONE_YEAR")  # database SP is always 1-year
 
     term_months = max((TERM_TO_MONTHS.get(t, 12) for t in terms), default=12)
     return round(100.0 / term_months, 2)
