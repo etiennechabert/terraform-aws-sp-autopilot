@@ -95,7 +95,7 @@ def build_plan_history(
 def generate_chart(output_path: str = "docs/images/gap-split-lifecycle.png") -> None:
     divider = 2.0
     term_years = 1
-    total_years = 5
+    total_years = 7
 
     # min_purchase = 1/12 of total — at most 12 plans per 1-year term
     min_purchase_pct = 100.0 / 12
