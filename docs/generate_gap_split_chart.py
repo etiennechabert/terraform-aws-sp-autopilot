@@ -133,23 +133,33 @@ def generate_chart(output_path: str = "docs/images/gap-split-lifecycle.png") -> 
     ax.axhline(y=100, color="#ff9900", linewidth=2, linestyle="--", label="Target (100%)")
     ax.plot(time_points, coverages, color="#232f3e", linewidth=0.8, label="Total coverage")
 
-    # Annotate coverage at the first purchase of each year
+    # Annotate coverage at the first purchase of each year (only during ramp-up)
     for y in range(total_years + 1):
         target_time = float(y)
-        # Find closest time point after this year boundary
         closest_idx = min(
             range(len(time_points)),
             key=lambda i: abs(time_points[i] - target_time) if time_points[i] >= target_time else float("inf"),
         )
         cov = coverages[closest_idx]
-        if cov > 0:
+        if cov <= 0:
+            continue
+        # Stop annotating once we've reached 100%
+        if cov >= 99.9 and y > 0:
             ax.annotate(
-                f"{cov:.0f}%",
+                f"Coverage: {cov:.0f}%",
                 xy=(time_points[closest_idx], cov),
                 xytext=(0, 8), textcoords="offset points",
                 fontsize=7, color="#232f3e", fontweight="bold",
                 ha="center",
             )
+            break
+        ax.annotate(
+            f"Coverage: {cov:.0f}%",
+            xy=(time_points[closest_idx], cov),
+            xytext=(0, 8), textcoords="offset points",
+            fontsize=7, color="#232f3e", fontweight="bold",
+            ha="center",
+        )
 
     ax.annotate(
         "First renewals — large plans\nreplaced by smaller distributed ones",
