@@ -1,4 +1,10 @@
-"""Static Strategy — user sets a target commitment in $/h, splits divide the gap."""
+"""Static Strategy — user sets a target commitment in $/h, splits divide the gap.
+
+WARNING: This strategy has no automatic safety against over-commitment.
+The target is a fixed $/h value that does not adapt to changing usage patterns.
+Consider the 'dynamic' strategy for production workloads — it derives targets
+from actual spend and adjusts automatically as usage changes.
+"""
 
 import logging
 from typing import Any
@@ -8,6 +14,7 @@ from split_strategies import calculate_split
 
 from shared.constants import AWS_TYPE_TO_KEY
 from shared.savings_plans_metrics import get_active_savings_plans
+from shared.spending_analyzer import SpendingAnalyzer
 
 
 logger = logging.getLogger()
@@ -24,6 +31,52 @@ def _get_current_commitments(savingsplans_client: Any) -> dict[str, float]:
     return commitments
 
 
+def _warn_over_commitment(
+    config: dict[str, Any],
+    clients: dict[str, Any],
+    target_commitment: float,
+) -> None:
+    """Emit warnings if the static target exceeds actual usage."""
+    try:
+        analyzer = SpendingAnalyzer(clients["savingsplans"], clients["ce"])
+        spending_data = analyzer.analyze_current_spending(config)
+        spending_data.pop("_unknown_services", None)
+    except Exception:
+        logger.warning(
+            "Could not fetch spending data to validate static target — "
+            "proceeding without over-commitment check"
+        )
+        return
+
+    for sp_type in SP_TYPES:
+        if not config[sp_type["enabled_config"]]:
+            continue
+        key = sp_type["key"]
+        data = spending_data.get(key)
+        if not data:
+            continue
+
+        avg_hourly = data["summary"].get("avg_hourly_total", 0.0)
+        if avg_hourly <= 0:
+            continue
+
+        if target_commitment > avg_hourly:
+            logger.warning(
+                f"⚠️  OVER-COMMITMENT RISK: {sp_type['name']} SP static target "
+                f"(${target_commitment:.4f}/h) exceeds average hourly spend "
+                f"(${avg_hourly:.4f}/h). "
+                f"You would be committing to {target_commitment / avg_hourly:.0f}x your actual usage. "
+                f"Consider switching to the 'dynamic' strategy which adapts to actual spend."
+            )
+        elif target_commitment > avg_hourly * 0.9:
+            logger.warning(
+                f"⚠️  {sp_type['name']} SP static target (${target_commitment:.4f}/h) "
+                f"is near average hourly spend (${avg_hourly:.4f}/h). "
+                f"If usage drops, this commitment becomes waste. "
+                f"Consider the 'dynamic' strategy for automatic adjustment."
+            )
+
+
 def calculate_purchase_need_static(
     config: dict[str, Any],
     clients: dict[str, Any],
@@ -31,10 +84,19 @@ def calculate_purchase_need_static(
     target_commitment = config["static_commitment"]
     split_type = config["split_strategy_type"]
 
+    logger.warning(
+        "Static strategy selected — target commitment is a fixed $/h value "
+        "with no automatic safety against over-commitment. "
+        "The 'dynamic' strategy is recommended for production workloads "
+        "as it adapts to actual usage patterns."
+    )
+
     logger.info(
         f"Calculating purchase need using STATIC strategy "
         f"(target: ${target_commitment:.5f}/h, split: {split_type})"
     )
+
+    _warn_over_commitment(config, clients, target_commitment)
 
     current_commitments = _get_current_commitments(clients["savingsplans"])
 
