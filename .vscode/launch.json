@@ -2,7 +2,7 @@
     "version": "0.2.0",
     "configurations": [
         {
-            "name": "Scheduler - Fixed + Fixed Step",
+            "name": "Scheduler - Dynamic Prudent + Fixed Step",
             "type": "debugpy",
             "request": "launch",
             "module": "lambda.scheduler.handler",
@@ -24,9 +24,9 @@
                 "ENABLE_COMPUTE_SP": "true",
                 "ENABLE_DATABASE_SP": "true",
                 "ENABLE_SAGEMAKER_SP": "true",
-                "COVERAGE_TARGET_PERCENT": "100",
-                // Fixed target + Fixed Step split (matches single-account-compute example)
-                "TARGET_STRATEGY_TYPE": "fixed",
+                // Dynamic Prudent target + Fixed Step split
+                "TARGET_STRATEGY_TYPE": "dynamic",
+                "DYNAMIC_RISK_LEVEL": "prudent",
                 "SPLIT_STRATEGY_TYPE": "fixed_step",
                 "FIXED_STEP_PERCENT": "10",
                 "COMPUTE_SP_TERM": "THREE_YEAR",
@@ -159,8 +159,6 @@
                 "ENABLE_COMPUTE_SP": "true",
                 "ENABLE_DATABASE_SP": "true",
                 "ENABLE_SAGEMAKER_SP": "true",
-                // Data collection settings
-                "GRANULARITY": "HOURLY",
                 // Alert settings
                 "LOW_UTILIZATION_THRESHOLD": "70",
                 "LOW_UTILIZATION_ALERT_ENABLED": "false",
@@ -170,7 +168,6 @@
                 "TARGET_STRATEGY_TYPE": "dynamic",
                 "SPLIT_STRATEGY_TYPE": "gap_split",
                 "FIXED_STEP_PERCENT": "10",
-                "COVERAGE_TARGET_PERCENT": "90",
                 "COMPUTE_SP_TERM": "THREE_YEAR",
                 "COMPUTE_SP_PAYMENT_OPTION": "ALL_UPFRONT",
                 "DATABASE_SP_PAYMENT_OPTION": "NO_UPFRONT",
@@ -206,8 +203,6 @@
                 "ENABLE_COMPUTE_SP": "true",
                 "ENABLE_DATABASE_SP": "true",
                 "ENABLE_SAGEMAKER_SP": "true",
-                // Data collection settings
-                "GRANULARITY": "HOURLY",
                 // Alert settings
                 "LOW_UTILIZATION_THRESHOLD": "70",
                 "LOW_UTILIZATION_ALERT_ENABLED": "false",
@@ -243,8 +238,6 @@
                 "ENABLE_COMPUTE_SP": "true",
                 "ENABLE_DATABASE_SP": "true",
                 "ENABLE_SAGEMAKER_SP": "true",
-                // Data collection settings
-                "GRANULARITY": "HOURLY",
                 // Alert settings
                 "LOW_UTILIZATION_THRESHOLD": "70",
                 "LOW_UTILIZATION_ALERT_ENABLED": "false",
