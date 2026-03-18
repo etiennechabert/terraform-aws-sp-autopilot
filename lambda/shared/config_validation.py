@@ -183,7 +183,11 @@ def _validate_tags_field(config: dict[str, Any]) -> None:
 
 def _validate_purchase_percent_constraints(config: dict[str, Any]) -> None:
     """Validate min_purchase_percent > 0 and gap_split_divider > 0 when present."""
-    if "min_purchase_percent" in config and config["min_purchase_percent"] <= 0:
+    if (
+        "min_purchase_percent" in config
+        and config["min_purchase_percent"] is not None
+        and config["min_purchase_percent"] <= 0
+    ):
         raise ValueError(
             f"Field 'min_purchase_percent' must be greater than 0, "
             f"got {config['min_purchase_percent']}"
@@ -276,9 +280,9 @@ def validate_scheduler_config(config: dict[str, Any]) -> None:
 
     _validate_sp_types_enabled(config)
 
-    # Validate percentage fields
+    # Validate percentage fields (min_purchase_percent can be None for auto-derivation)
     for field in ["max_purchase_percent", "min_purchase_percent"]:
-        if field in config:
+        if field in config and config[field] is not None:
             _validate_percentage_range(config[field], field)
 
     _validate_purchase_percent_constraints(config)

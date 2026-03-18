@@ -138,8 +138,8 @@ locals {
 
   min_purchase_percent = (
     local.split_strategy_type == "gap_split" ?
-    try(var.purchase_strategy.split.gap_split.min_purchase_percent, 1.0) :
-    1.0
+    try(var.purchase_strategy.split.gap_split.min_purchase_percent, null) :
+    null
   )
 
   gap_split_divider = (
