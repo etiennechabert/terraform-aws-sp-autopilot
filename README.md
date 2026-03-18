@@ -119,13 +119,7 @@ Strategy is configured with two orthogonal dimensions: **target** (what coverage
 - **`fixed_step`** — Purchases a fixed percentage of spend per cycle (`step_percent`).
 - **`gap_split`** — Divides the remaining coverage gap by a configurable divider each cycle (`divider`), with optional `min_purchase_percent` (auto-derived from term: ~8.3% for 1Y, ~2.8% for 3Y) and `max_purchase_percent` bounds.
 
-  <details>
-  <summary>Gap Split Lifecycle (click to expand)</summary>
-
   ![Gap Split Lifecycle](docs/images/gap-split-lifecycle.png)
-
-  Over time, gap_split naturally distributes commitment across many smaller plans. Large initial plans are replaced by distributed smaller ones at renewal, reducing concentration risk while maintaining coverage near target.
-  </details>
 
 #### Recommended Combinations
 
