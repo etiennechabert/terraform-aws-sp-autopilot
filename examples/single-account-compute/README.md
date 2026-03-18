@@ -83,14 +83,23 @@ After enabling:
 
 ## Configuration Examples
 
-### Adjust Coverage Targets
+### Static Target with Fixed Step Split
+
+Use a fixed $/h commitment target instead of dynamically computed coverage:
 
 ```hcl
 purchase_strategy = {
-  target = { fixed = { coverage_percent = 80 } }  # Lower = more conservative
-  split  = { fixed_step = { step_percent = 5 } }  # Lower = slower commitment growth
+  target = {
+    static = { commitment = 5.0 } # Target $5.00/h total Savings Plans commitment
+  }
+
+  split = {
+    fixed_step = { step_percent = 10 } # Purchase 10% of the gap per cycle
+  }
 }
 ```
+
+With this configuration, if you currently have $2.00/h in active Compute Savings Plans, the gap is $3.00/h. Each cycle purchases 10% of the target ($0.50/h) until the $5.00/h commitment is reached.
 
 ### Choose Plan Type
 
