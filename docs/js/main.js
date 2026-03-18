@@ -1714,6 +1714,8 @@
         cmSet('cm-commitment', fmt(cmCommit) + '/h');
         cmSet('cm-ondemand', fmt(results.onDemandCost / numHours) + '/h');
         cmSet('cm-total', fmt(results.savingsPlanCost / numHours) + '/h');
+        cmSet('cm-waste', fmt(results.wastedCommitment / numHours) + '/h');
+        cmSet('cm-spillover', fmt(results.spilloverCost / numHours) + '/h');
         cmSet('cm-savings', fmt(results.savings / numHours) + '/h (' + results.savingsPercentageActual.toFixed(1) + '%)');
     }
 
