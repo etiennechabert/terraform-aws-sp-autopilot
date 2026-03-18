@@ -153,7 +153,7 @@ def generate_chart(output_path: str = "docs/images/gap-split-lifecycle.png") -> 
     )
 
     ax.set_ylabel("Coverage (%)", fontsize=9)
-    ax.set_xlim(0, total_years)
+    ax.set_xlim(-1 / 12, total_years + 1 / 12)
     ax.set_ylim(0, 110)
     ax.tick_params(axis="y", labelsize=8)
     ax.tick_params(axis="x", labelbottom=False)
@@ -205,7 +205,7 @@ def generate_chart(output_path: str = "docs/images/gap-split-lifecycle.png") -> 
     ax3.plot(sample_years, days_to_next_expiry, color="#27ae60", linewidth=1.2, label="Days to next expiry")
     ax3.set_ylabel("Days", fontsize=8)
     ax3.set_xlabel("Time (years)", fontsize=9)
-    ax3.set_xlim(0, total_years)
+    ax3.set_xlim(-1 / 12, total_years + 1 / 12)
     ax3.set_ylim(0)
     ax3.set_xticks(range(0, total_years + 1))
     ax3.set_xticklabels([f"Y{i}" for i in range(total_years + 1)], fontsize=8)
