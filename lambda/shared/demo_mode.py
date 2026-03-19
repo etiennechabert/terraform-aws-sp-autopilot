@@ -2,7 +2,9 @@
 Demo Mode - Randomizes financial data for safe public sharing.
 
 Applies a random multiplier to all dollar amounts while preserving
-percentages, ratios, and chart shapes. Plan IDs are anonymized.
+percentages and ratios. Additionally applies per-hour-of-day (24 values)
+and per-day-of-week (7 values) series multipliers to reshape usage patterns
+so the original firm's pattern cannot be recognized. Plan IDs are anonymized.
 
 Enabled via DEMO_MODE=true environment variable (local dev only).
 """
@@ -15,6 +17,7 @@ import math
 import os
 import random
 from copy import deepcopy
+from datetime import datetime
 from typing import Any
 
 
@@ -33,20 +36,24 @@ def randomize_report_data(
     """
     Apply random scaling to all financial data for demo/screenshot purposes.
 
-    Uses a single log-uniform random multiplier (0.3x - 3x) so all dollar
-    amounts are scaled consistently. This preserves:
-    - Coverage percentages (covered/total ratio unchanged)
-    - Utilization percentages
-    - Savings percentages
-    - Chart shapes and trends
+    Uses a base log-uniform multiplier (0.3x - 3x) plus per-hour-of-day (24)
+    and per-day-of-week (7) series multipliers to reshape the usage pattern.
+    This preserves coverage percentages (covered/total ratio) but disguises
+    the firm's actual usage pattern.
 
     Returns deep copies - originals are not modified.
     """
     factor = _random_factor()
+    hourly_series = _generate_series_multipliers(24)
+    daily_series = _generate_series_multipliers(7)
     logger.info("Demo mode active - applying random scaling factor (data is not real)")
 
-    coverage_out = _scale_coverage_data(deepcopy(coverage_data), factor)
-    daily_out = _scale_coverage_data(deepcopy(daily_coverage_data), factor)
+    coverage_out = _scale_coverage_data(
+        deepcopy(coverage_data), factor, hourly_series, daily_series
+    )
+    daily_out = _scale_coverage_data(
+        deepcopy(daily_coverage_data), factor, hourly_series, daily_series
+    )
     savings_out = _scale_savings_data(deepcopy(savings_data), factor)
 
     return coverage_out, daily_out, savings_out
@@ -60,36 +67,80 @@ def _random_factor() -> float:
             return factor
 
 
+def _generate_series_multipliers(n: int) -> list[float]:
+    """Generate n random multipliers (0.3-2.5) that average to ~1.0.
+
+    Uses smooth random walk with large steps to create a convincing
+    but completely different usage pattern from the original.
+    """
+    raw = [1.0]
+    for _ in range(n - 1):
+        raw.append(raw[-1] + random.gauss(0, 0.4))
+
+    # Normalize to average 1.0 and clamp to [0.3, 2.5]
+    avg = sum(raw) / len(raw)
+    normalized = [r / avg for r in raw]
+    clamped = [max(0.3, min(2.5, v)) for v in normalized]
+
+    # Re-normalize after clamping
+    avg2 = sum(clamped) / len(clamped)
+    return [round(v / avg2, 6) for v in clamped]
+
+
+def _point_multiplier(
+    timestamp_str: str,
+    hourly_series: list[float],
+    daily_series: list[float],
+) -> float:
+    """Get the combined hour-of-day * day-of-week multiplier for a timestamp."""
+    try:
+        dt = datetime.fromisoformat(timestamp_str.replace("Z", "+00:00"))
+    except (ValueError, AttributeError):
+        return 1.0
+    return hourly_series[dt.hour] * daily_series[dt.weekday()]
+
+
 def _scale(value: float, factor: float) -> float:
     return round(value * factor, 6)
 
 
-def _scale_coverage_data(data: dict[str, Any], factor: float) -> dict[str, Any]:
-    """Scale dollar amounts in coverage data (hourly or daily)."""
+def _scale_coverage_data(
+    data: dict[str, Any],
+    factor: float,
+    hourly_series: list[float],
+    daily_series: list[float],
+) -> dict[str, Any]:
+    """Scale dollar amounts in coverage data with per-point pattern reshaping."""
     for sp_type in ("compute", "database", "sagemaker"):
         if sp_type not in data:
             continue
 
         type_data = data[sp_type]
+        timeseries = type_data.get("timeseries", [])
 
-        # Scale timeseries
-        for point in type_data.get("timeseries", []):
-            point["covered"] = _scale(point["covered"], factor)
-            point["total"] = _scale(point["total"], factor)
-            # coverage % is recalculated from covered/total, stays consistent
+        # Scale timeseries: SP coverage gets uniform factor only (flat commitment),
+        # on-demand portion gets reshaped by hourly/daily multipliers
+        for point in timeseries:
+            pm = _point_multiplier(point.get("timestamp", ""), hourly_series, daily_series)
+            covered = point["covered"]
+            on_demand = point["total"] - covered
+            point["covered"] = _scale(covered, factor)
+            point["total"] = _scale(covered, factor) + _scale(on_demand, factor * pm)
 
-        # Scale summary dollar amounts (not percentages)
+        # Recalculate summary from modified timeseries
         summary = type_data.get("summary", {})
-        for key in (
-            "avg_hourly_covered",
-            "avg_hourly_total",
-            "min_hourly_total",
-            "max_hourly_total",
-            "est_monthly_covered",
-            "est_monthly_total",
-        ):
-            if key in summary:
-                summary[key] = _scale(summary[key], factor)
+        if timeseries and summary:
+            totals = [p["total"] for p in timeseries]
+            covereds = [p["covered"] for p in timeseries]
+            n = len(timeseries)
+            avg_total = sum(totals) / n
+            avg_covered = sum(covereds) / n
+            summary["avg_hourly_total"] = round(avg_total, 6)
+            summary["avg_hourly_covered"] = round(avg_covered, 6)
+            summary["min_hourly_total"] = round(min(totals), 6)
+            summary["max_hourly_total"] = round(max(totals), 6)
+            summary["est_monthly_total"] = round(avg_total * 720, 6)
+            summary["est_monthly_covered"] = round(avg_covered * 720, 6)
 
     return data
 
