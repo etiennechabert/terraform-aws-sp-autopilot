@@ -10,6 +10,7 @@ from shared.demo_mode import (
     _generate_series_multipliers,
     _point_multiplier,
     _random_factor,
+    _randomize_plan_dates,
     _scale,
     _scale_coverage_data,
     _scale_savings_data,
@@ -235,6 +236,35 @@ class TestScaleSavingsData:
         data = deepcopy(SAVINGS_DATA)
         result = _scale_savings_data(data, 2.0)
         assert result["plans_count"] == 2
+
+
+class TestRandomizePlanDates:
+    def test_shifts_dates(self):
+        plan = {
+            "start_date": "2025-06-01T00:00:00Z",
+            "end_date": "2026-06-01T00:00:00Z",
+        }
+        _randomize_plan_dates(plan)
+        assert plan["start_date"] != "2025-06-01T00:00:00Z"
+        assert plan["end_date"] != "2026-06-01T00:00:00Z"
+        assert plan["start_date"].endswith("Z")
+
+    def test_preserves_term_length(self):
+        from datetime import datetime
+
+        plan = {
+            "start_date": "2025-01-01T00:00:00Z",
+            "end_date": "2026-01-01T00:00:00Z",
+        }
+        _randomize_plan_dates(plan)
+        start = datetime.fromisoformat(plan["start_date"].replace("Z", "+00:00"))
+        end = datetime.fromisoformat(plan["end_date"].replace("Z", "+00:00"))
+        assert (end - start).days == 365
+
+    def test_skips_unknown(self):
+        plan = {"start_date": "Unknown", "end_date": "Unknown"}
+        _randomize_plan_dates(plan)
+        assert plan["start_date"] == "Unknown"
 
 
 class TestAnonymizeId:

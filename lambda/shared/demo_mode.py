@@ -17,7 +17,7 @@ import math
 import os
 import random
 from copy import deepcopy
-from datetime import datetime
+from datetime import UTC, datetime, timedelta
 from typing import Any
 
 
@@ -173,12 +173,33 @@ def _scale_savings_data(data: dict[str, Any], factor: float) -> dict[str, Any]:
             if key in type_info:
                 type_info[key] = _scale(type_info[key], factor)
 
-    # Scale and anonymize individual plans
+    # Scale, anonymize, and randomize dates of individual plans
     for plan in data.get("plans", []):
         plan["hourly_commitment"] = _scale(plan.get("hourly_commitment", 0), factor)
         plan["plan_id"] = _anonymize_id(plan.get("plan_id", ""))
+        _randomize_plan_dates(plan)
 
     return data
+
+
+def _randomize_plan_dates(plan: dict[str, Any]) -> None:
+    """Shift plan start/end dates by a random offset to disguise timing."""
+    offset_days = random.randint(-180, 180)
+    for key in ("start_date", "end_date"):
+        date_str = plan.get(key, "")
+        if not date_str or date_str == "Unknown":
+            continue
+        try:
+            if "T" in date_str:
+                dt = datetime.fromisoformat(date_str.replace("Z", "+00:00"))
+                dt += timedelta(days=offset_days)
+                plan[key] = dt.strftime("%Y-%m-%dT%H:%M:%S") + "Z"
+            else:
+                dt = datetime.strptime(date_str, "%Y-%m-%d").replace(tzinfo=UTC)
+                dt += timedelta(days=offset_days)
+                plan[key] = dt.strftime("%Y-%m-%d")
+        except (ValueError, TypeError):
+            continue
 
 
 def _anonymize_id(plan_id: str) -> str:
