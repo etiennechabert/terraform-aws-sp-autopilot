@@ -88,6 +88,7 @@ Create two roles for least privilege access:
     "Effect": "Allow",
     "Action": [
       "savingsplans:CreateSavingsPlan",
+      "savingsplans:TagResource",
       "savingsplans:DescribeSavingsPlans",
       "savingsplans:DescribeSavingsPlansOfferings",
       "ce:GetSavingsPlansCoverage"
@@ -166,6 +167,7 @@ cat > purchaser-permissions.json <<EOF
     "Effect": "Allow",
     "Action": [
       "savingsplans:CreateSavingsPlan",
+      "savingsplans:TagResource",
       "savingsplans:DescribeSavingsPlans",
       "savingsplans:DescribeSavingsPlansOfferings",
       "ce:GetSavingsPlansCoverage"

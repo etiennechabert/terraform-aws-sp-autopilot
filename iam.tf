@@ -254,7 +254,8 @@ resource "aws_iam_role_policy" "purchaser_savingsplans" {
       Action = [
         "savingsplans:DescribeSavingsPlans",
         "savingsplans:DescribeSavingsPlansOfferings",
-        "savingsplans:CreateSavingsPlan"
+        "savingsplans:CreateSavingsPlan",
+        "savingsplans:TagResource"
       ]
       Resource = "*"
     }]
