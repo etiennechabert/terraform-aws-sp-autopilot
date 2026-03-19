@@ -269,6 +269,7 @@ lambda_config = {
 
 2. **Purchaser Role** (write access):
    - `savingsplans:CreateSavingsPlan`
+   - `savingsplans:TagResource`
    - `savingsplans:DescribeSavingsPlans`
    - `savingsplans:DescribeSavingsPlansOfferings`
    - `ce:GetSavingsPlansCoverage`

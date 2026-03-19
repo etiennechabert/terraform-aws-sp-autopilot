@@ -440,6 +440,11 @@ run "test_purchaser_savingsplans_policy" {
     condition     = contains(jsondecode(aws_iam_role_policy.purchaser_savingsplans[0].policy).Statement[0].Action, "savingsplans:CreateSavingsPlan")
     error_message = "Purchaser Savings Plans policy should include savingsplans:CreateSavingsPlan"
   }
+
+  assert {
+    condition     = contains(jsondecode(aws_iam_role_policy.purchaser_savingsplans[0].policy).Statement[0].Action, "savingsplans:TagResource")
+    error_message = "Purchaser Savings Plans policy should include savingsplans:TagResource"
+  }
 }
 
 # Test: Purchaser assume role policy not created when management_account_role_arn is null
