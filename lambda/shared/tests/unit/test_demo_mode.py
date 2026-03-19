@@ -7,7 +7,8 @@ import pytest
 
 from shared.demo_mode import (
     _anonymize_id,
-    _generate_series_multipliers,
+    _generate_daily_multipliers,
+    _generate_hourly_multipliers,
     _point_multiplier,
     _random_factor,
     _randomize_plan_dates,
@@ -107,19 +108,35 @@ class TestScale:
 
 
 class TestSeriesMultipliers:
-    def test_length(self):
-        assert len(_generate_series_multipliers(24)) == 24
-        assert len(_generate_series_multipliers(7)) == 7
+    def test_hourly_length(self):
+        assert len(_generate_hourly_multipliers()) == 24
 
-    def test_average_near_one(self):
-        for _ in range(20):
-            m = _generate_series_multipliers(24)
-            assert pytest.approx(sum(m) / len(m), abs=0.05) == 1.0
+    def test_daily_length(self):
+        assert len(_generate_daily_multipliers()) == 7
 
-    def test_within_bounds(self):
+    def test_hourly_business_hours_high(self):
         for _ in range(20):
-            for v in _generate_series_multipliers(24):
-                assert 0.1 <= v <= 4.0
+            m = _generate_hourly_multipliers()
+            for hour in range(9, 17):
+                assert 1.0 <= m[hour] <= 2.0
+
+    def test_hourly_off_hours_low(self):
+        for _ in range(20):
+            m = _generate_hourly_multipliers()
+            for hour in (0, 1, 2, 3, 4, 5, 22, 23):
+                assert 0.25 <= m[hour] <= 0.75
+
+    def test_daily_weekdays_high(self):
+        for _ in range(20):
+            m = _generate_daily_multipliers()
+            for day in range(5):
+                assert 1.0 <= m[day] <= 2.0
+
+    def test_daily_weekend_low(self):
+        for _ in range(20):
+            m = _generate_daily_multipliers()
+            for day in (5, 6):
+                assert 0.25 <= m[day] <= 0.75
 
     def test_point_multiplier_parses_timestamp(self):
         hourly = [1.0] * 24

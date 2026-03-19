@@ -44,8 +44,8 @@ def randomize_report_data(
     Returns deep copies - originals are not modified.
     """
     factor = _random_factor()
-    hourly_series = _generate_series_multipliers(24)
-    daily_series = _generate_series_multipliers(7)
+    hourly_series = _generate_hourly_multipliers()
+    daily_series = _generate_daily_multipliers()
     logger.info("Demo mode active - applying random scaling factor (data is not real)")
 
     coverage_out = _scale_coverage_data(
@@ -67,24 +67,38 @@ def _random_factor() -> float:
             return factor
 
 
-def _generate_series_multipliers(n: int) -> list[float]:
-    """Generate n random multipliers (0.3-2.5) that average to ~1.0.
+def _generate_hourly_multipliers() -> list[float]:
+    """Generate 24 hourly multipliers mimicking a business-hours pattern.
 
-    Uses smooth random walk with large steps to create a convincing
-    but completely different usage pattern from the original.
+    Business hours (8-18): random in [1.0, 2.0]
+    Off hours: random in [0.25, 0.75]
+    Adjacent values stay close for smooth transitions.
     """
-    raw = [1.0]
-    for _ in range(n - 1):
-        raw.append(raw[-1] + random.gauss(0, 0.4))
+    multipliers = []
+    for hour in range(24):
+        base = random.uniform(1.0, 2.0) if 8 <= hour < 18 else random.uniform(0.25, 0.75)
+        multipliers.append(base)
 
-    # Normalize to average 1.0 and clamp to [0.3, 2.5]
-    avg = sum(raw) / len(raw)
-    normalized = [r / avg for r in raw]
-    clamped = [max(0.3, min(2.5, v)) for v in normalized]
+    # Smooth transitions at boundaries (hours 7-8 and 17-18)
+    multipliers[7] = random.uniform(0.6, 1.0)
+    multipliers[18] = random.uniform(0.6, 1.0)
 
-    # Re-normalize after clamping
-    avg2 = sum(clamped) / len(clamped)
-    return [round(v / avg2, 6) for v in clamped]
+    return [round(v, 6) for v in multipliers]
+
+
+def _generate_daily_multipliers() -> list[float]:
+    """Generate 7 daily multipliers (Mon=0 .. Sun=6) mimicking a business-week pattern.
+
+    Business days (Mon-Fri): random in [1.0, 2.0]
+    Weekend (Sat-Sun): random in [0.25, 0.75]
+    """
+    multipliers = []
+    for day in range(7):
+        if day < 5:
+            multipliers.append(round(random.uniform(1.0, 2.0), 6))
+        else:
+            multipliers.append(round(random.uniform(0.25, 0.75), 6))
+    return multipliers
 
 
 def _point_multiplier(
