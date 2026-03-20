@@ -58,6 +58,9 @@ def randomize_report_data(
     )
     savings_out = _scale_savings_data(deepcopy(savings_data), factor)
 
+    # Sync savings breakdown commitments with the flat covered values from coverage data
+    _sync_savings_with_coverage(savings_out, coverage_out)
+
     return coverage_out, daily_out, savings_out
 
 
@@ -200,6 +203,53 @@ def _scale_savings_data(data: dict[str, Any], factor: float) -> dict[str, Any]:
         _randomize_plan_dates(plan)
 
     return data
+
+
+_TYPE_KEY_MAP = {"compute": "Compute", "database": "Database", "sagemaker": "SageMaker"}
+
+
+def _sync_savings_with_coverage(
+    savings_data: dict[str, Any], coverage_data: dict[str, Any]
+) -> None:
+    """Make savings breakdown commitments consistent with coverage timeseries.
+
+    After demo randomization, the flat_covered value in the timeseries may not
+    match the total_commitment in savings breakdown. This syncs them so the
+    report metrics cards and charts agree.
+    """
+    breakdown = savings_data.get("actual_savings", {}).get("breakdown_by_type", {})
+    total_commitment = 0.0
+
+    for sp_type, type_key in _TYPE_KEY_MAP.items():
+        if sp_type not in coverage_data:
+            continue
+        timeseries = coverage_data[sp_type].get("timeseries", [])
+        if not timeseries:
+            continue
+
+        flat_covered = timeseries[0].get("covered", 0.0)
+        if type_key not in breakdown:
+            breakdown[type_key] = {}
+        breakdown[type_key]["total_commitment"] = flat_covered
+        total_commitment += flat_covered
+
+    savings_data["total_commitment"] = round(total_commitment, 6)
+
+    # Redistribute plan commitments to match new type totals
+    plans = savings_data.get("plans", [])
+    commitment_by_type: dict[str, float] = {}
+    for sp_type, type_key in _TYPE_KEY_MAP.items():
+        target = breakdown.get(type_key, {}).get("total_commitment", 0.0)
+        if target > 0:
+            commitment_by_type[type_key] = target
+
+    for plan_type, target in commitment_by_type.items():
+        type_plans = [p for p in plans if p.get("plan_type") == plan_type]
+        if not type_plans:
+            continue
+        share = round(target / len(type_plans), 6)
+        for p in type_plans:
+            p["hourly_commitment"] = share
 
 
 def _randomize_plan_dates(plan: dict[str, Any]) -> None:
