@@ -157,13 +157,30 @@ FLAT_DAILY = [1.0] * 7
 
 
 class TestScaleCoverageData:
-    def test_scales_timeseries(self):
+    def test_scales_total(self):
         from copy import deepcopy
 
         data = deepcopy(COVERAGE_DATA)
         result = _scale_coverage_data(data, 3.0, FLAT_HOURLY, FLAT_DAILY)
-        assert result["compute"]["timeseries"][0]["covered"] == pytest.approx(30.0)
         assert result["compute"]["timeseries"][0]["total"] == pytest.approx(45.0)
+        assert result["compute"]["timeseries"][1]["total"] == pytest.approx(54.0)
+
+    def test_covered_is_flat(self):
+        from copy import deepcopy
+
+        data = deepcopy(COVERAGE_DATA)
+        result = _scale_coverage_data(data, 2.0, FLAT_HOURLY, FLAT_DAILY)
+        ts = result["compute"]["timeseries"]
+        assert ts[0]["covered"] == ts[1]["covered"]
+
+    def test_covered_below_min_total(self):
+        from copy import deepcopy
+
+        data = deepcopy(COVERAGE_DATA)
+        result = _scale_coverage_data(data, 2.0, FLAT_HOURLY, FLAT_DAILY)
+        ts = result["compute"]["timeseries"]
+        min_total = min(p["total"] for p in ts)
+        assert ts[0]["covered"] <= min_total
 
     def test_scales_summary_dollar_fields(self):
         from copy import deepcopy
@@ -173,7 +190,7 @@ class TestScaleCoverageData:
         assert result["compute"]["summary"]["avg_hourly_total"] == pytest.approx(33.0)
         assert result["compute"]["summary"]["est_monthly_total"] == pytest.approx(23760.0)
 
-    def test_preserves_percentages(self):
+    def test_preserves_avg_coverage_total(self):
         from copy import deepcopy
 
         data = deepcopy(COVERAGE_DATA)
@@ -186,7 +203,7 @@ class TestScaleCoverageData:
         )
         assert "database" not in result
 
-    def test_series_multipliers_reshape_on_demand_only(self):
+    def test_series_multipliers_reshape_total(self):
         from copy import deepcopy
 
         hourly = [1.0] * 24
@@ -194,13 +211,12 @@ class TestScaleCoverageData:
         hourly[1] = 0.7
         data = deepcopy(COVERAGE_DATA)
         result = _scale_coverage_data(data, 1.0, hourly, FLAT_DAILY)
-        # covered stays uniform (factor=1.0), on-demand gets reshaped
-        # point 0: covered=10, on_demand=5 -> total = 10 + 5*1.5 = 17.5
-        assert result["compute"]["timeseries"][0]["covered"] == pytest.approx(10.0)
-        assert result["compute"]["timeseries"][0]["total"] == pytest.approx(17.5)
-        # point 1: covered=12, on_demand=6 -> total = 12 + 6*0.7 = 16.2
-        assert result["compute"]["timeseries"][1]["covered"] == pytest.approx(12.0)
-        assert result["compute"]["timeseries"][1]["total"] == pytest.approx(16.2)
+        # total gets reshaped per point
+        assert result["compute"]["timeseries"][0]["total"] == pytest.approx(15.0 * 1.5)
+        assert result["compute"]["timeseries"][1]["total"] == pytest.approx(18.0 * 0.7)
+        # covered is flat across all points
+        ts = result["compute"]["timeseries"]
+        assert ts[0]["covered"] == ts[1]["covered"]
 
 
 class TestScaleSavingsData:

@@ -132,14 +132,18 @@ def _scale_coverage_data(
         type_data = data[sp_type]
         timeseries = type_data.get("timeseries", [])
 
-        # Scale timeseries: SP coverage gets uniform factor only (flat commitment),
-        # on-demand portion gets reshaped by hourly/daily multipliers
+        # First pass: reshape total spend with hourly/daily multipliers
         for point in timeseries:
             pm = _point_multiplier(point.get("timestamp", ""), hourly_series, daily_series)
-            covered = point["covered"]
-            on_demand = point["total"] - covered
-            point["covered"] = _scale(covered, factor)
-            point["total"] = _scale(covered, factor) + _scale(on_demand, factor * pm)
+            point["total"] = _scale(point["total"], factor * pm)
+
+        # Set covered as a flat commitment = random coverage % of min hourly total
+        if timeseries:
+            min_total = min(p["total"] for p in timeseries)
+            coverage_pct = random.uniform(0.5, 0.85)
+            flat_covered = round(min_total * coverage_pct, 6)
+            for point in timeseries:
+                point["covered"] = flat_covered
 
         # Recalculate summary from modified timeseries
         summary = type_data.get("summary", {})
