@@ -35,7 +35,7 @@ module "savings_plans" {
 
   # Strategy = target + split. Pick one of each:
   purchase_strategy = {
-    target = { dynamic = { risk_level = "prudent" } }
+    target = { dynamic = { risk_level = "prudent", prudent_percentage = 85 } }
     split  = { gap_split = { divider = 2 } }
   }
 
