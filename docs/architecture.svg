@@ -92,6 +92,24 @@
   <!-- ② REVIEW WINDOW -->
   <text x="40" y="258" font-family="Arial, sans-serif" font-size="14" font-weight="bold" fill="#FF4F8B">② REVIEW WINDOW</text>
 
+  <!-- Human reviewer icon -->
+  <g transform="translate(130, 280)">
+    <!-- Head -->
+    <circle cx="0" cy="0" r="10" fill="#FF4F8B" opacity="0.8"/>
+    <!-- Body -->
+    <line x1="0" y1="10" x2="0" y2="30" stroke="#FF4F8B" stroke-width="2.5" opacity="0.8"/>
+    <!-- Arms -->
+    <line x1="-12" y1="18" x2="12" y2="18" stroke="#FF4F8B" stroke-width="2.5" opacity="0.8"/>
+    <!-- Legs -->
+    <line x1="0" y1="30" x2="-10" y2="45" stroke="#FF4F8B" stroke-width="2.5" opacity="0.8"/>
+    <line x1="0" y1="30" x2="10" y2="45" stroke="#FF4F8B" stroke-width="2.5" opacity="0.8"/>
+    <!-- Label -->
+    <text x="0" y="58" text-anchor="middle" font-family="Arial, sans-serif" font-size="9" fill="#FF4F8B" font-weight="bold">Review &amp; cancel</text>
+  </g>
+
+  <!-- Arrow: Human → SQS -->
+  <line x1="155" y1="310" x2="260" y2="310" stroke="#FF4F8B" stroke-width="1.5" stroke-dasharray="4,4" marker-end="url(#arrowheadNotif)"/>
+
   <!-- SQS Queue -->
   <rect x="260" y="265" width="200" height="90" rx="8" fill="url(#sqsGrad)" stroke="#232F3E" stroke-width="2" filter="url(#shadow)"/>
   <text x="360" y="292" text-anchor="middle" font-family="Arial, sans-serif" font-size="15" font-weight="bold" fill="white">SQS Queue</text>
