@@ -46,6 +46,11 @@
   <text x="600" y="30" text-anchor="middle" font-family="Arial, sans-serif" font-size="24" font-weight="bold" fill="#232F3E">SP Autopilot - Architecture</text>
   <text x="600" y="52" text-anchor="middle" font-family="Arial, sans-serif" font-size="12" fill="#666">Compute, Database &amp; SageMaker Savings Plans | Analysis → Review → Purchase → Report</text>
 
+  <!-- Notification lines (rendered first so they appear behind boxes) -->
+  <polyline points="460,142 730,142 730,370 770,370" stroke="#D13212" stroke-width="1.5" stroke-dasharray="4,4" fill="none" marker-end="url(#arrowheadNotif)"/>
+  <polyline points="460,460 740,460 740,400 770,400" stroke="#D13212" stroke-width="1.5" stroke-dasharray="4,4" fill="none" marker-end="url(#arrowheadNotif)"/>
+  <polyline points="460,625 750,625 750,420 770,420" stroke="#D13212" stroke-width="1.5" stroke-dasharray="4,4" fill="none" marker-end="url(#arrowheadNotif)"/>
+
   <!-- ① ANALYSIS -->
   <text x="40" y="88" font-family="Arial, sans-serif" font-size="14" font-weight="bold" fill="#FF9900">① ANALYSIS</text>
 
@@ -79,9 +84,6 @@
   <text x="600" y="142" text-anchor="middle" font-family="Arial, sans-serif" font-size="11" fill="white">Cost Explorer</text>
   <text x="600" y="159" text-anchor="middle" font-family="Arial, sans-serif" font-size="11" fill="white">Savings Plans</text>
   <text x="600" y="176" text-anchor="middle" font-family="Arial, sans-serif" font-size="10" fill="white">(Recommendations)</text>
-
-  <!-- Notification line: Scheduler → SNS (right side, vertical routing) -->
-  <polyline points="460,142 730,142 730,370 770,370" stroke="#D13212" stroke-width="1.5" stroke-dasharray="4,4" fill="none" marker-end="url(#arrowheadNotif)"/>
 
   <!-- Arrow: Scheduler → SQS -->
   <line x1="360" y1="190" x2="360" y2="260" stroke="#232F3E" stroke-width="2.5" marker-end="url(#arrowhead)"/>
@@ -142,9 +144,6 @@
   <text x="600" y="494" text-anchor="middle" font-family="Arial, sans-serif" font-size="11" fill="white">Commit to Savings</text>
   <text x="600" y="511" text-anchor="middle" font-family="Arial, sans-serif" font-size="10" fill="white">(Compute, Database, SageMaker)</text>
 
-  <!-- Notification line: Purchaser → SNS -->
-  <polyline points="460,460 740,460 740,400 770,400" stroke="#D13212" stroke-width="1.5" stroke-dasharray="4,4" fill="none" marker-end="url(#arrowheadNotif)"/>
-
   <!-- ④ REPORTING -->
   <text x="40" y="595" font-family="Arial, sans-serif" font-size="14" font-weight="bold" fill="#569A31">④ REPORTING</text>
 
@@ -173,9 +172,6 @@
   <text x="590" y="637" text-anchor="middle" font-family="Arial, sans-serif" font-size="14" font-weight="bold" fill="white">S3 Bucket</text>
   <text x="590" y="657" text-anchor="middle" font-family="Arial, sans-serif" font-size="11" fill="white">Coverage Reports</text>
   <text x="590" y="670" text-anchor="middle" font-family="Arial, sans-serif" font-size="9" fill="white">(HTML / JSON / CSV)</text>
-
-  <!-- Notification line: Reporter → SNS -->
-  <polyline points="460,625 750,625 750,420 770,420" stroke="#D13212" stroke-width="1.5" stroke-dasharray="4,4" fill="none" marker-end="url(#arrowheadNotif)"/>
 
   <!-- SNS Notifications (right column, vertically centered) -->
   <rect x="770" y="335" width="210" height="120" rx="8" fill="url(#snsGrad)" stroke="#232F3E" stroke-width="2" filter="url(#shadow)"/>
