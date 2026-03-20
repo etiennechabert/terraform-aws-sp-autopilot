@@ -1,4 +1,4 @@
-# AWS Savings Plans Automation Module
+# SP Autopilot
 
 [![License](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](https://opensource.org/licenses/Apache-2.0)
 ![Terraform Version](https://img.shields.io/badge/Terraform-%3E%3D%201.7-623CE4.svg)
@@ -19,11 +19,11 @@ Automates AWS Savings Plans purchases based on usage analysis, maintaining consi
 
 ## Key Features
 
-- **Automated Savings Plans purchasing**: maintains target coverage without manual intervention
-- **Three purchase strategies**: Fixed Step, Gap Split, and Follow-AWS for different workload patterns
+- **Three-stage pipeline**: Scheduler analyzes coverage gaps and queues purchase intents, Purchaser executes queued purchases after a review window, Reporter generates coverage and savings reports
+- **Composable purchase strategy**: combine a target (Dynamic, Static, or AWS recommendations) with a split method (Fixed Step, Gap Split, or One-Shot)
 - **Three SP types supported**: Compute, Database, and SageMaker independently tracked
-- **Human review window**: configurable delay between scheduling and purchasing allows cancellation
-- **Risk management**: spreads financial commitments over time with configurable purchase limits
+- **Human review window**: purchase intents sit in SQS between scheduling and purchasing, giving time to review and cancel
+- **Spike guard and change detection**: blocks purchases during temporary usage spikes and detects usage drops between scheduling and purchasing
 - **Email & webhook notifications**: SNS, Slack, and Microsoft Teams integration
 
 ## Quick Start
@@ -35,12 +35,12 @@ module "savings_plans" {
 
   purchase_strategy = {
     target = { dynamic = { risk_level = "prudent" } }
-    split  = { fixed_step = { step_percent = 10 } }
+    split  = { gap_split = { divider = 2 } }
   }
 
   sp_plans = {
-    compute   = { enabled = true, plan_type = "all_upfront_one_year" }
-    database  = { enabled = false }
+    compute   = { enabled = true, plan_type = "all_upfront_three_year" }
+    database  = { enabled = true, plan_type = "no_upfront_one_year" }
     sagemaker = { enabled = false }
   }
 
