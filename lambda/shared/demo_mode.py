@@ -49,11 +49,12 @@ def randomize_report_data(
     coverage_pcts = {sp: random.uniform(0.5, 0.85) for sp in ("compute", "database", "sagemaker")}
     logger.info("Demo mode active - applying random scaling factor (data is not real)")
 
+    no_hourly = [1.0] * 24
     coverage_out = _scale_coverage_data(
         deepcopy(coverage_data), factor, hourly_series, daily_series, coverage_pcts
     )
     daily_out = _scale_coverage_data(
-        deepcopy(daily_coverage_data), factor, hourly_series, daily_series, coverage_pcts
+        deepcopy(daily_coverage_data), factor, no_hourly, daily_series, coverage_pcts
     )
     savings_out = _scale_savings_data(deepcopy(savings_data), factor)
 
