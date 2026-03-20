@@ -15,6 +15,7 @@ import math
 import os
 import random
 from copy import deepcopy
+from datetime import datetime
 from typing import Any
 
 
@@ -45,8 +46,8 @@ def randomize_report_data(
     factor = _random_factor()
     logger.info("Demo mode active - applying random scaling factor (data is not real)")
 
-    coverage_out = _scale_coverage_data(deepcopy(coverage_data), factor)
-    daily_out = _scale_coverage_data(deepcopy(daily_coverage_data), factor)
+    coverage_out = _scale_coverage_data(deepcopy(coverage_data), factor, is_daily=False)
+    daily_out = _scale_coverage_data(deepcopy(daily_coverage_data), factor, is_daily=True)
     savings_out = _scale_savings_data(deepcopy(savings_data), factor)
 
     return coverage_out, daily_out, savings_out
@@ -64,7 +65,19 @@ def _scale(value: float, factor: float) -> float:
     return round(value * factor, 6)
 
 
-def _scale_coverage_data(data: dict[str, Any], factor: float) -> dict[str, Any]:
+def _time_multiplier(timestamp_str: str, is_daily: bool) -> float:
+    """Generate a deterministic random multiplier (1.5-2.5) based on time.
+
+    For daily data: varies by day of the week (0=Monday .. 6=Sunday).
+    For hourly data: varies by hour of the day (0-23).
+    """
+    dt = datetime.fromisoformat(timestamp_str.replace("Z", "+00:00"))
+    seed = dt.isoweekday() if is_daily else dt.hour
+    rng = random.Random(seed)
+    return rng.uniform(1.5, 2.5)
+
+
+def _scale_coverage_data(data: dict[str, Any], factor: float, *, is_daily: bool) -> dict[str, Any]:
     """Scale dollar amounts in coverage data (hourly or daily)."""
     for sp_type in ("compute", "database", "sagemaker"):
         if sp_type not in data:
@@ -72,11 +85,11 @@ def _scale_coverage_data(data: dict[str, Any], factor: float) -> dict[str, Any]:
 
         type_data = data[sp_type]
 
-        # Scale timeseries
+        # Scale timeseries with time-based multiplier
         for point in type_data.get("timeseries", []):
-            point["covered"] = _scale(point["covered"], factor)
-            point["total"] = _scale(point["total"], factor)
-            # coverage % is recalculated from covered/total, stays consistent
+            tm = _time_multiplier(point["timestamp"], is_daily)
+            point["covered"] = _scale(point["covered"], factor * tm)
+            point["total"] = _scale(point["total"], factor * tm)
 
         # Scale summary dollar amounts (not percentages)
         summary = type_data.get("summary", {})
