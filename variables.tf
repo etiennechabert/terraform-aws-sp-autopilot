@@ -37,7 +37,7 @@ variable "lambda_config" {
 variable "purchase_strategy" {
   description = "Purchase strategy configuration with orthogonal target + split dimensions"
   type = object({
-    renewal_window_days     = optional(number, 7)
+    renewal_window_days     = optional(number, 14)
     purchase_cooldown_days  = optional(number, 7)
     min_commitment_per_plan = optional(number, 0.001)
 
