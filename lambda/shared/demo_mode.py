@@ -46,13 +46,14 @@ def randomize_report_data(
     factor = _random_factor()
     hourly_series = _generate_hourly_multipliers()
     daily_series = _generate_daily_multipliers()
+    coverage_pcts = {sp: random.uniform(0.5, 0.85) for sp in ("compute", "database", "sagemaker")}
     logger.info("Demo mode active - applying random scaling factor (data is not real)")
 
     coverage_out = _scale_coverage_data(
-        deepcopy(coverage_data), factor, hourly_series, daily_series
+        deepcopy(coverage_data), factor, hourly_series, daily_series, coverage_pcts
     )
     daily_out = _scale_coverage_data(
-        deepcopy(daily_coverage_data), factor, hourly_series, daily_series
+        deepcopy(daily_coverage_data), factor, hourly_series, daily_series, coverage_pcts
     )
     savings_out = _scale_savings_data(deepcopy(savings_data), factor)
 
@@ -123,6 +124,7 @@ def _scale_coverage_data(
     factor: float,
     hourly_series: list[float],
     daily_series: list[float],
+    coverage_pcts: dict[str, float],
 ) -> dict[str, Any]:
     """Scale dollar amounts in coverage data with per-point pattern reshaping."""
     for sp_type in ("compute", "database", "sagemaker"):
@@ -137,11 +139,10 @@ def _scale_coverage_data(
             pm = _point_multiplier(point.get("timestamp", ""), hourly_series, daily_series)
             point["total"] = _scale(point["total"], factor * pm)
 
-        # Set covered as a flat commitment = random coverage % of min hourly total
+        # Set covered as a flat commitment = shared coverage % of min total
         if timeseries:
             min_total = min(p["total"] for p in timeseries)
-            coverage_pct = random.uniform(0.5, 0.85)
-            flat_covered = round(min_total * coverage_pct, 6)
+            flat_covered = round(min_total * coverage_pcts[sp_type], 6)
             for point in timeseries:
                 point["covered"] = flat_covered
 

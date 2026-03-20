@@ -154,6 +154,7 @@ class TestSeriesMultipliers:
 # Flat series (all 1.0) for tests that don't need pattern reshaping
 FLAT_HOURLY = [1.0] * 24
 FLAT_DAILY = [1.0] * 7
+FIXED_COVERAGE_PCTS = {"compute": 0.7, "database": 0.7, "sagemaker": 0.7}
 
 
 class TestScaleCoverageData:
@@ -161,7 +162,7 @@ class TestScaleCoverageData:
         from copy import deepcopy
 
         data = deepcopy(COVERAGE_DATA)
-        result = _scale_coverage_data(data, 3.0, FLAT_HOURLY, FLAT_DAILY)
+        result = _scale_coverage_data(data, 3.0, FLAT_HOURLY, FLAT_DAILY, FIXED_COVERAGE_PCTS)
         assert result["compute"]["timeseries"][0]["total"] == pytest.approx(45.0)
         assert result["compute"]["timeseries"][1]["total"] == pytest.approx(54.0)
 
@@ -169,7 +170,7 @@ class TestScaleCoverageData:
         from copy import deepcopy
 
         data = deepcopy(COVERAGE_DATA)
-        result = _scale_coverage_data(data, 2.0, FLAT_HOURLY, FLAT_DAILY)
+        result = _scale_coverage_data(data, 2.0, FLAT_HOURLY, FLAT_DAILY, FIXED_COVERAGE_PCTS)
         ts = result["compute"]["timeseries"]
         assert ts[0]["covered"] == ts[1]["covered"]
 
@@ -177,7 +178,7 @@ class TestScaleCoverageData:
         from copy import deepcopy
 
         data = deepcopy(COVERAGE_DATA)
-        result = _scale_coverage_data(data, 2.0, FLAT_HOURLY, FLAT_DAILY)
+        result = _scale_coverage_data(data, 2.0, FLAT_HOURLY, FLAT_DAILY, FIXED_COVERAGE_PCTS)
         ts = result["compute"]["timeseries"]
         min_total = min(p["total"] for p in ts)
         assert ts[0]["covered"] <= min_total
@@ -186,7 +187,7 @@ class TestScaleCoverageData:
         from copy import deepcopy
 
         data = deepcopy(COVERAGE_DATA)
-        result = _scale_coverage_data(data, 2.0, FLAT_HOURLY, FLAT_DAILY)
+        result = _scale_coverage_data(data, 2.0, FLAT_HOURLY, FLAT_DAILY, FIXED_COVERAGE_PCTS)
         assert result["compute"]["summary"]["avg_hourly_total"] == pytest.approx(33.0)
         assert result["compute"]["summary"]["est_monthly_total"] == pytest.approx(23760.0)
 
@@ -194,12 +195,16 @@ class TestScaleCoverageData:
         from copy import deepcopy
 
         data = deepcopy(COVERAGE_DATA)
-        result = _scale_coverage_data(data, 2.5, FLAT_HOURLY, FLAT_DAILY)
+        result = _scale_coverage_data(data, 2.5, FLAT_HOURLY, FLAT_DAILY, FIXED_COVERAGE_PCTS)
         assert result["compute"]["summary"]["avg_coverage_total"] == 66.7
 
     def test_skips_missing_sp_types(self):
         result = _scale_coverage_data(
-            {"compute": {"timeseries": [], "summary": {}}}, 2.0, FLAT_HOURLY, FLAT_DAILY
+            {"compute": {"timeseries": [], "summary": {}}},
+            2.0,
+            FLAT_HOURLY,
+            FLAT_DAILY,
+            FIXED_COVERAGE_PCTS,
         )
         assert "database" not in result
 
@@ -210,7 +215,7 @@ class TestScaleCoverageData:
         hourly[0] = 1.5
         hourly[1] = 0.7
         data = deepcopy(COVERAGE_DATA)
-        result = _scale_coverage_data(data, 1.0, hourly, FLAT_DAILY)
+        result = _scale_coverage_data(data, 1.0, hourly, FLAT_DAILY, FIXED_COVERAGE_PCTS)
         # total gets reshaped per point
         assert result["compute"]["timeseries"][0]["total"] == pytest.approx(15.0 * 1.5)
         assert result["compute"]["timeseries"][1]["total"] == pytest.approx(18.0 * 0.7)
