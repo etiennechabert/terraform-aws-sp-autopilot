@@ -118,25 +118,25 @@ class TestSeriesMultipliers:
         for _ in range(20):
             m = _generate_hourly_multipliers()
             for hour in range(9, 17):
-                assert 1.0 <= m[hour] <= 2.0
+                assert 1.1 <= m[hour] <= 1.5
 
     def test_hourly_off_hours_low(self):
         for _ in range(20):
             m = _generate_hourly_multipliers()
             for hour in (0, 1, 2, 3, 4, 5, 22, 23):
-                assert 0.25 <= m[hour] <= 0.75
+                assert 0.5 <= m[hour] <= 0.8
 
     def test_daily_weekdays_high(self):
         for _ in range(20):
             m = _generate_daily_multipliers()
             for day in range(5):
-                assert 1.0 <= m[day] <= 2.0
+                assert 1.1 <= m[day] <= 1.4
 
     def test_daily_weekend_low(self):
         for _ in range(20):
             m = _generate_daily_multipliers()
             for day in (5, 6):
-                assert 0.25 <= m[day] <= 0.75
+                assert 0.6 <= m[day] <= 0.85
 
     def test_point_multiplier_parses_timestamp(self):
         hourly = [1.0] * 24

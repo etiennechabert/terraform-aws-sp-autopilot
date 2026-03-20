@@ -71,18 +71,18 @@ def _random_factor() -> float:
 def _generate_hourly_multipliers() -> list[float]:
     """Generate 24 hourly multipliers mimicking a business-hours pattern.
 
-    Business hours (8-18): random in [1.0, 2.0]
-    Off hours: random in [0.25, 0.75]
-    Adjacent values stay close for smooth transitions.
+    Business hours (8-18): random in [1.1, 1.5]
+    Off hours: random in [0.5, 0.8]
+    Transition hours get intermediate values.
     """
     multipliers = []
     for hour in range(24):
-        base = random.uniform(1.0, 2.0) if 8 <= hour < 18 else random.uniform(0.25, 0.75)
+        base = random.uniform(1.1, 1.5) if 8 <= hour < 18 else random.uniform(0.5, 0.8)
         multipliers.append(base)
 
-    # Smooth transitions at boundaries (hours 7-8 and 17-18)
-    multipliers[7] = random.uniform(0.6, 1.0)
-    multipliers[18] = random.uniform(0.6, 1.0)
+    # Smooth transitions at boundaries
+    multipliers[7] = random.uniform(0.8, 1.1)
+    multipliers[18] = random.uniform(0.8, 1.1)
 
     return [round(v, 6) for v in multipliers]
 
@@ -90,15 +90,15 @@ def _generate_hourly_multipliers() -> list[float]:
 def _generate_daily_multipliers() -> list[float]:
     """Generate 7 daily multipliers (Mon=0 .. Sun=6) mimicking a business-week pattern.
 
-    Business days (Mon-Fri): random in [1.0, 2.0]
-    Weekend (Sat-Sun): random in [0.25, 0.75]
+    Business days (Mon-Fri): random in [1.1, 1.4]
+    Weekend (Sat-Sun): random in [0.6, 0.85]
     """
     multipliers = []
     for day in range(7):
         if day < 5:
-            multipliers.append(round(random.uniform(1.0, 2.0), 6))
+            multipliers.append(round(random.uniform(1.1, 1.4), 6))
         else:
-            multipliers.append(round(random.uniform(0.25, 0.75), 6))
+            multipliers.append(round(random.uniform(0.6, 0.85), 6))
     return multipliers
 
 
