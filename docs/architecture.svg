@@ -89,23 +89,20 @@
   <line x1="360" y1="190" x2="360" y2="260" stroke="#232F3E" stroke-width="2.5" marker-end="url(#arrowhead)"/>
   <text x="380" y="230" font-family="Arial, sans-serif" font-size="9" fill="#232F3E" font-weight="bold">queue intents</text>
 
-  <!-- ② REVIEW WINDOW -->
-  <text x="40" y="258" font-family="Arial, sans-serif" font-size="14" font-weight="bold" fill="#FF4F8B">② REVIEW WINDOW</text>
-
+  <!-- REVIEW WINDOW (human step, no number) -->
   <!-- Human reviewer icon -->
-  <g transform="translate(130, 280)">
+  <g transform="translate(130, 275)">
     <!-- Head -->
-    <circle cx="0" cy="0" r="10" fill="#FF4F8B" opacity="0.8"/>
+    <circle cx="0" cy="0" r="14" fill="#FF4F8B" opacity="0.85"/>
     <!-- Body -->
-    <line x1="0" y1="10" x2="0" y2="30" stroke="#FF4F8B" stroke-width="2.5" opacity="0.8"/>
+    <line x1="0" y1="14" x2="0" y2="42" stroke="#FF4F8B" stroke-width="3" opacity="0.85"/>
     <!-- Arms -->
-    <line x1="-12" y1="18" x2="12" y2="18" stroke="#FF4F8B" stroke-width="2.5" opacity="0.8"/>
+    <line x1="-16" y1="24" x2="16" y2="24" stroke="#FF4F8B" stroke-width="3" opacity="0.85"/>
     <!-- Legs -->
-    <line x1="0" y1="30" x2="-10" y2="45" stroke="#FF4F8B" stroke-width="2.5" opacity="0.8"/>
-    <line x1="0" y1="30" x2="10" y2="45" stroke="#FF4F8B" stroke-width="2.5" opacity="0.8"/>
-    <!-- Label -->
-    <text x="0" y="58" text-anchor="middle" font-family="Arial, sans-serif" font-size="9" fill="#FF4F8B" font-weight="bold">Review &amp; cancel</text>
+    <line x1="0" y1="42" x2="-14" y2="62" stroke="#FF4F8B" stroke-width="3" opacity="0.85"/>
+    <line x1="0" y1="42" x2="14" y2="62" stroke="#FF4F8B" stroke-width="3" opacity="0.85"/>
   </g>
+  <text x="130" y="355" text-anchor="middle" font-family="Arial, sans-serif" font-size="12" fill="#FF4F8B" font-weight="bold">Review &amp; cancel</text>
 
   <!-- Arrow: Human → SQS -->
   <line x1="155" y1="310" x2="260" y2="310" stroke="#FF4F8B" stroke-width="1.5" stroke-dasharray="4,4" marker-end="url(#arrowheadNotif)"/>
@@ -132,7 +129,7 @@
   <text x="380" y="395" font-family="Arial, sans-serif" font-size="9" fill="#232F3E" font-weight="bold">poll &amp; process</text>
 
   <!-- ③ PURCHASE -->
-  <text x="40" y="428" font-family="Arial, sans-serif" font-size="14" font-weight="bold" fill="#FF9900">③ PURCHASE</text>
+  <text x="40" y="428" font-family="Arial, sans-serif" font-size="14" font-weight="bold" fill="#FF9900">② PURCHASE</text>
 
   <!-- EventBridge Purchaser -->
   <rect x="50" y="435" width="160" height="75" rx="8" fill="url(#eventBridgeGrad)" stroke="#232F3E" stroke-width="2" filter="url(#shadow)"/>
@@ -163,7 +160,7 @@
   <text x="600" y="511" text-anchor="middle" font-family="Arial, sans-serif" font-size="10" fill="white">(Compute, Database, SageMaker)</text>
 
   <!-- ④ REPORTING -->
-  <text x="40" y="595" font-family="Arial, sans-serif" font-size="14" font-weight="bold" fill="#569A31">④ REPORTING</text>
+  <text x="40" y="595" font-family="Arial, sans-serif" font-size="14" font-weight="bold" fill="#569A31">③ REPORTING</text>
 
   <!-- EventBridge Reporter -->
   <rect x="50" y="605" width="160" height="75" rx="8" fill="url(#eventBridgeGrad)" stroke="#232F3E" stroke-width="2" filter="url(#shadow)"/>
