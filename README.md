@@ -33,10 +33,23 @@ module "savings_plans" {
   source  = "etiennechabert/sp-autopilot/aws"
   version = "~> 1.0"
 
+  # Strategy = target + split. Pick one of each:
   purchase_strategy = {
     target = { dynamic = { risk_level = "prudent" } }
     split  = { gap_split = { divider = 2 } }
   }
+
+  # Alternatively:
+  # purchase_strategy = {
+  #   target = { static = { commitment = 0.50 } }
+  #   split  = { fixed_step = { step_percent = 25 } }
+  # }
+
+  # Or:
+  # purchase_strategy = {
+  #   target = { aws = {} }
+  #   split  = { one_shot = {} }
+  # }
 
   sp_plans = {
     compute   = { enabled = true, plan_type = "all_upfront_three_year" }
@@ -64,42 +77,6 @@ See the [`examples/`](examples/) directory for complete, working examples:
 - **[single-account-compute](examples/single-account-compute/)**: basic single-account Compute SP deployment
 - **[organizations](examples/organizations/)**: AWS Organizations multi-account setup
 - **[dynamic-strategy](examples/dynamic-strategy/)**: dynamic target with gap split
-
-## Architecture
-
-The module consists of three Lambda functions with SQS queue coordination:
-
-![Architecture Diagram](docs/architecture.svg)
-
-**Workflow:**
-
-1. **Scheduler Lambda** (e.g., 1st of month)
-   - Purges stale queue messages
-   - Analyzes current coverage (separate for Compute/Database/SageMaker)
-   - Gets AWS recommendations
-   - Applies purchase strategy
-   - Queues purchase intents to SQS
-
-2. **SQS Queue** (maximum 14-day review window)
-   - Holds purchase intents for up to 14 days
-   - Users can delete messages to cancel purchases
-   - Messages include full details and idempotency tokens
-
-3. **Purchaser Lambda** (e.g., 10th of month)
-   - Processes queue messages
-   - Executes purchases via AWS CreateSavingsPlan API
-   - Sends email summary
-
-4. **Reporter Lambda** (e.g., 24th of month)
-   - Generates HTML spending reports
-   - Stores in S3
-   - Optionally emails stakeholders
-
-## Interactive Simulator
-
-The module includes an interactive **[Savings Plan Simulator](https://etiennechabert.github.io/terraform-aws-sp-autopilot/)** to visualize coverage strategies and their cost impact before deploying anything. Generated reports link to the simulator pre-loaded with your data, allowing stakeholders to explore "what-if" scenarios across different target/split combinations.
-
-[![AWS Savings Plan Simulator](docs/images/simulator-preview.png)](https://etiennechabert.github.io/terraform-aws-sp-autopilot/)
 
 ## Configuration
 
@@ -244,6 +221,42 @@ notifications = {
 Savings Plans are purchased as hourly commitments ($/hour). This module always analyzes data at hourly granularity for accurate purchase sizing.
 
 **Prerequisite:** You must enable **"Hourly and resource level granularity"** in [AWS Cost Explorer settings](https://console.aws.amazon.com/cost-management/home#/settings). Cost: ~$0.10-$1.00/month. The Scheduler Lambda will fail with an explicit error if hourly granularity is not enabled, no purchases will be scheduled.
+
+## Architecture
+
+The module consists of three Lambda functions with SQS queue coordination:
+
+![Architecture Diagram](docs/architecture.svg)
+
+**Workflow:**
+
+1. **Scheduler Lambda** (e.g., 1st of month)
+   - Purges stale queue messages
+   - Analyzes current coverage (separate for Compute/Database/SageMaker)
+   - Gets AWS recommendations
+   - Applies purchase strategy
+   - Queues purchase intents to SQS
+
+2. **SQS Queue** (maximum 14-day review window)
+   - Holds purchase intents for up to 14 days
+   - Users can delete messages to cancel purchases
+   - Messages include full details and idempotency tokens
+
+3. **Purchaser Lambda** (e.g., 10th of month)
+   - Processes queue messages
+   - Executes purchases via AWS CreateSavingsPlan API
+   - Sends email summary
+
+4. **Reporter Lambda** (e.g., 24th of month)
+   - Generates HTML spending reports
+   - Stores in S3
+   - Optionally emails stakeholders
+
+## Interactive Simulator
+
+The module includes an interactive **[Savings Plan Simulator](https://etiennechabert.github.io/terraform-aws-sp-autopilot/)** to visualize coverage strategies and their cost impact before deploying anything. Generated reports link to the simulator pre-loaded with your data, allowing stakeholders to explore "what-if" scenarios across different target/split combinations.
+
+[![AWS Savings Plan Simulator](docs/images/simulator-preview.png)](https://etiennechabert.github.io/terraform-aws-sp-autopilot/)
 
 ## Advanced Topics
 
