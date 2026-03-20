@@ -1,4 +1,4 @@
-# AWS Savings Plans Automation Module
+# SP Autopilot
 
 [![License](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](https://opensource.org/licenses/Apache-2.0)
 ![Terraform Version](https://img.shields.io/badge/Terraform-%3E%3D%201.7-623CE4.svg)
@@ -19,11 +19,11 @@ Automates AWS Savings Plans purchases based on usage analysis, maintaining consi
 
 ## Key Features
 
-- **Automated Savings Plans purchasing**: maintains target coverage without manual intervention
-- **Three purchase strategies**: Fixed Step, Gap Split, and Follow-AWS for different workload patterns
+- **Three-stage pipeline**: Scheduler analyzes coverage gaps and queues purchase intents, Purchaser executes queued purchases after a review window, Reporter generates coverage and savings reports
+- **Composable purchase strategy**: combine a target (Dynamic, Static, or AWS recommendations) with a split method (Fixed Step, Gap Split, or One-Shot)
 - **Three SP types supported**: Compute, Database, and SageMaker independently tracked
-- **Human review window**: configurable delay between scheduling and purchasing allows cancellation
-- **Risk management**: spreads financial commitments over time with configurable purchase limits
+- **Human review window**: purchase intents sit in SQS between scheduling and purchasing, giving time to review and cancel
+- **Spike guard and change detection**: blocks purchases during temporary usage spikes and detects usage drops between scheduling and purchasing
 - **Email & webhook notifications**: SNS, Slack, and Microsoft Teams integration
 
 ## Quick Start
@@ -33,14 +33,27 @@ module "savings_plans" {
   source  = "etiennechabert/sp-autopilot/aws"
   version = "~> 1.0"
 
+  # Strategy = target + split. Pick one of each:
   purchase_strategy = {
-    target = { dynamic = { risk_level = "prudent" } }
-    split  = { fixed_step = { step_percent = 10 } }
+    target = { dynamic = { risk_level = "prudent", prudent_percentage = 85 } }
+    split  = { gap_split = { divider = 2 } }
   }
 
+  # Alternatively:
+  # purchase_strategy = {
+  #   target = { static = { commitment = 0.50 } }
+  #   split  = { fixed_step = { step_percent = 25 } }
+  # }
+
+  # Or:
+  # purchase_strategy = {
+  #   target = { aws = {} }
+  #   split  = { one_shot = {} }
+  # }
+
   sp_plans = {
-    compute   = { enabled = true, plan_type = "all_upfront_one_year" }
-    database  = { enabled = false }
+    compute   = { enabled = true, plan_type = "all_upfront_three_year" }
+    database  = { enabled = true, plan_type = "no_upfront_one_year" }
     sagemaker = { enabled = false }
   }
 
@@ -64,42 +77,6 @@ See the [`examples/`](examples/) directory for complete, working examples:
 - **[single-account-compute](examples/single-account-compute/)**: basic single-account Compute SP deployment
 - **[organizations](examples/organizations/)**: AWS Organizations multi-account setup
 - **[dynamic-strategy](examples/dynamic-strategy/)**: dynamic target with gap split
-
-## Architecture
-
-The module consists of three Lambda functions with SQS queue coordination:
-
-![Architecture Diagram](docs/architecture.svg)
-
-**Workflow:**
-
-1. **Scheduler Lambda** (e.g., 1st of month)
-   - Purges stale queue messages
-   - Analyzes current coverage (separate for Compute/Database/SageMaker)
-   - Gets AWS recommendations
-   - Applies purchase strategy
-   - Queues purchase intents to SQS
-
-2. **SQS Queue** (maximum 14-day review window)
-   - Holds purchase intents for up to 14 days
-   - Users can delete messages to cancel purchases
-   - Messages include full details and idempotency tokens
-
-3. **Purchaser Lambda** (e.g., 10th of month)
-   - Processes queue messages
-   - Executes purchases via AWS CreateSavingsPlan API
-   - Sends email summary
-
-4. **Reporter Lambda** (e.g., 24th of month)
-   - Generates HTML spending reports
-   - Stores in S3
-   - Optionally emails stakeholders
-
-## Interactive Simulator
-
-The module includes an interactive **[Savings Plan Simulator](https://etiennechabert.github.io/terraform-aws-sp-autopilot/)** to visualize coverage strategies and their cost impact before deploying anything. Generated reports link to the simulator pre-loaded with your data, allowing stakeholders to explore "what-if" scenarios across different target/split combinations.
-
-[![AWS Savings Plan Simulator](docs/images/simulator-preview.png)](https://etiennechabert.github.io/terraform-aws-sp-autopilot/)
 
 ## Configuration
 
@@ -158,7 +135,7 @@ purchase_strategy = {
 
 #### Other Settings
 
-- **`renewal_window_days`** (default: `7`): how many days before a Savings Plan expires to schedule its replacement. The scheduler will include expiring plans in its coverage gap calculation so replacements are purchased before expiration.
+- **`renewal_window_days`** (default: `14`): how many days before a Savings Plan expires to schedule its replacement. The scheduler excludes expiring plans from its coverage calculation, treating the commitment as already gone, so a replacement is queued proactively. Must be larger than the gap between scheduler and purchaser runs (9 days with defaults), otherwise the plan expires before the replacement is purchased.
 - **`purchase_cooldown_days`** (default: `7`): after purchasing a Savings Plan, block new purchases for that specific SP type (Compute, Database, or SageMaker) for this many days. Prevents duplicates while Cost Explorer data catches up (24-48h lag).
 - **`min_commitment_per_plan`** (default: `0.001`): minimum hourly commitment per plan in USD. AWS minimum is $0.001/hr.
 
@@ -201,6 +178,7 @@ cron_schedules = {
 - Purchaser should run **within 13 days** of the scheduler. SQS messages expire after 14 days, so purchase intents are lost if the purchaser runs too late.
 - Purchaser should run **at least 2 days after** the scheduler. This provides a review window and accounts for Cost Explorer data lag.
 - Reporter should run **at least 2 days after** the purchaser. Cost Explorer needs 24-48h to reflect newly purchased Savings Plans.
+- **`renewal_window_days` must be larger than the scheduler→purchaser gap.** The scheduler excludes plans expiring within this window from coverage, scheduling their replacement. If the window is too short, the plan expires before the purchaser runs. Example: with 1st/10th schedules (9-day gap), a plan bought on Jan 10 expires on Jan 10 next year. The scheduler on Jan 1 must detect it — requiring at least a 10-day window. The default of 14 days provides a comfortable margin.
 
 The default schedules (1st, 10th, 24th of the month) satisfy all guidelines. Note that manual Savings Plan purchases via the AWS console also cause Cost Explorer data lag, so be mindful of timing regardless of automation schedules.
 
@@ -244,6 +222,42 @@ notifications = {
 Savings Plans are purchased as hourly commitments ($/hour). This module always analyzes data at hourly granularity for accurate purchase sizing.
 
 **Prerequisite:** You must enable **"Hourly and resource level granularity"** in [AWS Cost Explorer settings](https://console.aws.amazon.com/cost-management/home#/settings). Cost: ~$0.10-$1.00/month. The Scheduler Lambda will fail with an explicit error if hourly granularity is not enabled, no purchases will be scheduled.
+
+## Architecture
+
+The module consists of three Lambda functions with SQS queue coordination:
+
+![Architecture Diagram](docs/architecture.svg)
+
+**Workflow:**
+
+1. **Scheduler Lambda** (e.g., 1st of month)
+   - Purges stale queue messages
+   - Analyzes current coverage (separate for Compute/Database/SageMaker)
+   - Gets AWS recommendations
+   - Applies purchase strategy
+   - Queues purchase intents to SQS
+
+2. **SQS Queue** (maximum 14-day review window)
+   - Holds purchase intents for up to 14 days
+   - Users can delete messages to cancel purchases
+   - Messages include full details and idempotency tokens
+
+3. **Purchaser Lambda** (e.g., 10th of month)
+   - Processes queue messages
+   - Executes purchases via AWS CreateSavingsPlan API
+   - Sends email summary
+
+4. **Reporter Lambda** (e.g., 24th of month)
+   - Generates HTML spending reports
+   - Stores in S3
+   - Optionally emails stakeholders
+
+## Interactive Simulator
+
+The module includes an interactive **[Savings Plan Simulator](https://etiennechabert.github.io/terraform-aws-sp-autopilot/)** to visualize coverage strategies and their cost impact before deploying anything. Generated reports link to the simulator pre-loaded with your data, allowing stakeholders to explore "what-if" scenarios across different target/split combinations.
+
+[![AWS Savings Plan Simulator](docs/images/simulator-preview.png)](https://etiennechabert.github.io/terraform-aws-sp-autopilot/)
 
 ## Advanced Topics
 
@@ -374,7 +388,7 @@ These are standard AWS service calls for the module's internal plumbing:
 | Name | Description | Type | Default | Required |
 |------|-------------|------|---------|:--------:|
 | <a name="input_notifications"></a> [notifications](#input\_notifications) | Notification configuration for email, Slack, and Teams | <pre>object({<br/>    emails        = list(string)<br/>    slack_webhook = optional(string)<br/>    teams_webhook = optional(string)<br/>  })</pre> | n/a | yes |
-| <a name="input_purchase_strategy"></a> [purchase\_strategy](#input\_purchase\_strategy) | Purchase strategy configuration with orthogonal target + split dimensions | <pre>object({<br/>    renewal_window_days     = optional(number, 7)<br/>    purchase_cooldown_days  = optional(number, 7)<br/>    min_commitment_per_plan = optional(number, 0.001)<br/><br/>    target = object({<br/>      aws = optional(object({}))<br/>      dynamic = optional(object({<br/>        risk_level         = string<br/>        prudent_percentage = optional(number, 85)<br/>      }))<br/>      static = optional(object({<br/>        commitment = number # Target hourly commitment in $/h<br/>      }))<br/>    })<br/><br/>    split = object({<br/>      one_shot   = optional(object({}))<br/>      fixed_step = optional(object({ step_percent = number }))<br/>      gap_split = optional(object({<br/>        divider              = number<br/>        min_purchase_percent = optional(number)<br/>        max_purchase_percent = optional(number)<br/>      }))<br/>    })<br/><br/>    spike_guard = optional(object({<br/>      enabled             = optional(bool, true)<br/>      long_lookback_days  = optional(number, 90)<br/>      short_lookback_days = optional(number, 14)<br/>      threshold_percent   = optional(number, 20)<br/>    }), {})<br/>  })</pre> | n/a | yes |
+| <a name="input_purchase_strategy"></a> [purchase\_strategy](#input\_purchase\_strategy) | Purchase strategy configuration with orthogonal target + split dimensions | <pre>object({<br/>    renewal_window_days     = optional(number, 14)<br/>    purchase_cooldown_days  = optional(number, 7)<br/>    min_commitment_per_plan = optional(number, 0.001)<br/><br/>    target = object({<br/>      aws = optional(object({}))<br/>      dynamic = optional(object({<br/>        risk_level         = string<br/>        prudent_percentage = optional(number, 85)<br/>      }))<br/>      static = optional(object({<br/>        commitment = number # Target hourly commitment in $/h<br/>      }))<br/>    })<br/><br/>    split = object({<br/>      one_shot   = optional(object({}))<br/>      fixed_step = optional(object({ step_percent = number }))<br/>      gap_split = optional(object({<br/>        divider              = number<br/>        min_purchase_percent = optional(number)<br/>        max_purchase_percent = optional(number)<br/>      }))<br/>    })<br/><br/>    spike_guard = optional(object({<br/>      enabled             = optional(bool, true)<br/>      long_lookback_days  = optional(number, 90)<br/>      short_lookback_days = optional(number, 14)<br/>      threshold_percent   = optional(number, 20)<br/>    }), {})<br/>  })</pre> | n/a | yes |
 | <a name="input_sp_plans"></a> [sp\_plans](#input\_sp\_plans) | Savings Plans configuration for Compute, Database, and SageMaker | <pre>object({<br/>    compute = object({<br/>      enabled   = bool<br/>      plan_type = optional(string)<br/>    })<br/><br/>    database = object({<br/>      enabled   = bool<br/>      plan_type = optional(string) # AWS only supports "no_upfront_one_year" for Database SPs<br/>    })<br/><br/>    sagemaker = object({<br/>      enabled   = bool<br/>      plan_type = optional(string)<br/>    })<br/>  })</pre> | n/a | yes |
 | <a name="input_cron_schedules"></a> [cron\_schedules](#input\_cron\_schedules) | EventBridge cron schedules for each Lambda function. Set to null to disable a schedule. | <pre>object({<br/>    scheduler = optional(string) # Set to null to disable. Default: "cron(0 8 1 * ? *)"<br/>    purchaser = optional(string) # Set to null to disable. Default: "cron(0 8 10 * ? *)"<br/>    reporter  = optional(string) # Set to null to disable. Default: "cron(0 9 24 * ? *)"<br/>  })</pre> | <pre>{<br/>  "purchaser": "cron(0 8 10 * ? *)",<br/>  "reporter": "cron(0 9 24 * ? *)",<br/>  "scheduler": "cron(0 8 1 * ? *)"<br/>}</pre> | no |
 | <a name="input_encryption"></a> [encryption](#input\_encryption) | Encryption configuration for SNS, SQS, and S3 | <pre>object({<br/>    sns_kms_key = optional(string, "alias/aws/sns") # Default: AWS managed KMS key. Set to null to disable.<br/>    sqs_kms_key = optional(string, "alias/aws/sqs") # Default: AWS managed KMS key. Set to null to disable.<br/>    s3 = optional(object({<br/>      kms_key = optional(string) # null = AES256 (SSE-S3, free), set to KMS key ARN for SSE-KMS<br/>    }), {})<br/>  })</pre> | `{}` | no |

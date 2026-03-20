@@ -18,7 +18,7 @@ variable "aws_region" {
 variable "purchase_strategy" {
   description = "Purchase strategy configuration"
   type = object({
-    renewal_window_days     = optional(number, 7)
+    renewal_window_days     = optional(number, 14)
     purchase_cooldown_days  = optional(number, 7)
     min_commitment_per_plan = optional(number, 0.001)
 
@@ -44,7 +44,7 @@ variable "purchase_strategy" {
     }))
   })
   default = {
-    renewal_window_days     = 7
+    renewal_window_days     = 14
     min_commitment_per_plan = 0.001
 
     target = {
