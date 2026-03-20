@@ -48,6 +48,10 @@ def randomize_report_data(
 
     coverage_out = _scale_coverage_data(deepcopy(coverage_data), factor, is_daily=False)
     daily_out = _scale_coverage_data(deepcopy(daily_coverage_data), factor, is_daily=True)
+
+    coverage_pcts = _apply_fake_coverage(coverage_out)
+    _apply_fake_coverage(daily_out, coverage_pcts=coverage_pcts)
+
     savings_out = _scale_savings_data(deepcopy(savings_data), factor)
 
     return coverage_out, daily_out, savings_out
@@ -105,6 +109,47 @@ def _scale_coverage_data(data: dict[str, Any], factor: float, *, is_daily: bool)
                 summary[key] = _scale(summary[key], factor)
 
     return data
+
+
+def _apply_fake_coverage(
+    data: dict[str, Any],
+    coverage_pcts: dict[str, float] | None = None,
+) -> dict[str, float]:
+    """Set SP coverage as a flat line at a random 25-75% of min-hourly total.
+
+    If coverage_pcts is provided, reuse those percentages (so hourly and daily
+    data share the same coverage ratio per SP type). Returns the percentages used.
+    """
+    generated_pcts: dict[str, float] = {}
+    for sp_type in ("compute", "database", "sagemaker"):
+        if sp_type not in data:
+            continue
+
+        type_data = data[sp_type]
+        timeseries = type_data.get("timeseries", [])
+        totals = [p["total"] for p in timeseries if p["total"] > 0]
+        if not totals:
+            continue
+
+        min_total = min(totals)
+
+        if coverage_pcts and sp_type in coverage_pcts:
+            pct = coverage_pcts[sp_type]
+        else:
+            pct = random.uniform(0.25, 0.75)
+        generated_pcts[sp_type] = pct
+
+        flat_covered = round(min_total * pct, 6)
+        for point in timeseries:
+            point["covered"] = flat_covered
+
+        summary = type_data.get("summary", {})
+        if "avg_hourly_covered" in summary:
+            summary["avg_hourly_covered"] = flat_covered
+        if "est_monthly_covered" in summary:
+            summary["est_monthly_covered"] = round(flat_covered * 720, 6)
+
+    return generated_pcts
 
 
 def _scale_savings_data(data: dict[str, Any], factor: float) -> dict[str, Any]:
