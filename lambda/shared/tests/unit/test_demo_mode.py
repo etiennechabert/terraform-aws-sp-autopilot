@@ -7,12 +7,10 @@ import pytest
 
 from shared.demo_mode import (
     _anonymize_id,
-    _apply_fake_coverage,
     _random_factor,
     _scale,
     _scale_coverage_data,
     _scale_savings_data,
-    _time_multiplier,
     is_demo_mode,
     randomize_report_data,
 )
@@ -105,50 +103,20 @@ class TestScale:
         assert _scale(0.0, 5.0) == 0.0
 
 
-class TestTimeMultiplier:
-    def test_range(self):
-        for hour in range(24):
-            ts = f"2026-01-15T{hour:02d}:00:00Z"
-            m = _time_multiplier(ts, is_daily=False)
-            assert 1.5 <= m <= 2.5
-
-    def test_daily_varies_by_weekday(self):
-        # Monday and Sunday should produce different multipliers
-        mon = _time_multiplier("2026-01-19T00:00:00Z", is_daily=True)  # Monday
-        sun = _time_multiplier(
-            "2026-01-18T00:00:00Z", is_daily=True
-        )  # Sunday (different isoweekday)
-        assert mon != sun
-
-    def test_hourly_varies_by_hour(self):
-        m0 = _time_multiplier("2026-01-15T00:00:00Z", is_daily=False)
-        m12 = _time_multiplier("2026-01-15T12:00:00Z", is_daily=False)
-        assert m0 != m12
-
-    def test_deterministic(self):
-        a = _time_multiplier("2026-01-15T05:00:00Z", is_daily=False)
-        b = _time_multiplier("2026-01-15T05:00:00Z", is_daily=False)
-        assert a == b
-
-
 class TestScaleCoverageData:
-    def test_scales_timeseries_with_time_multiplier(self):
+    def test_scales_timeseries(self):
         from copy import deepcopy
 
         data = deepcopy(COVERAGE_DATA)
-        factor = 3.0
-        result = _scale_coverage_data(data, factor, is_daily=False)
-        # Timeseries values include the time multiplier, so they won't be exactly factor * original
-        ts0 = result["compute"]["timeseries"][0]
-        tm = _time_multiplier("2026-01-01T00:00:00Z", is_daily=False)
-        assert ts0["covered"] == pytest.approx(10.0 * factor * tm, rel=1e-4)
-        assert ts0["total"] == pytest.approx(15.0 * factor * tm, rel=1e-4)
+        result = _scale_coverage_data(data, 3.0)
+        assert result["compute"]["timeseries"][0]["covered"] == pytest.approx(30.0)
+        assert result["compute"]["timeseries"][0]["total"] == pytest.approx(45.0)
 
     def test_scales_summary_dollar_fields(self):
         from copy import deepcopy
 
         data = deepcopy(COVERAGE_DATA)
-        result = _scale_coverage_data(data, 2.0, is_daily=False)
+        result = _scale_coverage_data(data, 2.0)
         assert result["compute"]["summary"]["avg_hourly_total"] == pytest.approx(33.0)
         assert result["compute"]["summary"]["est_monthly_total"] == pytest.approx(23760.0)
 
@@ -156,58 +124,12 @@ class TestScaleCoverageData:
         from copy import deepcopy
 
         data = deepcopy(COVERAGE_DATA)
-        result = _scale_coverage_data(data, 2.5, is_daily=False)
+        result = _scale_coverage_data(data, 2.5)
         assert result["compute"]["summary"]["avg_coverage_total"] == 66.7
 
     def test_skips_missing_sp_types(self):
-        result = _scale_coverage_data(
-            {"compute": {"timeseries": [], "summary": {}}}, 2.0, is_daily=False
-        )
+        result = _scale_coverage_data({"compute": {"timeseries": [], "summary": {}}}, 2.0)
         assert "database" not in result
-
-
-class TestApplyFakeCoverage:
-    def test_sets_flat_covered_line(self):
-        from copy import deepcopy
-
-        data = deepcopy(COVERAGE_DATA)
-        pcts = _apply_fake_coverage(data)
-        ts = data["compute"]["timeseries"]
-        assert ts[0]["covered"] == ts[1]["covered"]
-        assert 0.25 <= pcts["compute"] <= 0.75
-
-    def test_covered_within_expected_range(self):
-        from copy import deepcopy
-
-        data = deepcopy(COVERAGE_DATA)
-        _apply_fake_coverage(data)
-        min_total = min(p["total"] for p in data["compute"]["timeseries"])
-        covered = data["compute"]["timeseries"][0]["covered"]
-        assert min_total * 0.25 <= covered <= min_total * 0.75
-
-    def test_reuses_provided_percentages(self):
-        from copy import deepcopy
-
-        data = deepcopy(COVERAGE_DATA)
-        pcts = _apply_fake_coverage(data, coverage_pcts={"compute": 0.5})
-        covered = data["compute"]["timeseries"][0]["covered"]
-        min_total = min(p["total"] for p in data["compute"]["timeseries"])
-        assert covered == pytest.approx(min_total * 0.5)
-        assert pcts["compute"] == 0.5
-
-    def test_updates_summary(self):
-        from copy import deepcopy
-
-        data = deepcopy(COVERAGE_DATA)
-        _apply_fake_coverage(data, coverage_pcts={"compute": 0.5})
-        covered = data["compute"]["timeseries"][0]["covered"]
-        assert data["compute"]["summary"]["avg_hourly_covered"] == covered
-        assert data["compute"]["summary"]["est_monthly_covered"] == pytest.approx(covered * 720)
-
-    def test_skips_empty_timeseries(self):
-        data = {"database": {"timeseries": [], "summary": {}}}
-        pcts = _apply_fake_coverage(data)
-        assert "database" not in pcts
 
 
 class TestScaleSavingsData:
@@ -288,14 +210,6 @@ class TestRandomizeReportData:
 
         cov = deepcopy(COVERAGE_DATA)
         sav = deepcopy(SAVINGS_DATA)
-        c_out, d_out, s_out = randomize_report_data(cov, cov, sav)
+        c_out, _d_out, s_out = randomize_report_data(cov, cov, sav)
         assert c_out["compute"]["timeseries"][0]["covered"] != 10.0
         assert s_out["plans"][0]["plan_id"].startswith("demo-")
-        # Fake coverage produces a flat line
-        ts = c_out["compute"]["timeseries"]
-        assert ts[0]["covered"] == ts[1]["covered"]
-        # Hourly and daily share the same coverage percentage
-        assert (
-            d_out["compute"]["timeseries"][0]["covered"]
-            == d_out["compute"]["timeseries"][1]["covered"]
-        )
