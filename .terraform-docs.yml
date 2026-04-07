@@ -4,7 +4,6 @@ version: ">= 0.16.0"
 sections:
   show:
     - requirements
-    - providers
     - inputs
     - outputs
 
