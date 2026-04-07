@@ -59,7 +59,17 @@ def mock_clients():
         mock_sns = Mock()
         mock_sp = Mock()
         mock_sp.describe_savings_plans_offerings.return_value = {
-            "searchResults": [{"offeringId": "mock-offering-id"}]
+            "searchResults": [
+                {
+                    "offeringId": "mock-offering-id",
+                    "planType": "Compute",
+                    "productTypes": ["Fargate"],
+                    "description": "1yr No Upfront Compute Savings Plan",
+                    "paymentOption": "No Upfront",
+                    "durationSeconds": 31536000,
+                    "usageType": "ComputeSP:1yrNoUpfront",
+                }
+            ]
         }
 
         mock_init.return_value = {
@@ -254,6 +264,7 @@ def test_handler_follow_aws_strategy(mock_env_vars, mock_clients, aws_mock_build
     message = email_call["Message"]
     # follow_aws uses 100% of AWS recommendation (10.0000/hour)
     assert "10.0000" in message
+    assert "1yr No Upfront Compute Savings Plan" in message
 
 
 def test_handler_fixed_strategy(mock_env_vars, mock_clients, aws_mock_builder, monkeypatch):
