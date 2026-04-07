@@ -18,13 +18,13 @@ logger = logging.getLogger()
 
 SP_TYPE_TO_PLAN_TYPE = {
     "compute": "Compute",
-    "database": "EC2Instance",
+    "database": "Database",
     "sagemaker": "SageMaker",
 }
 
 SP_TYPE_TO_PRODUCT_TYPE = {
     "compute": "EC2",
-    "database": "EC2",
+    "database": "RDS",
     "sagemaker": "SageMaker",
 }
 
