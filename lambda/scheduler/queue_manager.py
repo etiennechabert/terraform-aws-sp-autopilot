@@ -100,6 +100,7 @@ def queue_purchase_intents(
 
             # Resolve offering and convert to purchaser format
             offering = resolve_offering(savingsplans_client, sp_type_key, term, payment_option)
+            plan["offering"] = offering
             sp_type = SP_TYPE_KEY_TO_FILTER.get(sp_type_key, sp_type_key)
             term_seconds = TERM_TO_DURATION.get(term, term)
 
