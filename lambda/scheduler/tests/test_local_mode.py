@@ -54,7 +54,17 @@ def mock_aws_clients(aws_mock_builder):
             plans_count=1
         )
         mock_sp.describe_savings_plans_offerings.return_value = {
-            "searchResults": [{"offeringId": "mock-offering-id"}]
+            "searchResults": [
+                {
+                    "offeringId": "mock-offering-id",
+                    "planType": "Compute",
+                    "productTypes": ["Fargate"],
+                    "description": "1yr No Upfront Compute Savings Plan",
+                    "paymentOption": "No Upfront",
+                    "durationSeconds": 31536000,
+                    "usageType": "ComputeSP:1yrNoUpfront",
+                }
+            ]
         }
 
         mock_init.return_value = {
