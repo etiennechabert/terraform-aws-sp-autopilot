@@ -23,7 +23,7 @@ SP_TYPE_TO_PLAN_TYPE = {
 }
 
 SP_TYPE_TO_PRODUCT_TYPE = {
-    "compute": "EC2",
+    "compute": "Fargate",
     "database": "RDS",
     "sagemaker": "SageMaker",
 }
