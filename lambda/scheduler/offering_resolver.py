@@ -84,6 +84,7 @@ def resolve_offering_id(
         durations=[duration],
         paymentOptions=[api_payment_option],
         productType=product_type,
+        currencies=["USD"],
     )
 
     results = response.get("searchResults", [])
