@@ -627,7 +627,7 @@ def test_handler_queues_purchases(mock_env_vars, mock_clients, aws_mock_builder)
 
     message_body = json.loads(send_call["MessageBody"])
     assert "sp_type" in message_body
-    assert "offering_id" in message_body
+    assert "offering" in message_body
     assert "commitment" in message_body
     assert "term_seconds" in message_body
     assert "payment_option" in message_body

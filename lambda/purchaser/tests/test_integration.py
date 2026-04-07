@@ -51,7 +51,15 @@ def _purchase_intent(
     sp_filter, offering_id = SP_TYPE_MAP[sp_type]
     return {
         "client_token": f"test-{sp_type}-token",
-        "offering_id": offering_id,
+        "offering": {
+            "id": offering_id,
+            "plan_type": sp_type.capitalize(),
+            "product_types": ["Fargate"] if sp_type == "compute" else ["RDS"],
+            "description": f"3 year No Upfront {sp_type.capitalize()} Savings Plan",
+            "payment_option": "No Upfront",
+            "duration_seconds": TERM_MAP[term],
+            "usage_type": f"{sp_type.capitalize()}SP:3yrNoUpfront",
+        },
         "sp_type": sp_filter,
         "term_seconds": TERM_MAP[term],
         "commitment": commitment,
@@ -263,9 +271,9 @@ def test_database_sp_purchase(mock_env_vars, mock_clients):
 
 def test_validation_errors(mock_env_vars, mock_clients):
     """Invalid purchase intents should fail validation and not be deleted from queue."""
-    # Test 1: Missing required fields (pre-normalized format with offering_id but missing client_token)
+    # Test 1: Missing required fields (has offering but missing client_token)
     malformed_intent = {
-        "offering_id": "sp-offering-bad",
+        "offering": {"id": "sp-offering-bad", "plan_type": "Compute", "description": "test"},
         "commitment": "1.50",
         "sp_type": "ComputeSavingsPlans",
         "term_seconds": 94608000,
@@ -314,10 +322,10 @@ def test_validation_errors(mock_env_vars, mock_clients):
     mock_clients["savingsplans"].reset_mock()
     mock_clients["savingsplans"].describe_savings_plans.return_value = {"savingsPlans": []}
 
-    # Test 2: Invalid sp_type (pre-normalized format)
+    # Test 2: Invalid sp_type
     invalid_sp_type_intent = {
         "client_token": "test-token-invalid",
-        "offering_id": "sp-offering-invalid",
+        "offering": {"id": "sp-offering-invalid", "plan_type": "Compute", "description": "test"},
         "commitment": "1.50",
         "sp_type": "InvalidSavingsPlans",  # Invalid type
         "term_seconds": 94608000,
@@ -988,7 +996,7 @@ def test_strategy_context_in_email(mock_env_vars, mock_clients):
         strategy="dynamic+gap_split",
         estimated_savings_percentage=34.8,
         details={
-            "coverage": {"current": 7.23, "target": 100.0, "gap": 92.77},
+            "coverage": {"current": 7.23, "target": 100.0, "gap": 92.77, "added": 92.77},
             "spending": {"total": 5.0, "covered": 0.36, "uncovered": 4.64},
         },
     )
@@ -1020,4 +1028,4 @@ def test_strategy_context_in_email(mock_env_vars, mock_clients):
     email_body = email_call[1]["Message"]
     assert "Strategy: dynamic+gap_split" in email_body
     assert "Estimated Savings: 34.8%" in email_body
-    assert "Coverage: 7.23% -> 100.00%" in email_body
+    assert "Coverage: 7.23% -> 100.00% (+92.77%)" in email_body

@@ -533,12 +533,15 @@ def execute_purchase(
         ClientError: If purchase fails
     """
     client_token = purchase_intent.get("client_token")
-    offering_id = purchase_intent.get("offering_id")
+    offering = purchase_intent.get("offering", {})
+    offering_id = (
+        offering.get("id") if isinstance(offering, dict) else purchase_intent.get("offering_id")
+    )
     commitment = purchase_intent.get("commitment")
     upfront_amount = purchase_intent.get("upfront_amount")
 
     logger.info(f"Executing purchase: {client_token}")
-    logger.info(f"Offering ID: {offering_id}, Commitment: ${commitment}/hr")
+    logger.info(f"Offering: {offering}, Commitment: ${commitment}/hr")
 
     try:
         # Prepare tags - merge default tags with custom tags from config
@@ -563,7 +566,7 @@ def execute_purchase(
             logger.info(f"Including upfront payment: ${upfront_amount}")
 
         # Execute CreateSavingsPlan API call
-        logger.info(f"Calling CreateSavingsPlan API with offering_id={offering_id}")
+        logger.info(f"Calling CreateSavingsPlan API with offering={offering}")
         response = savingsplans_client.create_savings_plan(**create_params)
 
         sp_id = response.get("savingsPlanId")
@@ -659,6 +662,9 @@ def send_summary_email(
             # Format SP type (remove "SavingsPlans" suffix for readability)
             sp_type_display = intent["sp_type"].replace("SavingsPlans", " SP")
 
+            offering = intent.get("offering", {})
+            offering_desc = offering.get("description", "") if isinstance(offering, dict) else ""
+
             body_lines.extend(
                 [
                     f"{i}. {sp_type_display}",
@@ -668,6 +674,8 @@ def send_summary_email(
                     f"   Payment Option: {intent['payment_option']}",
                 ]
             )
+            if offering_desc:
+                body_lines.append(f"   Offering: {offering_desc}")
 
             # Add upfront amount if applicable
             if intent.get("upfront_amount") and float(intent["upfront_amount"]) > 0:
@@ -682,9 +690,10 @@ def send_summary_email(
                 )
             details = intent.get("details", {})
             coverage = details.get("coverage", {})
-            if coverage.get("current") is not None and coverage.get("target") is not None:
+            if coverage.get("current") is not None and coverage.get("added") is not None:
+                projected = coverage["current"] + coverage["added"]
                 body_lines.append(
-                    f"   Coverage: {coverage['current']:.2f}% -> {coverage['target']:.2f}%"
+                    f"   Coverage: {coverage['current']:.2f}% -> {projected:.2f}% (+{coverage['added']:.2f}%)"
                 )
 
             body_lines.append("")

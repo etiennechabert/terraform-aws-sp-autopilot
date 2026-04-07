@@ -11,7 +11,7 @@ def test_valid_purchase_intent():
     """Test that a valid purchase intent passes validation."""
     purchase_intent = {
         "client_token": "test-token-123",
-        "offering_id": "offering-abc-456",
+        "offering": {"id": "offering-abc-456", "plan_type": "Compute", "description": "test"},
         "commitment": "10.50",
         "sp_type": "ComputeSavingsPlans",
         "term_seconds": 94608000,
@@ -24,7 +24,7 @@ def test_missing_required_field():
     """Test that missing required field raises ValueError."""
     purchase_intent = {
         "client_token": "test-token-123",
-        "offering_id": "offering-abc-456",
+        "offering": {"id": "offering-abc-456", "plan_type": "Compute", "description": "test"},
         "commitment": "10.50",
         "sp_type": "ComputeSavingsPlans",
         "term_seconds": 94608000,
@@ -38,7 +38,7 @@ def test_invalid_sp_type():
     """Test that invalid SP type raises ValueError."""
     purchase_intent = {
         "client_token": "test-token-123",
-        "offering_id": "offering-abc-456",
+        "offering": {"id": "offering-abc-456", "plan_type": "Compute", "description": "test"},
         "commitment": "10.50",
         "sp_type": "InvalidType",
         "term_seconds": 94608000,
@@ -52,7 +52,7 @@ def test_invalid_payment_option():
     """Test that invalid payment option raises ValueError."""
     purchase_intent = {
         "client_token": "test-token-123",
-        "offering_id": "offering-abc-456",
+        "offering": {"id": "offering-abc-456", "plan_type": "Compute", "description": "test"},
         "commitment": "10.50",
         "sp_type": "ComputeSavingsPlans",
         "term_seconds": 94608000,
@@ -66,7 +66,7 @@ def test_empty_client_token():
     """Test that empty client token raises ValueError."""
     purchase_intent = {
         "client_token": "",
-        "offering_id": "offering-abc-456",
+        "offering": {"id": "offering-abc-456", "plan_type": "Compute", "description": "test"},
         "commitment": "10.50",
         "sp_type": "ComputeSavingsPlans",
         "term_seconds": 94608000,
@@ -80,7 +80,7 @@ def test_invalid_commitment_type():
     """Test that invalid commitment type raises ValueError."""
     purchase_intent = {
         "client_token": "test-token-123",
-        "offering_id": "offering-abc-456",
+        "offering": {"id": "offering-abc-456", "plan_type": "Compute", "description": "test"},
         "commitment": None,
         "sp_type": "ComputeSavingsPlans",
         "term_seconds": 94608000,
@@ -100,7 +100,7 @@ def test_invalid_term_seconds_type():
     """Test that invalid term_seconds type raises ValueError."""
     purchase_intent = {
         "client_token": "test-token-123",
-        "offering_id": "offering-abc-456",
+        "offering": {"id": "offering-abc-456", "plan_type": "Compute", "description": "test"},
         "commitment": "10.50",
         "sp_type": "ComputeSavingsPlans",
         "term_seconds": "94608000",  # String instead of int
@@ -111,16 +111,16 @@ def test_invalid_term_seconds_type():
 
 
 def test_empty_offering_id():
-    """Test that empty offering_id raises ValueError."""
+    """Test that empty offering.id raises ValueError."""
     purchase_intent = {
         "client_token": "test-token-123",
-        "offering_id": "",
+        "offering": {"id": "", "plan_type": "Compute"},
         "commitment": "10.50",
         "sp_type": "ComputeSavingsPlans",
         "term_seconds": 94608000,
         "payment_option": "NO_UPFRONT",
     }
-    with pytest.raises(ValueError, match=r"offering_id.*non-empty string"):
+    with pytest.raises(ValueError, match=r"offering\.id.*non-empty string"):
         validate_purchase_intent(purchase_intent)
 
 
@@ -128,7 +128,7 @@ def test_invalid_upfront_amount():
     """Test that invalid upfront_amount raises ValueError."""
     purchase_intent = {
         "client_token": "test-token-123",
-        "offering_id": "offering-abc-456",
+        "offering": {"id": "offering-abc-456", "plan_type": "Compute", "description": "test"},
         "commitment": "10.50",
         "sp_type": "ComputeSavingsPlans",
         "term_seconds": 94608000,
@@ -143,7 +143,7 @@ def test_client_token_too_long():
     """Test that client_token exceeding maximum length raises ValueError."""
     purchase_intent = {
         "client_token": "a" * 257,  # Exceeds 256 character limit
-        "offering_id": "offering-abc-456",
+        "offering": {"id": "offering-abc-456", "plan_type": "Compute", "description": "test"},
         "commitment": "10.50",
         "sp_type": "ComputeSavingsPlans",
         "term_seconds": 94608000,
@@ -154,14 +154,14 @@ def test_client_token_too_long():
 
 
 def test_offering_id_too_long():
-    """Test that offering_id exceeding maximum length raises ValueError."""
+    """Test that offering.id exceeding maximum length raises ValueError."""
     purchase_intent = {
         "client_token": "test-token-123",
-        "offering_id": "a" * 257,  # Exceeds 256 character limit
+        "offering": {"id": "a" * 257, "plan_type": "Compute"},
         "commitment": "10.50",
         "sp_type": "ComputeSavingsPlans",
         "term_seconds": 94608000,
         "payment_option": "NO_UPFRONT",
     }
-    with pytest.raises(ValueError, match=r"offering_id.*exceeds maximum length"):
+    with pytest.raises(ValueError, match=r"offering\.id.*exceeds maximum length"):
         validate_purchase_intent(purchase_intent)

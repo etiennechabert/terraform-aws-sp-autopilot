@@ -96,7 +96,7 @@ def test_handler_local_mode_queue_messages(mock_aws_clients, monkeypatch):
         assert "term_seconds" in msg
         assert "payment_option" in msg
         assert "commitment" in msg
-        assert "offering_id" in msg
+        assert "offering" in msg
         assert "client_token" in msg
 
         # Validate values
@@ -109,7 +109,8 @@ def test_handler_local_mode_queue_messages(mock_aws_clients, monkeypatch):
         assert msg["payment_option"] in ["NO_UPFRONT", "PARTIAL_UPFRONT", "ALL_UPFRONT"]
         assert float(msg["commitment"]) > 0
         assert len(msg["client_token"]) > 0
-        assert len(msg["offering_id"]) > 0
+        assert isinstance(msg["offering"], dict)
+        assert len(msg["offering"]["id"]) > 0
 
 
 def test_handler_local_mode_no_purchases_needed(mock_aws_clients, monkeypatch):

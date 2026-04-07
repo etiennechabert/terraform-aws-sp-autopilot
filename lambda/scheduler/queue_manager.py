@@ -14,7 +14,7 @@ from datetime import UTC, datetime
 from typing import TYPE_CHECKING, Any
 
 from botocore.exceptions import ClientError
-from offering_resolver import TERM_TO_DURATION, resolve_offering_id
+from offering_resolver import TERM_TO_DURATION, resolve_offering
 
 
 if TYPE_CHECKING:
@@ -98,17 +98,15 @@ def queue_purchase_intents(
             payment_option = plan.get("payment_option", "ALL_UPFRONT")
             client_token = f"scheduler-{sp_type_key}-{term}-{timestamp}"
 
-            # Resolve offering ID and convert to purchaser format
-            offering_id = resolve_offering_id(
-                savingsplans_client, sp_type_key, term, payment_option
-            )
+            # Resolve offering and convert to purchaser format
+            offering = resolve_offering(savingsplans_client, sp_type_key, term, payment_option)
             sp_type = SP_TYPE_KEY_TO_FILTER.get(sp_type_key, sp_type_key)
             term_seconds = TERM_TO_DURATION.get(term, term)
 
             # Create purchase intent message in purchaser's expected format
             purchase_intent = {
                 "client_token": client_token,
-                "offering_id": offering_id,
+                "offering": offering,
                 "sp_type": sp_type,
                 "term_seconds": term_seconds,
                 "commitment": str(commitment),
@@ -131,7 +129,8 @@ def queue_purchase_intents(
 
             logger.info(
                 f"Queued purchase intent: {sp_type} {term} ${commitment:.5f}/hour "
-                f"(message_id: {message_id}, client_token: {client_token})"
+                f"(message_id: {message_id}, client_token: {client_token}, "
+                f"offering: {offering['description']})"
             )
             queued_count += 1
 
