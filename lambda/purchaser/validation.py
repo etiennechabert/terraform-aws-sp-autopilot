@@ -27,7 +27,7 @@ MAX_OFFERING_ID_LENGTH = 256
 # Required fields in purchase intent message
 REQUIRED_FIELDS = [
     "client_token",
-    "offering_id",
+    "offering",
     "commitment",
     "sp_type",
     "term_seconds",
@@ -120,15 +120,18 @@ def _validate_field_types(purchase_intent: dict[str, Any]) -> None:
             f"Field 'client_token' exceeds maximum length of {MAX_CLIENT_TOKEN_LENGTH} characters, got {len(client_token)}"
         )
 
-    # Validate offering_id is a string
-    offering_id = purchase_intent.get("offering_id")
+    # Validate offering is a dict with an id
+    offering = purchase_intent.get("offering")
+    if not isinstance(offering, dict):
+        raise ValueError(f"Field 'offering' must be a dictionary, got {type(offering).__name__}")
+    offering_id = offering.get("id")
     if not isinstance(offering_id, str) or not offering_id.strip():
         raise ValueError(
-            f"Field 'offering_id' must be a non-empty string, got {type(offering_id).__name__}"
+            f"Field 'offering.id' must be a non-empty string, got {type(offering_id).__name__}"
         )
     if len(offering_id) > MAX_OFFERING_ID_LENGTH:
         raise ValueError(
-            f"Field 'offering_id' exceeds maximum length of {MAX_OFFERING_ID_LENGTH} characters, got {len(offering_id)}"
+            f"Field 'offering.id' exceeds maximum length of {MAX_OFFERING_ID_LENGTH} characters, got {len(offering_id)}"
         )
 
     # Validate upfront_amount if present (optional field, can be None)

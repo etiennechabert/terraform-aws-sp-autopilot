@@ -104,6 +104,7 @@ def _process_sp_type(
                 "current": current_coverage,
                 "target": target_coverage,
                 "gap": coverage_gap,
+                "added": purchase_percent,
             },
             "spending": {
                 "total": avg_hourly_total,

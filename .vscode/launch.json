@@ -156,7 +156,7 @@
                 "REPORT_FORMAT": "html",
                 "EMAIL_REPORTS": "false",
                 // Savings Plans types to include in report
-                "ENABLE_COMPUTE_SP": "true",
+                "ENABLE_COMPUTE_SP": "false",
                 "ENABLE_DATABASE_SP": "true",
                 "ENABLE_SAGEMAKER_SP": "true",
                 // Alert settings

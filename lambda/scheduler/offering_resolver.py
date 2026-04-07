@@ -40,13 +40,13 @@ PAYMENT_OPTION_MAP = {
 }
 
 
-def resolve_offering_id(
+def resolve_offering(
     savingsplans_client: SavingsPlansClient,
     sp_type_key: str,
     term: str,
     payment_option: str,
-) -> str:
-    """Resolve a Savings Plan offering ID from human-readable parameters.
+) -> dict[str, str | int]:
+    """Resolve a Savings Plan offering from human-readable parameters.
 
     Args:
         savingsplans_client: Boto3 Savings Plans client
@@ -55,7 +55,7 @@ def resolve_offering_id(
         payment_option: Payment option ("NO_UPFRONT", "ALL_UPFRONT", "PARTIAL_UPFRONT")
 
     Returns:
-        The offering ID string
+        Dict with offering id and the resolution parameters used.
 
     Raises:
         ValueError: If no matching offering is found or inputs are invalid
@@ -91,6 +91,15 @@ def resolve_offering_id(
     if not results:
         raise ValueError(f"No offering found for {sp_type_key} / {term} / {payment_option}")
 
-    offering_id = results[0]["offeringId"]
+    result = results[0]
+    offering_id = result["offeringId"]
     logger.info(f"Resolved offering ID: {offering_id}")
-    return offering_id
+    return {
+        "id": offering_id,
+        "plan_type": result.get("planType", plan_type),
+        "product_types": result.get("productTypes", [product_type]),
+        "description": result.get("description", ""),
+        "payment_option": result.get("paymentOption", api_payment_option),
+        "duration_seconds": result.get("durationSeconds", duration),
+        "usage_type": result.get("usageType", ""),
+    }
