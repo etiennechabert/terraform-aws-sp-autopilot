@@ -90,6 +90,17 @@ def resolve_offering(
     results = response.get("searchResults", [])
     if not results:
         raise ValueError(f"No offering found for {sp_type_key} / {term} / {payment_option}")
+    if len(results) > 1:
+        offering_ids = [r.get("offeringId", "?") for r in results]
+        raise ValueError(
+            f"Ambiguous offering query for {sp_type_key} / {term} / {payment_option}: "
+            f"got {len(results)} results, expected exactly 1.\n"
+            f"Offering IDs returned: {offering_ids}\n"
+            f"Query: planType={plan_type}, duration={duration}, "
+            f"paymentOption={api_payment_option}, productType={product_type}, currency=USD\n"
+            f"Please report this at: "
+            f"https://github.com/etiennechabert/terraform-aws-sp-autopilot/issues/new"
+        )
 
     result = results[0]
     offering_id = result["offeringId"]
