@@ -213,6 +213,29 @@ def generate_html_report(
         .expiring-soon:hover {{
             background-color: #ffe8a1 !important;
         }}
+        .active-plans-table .plan-summary-row {{
+            cursor: pointer;
+        }}
+        .active-plans-table .plan-toggle-cell {{
+            text-align: center;
+            color: #6c757d;
+            user-select: none;
+        }}
+        .active-plans-table .plan-toggle-icon {{
+            display: inline-block;
+            transition: transform 0.15s ease;
+        }}
+        .active-plans-table .plan-summary-row.expanded .plan-toggle-icon {{
+            transform: rotate(90deg);
+            color: #2196f3;
+        }}
+        .active-plans-table .plan-details-row > td {{
+            padding: 0;
+            border-bottom: 1px solid #e0e0e0;
+        }}
+        .active-plans-table .plan-details-row:hover {{
+            background: transparent;
+        }}
         .metric {{
             font-weight: bold;
             color: #232f3e;
@@ -841,6 +864,20 @@ def generate_html_report(
                         el.style.borderColor = palette.ondemandBorder;
                     }}
                 }});
+            }}
+        }}
+
+        // Active Plans: expand/collapse a row to show full plan details
+        function togglePlanDetails(detailsId, summaryRow) {{
+            const detailsRow = document.getElementById(detailsId);
+            if (!detailsRow) return;
+            const isHidden = detailsRow.hasAttribute('hidden');
+            if (isHidden) {{
+                detailsRow.removeAttribute('hidden');
+                summaryRow.classList.add('expanded');
+            }} else {{
+                detailsRow.setAttribute('hidden', '');
+                summaryRow.classList.remove('expanded');
             }}
         }}
 

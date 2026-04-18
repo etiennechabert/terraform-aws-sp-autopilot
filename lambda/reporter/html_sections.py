@@ -384,7 +384,7 @@ def parse_plan_dates(
 
 
 def build_active_plans_table_html(plans: list[dict[str, Any]]) -> str:
-    """Table of active Savings Plans sorted by end date."""
+    """Table of active Savings Plans sorted by end date, with expandable detail rows."""
     if not plans:
         return """
             <div class="no-data">No active Savings Plans found</div>
@@ -395,21 +395,22 @@ def build_active_plans_table_html(plans: list[dict[str, Any]]) -> str:
     three_months_from_now = now + timedelta(days=90)
 
     html = """
-            <table>
+            <table class="active-plans-table">
                 <thead>
                     <tr>
-                        <th style="width: 30%;">Plan ID</th>
+                        <th style="width: 3%;"></th>
+                        <th style="width: 28%;">Plan ID</th>
                         <th style="width: 12%;">Type</th>
                         <th style="width: 16%;">Hourly Commitment</th>
-                        <th style="width: 10%;">Term</th>
-                        <th style="width: 16%;">Payment Option</th>
-                        <th style="width: 16%; text-align: right;">Days Remaining</th>
+                        <th style="width: 9%;">Term</th>
+                        <th style="width: 15%;">Payment Option</th>
+                        <th style="width: 17%; text-align: right;">Days Remaining</th>
                     </tr>
                 </thead>
                 <tbody>
 """
 
-    for plan in sorted_plans:
+    for idx, plan in enumerate(sorted_plans):
         plan_id = plan.get("plan_id", "Unknown")
         plan_type = plan.get("plan_type", "Unknown")
         hourly_commitment = plan.get("hourly_commitment", 0.0)
@@ -426,16 +427,24 @@ def build_active_plans_table_html(plans: list[dict[str, Any]]) -> str:
             tooltip_text,
         ) = parse_plan_dates(start_date, end_date, now, three_months_from_now)
 
-        row_class = 'class="expiring-soon"' if expiring_soon else ""
+        summary_classes = ["plan-summary-row"]
+        if expiring_soon:
+            summary_classes.append("expiring-soon")
+        summary_class_attr = " ".join(summary_classes)
+        details_id = f"plan-details-{idx}"
 
         html += f"""
-                    <tr {row_class}>
+                    <tr class="{summary_class_attr}" onclick="togglePlanDetails('{details_id}', this)">
+                        <td class="plan-toggle-cell"><span class="plan-toggle-icon">&#9656;</span></td>
                         <td style="font-family: monospace; font-size: 0.8em; word-break: break-all;">{plan_id}</td>
                         <td>{plan_type}</td>
                         <td class="metric">${hourly_commitment:.2f}/hr</td>
                         <td>{term_years} year(s)</td>
                         <td>{payment_option}</td>
                         <td class="metric" title="{tooltip_text}" style="cursor: help; text-align: right;">{days_remaining_display}</td>
+                    </tr>
+                    <tr id="{details_id}" class="plan-details-row" hidden>
+                        <td colspan="7">{_render_plan_details(plan)}</td>
                     </tr>
 """
 
@@ -444,6 +453,90 @@ def build_active_plans_table_html(plans: list[dict[str, Any]]) -> str:
             </table>
 """
     return html
+
+
+def _render_plan_details(plan: dict[str, Any]) -> str:
+    """Render the expanded details panel for a single plan."""
+    savings_plan_arn = plan.get("savings_plan_arn") or ""
+    offering_id = plan.get("offering_id") or ""
+    description = plan.get("description") or ""
+    state = plan.get("state") or ""
+    currency = plan.get("currency") or "USD"
+    upfront = plan.get("upfront_payment_amount", 0.0) or 0.0
+    recurring = plan.get("recurring_payment_amount", 0.0) or 0.0
+    term_seconds = plan.get("term_seconds", 0) or 0
+    returnable_until = plan.get("returnable_until") or ""
+    product_types = plan.get("product_types") or []
+    tags = plan.get("tags") or {}
+    start_date = plan.get("start_date") or ""
+    end_date = plan.get("end_date") or ""
+
+    def _row(label: str, value: str) -> str:
+        return (
+            f'<tr><th style="width: 220px; text-align: left; background: #f8f9fa; '
+            f'color: #232f3e; padding: 6px 12px;">{label}</th>'
+            f'<td style="padding: 6px 12px; word-break: break-all;">{value}</td></tr>'
+        )
+
+    rows: list[str] = []
+
+    if description:
+        rows.append(_row("Description", description))
+    if state:
+        rows.append(_row("State", state))
+    rows.append(_row("Start", start_date))
+    rows.append(_row("End", end_date))
+    if term_seconds:
+        rows.append(_row("Term Duration", f"{term_seconds:,} seconds"))
+    rows.append(_row("Commitment", f"{currency} {plan.get('hourly_commitment', 0.0):.5f}/hour"))
+    rows.append(_row("Upfront Payment", f"{currency} {upfront:,.2f}"))
+    rows.append(_row("Recurring Payment", f"{currency} {recurring:,.5f}/hour"))
+    if product_types:
+        chips = "".join(
+            f'<span style="display: inline-block; background: #e8eef7; color: #232f3e; '
+            f'padding: 2px 10px; border-radius: 12px; margin: 2px 4px 2px 0; font-size: 0.85em;">'
+            f"{pt}</span>"
+            for pt in product_types
+        )
+        rows.append(_row("Covered Products", chips))
+    if returnable_until:
+        rows.append(_row("Returnable Until", returnable_until))
+    if savings_plan_arn:
+        rows.append(
+            _row(
+                "ARN",
+                f'<code style="font-size: 0.85em;">{savings_plan_arn}</code>',
+            )
+        )
+    if offering_id:
+        rows.append(
+            _row(
+                "Offering ID",
+                f'<code style="font-size: 0.85em;">{offering_id}</code>',
+            )
+        )
+
+    if tags:
+        tag_rows = "".join(
+            f'<tr><td style="padding: 2px 8px; font-family: monospace; font-size: 0.85em; '
+            f'color: #555;">{k}</td>'
+            f'<td style="padding: 2px 8px; font-family: monospace; font-size: 0.85em;">{v}</td></tr>'
+            for k, v in tags.items()
+        )
+        tag_table = (
+            '<table style="width: auto; margin: 0; border-collapse: collapse;">'
+            f"<tbody>{tag_rows}</tbody></table>"
+        )
+        rows.append(_row("Tags", tag_table))
+    else:
+        rows.append(_row("Tags", '<em style="color: #6c757d;">none</em>'))
+
+    return (
+        '<div class="plan-details-panel" style="background: #fcfcfc; '
+        'padding: 14px 20px; border-left: 3px solid #2196f3;">'
+        '<table style="width: 100%; margin: 0; border-collapse: collapse;">'
+        "<tbody>" + "".join(rows) + "</tbody></table></div>"
+    )
 
 
 def render_spike_guard_warning_banner(

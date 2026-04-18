@@ -192,24 +192,28 @@ def get_active_savings_plans(
 
         plans_data = []
         for plan in savings_plans:
-            hourly_commitment = float(plan.get("commitment", "0"))
-            plan_type = plan.get("savingsPlanType", "Unknown")
-            plan_id = plan.get("savingsPlanId", "Unknown")
-            start_date = plan.get("start", "Unknown")
-            end_date = plan.get("end", "Unknown")
-            payment_option = plan.get("paymentOption", "Unknown")
             term_seconds = plan.get("termDurationInSeconds", 0)
-            term_years = term_seconds // (365 * 24 * 60 * 60)
-
             plans_data.append(
                 {
-                    "plan_id": plan_id,
-                    "plan_type": plan_type,
-                    "hourly_commitment": hourly_commitment,
-                    "start_date": start_date,
-                    "end_date": end_date,
-                    "payment_option": payment_option,
-                    "term_years": term_years,
+                    "plan_id": plan.get("savingsPlanId", "Unknown"),
+                    "plan_type": plan.get("savingsPlanType", "Unknown"),
+                    "hourly_commitment": float(plan.get("commitment", "0")),
+                    "start_date": plan.get("start", "Unknown"),
+                    "end_date": plan.get("end", "Unknown"),
+                    "payment_option": plan.get("paymentOption", "Unknown"),
+                    "term_years": term_seconds // (365 * 24 * 60 * 60),
+                    # Additional fields for the expandable details panel
+                    "offering_id": plan.get("offeringId", ""),
+                    "savings_plan_arn": plan.get("savingsPlanArn", ""),
+                    "description": plan.get("description", ""),
+                    "state": plan.get("state", ""),
+                    "product_types": plan.get("productTypes", []),
+                    "currency": plan.get("currency", ""),
+                    "upfront_payment_amount": float(plan.get("upfrontPaymentAmount", "0") or 0),
+                    "recurring_payment_amount": float(plan.get("recurringPaymentAmount", "0") or 0),
+                    "term_seconds": term_seconds,
+                    "tags": plan.get("tags", {}),
+                    "returnable_until": plan.get("returnableUntil", ""),
                 }
             )
 
