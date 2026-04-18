@@ -12,8 +12,7 @@ from typing import Any
 
 from chart_data import prepare_chart_and_preview_json
 from html_sections import (
-    build_active_plans_table_html,
-    build_breakdown_table_html,
+    build_plans_breakdown_section_html,
     build_raw_data_section_html,
     render_sp_type_tab_button,
     render_sp_type_tab_content,
@@ -213,6 +212,155 @@ def generate_html_report(
         .expiring-soon:hover {{
             background-color: #ffe8a1 !important;
         }}
+        .active-plans-table .plan-summary-row,
+        .breakdown-table .type-summary-row,
+        .breakdown-table .plan-summary-row {{
+            cursor: pointer;
+        }}
+        .active-plans-table .plan-toggle-cell,
+        .breakdown-table .plan-toggle-cell {{
+            text-align: center;
+            color: #6c757d;
+            user-select: none;
+        }}
+        .active-plans-table .plan-toggle-icon,
+        .breakdown-table .plan-toggle-icon {{
+            display: inline-block;
+            transition: transform 0.15s ease;
+        }}
+        .active-plans-table .plan-summary-row.expanded .plan-toggle-icon,
+        .breakdown-table .type-summary-row.expanded .plan-toggle-icon,
+        .breakdown-table .plan-summary-row.expanded .plan-toggle-icon {{
+            transform: rotate(90deg);
+            color: #2196f3;
+        }}
+        .active-plans-table .plan-details-row > td,
+        .breakdown-table .plan-details-row > td {{
+            padding: 0;
+            border-bottom: 1px solid #e0e0e0;
+        }}
+        .active-plans-table .plan-details-row:hover,
+        .breakdown-table .plan-details-row:hover {{
+            background: transparent;
+        }}
+        .breakdown-table .type-summary-row.expanded {{
+            background-color: #f0f4fa;
+        }}
+        /* Nested plan cards inside an expanded type row */
+        .plans-nested-wrap {{
+            padding: 10px 20px 14px 44px;
+            background: linear-gradient(180deg, #fafbfc 0%, #fafbfc 100%);
+            border-top: 1px solid #e6ebf2;
+        }}
+        .plan-card {{
+            margin-bottom: 6px;
+            border-radius: 6px;
+            border: 1px solid #e6ebf2;
+            background: #ffffff;
+            overflow: hidden;
+        }}
+        .plan-card:last-child {{ margin-bottom: 0; }}
+        .plan-card-row {{
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 8px 14px;
+            cursor: pointer;
+            font-size: 0.92em;
+            transition: background 0.1s ease;
+        }}
+        .plan-card-row:hover {{ background: #f5f8fb; }}
+        .plan-card-row.expanded {{ background: #eef4fa; }}
+        .plan-card-row.expiring-soon {{
+            background: #fff9e6;
+            border-left: 3px solid #ffc107;
+        }}
+        .plan-card-row .plan-toggle-icon {{
+            color: #6c757d;
+            display: inline-block;
+            transition: transform 0.15s ease;
+            flex: 0 0 auto;
+        }}
+        .plan-card-row.expanded .plan-toggle-icon {{
+            transform: rotate(90deg);
+            color: #2196f3;
+        }}
+        .plan-card-commit {{
+            color: #232f3e;
+            font-weight: 700;
+            font-size: 1.02em;
+            min-width: 92px;
+            flex: 0 0 auto;
+        }}
+        .plan-card-meta {{
+            display: flex;
+            gap: 8px;
+            align-items: center;
+            color: #495564;
+            font-size: 0.92em;
+            flex: 1 1 auto;
+            flex-wrap: wrap;
+        }}
+        .plan-card-sep {{ color: #c1c9d2; }}
+        .plan-card-pill {{
+            display: inline-flex;
+            align-items: center;
+            padding: 2px 10px;
+            border-radius: 12px;
+            background: #f1f4f8;
+            font-size: 0.82em;
+            font-weight: 600;
+            font-variant-numeric: tabular-nums;
+            cursor: help;
+            flex: 0 0 auto;
+        }}
+        .plan-card-pill + .plan-card-pill {{ margin-left: 6px; }}
+        .plan-card-id-short {{
+            font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+            font-size: 0.78em;
+            color: #94a0ae;
+            cursor: help;
+            flex: 0 0 auto;
+        }}
+        .plan-card-expiration {{
+            cursor: help;
+            font-weight: 600;
+            color: #232f3e;
+        }}
+        .plan-card-expiration.expiring {{ color: #b88400; }}
+        .plan-card-expiration.expired {{ color: #dc3545; }}
+        .plan-card-details {{
+            border-top: 1px solid #e6ebf2;
+            background: #fafbfc;
+            padding: 14px 18px;
+        }}
+        /* Details panel (inside plan-card-details) */
+        .plan-details-panel {{ padding: 0; }}
+        .plan-details-kv {{
+            width: 100%;
+            margin: 0;
+            border-collapse: collapse;
+            background: transparent;
+        }}
+        .plan-details-kv th {{
+            width: 180px;
+            text-align: left;
+            background: transparent;
+            color: #6c757d;
+            font-weight: 500;
+            font-size: 0.85em;
+            padding: 5px 10px 5px 0;
+            border-bottom: 1px solid #eef1f5;
+        }}
+        .plan-details-kv td {{
+            padding: 5px 0;
+            word-break: break-all;
+            color: #232f3e;
+            font-size: 0.9em;
+            border-bottom: 1px solid #eef1f5;
+        }}
+        .plan-details-kv tr:last-child th,
+        .plan-details-kv tr:last-child td {{ border-bottom: none; }}
         .metric {{
             font-weight: bold;
             color: #232f3e;
@@ -701,23 +849,20 @@ def generate_html_report(
         <div class="section">
             <h2>Existing Savings Plans</h2>
 
-            <h3 style="color: #232f3e; margin-top: 25px; margin-bottom: 15px; font-size: 1.2em;">Breakdown by Type</h3>
+            <p style="color: #6c757d; font-size: 0.9em; margin-top: 0; margin-bottom: 15px;">
+                Click a plan type to see its active plans; click an individual plan to see full details.
+            </p>
 """
 
-    html += build_breakdown_table_html(
+    plans = savings_data.get("plans", [])
+    html += build_plans_breakdown_section_html(
         breakdown_by_type,
+        plans,
         plans_count,
         average_utilization,
         total_commitment,
         savings_percentage,
     )
-
-    html += """
-            <h3 style="color: #232f3e; margin-top: 35px; margin-bottom: 15px; font-size: 1.2em;">Active Plans Details</h3>
-"""
-
-    plans = savings_data.get("plans", [])
-    html += build_active_plans_table_html(plans)
 
     monthly_savings = net_savings_hourly * 24 * 30
     html += build_raw_data_section_html(raw_data, report_timestamp, monthly_savings)
@@ -841,6 +986,20 @@ def generate_html_report(
                         el.style.borderColor = palette.ondemandBorder;
                     }}
                 }});
+            }}
+        }}
+
+        // Active Plans: expand/collapse a row to show full plan details
+        function togglePlanDetails(detailsId, summaryRow) {{
+            const detailsRow = document.getElementById(detailsId);
+            if (!detailsRow) return;
+            const isHidden = detailsRow.hasAttribute('hidden');
+            if (isHidden) {{
+                detailsRow.removeAttribute('hidden');
+                summaryRow.classList.add('expanded');
+            }} else {{
+                detailsRow.setAttribute('hidden', '');
+                summaryRow.classList.remove('expanded');
             }}
         }}
 
@@ -1139,33 +1298,70 @@ def generate_html_report(
         }}
 
         // Function to create daily chart (simplified - no annotation lines)
-        function createDailyChart(canvasId, chartData, title) {{
+        function createDailyChart(canvasId, chartData, title, spType) {{
             const ctx = document.getElementById(canvasId);
-            _injectChartHeader(canvasId, title, null);
+            _injectChartHeader(canvasId, title, spType || null);
             const palette = colorPalettes['palette1'];
+
+            // Build "added by next purchase" dataset: hourly $/hr added scaled to daily ($/day),
+            // clamped per-day so it never exceeds that day's on-demand cost.
+            const futureTargetData = spType ? configuredTargetData[spType] : null;
+            let futureData = null;
+            if (futureTargetData) {{
+                const addedOdPerDay = (futureTargetData.added_od_equiv || 0) * 24;
+                if (addedOdPerDay > 0) {{
+                    futureData = chartData.ondemand.map(function(od) {{
+                        return Math.min(addedOdPerDay, od);
+                    }});
+                }}
+            }}
+
+            const datasets = [
+                {{
+                    label: 'Existing SP Commitment',
+                    data: chartData.covered,
+                    backgroundColor: palette.covered,
+                    borderColor: palette.coveredBorder,
+                    borderWidth: 1,
+                    stack: 'stack0'
+                }}
+            ];
+            if (futureData) {{
+                datasets.push({{
+                    label: 'Added by next purchase',
+                    data: futureData,
+                    backgroundColor: palette.configuredTarget,
+                    borderColor: palette.configuredTarget,
+                    borderWidth: 1,
+                    stack: 'stack0'
+                }});
+                const adjustedOndemand = chartData.ondemand.map(function(od, i) {{
+                    return Math.max(0, od - futureData[i]);
+                }});
+                datasets.push({{
+                    label: 'On-Demand Cost',
+                    data: adjustedOndemand,
+                    backgroundColor: palette.ondemand,
+                    borderColor: palette.ondemandBorder,
+                    borderWidth: 1,
+                    stack: 'stack0'
+                }});
+            }} else {{
+                datasets.push({{
+                    label: 'On-Demand Cost',
+                    data: chartData.ondemand,
+                    backgroundColor: palette.ondemand,
+                    borderColor: palette.ondemandBorder,
+                    borderWidth: 1,
+                    stack: 'stack0'
+                }});
+            }}
 
             chartInstances[canvasId] = new Chart(ctx, {{
                 type: 'bar',
                 data: {{
                     labels: chartData.labels,
-                    datasets: [
-                        {{
-                            label: 'Existing SP Commitment',
-                            data: chartData.covered,
-                            backgroundColor: palette.covered,
-                            borderColor: palette.coveredBorder,
-                            borderWidth: 1,
-                            stack: 'stack0'
-                        }},
-                        {{
-                            label: 'On-Demand Cost',
-                            data: chartData.ondemand,
-                            backgroundColor: palette.ondemand,
-                            borderColor: palette.ondemandBorder,
-                            borderWidth: 1,
-                            stack: 'stack0'
-                        }}
-                    ]
+                    datasets: datasets
                 }},
                 options: {{
                     responsive: true,
@@ -1396,15 +1592,15 @@ def generate_html_report(
             const dailyDays = dailyChartData.global.labels.length;
             {"createDailyChart('globalDailyChart', dailyChartData.global, 'Daily Usage: On-Demand vs Covered (All Types) - ' + dailyDays + ' days'); document.getElementById('global-daily-container').style.display = '';" if show_global_tab else "// Global daily chart skipped (single type enabled)"}
             if (document.getElementById('computeDailyChart')) {{
-                createDailyChart('computeDailyChart', dailyChartData.compute, 'Compute Savings Plans - Daily Usage (' + dailyChartData.compute.labels.length + ' days)');
+                createDailyChart('computeDailyChart', dailyChartData.compute, 'Compute Savings Plans - Daily Usage (' + dailyChartData.compute.labels.length + ' days)', 'compute');
                 document.getElementById('compute-daily-container').style.display = '';
             }}
             if (document.getElementById('databaseDailyChart')) {{
-                createDailyChart('databaseDailyChart', dailyChartData.database, 'Database Savings Plans - Daily Usage (' + dailyChartData.database.labels.length + ' days)');
+                createDailyChart('databaseDailyChart', dailyChartData.database, 'Database Savings Plans - Daily Usage (' + dailyChartData.database.labels.length + ' days)', 'database');
                 document.getElementById('database-daily-container').style.display = '';
             }}
             if (document.getElementById('sagemakerDailyChart')) {{
-                createDailyChart('sagemakerDailyChart', dailyChartData.sagemaker, 'SageMaker Savings Plans - Daily Usage (' + dailyChartData.sagemaker.labels.length + ' days)');
+                createDailyChart('sagemakerDailyChart', dailyChartData.sagemaker, 'SageMaker Savings Plans - Daily Usage (' + dailyChartData.sagemaker.labels.length + ' days)', 'sagemaker');
                 document.getElementById('sagemaker-daily-container').style.display = '';
             }}
         }}
