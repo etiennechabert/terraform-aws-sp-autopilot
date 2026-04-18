@@ -623,15 +623,15 @@ def _build_type_plans_subtable(
 
     items = ""
     for plan_idx, plan in enumerate(sorted_plans):
-        plan_id = plan.get("plan_id", "Unknown")
+        plan_id = plan.get("plan_id", "") or ""
         hourly_commitment = plan.get("hourly_commitment", 0.0)
         term_years = plan.get("term_years", 0)
         payment_option = plan.get("payment_option", "Unknown")
-        start_date = plan.get("start_date", "Unknown")
-        end_date = plan.get("end_date", "Unknown")
+        start_date = plan.get("start_date", "") or ""
+        end_date = plan.get("end_date", "") or ""
 
         (
-            _start_display,
+            start_display,
             _end_display,
             days_remaining_display,
             expiring_soon,
@@ -644,18 +644,29 @@ def _build_type_plans_subtable(
         summary_class_attr = " ".join(summary_classes)
         details_id = f"plan-details-{type_idx}-{plan_idx}"
 
+        meta_parts = [
+            f"{term_years}&nbsp;year",
+            payment_option,
+        ]
+        if start_display and start_display != "Unknown":
+            meta_parts.append(f"started {start_display}")
+        meta_html = '<span class="plan-card-sep">·</span>'.join(
+            f"<span>{part}</span>" for part in meta_parts
+        )
+
+        short_id_html = ""
+        if plan_id and plan_id != "Unknown" and len(plan_id) > 6:
+            short_id_html = (
+                f'<span class="plan-card-id-short" title="{plan_id}">…{plan_id[-5:]}</span>'
+            )
+
         items += f"""
                     <div class="plan-card">
                         <div class="{summary_class_attr}" onclick="togglePlanDetails('{details_id}', this)">
                             <span class="plan-toggle-icon">&#9656;</span>
-                            <span class="plan-card-id">{plan_id}</span>
-                            <span class="plan-card-meta">
-                                <span class="plan-card-commit">${hourly_commitment:.2f}/hr</span>
-                                <span class="plan-card-sep">·</span>
-                                <span>{term_years}&nbsp;year</span>
-                                <span class="plan-card-sep">·</span>
-                                <span>{payment_option}</span>
-                            </span>
+                            <span class="plan-card-commit">${hourly_commitment:.2f}/hr</span>
+                            <span class="plan-card-meta">{meta_html}</span>
+                            {short_id_html}
                             <span class="plan-card-days" title="{tooltip_text}">{days_remaining_display}</span>
                         </div>
                         <div id="{details_id}" class="plan-card-details" hidden>{_render_plan_details(plan)}</div>

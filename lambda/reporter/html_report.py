@@ -285,28 +285,30 @@ def generate_html_report(
             transform: rotate(90deg);
             color: #2196f3;
         }}
-        .plan-card-id {{
-            font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
-            font-size: 0.82em;
+        .plan-card-commit {{
             color: #232f3e;
-            flex: 1 1 auto;
-            overflow: hidden;
-            text-overflow: ellipsis;
-            white-space: nowrap;
+            font-weight: 700;
+            font-size: 1.02em;
+            min-width: 92px;
+            flex: 0 0 auto;
         }}
         .plan-card-meta {{
             display: flex;
             gap: 8px;
             align-items: center;
             color: #495564;
-            font-size: 0.9em;
-            flex: 0 0 auto;
-        }}
-        .plan-card-commit {{
-            color: #232f3e;
-            font-weight: 600;
+            font-size: 0.92em;
+            flex: 1 1 auto;
+            flex-wrap: wrap;
         }}
         .plan-card-sep {{ color: #c1c9d2; }}
+        .plan-card-id-short {{
+            font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+            font-size: 0.78em;
+            color: #94a0ae;
+            cursor: help;
+            flex: 0 0 auto;
+        }}
         .plan-card-days {{
             flex: 0 0 auto;
             min-width: 90px;
