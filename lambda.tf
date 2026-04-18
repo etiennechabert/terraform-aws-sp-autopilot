@@ -280,30 +280,3 @@ data "archive_file" "reporter" {
   }
 }
 
-data "archive_file" "scheduler_placeholder" {
-  type        = "zip"
-  output_path = "${path.module}/.terraform/scheduler_placeholder.zip"
-
-  source {
-    content  = <<-EOT
-      def handler(event, context):
-          print("Scheduler Lambda placeholder - not yet implemented")
-          return {"statusCode": 200, "body": "Placeholder"}
-    EOT
-    filename = "index.py"
-  }
-}
-
-data "archive_file" "purchaser_placeholder" {
-  type        = "zip"
-  output_path = "${path.module}/.terraform/purchaser_placeholder.zip"
-
-  source {
-    content  = <<-EOT
-      def handler(event, context):
-          print("Purchaser Lambda placeholder - not yet implemented")
-          return {"statusCode": 200, "body": "Placeholder"}
-    EOT
-    filename = "index.py"
-  }
-}
