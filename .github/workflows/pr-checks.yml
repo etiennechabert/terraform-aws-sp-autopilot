@@ -315,7 +315,7 @@ jobs:
 
     env:
       AWS_DEFAULT_REGION: us-east-1
-      GO_VERSION: '1.24'
+      GO_VERSION: '1.25'
       TERRAFORM_VERSION: '1.11.0'
 
     steps:
