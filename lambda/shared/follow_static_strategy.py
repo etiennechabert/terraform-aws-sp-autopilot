@@ -5,8 +5,8 @@ from typing import Any
 
 from shared.constants import AWS_TYPE_TO_KEY
 from shared.savings_plans_metrics import get_active_savings_plans
-from shared.split_strategies import calculate_split
 from shared.sp_types import SP_TYPES, get_term
+from shared.split_strategies import calculate_split
 
 
 logger = logging.getLogger()

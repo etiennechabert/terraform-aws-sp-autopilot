@@ -15,8 +15,8 @@ from botocore.exceptions import ClientError
 from shared import sp_calculations
 from shared.follow_aws_strategy import calculate_purchase_need_follow_aws
 from shared.follow_static_strategy import calculate_purchase_need_static
-from shared.split_strategies import calculate_split
 from shared.sp_types import SP_TYPES, get_term
+from shared.split_strategies import calculate_split
 from shared.target_strategies import resolve_target
 
 
