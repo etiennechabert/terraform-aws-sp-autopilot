@@ -631,7 +631,7 @@ def _build_type_plans_subtable(
         end_date = plan.get("end_date", "") or ""
 
         (
-            start_display,
+            _start_display,
             _end_display,
             days_remaining_display,
             expiring_soon,
@@ -644,15 +644,19 @@ def _build_type_plans_subtable(
         summary_class_attr = " ".join(summary_classes)
         details_id = f"plan-details-{type_idx}-{plan_idx}"
 
+        expiration_phrase = _expiration_phrase(days_remaining_display)
+        expiration_class = "plan-card-expiration"
+        if days_remaining_display == "Expired":
+            expiration_class += " expired"
+        elif expiring_soon:
+            expiration_class += " expiring"
+
         meta_parts = [
-            f"{term_years}&nbsp;year",
-            payment_option,
+            f"<span>{term_years}&nbsp;year</span>",
+            f"<span>{payment_option}</span>",
+            (f'<span class="{expiration_class}" title="{tooltip_text}">{expiration_phrase}</span>'),
         ]
-        if start_display and start_display != "Unknown":
-            meta_parts.append(f"started {start_display}")
-        meta_html = '<span class="plan-card-sep">·</span>'.join(
-            f"<span>{part}</span>" for part in meta_parts
-        )
+        meta_html = '<span class="plan-card-sep">·</span>'.join(meta_parts)
 
         short_id_html = ""
         if plan_id and plan_id != "Unknown" and len(plan_id) > 6:
@@ -670,7 +674,6 @@ def _build_type_plans_subtable(
                             <span class="plan-card-meta">{meta_html}</span>
                             {metrics_html}
                             {short_id_html}
-                            <span class="plan-card-days" title="{tooltip_text}">{days_remaining_display}</span>
                         </div>
                         <div id="{details_id}" class="plan-card-details" hidden>{_render_plan_details(plan)}</div>
                     </div>
@@ -815,6 +818,17 @@ def _render_plan_details(plan: dict[str, Any]) -> str:
         '<table class="plan-details-kv">'
         "<tbody>" + "".join(rows) + "</tbody></table></div>"
     )
+
+
+def _expiration_phrase(days_remaining_display: str) -> str:
+    """Natural phrasing for the expiration meta chunk on a plan card."""
+    if days_remaining_display in ("Expired", "Today", "N/A"):
+        return (
+            days_remaining_display.lower()
+            if days_remaining_display == "Expired"
+            else ("expires today" if days_remaining_display == "Today" else days_remaining_display)
+        )
+    return f"{days_remaining_display} left"
 
 
 def _render_plan_card_metrics(plan: dict[str, Any]) -> str:

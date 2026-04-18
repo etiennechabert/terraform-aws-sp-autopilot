@@ -322,14 +322,13 @@ def generate_html_report(
             cursor: help;
             flex: 0 0 auto;
         }}
-        .plan-card-days {{
-            flex: 0 0 auto;
-            min-width: 90px;
-            text-align: right;
+        .plan-card-expiration {{
+            cursor: help;
             font-weight: 600;
             color: #232f3e;
-            cursor: help;
         }}
+        .plan-card-expiration.expiring {{ color: #b88400; }}
+        .plan-card-expiration.expired {{ color: #dc3545; }}
         .plan-card-details {{
             border-top: 1px solid #e6ebf2;
             background: #fafbfc;
