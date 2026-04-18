@@ -336,6 +336,7 @@ resource "aws_iam_role_policy" "reporter_cost_explorer" {
       Action = [
         "ce:GetSavingsPlansPurchaseRecommendation",
         "ce:GetSavingsPlansUtilization",
+        "ce:GetSavingsPlansUtilizationDetails",
         "ce:GetSavingsPlansCoverage"
       ]
       Resource = "*"

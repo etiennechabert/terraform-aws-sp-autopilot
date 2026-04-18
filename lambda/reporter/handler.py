@@ -32,7 +32,7 @@ from shared.handler_utils import (
     send_error_notification,
 )
 from shared.local_mode import is_local_mode
-from shared.savings_plans_metrics import get_savings_plans_summary
+from shared.savings_plans_metrics import get_per_plan_mtd_metrics, get_savings_plans_summary
 from shared.spending_analyzer import SpendingAnalyzer
 from shared.storage_adapter import StorageAdapter
 
@@ -94,6 +94,13 @@ def handler(event: dict[str, Any], context: Any) -> dict[str, Any]:
         get_enabled_plan_types(config),
         config["lookback_hours"],
     )
+
+    # Attach per-plan MTD metrics (by ARN) onto each plan for the details panel.
+    per_plan_mtd = get_per_plan_mtd_metrics(clients["ce"])
+    for plan in savings_data.get("plans", []):
+        arn = plan.get("savings_plan_arn")
+        if arn and arn in per_plan_mtd:
+            plan.update(per_plan_mtd[arn])
 
     logger.info(
         f"Data collected - Coverage: {coverage_data['compute']['summary']['avg_coverage_total']:.1f}%, "

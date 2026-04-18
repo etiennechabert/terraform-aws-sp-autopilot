@@ -199,6 +199,7 @@ def build_breakdown_table_html(
                         <th>Commitment/hr</th>
                         <th>On-Demand Covered/hr</th>
                         <th>Savings/hr</th>
+                        <th>Savings %</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -237,6 +238,7 @@ def build_breakdown_table_html(
                         <td class="metric">${total_commitment_type:.2f}/hr</td>
                         <td class="metric">${on_demand_coverage_capacity:.2f}/hr</td>
                         <td class="metric" style="color: #28a745;">${potential_savings:.2f}/hr</td>
+                        <td class="metric" style="color: #28a745;">{type_savings_pct:.1f}%</td>
                     </tr>
 """
         else:
@@ -247,6 +249,7 @@ def build_breakdown_table_html(
                         <td>{plans_count_type}</td>
                         <td class="metric">{na_html}</td>
                         <td class="metric">${total_commitment_type:.2f}/hr</td>
+                        <td class="metric">{na_html}</td>
                         <td class="metric">{na_html}</td>
                         <td class="metric">{na_html}</td>
                     </tr>
@@ -265,6 +268,7 @@ def build_breakdown_table_html(
                         <td class="metric">${total_commitment:.2f}/hr</td>
                         <td class="metric">${total_coverage_capacity:.2f}/hr</td>
                         <td class="metric" style="color: #28a745;">${total_potential_savings:.2f}/hr</td>
+                        <td class="metric" style="color: #28a745;">{overall_savings_percentage:.1f}%</td>
                     </tr>
 """
 
@@ -455,6 +459,268 @@ def build_active_plans_table_html(plans: list[dict[str, Any]]) -> str:
     return html
 
 
+def build_plans_breakdown_section_html(
+    breakdown_by_type: dict[str, Any],
+    plans: list[dict[str, Any]],
+    plans_count: int,
+    average_utilization: float,
+    total_commitment: float,
+    overall_savings_percentage: float,
+) -> str:
+    """Nested breakdown table: plan type -> plans of that type -> full plan details.
+
+    Two levels of click-to-expand: the type row opens a nested sub-table of
+    that type's active plans; each plan row then opens its full details panel.
+    """
+    if not breakdown_by_type:
+        return ""
+
+    now = datetime.now(UTC)
+    three_months_from_now = now + timedelta(days=90)
+
+    plans_by_type: dict[str, list[dict[str, Any]]] = {}
+    for plan in plans:
+        plans_by_type.setdefault(plan.get("plan_type", "Unknown"), []).append(plan)
+
+    na_tooltip = "This SP type is not enabled in your configuration, so metrics are not collected"
+
+    html = """
+            <table class="breakdown-table">
+                <thead>
+                    <tr>
+                        <th style="width: 3%;"></th>
+                        <th>Plan Type</th>
+                        <th>Active Plans</th>
+                        <th>Utilization</th>
+                        <th>Commitment/hr</th>
+                        <th>On-Demand Covered/hr</th>
+                        <th>Savings/hr</th>
+                        <th>Savings %</th>
+                        <th style="text-align: right;">Next Expiry</th>
+                    </tr>
+                </thead>
+                <tbody>
+"""
+
+    soonest_overall_days: int | None = None
+    soonest_overall_date: str = ""
+
+    for type_idx, (plan_type, type_data) in enumerate(breakdown_by_type.items()):
+        plans_count_type = type_data.get("plans_count", 0)
+        total_commitment_type = type_data.get("total_commitment", 0.0)
+        has_metrics = "average_utilization" in type_data
+
+        if "Compute" in plan_type:
+            plan_type_display = "Compute Savings Plans"
+        elif "SageMaker" in plan_type:
+            plan_type_display = "SageMaker Savings Plans"
+        elif "Database" in plan_type:
+            plan_type_display = "Database Savings Plans"
+        elif "EC2Instance" in plan_type:
+            plan_type_display = "EC2 Instance Savings Plans"
+        else:
+            plan_type_display = plan_type
+
+        type_plans = plans_by_type.get(plan_type, [])
+        next_expiry_cell = _render_next_expiry_cell(type_plans, now, three_months_from_now)
+        next_expiry_days = _next_expiry_days(type_plans, now)
+        if next_expiry_days is not None and (
+            soonest_overall_days is None or next_expiry_days < soonest_overall_days
+        ):
+            soonest_overall_days = next_expiry_days
+            soonest_overall_date = _next_expiry_end(type_plans)
+
+        type_details_id = f"type-plans-{type_idx}"
+
+        if has_metrics:
+            type_utilization = type_data["average_utilization"]
+            type_savings_pct = type_data.get("savings_percentage", 0.0)
+            on_demand_coverage_capacity = sp_calculations.coverage_from_commitment(
+                total_commitment_type, type_savings_pct
+            )
+            potential_savings = on_demand_coverage_capacity - total_commitment_type
+
+            html += f"""
+                    <tr class="type-summary-row" onclick="togglePlanDetails('{type_details_id}', this)">
+                        <td class="plan-toggle-cell"><span class="plan-toggle-icon">&#9656;</span></td>
+                        <td><strong>{plan_type_display}</strong></td>
+                        <td>{plans_count_type}</td>
+                        <td class="metric">{type_utilization:.1f}%</td>
+                        <td class="metric">${total_commitment_type:.2f}/hr</td>
+                        <td class="metric">${on_demand_coverage_capacity:.2f}/hr</td>
+                        <td class="metric" style="color: #28a745;">${potential_savings:.2f}/hr</td>
+                        <td class="metric" style="color: #28a745;">{type_savings_pct:.1f}%</td>
+                        <td class="metric" style="text-align: right;">{next_expiry_cell}</td>
+                    </tr>
+"""
+        else:
+            na_html = f'<span title="{na_tooltip}" style="cursor: help; color: #6c757d;">N/A</span>'
+            html += f"""
+                    <tr class="type-summary-row" onclick="togglePlanDetails('{type_details_id}', this)">
+                        <td class="plan-toggle-cell"><span class="plan-toggle-icon">&#9656;</span></td>
+                        <td><strong>{plan_type_display}</strong></td>
+                        <td>{plans_count_type}</td>
+                        <td class="metric">{na_html}</td>
+                        <td class="metric">${total_commitment_type:.2f}/hr</td>
+                        <td class="metric">{na_html}</td>
+                        <td class="metric">{na_html}</td>
+                        <td class="metric">{na_html}</td>
+                        <td class="metric" style="text-align: right;">{next_expiry_cell}</td>
+                    </tr>
+"""
+        # Nested sub-table with plans of this type, hidden by default.
+        nested = _build_type_plans_subtable(type_idx, type_plans, now, three_months_from_now)
+        html += f"""
+                    <tr id="{type_details_id}" class="plan-details-row" hidden>
+                        <td colspan="9" style="padding: 0;">{nested}</td>
+                    </tr>
+"""
+
+    if len(breakdown_by_type) > 1:
+        total_coverage_capacity = sp_calculations.coverage_from_commitment(
+            total_commitment, overall_savings_percentage
+        )
+        total_potential_savings = total_coverage_capacity - total_commitment
+        if soonest_overall_days is not None:
+            total_expiry_cell = _format_days_cell(soonest_overall_days, soonest_overall_date)
+        else:
+            total_expiry_cell = '<span style="color: #6c757d;">N/A</span>'
+        html += f"""
+                    <tr style="border-top: 2px solid #232f3e; font-weight: bold; background-color: #f8f9fa;">
+                        <td></td>
+                        <td><strong>Total</strong></td>
+                        <td>{plans_count}</td>
+                        <td class="metric">{average_utilization:.1f}%</td>
+                        <td class="metric">${total_commitment:.2f}/hr</td>
+                        <td class="metric">${total_coverage_capacity:.2f}/hr</td>
+                        <td class="metric" style="color: #28a745;">${total_potential_savings:.2f}/hr</td>
+                        <td class="metric" style="color: #28a745;">{overall_savings_percentage:.1f}%</td>
+                        <td class="metric" style="text-align: right;">{total_expiry_cell}</td>
+                    </tr>
+"""
+
+    html += """
+                </tbody>
+            </table>
+"""
+    return html
+
+
+def _build_type_plans_subtable(
+    type_idx: int,
+    type_plans: list[dict[str, Any]],
+    now: datetime,
+    three_months_from_now: datetime,
+) -> str:
+    """Collapsible card list of individual plans for one SP type."""
+    if not type_plans:
+        return (
+            '<div class="plans-nested-wrap" style="color: #6c757d; font-style: italic;">'
+            "No active plans for this type.</div>"
+        )
+
+    sorted_plans = sorted(type_plans, key=lambda p: p.get("end_date", "9999-12-31"))
+
+    items = ""
+    for plan_idx, plan in enumerate(sorted_plans):
+        plan_id = plan.get("plan_id", "Unknown")
+        hourly_commitment = plan.get("hourly_commitment", 0.0)
+        term_years = plan.get("term_years", 0)
+        payment_option = plan.get("payment_option", "Unknown")
+        start_date = plan.get("start_date", "Unknown")
+        end_date = plan.get("end_date", "Unknown")
+
+        (
+            _start_display,
+            _end_display,
+            days_remaining_display,
+            expiring_soon,
+            tooltip_text,
+        ) = parse_plan_dates(start_date, end_date, now, three_months_from_now)
+
+        summary_classes = ["plan-card-row"]
+        if expiring_soon:
+            summary_classes.append("expiring-soon")
+        summary_class_attr = " ".join(summary_classes)
+        details_id = f"plan-details-{type_idx}-{plan_idx}"
+
+        items += f"""
+                    <div class="plan-card">
+                        <div class="{summary_class_attr}" onclick="togglePlanDetails('{details_id}', this)">
+                            <span class="plan-toggle-icon">&#9656;</span>
+                            <span class="plan-card-id">{plan_id}</span>
+                            <span class="plan-card-meta">
+                                <span class="plan-card-commit">${hourly_commitment:.2f}/hr</span>
+                                <span class="plan-card-sep">·</span>
+                                <span>{term_years}&nbsp;year</span>
+                                <span class="plan-card-sep">·</span>
+                                <span>{payment_option}</span>
+                            </span>
+                            <span class="plan-card-days" title="{tooltip_text}">{days_remaining_display}</span>
+                        </div>
+                        <div id="{details_id}" class="plan-card-details" hidden>{_render_plan_details(plan)}</div>
+                    </div>
+"""
+
+    return f"""
+                <div class="plans-nested-wrap">
+                    {items}
+                </div>
+"""
+
+
+def _next_expiry_days(type_plans: list[dict[str, Any]], now: datetime) -> int | None:
+    """Days until the soonest-ending plan in the given list, or None if no parseable dates."""
+    soonest: int | None = None
+    for plan in type_plans:
+        end_date = plan.get("end_date", "") or ""
+        try:
+            if "T" in end_date:
+                end_parsed = datetime.fromisoformat(end_date.replace("Z", "+00:00"))
+            else:
+                end_parsed = datetime.strptime(end_date, "%Y-%m-%d").replace(tzinfo=UTC)
+        except (ValueError, TypeError):
+            continue
+        days = (end_parsed - now).days
+        if soonest is None or days < soonest:
+            soonest = days
+    return soonest
+
+
+def _next_expiry_end(type_plans: list[dict[str, Any]]) -> str:
+    """End date of the soonest-expiring plan (used for tooltip)."""
+    if not type_plans:
+        return ""
+    sorted_plans = sorted(type_plans, key=lambda p: p.get("end_date", "9999-12-31"))
+    return sorted_plans[0].get("end_date", "") or ""
+
+
+def _render_next_expiry_cell(
+    type_plans: list[dict[str, Any]], now: datetime, three_months_from_now: datetime
+) -> str:
+    """Render the Next Expiry cell for a type row: days + color when <90 days out."""
+    days = _next_expiry_days(type_plans, now)
+    if days is None:
+        return '<span style="color: #6c757d;">N/A</span>'
+    end_date = _next_expiry_end(type_plans)
+    return _format_days_cell(days, end_date)
+
+
+def _format_days_cell(days: int, end_date: str) -> str:
+    if days < 0:
+        text, color = "Expired", "#dc3545"
+    elif days == 0:
+        text, color = "Today", "#dc3545"
+    elif days <= 30:
+        text, color = f"{days} days", "#dc3545"
+    elif days <= 90:
+        text, color = f"{days} days", "#ffc107"
+    else:
+        text, color = f"{days} days", "#232f3e"
+    tooltip = f"Next plan ends: {end_date.split('T', 1)[0]}" if end_date else ""
+    return f'<span title="{tooltip}" style="cursor: help; color: {color};">{text}</span>'
+
+
 def _render_plan_details(plan: dict[str, Any]) -> str:
     """Render the expanded details panel for a single plan."""
     savings_plan_arn = plan.get("savings_plan_arn") or ""
@@ -472,11 +738,9 @@ def _render_plan_details(plan: dict[str, Any]) -> str:
     end_date = plan.get("end_date") or ""
 
     def _row(label: str, value: str) -> str:
-        return (
-            f'<tr><th style="width: 220px; text-align: left; background: #f8f9fa; '
-            f'color: #232f3e; padding: 6px 12px;">{label}</th>'
-            f'<td style="padding: 6px 12px; word-break: break-all;">{value}</td></tr>'
-        )
+        return f"<tr><th>{label}</th><td>{value}</td></tr>"
+
+    mtd_card = _render_mtd_card(plan, currency)
 
     rows: list[str] = []
 
@@ -532,10 +796,52 @@ def _render_plan_details(plan: dict[str, Any]) -> str:
         rows.append(_row("Tags", '<em style="color: #6c757d;">none</em>'))
 
     return (
-        '<div class="plan-details-panel" style="background: #fcfcfc; '
-        'padding: 14px 20px; border-left: 3px solid #2196f3;">'
-        '<table style="width: 100%; margin: 0; border-collapse: collapse;">'
+        '<div class="plan-details-panel">'
+        f"{mtd_card}"
+        '<table class="plan-details-kv">'
         "<tbody>" + "".join(rows) + "</tbody></table></div>"
+    )
+
+
+def _render_mtd_card(plan: dict[str, Any], currency: str) -> str:
+    """Month-to-date utilization/savings tiles for one plan.
+
+    Returns an empty string when no MTD data is available (plan just purchased,
+    Cost Explorer still catching up, or the API errored).
+    """
+    mtd_total = plan.get("mtd_total_commitment")
+    if mtd_total is None:
+        return ""
+
+    utilization_pct = plan.get("mtd_utilization_percentage", 0.0) or 0.0
+    net_savings = plan.get("mtd_net_savings", 0.0) or 0.0
+    discount_pct = plan.get("discount_percentage", 0.0) or 0.0
+
+    util_color = (
+        "#28a745" if utilization_pct >= 95 else "#ff9900" if utilization_pct >= 80 else "#dc3545"
+    )
+
+    def _tile(label: str, value: str, color: str = "#232f3e") -> str:
+        return (
+            '<div style="flex: 1; min-width: 140px; background: white; padding: 10px 14px; '
+            'border-radius: 6px; border: 1px solid #e0e0e0;">'
+            f'<div style="font-size: 0.75em; color: #6c757d; text-transform: uppercase; '
+            f'letter-spacing: 0.04em; margin-bottom: 4px;">{label}</div>'
+            f'<div style="font-size: 1.25em; font-weight: 600; color: {color};">{value}</div>'
+            "</div>"
+        )
+
+    tiles = "".join(
+        [
+            _tile("MTD Net Savings", f"{currency} {net_savings:,.2f}", "#28a745"),
+            _tile("MTD Commitment", f"{currency} {mtd_total:,.2f}"),
+            _tile("MTD Utilization", f"{utilization_pct:.1f}%", util_color),
+            _tile("Overall Discount", f"{discount_pct:.1f}%", "#2196f3"),
+        ]
+    )
+    return (
+        '<div style="display: flex; flex-wrap: wrap; gap: 10px; margin-bottom: 14px;">'
+        f"{tiles}</div>"
     )
 
 

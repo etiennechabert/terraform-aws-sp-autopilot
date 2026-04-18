@@ -437,6 +437,90 @@ def get_savings_plans_metrics(
         raise
 
 
+def get_per_plan_mtd_metrics(ce_client: CostExplorerClient) -> dict[str, dict[str, float]]:
+    """Per-plan month-to-date utilization and savings, keyed by Savings Plan ARN.
+
+    Single call to get_savings_plans_utilization_details covering today's
+    month start → today. Returns {} on DataUnavailableException.
+    """
+    now = datetime.now(UTC)
+    start_of_month = now.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
+
+    params = {
+        "TimePeriod": {
+            "Start": start_of_month.strftime("%Y-%m-%d"),
+            "End": now.strftime("%Y-%m-%d"),
+        },
+    }
+    # If the month just started and end == start, AWS returns an error; widen by 1 day.
+    if params["TimePeriod"]["Start"] == params["TimePeriod"]["End"]:
+        params["TimePeriod"]["End"] = (now + timedelta(days=1)).strftime("%Y-%m-%d")
+
+    logger.info(
+        f"Fetching per-plan MTD metrics from {params['TimePeriod']['Start']} "
+        f"to {params['TimePeriod']['End']}"
+    )
+
+    by_arn: dict[str, dict[str, float]] = {}
+    try:
+        response = ce_client.get_savings_plans_utilization_details(**params)
+        add_response(
+            api="get_savings_plans_utilization_details",
+            params=params,
+            response=response,
+            context="get_per_plan_mtd_metrics",
+        )
+        details = response.get("SavingsPlansUtilizationDetails", [])
+        if not isinstance(details, list):
+            return {}
+
+        for item in details:
+            if not isinstance(item, dict):
+                continue
+            arn = item.get("SavingsPlanArn")
+            if not arn:
+                continue
+            utilization = item.get("Utilization") or {}
+            savings = item.get("Savings") or {}
+            if not isinstance(utilization, dict) or not isinstance(savings, dict):
+                continue
+
+            try:
+                total_commitment = float(utilization.get("TotalCommitment", "0") or 0)
+                used_commitment = float(utilization.get("UsedCommitment", "0") or 0)
+                utilization_pct = float(utilization.get("UtilizationPercentage", "0") or 0)
+                net_savings = float(savings.get("NetSavings", "0") or 0)
+                on_demand_equivalent = float(savings.get("OnDemandCostEquivalent", "0") or 0)
+            except (TypeError, ValueError):
+                continue
+
+            discount_percentage = sp_calculations.calculate_savings_percentage(
+                on_demand_equivalent, used_commitment
+            )
+            by_arn[arn] = {
+                "mtd_total_commitment": total_commitment,
+                "mtd_used_commitment": used_commitment,
+                "mtd_utilization_percentage": utilization_pct,
+                "mtd_net_savings": net_savings,
+                "mtd_on_demand_equivalent": on_demand_equivalent,
+                "discount_percentage": discount_percentage,
+            }
+    except ClientError as e:
+        error_code = e.response.get("Error", {}).get("Code", "Unknown")
+        if error_code == "DataUnavailableException":
+            logger.info("No per-plan MTD data available yet")
+        else:
+            logger.warning(f"Per-plan MTD fetch failed ({error_code}); skipping per-plan metrics")
+        return {}
+    except Exception as e:
+        # Defensive: any malformed response shape (e.g. test mocks) shouldn't break report gen.
+        logger.warning(f"Per-plan MTD parsing failed ({e!r}); skipping per-plan metrics")
+        return {}
+
+    logger.info(f"Collected MTD metrics for {len(by_arn)} plans")
+    return by_arn
+
+
 def get_savings_plans_summary(
     savingsplans_client: SavingsPlansClient,
     ce_client: CostExplorerClient,
