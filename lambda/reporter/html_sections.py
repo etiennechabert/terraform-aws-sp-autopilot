@@ -827,12 +827,15 @@ def _render_plan_card_metrics(plan: dict[str, Any]) -> str:
 
     utilization_pct = plan.get("mtd_utilization_percentage", 0.0) or 0.0
     discount_pct = plan.get("discount_percentage", 0.0) or 0.0
+    net_savings = plan.get("mtd_net_savings", 0.0) or 0.0
 
     util_color = (
         "#28a745" if utilization_pct >= 95 else "#ff9900" if utilization_pct >= 80 else "#dc3545"
     )
 
     return (
+        f'<span class="plan-card-pill" style="color: #28a745;" '
+        f'title="MTD net savings">save ${net_savings:,.0f}</span>'
         f'<span class="plan-card-pill" style="color: {util_color};" '
         f'title="MTD utilization">util {utilization_pct:.0f}%</span>'
         f'<span class="plan-card-pill" style="color: #2196f3;" '
