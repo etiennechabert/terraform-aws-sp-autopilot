@@ -11,13 +11,13 @@ import logging
 from typing import Any
 
 from botocore.exceptions import ClientError
-from follow_aws_strategy import calculate_purchase_need_follow_aws
-from follow_static_strategy import calculate_purchase_need_static
-from sp_types import SP_TYPES, get_term
-from split_strategies import calculate_split
-from target_strategies import resolve_target
 
 from shared import sp_calculations
+from shared.follow_aws_strategy import calculate_purchase_need_follow_aws
+from shared.follow_static_strategy import calculate_purchase_need_static
+from shared.split_strategies import calculate_split
+from shared.sp_types import SP_TYPES, get_term
+from shared.target_strategies import resolve_target
 
 
 logger = logging.getLogger()

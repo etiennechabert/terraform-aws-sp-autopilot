@@ -6,21 +6,10 @@ if they ran right now, allowing comparison between strategies.
 """
 
 import logging
-import os
-import sys
 from typing import Any
 
 from shared import sp_calculations
 from shared.constants import AWS_TYPE_TO_KEY
-
-
-# purchase_calculator lives in the scheduler directory; in Lambda archives both
-# are at the root, but during tests we need to add the scheduler path explicitly.
-_scheduler_dir = os.path.join(
-    os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "scheduler"
-)
-if _scheduler_dir not in sys.path:
-    sys.path.append(_scheduler_dir)
 
 
 logger = logging.getLogger(__name__)
@@ -82,7 +71,7 @@ def calculate_scheduler_preview(
 
     Returns preview data with all combinations' recommendations.
     """
-    from purchase_calculator import calculate_purchase_need
+    from shared.purchase_calculator import calculate_purchase_need
 
     config = _inject_actual_savings_rates(config, savings_data)
 

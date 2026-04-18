@@ -5,8 +5,9 @@ Tests the two-phase strategy pipeline (target + split) for
 Compute, Database, and SageMaker Savings Plans.
 """
 
-import purchase_calculator
 import pytest
+
+from shared import purchase_calculator
 
 
 @pytest.fixture

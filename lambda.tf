@@ -129,29 +129,29 @@ data "archive_file" "scheduler" {
     }
   }
 
-  # Strategy sub-packages
-  dynamic "source" {
-    for_each = fileset("${path.module}/lambda/scheduler/target_strategies", "*.py")
-    content {
-      content  = file("${path.module}/lambda/scheduler/target_strategies/${source.value}")
-      filename = "target_strategies/${source.value}"
-    }
-  }
-
-  dynamic "source" {
-    for_each = fileset("${path.module}/lambda/scheduler/split_strategies", "*.py")
-    content {
-      content  = file("${path.module}/lambda/scheduler/split_strategies/${source.value}")
-      filename = "split_strategies/${source.value}"
-    }
-  }
-
   # Shared module
   dynamic "source" {
     for_each = fileset("${path.module}/lambda/shared", "*.py")
     content {
       content  = file("${path.module}/lambda/shared/${source.value}")
       filename = "shared/${source.value}"
+    }
+  }
+
+  # Shared strategy sub-packages
+  dynamic "source" {
+    for_each = fileset("${path.module}/lambda/shared/target_strategies", "*.py")
+    content {
+      content  = file("${path.module}/lambda/shared/target_strategies/${source.value}")
+      filename = "shared/target_strategies/${source.value}"
+    }
+  }
+
+  dynamic "source" {
+    for_each = fileset("${path.module}/lambda/shared/split_strategies", "*.py")
+    content {
+      content  = file("${path.module}/lambda/shared/split_strategies/${source.value}")
+      filename = "shared/split_strategies/${source.value}"
     }
   }
 }
@@ -178,6 +178,23 @@ data "archive_file" "purchaser" {
       filename = "shared/${source.value}"
     }
   }
+
+  # Shared strategy sub-packages
+  dynamic "source" {
+    for_each = fileset("${path.module}/lambda/shared/target_strategies", "*.py")
+    content {
+      content  = file("${path.module}/lambda/shared/target_strategies/${source.value}")
+      filename = "shared/target_strategies/${source.value}"
+    }
+  }
+
+  dynamic "source" {
+    for_each = fileset("${path.module}/lambda/shared/split_strategies", "*.py")
+    content {
+      content  = file("${path.module}/lambda/shared/split_strategies/${source.value}")
+      filename = "shared/split_strategies/${source.value}"
+    }
+  }
 }
 
 data "archive_file" "reporter" {
@@ -194,44 +211,29 @@ data "archive_file" "reporter" {
     }
   }
 
-  # Scheduler modules needed by scheduler_preview.py
-  dynamic "source" {
-    for_each = toset([
-      "sp_types.py",
-      "follow_aws_strategy.py",
-      "follow_static_strategy.py",
-      "recommendations.py",
-      "purchase_calculator.py",
-    ])
-    content {
-      content  = file("${path.module}/lambda/scheduler/${source.value}")
-      filename = source.value
-    }
-  }
-
-  # Strategy sub-packages
-  dynamic "source" {
-    for_each = fileset("${path.module}/lambda/scheduler/target_strategies", "*.py")
-    content {
-      content  = file("${path.module}/lambda/scheduler/target_strategies/${source.value}")
-      filename = "target_strategies/${source.value}"
-    }
-  }
-
-  dynamic "source" {
-    for_each = fileset("${path.module}/lambda/scheduler/split_strategies", "*.py")
-    content {
-      content  = file("${path.module}/lambda/scheduler/split_strategies/${source.value}")
-      filename = "split_strategies/${source.value}"
-    }
-  }
-
   # Shared module
   dynamic "source" {
     for_each = fileset("${path.module}/lambda/shared", "*.py")
     content {
       content  = file("${path.module}/lambda/shared/${source.value}")
       filename = "shared/${source.value}"
+    }
+  }
+
+  # Shared strategy sub-packages
+  dynamic "source" {
+    for_each = fileset("${path.module}/lambda/shared/target_strategies", "*.py")
+    content {
+      content  = file("${path.module}/lambda/shared/target_strategies/${source.value}")
+      filename = "shared/target_strategies/${source.value}"
+    }
+  }
+
+  dynamic "source" {
+    for_each = fileset("${path.module}/lambda/shared/split_strategies", "*.py")
+    content {
+      content  = file("${path.module}/lambda/shared/split_strategies/${source.value}")
+      filename = "shared/split_strategies/${source.value}"
     }
   }
 }

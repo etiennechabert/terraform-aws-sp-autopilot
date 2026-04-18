@@ -1,8 +1,8 @@
 from typing import Any
 
-from split_strategies.fixed_step_split import calculate_fixed_step_split
-from split_strategies.gap_split import calculate_gap_split
-from split_strategies.one_shot_split import calculate_one_shot_split
+from shared.split_strategies.fixed_step_split import calculate_fixed_step_split
+from shared.split_strategies.gap_split import calculate_gap_split
+from shared.split_strategies.one_shot_split import calculate_one_shot_split
 
 
 SPLIT_STRATEGIES = {

@@ -21,10 +21,10 @@ from typing import Any, cast
 
 # Import new modular components
 import email_notifications as email_module
-import purchase_calculator as purchase_module
 import queue_manager as queue_module
 from config import CONFIG_SCHEMA
 
+from shared import purchase_calculator as purchase_module
 from shared.config_validation import validate_scheduler_config
 from shared.handler_utils import (
     initialize_clients,
