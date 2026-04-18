@@ -302,6 +302,19 @@ def generate_html_report(
             flex-wrap: wrap;
         }}
         .plan-card-sep {{ color: #c1c9d2; }}
+        .plan-card-pill {{
+            display: inline-flex;
+            align-items: center;
+            padding: 2px 10px;
+            border-radius: 12px;
+            background: #f1f4f8;
+            font-size: 0.82em;
+            font-weight: 600;
+            font-variant-numeric: tabular-nums;
+            cursor: help;
+            flex: 0 0 auto;
+        }}
+        .plan-card-pill + .plan-card-pill {{ margin-left: 6px; }}
         .plan-card-id-short {{
             font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
             font-size: 0.78em;

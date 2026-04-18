@@ -660,12 +660,15 @@ def _build_type_plans_subtable(
                 f'<span class="plan-card-id-short" title="{plan_id}">…{plan_id[-5:]}</span>'
             )
 
+        metrics_html = _render_plan_card_metrics(plan)
+
         items += f"""
                     <div class="plan-card">
                         <div class="{summary_class_attr}" onclick="togglePlanDetails('{details_id}', this)">
                             <span class="plan-toggle-icon">&#9656;</span>
                             <span class="plan-card-commit">${hourly_commitment:.2f}/hr</span>
                             <span class="plan-card-meta">{meta_html}</span>
+                            {metrics_html}
                             {short_id_html}
                             <span class="plan-card-days" title="{tooltip_text}">{days_remaining_display}</span>
                         </div>
@@ -811,6 +814,29 @@ def _render_plan_details(plan: dict[str, Any]) -> str:
         f"{mtd_card}"
         '<table class="plan-details-kv">'
         "<tbody>" + "".join(rows) + "</tbody></table></div>"
+    )
+
+
+def _render_plan_card_metrics(plan: dict[str, Any]) -> str:
+    """Compact MTD utilization + discount pills shown on the folded plan card.
+
+    Returns empty when no MTD data is available (new plans, Cost Explorer lag).
+    """
+    if plan.get("mtd_total_commitment") is None:
+        return ""
+
+    utilization_pct = plan.get("mtd_utilization_percentage", 0.0) or 0.0
+    discount_pct = plan.get("discount_percentage", 0.0) or 0.0
+
+    util_color = (
+        "#28a745" if utilization_pct >= 95 else "#ff9900" if utilization_pct >= 80 else "#dc3545"
+    )
+
+    return (
+        f'<span class="plan-card-pill" style="color: {util_color};" '
+        f'title="MTD utilization">util {utilization_pct:.0f}%</span>'
+        f'<span class="plan-card-pill" style="color: #2196f3;" '
+        f'title="Overall discount rate">disc {discount_pct:.1f}%</span>'
     )
 
 
