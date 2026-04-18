@@ -1,7 +1,7 @@
 from typing import Any
 
-from target_strategies.aws_target import resolve_aws
-from target_strategies.dynamic_target import resolve_dynamic
+from shared.target_strategies.aws_target import resolve_aws
+from shared.target_strategies.dynamic_target import resolve_dynamic
 
 
 TARGET_STRATEGIES = {

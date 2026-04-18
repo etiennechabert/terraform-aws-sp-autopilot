@@ -3,8 +3,8 @@
 import logging
 from typing import Any
 
-import recommendations as recommendations_module
-from sp_types import SP_TYPES, get_term
+from shared import recommendations as recommendations_module
+from shared.sp_types import SP_TYPES, get_term
 
 
 logger = logging.getLogger()
