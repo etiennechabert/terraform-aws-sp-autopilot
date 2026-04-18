@@ -12,7 +12,6 @@ from datetime import UTC, datetime, timedelta
 from typing import Any
 
 from shared import sp_calculations
-from shared.demo_mode import is_demo_mode
 from shared.local_mode import is_local_mode
 from shared.optimal_coverage import calculate_optimal_coverage
 
@@ -1574,11 +1573,6 @@ def generate_html_report(
     </style>
 </head>
 <body>
-    {
-        ""
-        if not is_demo_mode()
-        else '<div style="background: #ff9800; color: #000; text-align: center; padding: 8px; font-weight: bold; font-size: 14px; position: sticky; top: 0; z-index: 1000;">DEMO MODE — All financial data has been randomized</div>'
-    }
     <div class="container">
         <h1>Savings Plans Coverage & Savings Report</h1>
         <div class="subtitle">
@@ -2625,7 +2619,6 @@ def generate_json_report(
             "generated_at": report_timestamp,
             "report_type": "savings_plans_coverage_and_savings",
             "generator": "sp-autopilot-reporter",
-            **({"demo_mode": True} if is_demo_mode() else {}),
         },
         "report_parameters": {
             "lookback_hours": config["lookback_hours"],

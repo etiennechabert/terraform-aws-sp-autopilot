@@ -73,7 +73,6 @@ module "savings_plans" {
 
   # Reporting
   reporting = {
-    enabled       = true
     format        = "html"
     email_reports = true # Email reports to stakeholders
   }

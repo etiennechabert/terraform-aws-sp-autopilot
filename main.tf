@@ -209,4 +209,39 @@ locals {
   sns_kms_key = try(var.encryption.sns_kms_key, "alias/aws/sns")
   sqs_kms_key = try(var.encryption.sqs_kms_key, "alias/aws/sqs")
   s3_kms_key  = try(var.encryption.s3.kms_key, null) # null = AES256, otherwise SSE-KMS
+
+  # Shared Lambda environment variables
+  #
+  # common_lambda_env: consumed by all three Lambdas.
+  # strategy_lambda_env: consumed by scheduler + reporter (purchaser does not
+  #   need strategy config — it executes pre-calculated intents from the queue).
+
+  common_lambda_env = {
+    SNS_TOPIC_ARN                   = aws_sns_topic.notifications.arn
+    ENABLE_COMPUTE_SP               = tostring(local.compute_enabled)
+    ENABLE_DATABASE_SP              = tostring(local.database_enabled)
+    ENABLE_SAGEMAKER_SP             = tostring(local.sagemaker_enabled)
+    TAGS                            = jsonencode(local.common_tags)
+    SPIKE_GUARD_ENABLED             = tostring(local.spike_guard_enabled)
+    SPIKE_GUARD_LONG_LOOKBACK_DAYS  = tostring(local.spike_guard_long_lookback_days)
+    SPIKE_GUARD_SHORT_LOOKBACK_DAYS = tostring(local.spike_guard_short_lookback_days)
+    SPIKE_GUARD_THRESHOLD_PERCENT   = tostring(local.spike_guard_threshold_percent)
+  }
+
+  strategy_lambda_env = {
+    TARGET_STRATEGY_TYPE        = local.target_strategy_type
+    SPLIT_STRATEGY_TYPE         = local.split_strategy_type
+    DYNAMIC_RISK_LEVEL          = local.dynamic_risk_level
+    PRUDENT_PERCENTAGE          = tostring(local.prudent_percentage)
+    STATIC_COMMITMENT           = tostring(local.static_commitment)
+    FIXED_STEP_PERCENT          = tostring(local.fixed_step_percent)
+    MAX_PURCHASE_PERCENT        = tostring(local.max_purchase_percent)
+    MIN_PURCHASE_PERCENT        = local.min_purchase_percent != null ? tostring(local.min_purchase_percent) : ""
+    GAP_SPLIT_DIVIDER           = tostring(local.gap_split_divider)
+    COMPUTE_SP_TERM             = local.compute_term
+    COMPUTE_SP_PAYMENT_OPTION   = local.compute_payment_option
+    DATABASE_SP_PAYMENT_OPTION  = local.database_sp_payment_option
+    SAGEMAKER_SP_TERM           = local.sagemaker_term
+    SAGEMAKER_SP_PAYMENT_OPTION = local.sagemaker_payment_option
+  }
 }

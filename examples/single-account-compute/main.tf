@@ -69,9 +69,8 @@ module "savings_plans" {
     emails = ["devops@example.com", "finops@example.com"]
   }
 
-  # Reporting (enabled by default)
+  # Reporting (enabled by default via lambda_config.reporter.enabled)
   reporting = {
-    enabled       = true
     format        = "html"
     email_reports = false
   }

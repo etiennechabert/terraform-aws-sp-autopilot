@@ -69,7 +69,9 @@ def handler(event: dict[str, Any], context: Any) -> dict[str, Any]:
         cooldown_types = get_recent_purchase_sp_types(clients["savingsplans"], cooldown_days)
 
         # If ALL enabled types are in cooldown, skip the entire run
-        enabled_types = {"compute"}
+        enabled_types: set[str] = set()
+        if config["enable_compute_sp"]:
+            enabled_types.add("compute")
         if config["enable_database_sp"]:
             enabled_types.add("database")
         if config["enable_sagemaker_sp"]:
