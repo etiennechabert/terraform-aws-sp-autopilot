@@ -1,0 +1,527 @@
+"""Self-contained HTML fragments injected into the main template."""
+
+from __future__ import annotations
+
+from datetime import UTC, datetime, timedelta
+from typing import Any
+
+from shared import sp_calculations
+
+
+def build_strategy_tooltip(strategy_key: str, config: dict[str, Any]) -> str:
+    """Tooltip shown on each strategy row in the scheduler-preview table."""
+    parts = strategy_key.split("+")
+    target = parts[0] if parts else ""
+    split = parts[1] if len(parts) > 1 else ""
+
+    if target == "dynamic":
+        target_line = f"Target: dynamic (risk_level: {config['dynamic_risk_level']})"
+    else:
+        target_line = "Target: aws"
+
+    if split == "fixed_step":
+        split_line = f"Split: fixed_step (step_percent: {config['fixed_step_percent']:.0f}%)"
+    elif split == "gap_split":
+        divider = config["gap_split_divider"]
+        min_pct = config.get("min_purchase_percent")
+        max_pct = config.get("max_purchase_percent")
+        min_pct_str = f"{min_pct:.0f}%" if min_pct is not None else "auto"
+        parts_str = f"divider: {divider:.0f}, min_purchase_percent: {min_pct_str}"
+        if max_pct is not None:
+            parts_str += f", max_purchase_percent: {max_pct:.0f}%"
+        split_line = f"Split: gap_split ({parts_str})"
+    else:
+        split_line = "Split: one_shot"
+
+    return f"{target_line}\n{split_line}"
+
+
+def _render_no_purchase_row(strategy_display: str, is_configured: bool, tooltip: str) -> str:
+    row_style = (
+        'style="background: #fff9e6; font-weight: 600; cursor: help;"'
+        if is_configured
+        else 'style="cursor: help;"'
+    )
+    configured_badge = (
+        ' <span style="background: rgb(0, 158, 115); color: white; padding: 2px 8px; border-radius: 3px; font-size: 0.75em; font-weight: 600;">CONFIGURED</span>'
+        if is_configured
+        else ""
+    )
+    return f"""
+                    <tr {row_style} data-tooltip="{tooltip}">
+                        <td><strong><span class="strategy-name">{strategy_display}</span></strong>{configured_badge}</td>
+                        <td colspan="7" style="color: #6c757d; font-style: italic;">No purchase needed</td>
+                    </tr>
+                """
+
+
+def _render_purchase_row(
+    strategy_type: str,
+    strategy_display: str,
+    is_configured: bool,
+    tooltip: str,
+    purchase: dict[str, Any],
+) -> str:
+    row_style = (
+        'style="background: #fff9e6; font-weight: 600; cursor: help;"'
+        if is_configured
+        else 'style="cursor: help;"'
+    )
+    configured_badge = (
+        ' <span style="background: rgb(0, 158, 115); color: white; padding: 2px 8px; border-radius: 3px; font-size: 0.75em; font-weight: 600;">CONFIGURED</span>'
+        if is_configured
+        else ""
+    )
+
+    hourly_commit = purchase["hourly_commitment"]
+    current_cov = purchase["current_coverage"]
+    projected_cov = purchase["projected_coverage"]
+    cov_increase = projected_cov - current_cov
+    term = purchase.get("term", "N/A")
+    payment_option = purchase.get("payment_option", "N/A")
+    discount_used = purchase.get("discount_used", 0.0)
+    discount_tooltip = f"Computed with {discount_used:.1f}% discount rate"
+
+    is_aws = purchase.get("is_aws_target", strategy_type.startswith("aws"))
+    actual_target = purchase.get("target_coverage")
+    if is_aws or actual_target is None:
+        target_cell = '<td class="metric" style="color: #6c757d;">N/A</td>'
+        coverage_class = ""
+    else:
+        coverage_class = "green" if projected_cov >= actual_target else "orange"
+        target_cell = f'<td class="metric">{actual_target:.1f}%</td>'
+
+    return f"""
+                    <tr {row_style} data-tooltip="{tooltip}">
+                        <td><strong><span class="strategy-name">{strategy_display}</span></strong>{configured_badge}</td>
+                        <td class="metric" style="color: #2196f3; font-weight: bold;">${hourly_commit:.5f}/hr</td>
+                        <td class="metric">{current_cov:.1f}%</td>
+                        <td class="metric" style="color: #28a745;" title="{discount_tooltip}">+{cov_increase:.1f}%</td>
+                        <td class="metric {coverage_class}" style="font-weight: bold;" title="{discount_tooltip}">{projected_cov:.1f}%</td>
+                        {target_cell}
+                        <td class="metric">{discount_used:.1f}%</td>
+                        <td>{term}, {payment_option}</td>
+                    </tr>
+                """
+
+
+def render_sp_type_scheduler_preview(
+    sp_type: str, preview_data: dict[str, Any] | None, config: dict[str, Any]
+) -> str:
+    """Per-type table comparing what each target+split strategy would buy."""
+    if not preview_data:
+        return ""
+
+    if preview_data.get("error"):
+        return f"""
+            <div class="info-box" style="background: #fff3cd; border-left: 4px solid #ffc107; margin-top: 20px;">
+                <strong>Scheduler Preview:</strong> Failed to calculate - {preview_data["error"]}
+            </div>
+        """
+
+    strategies = preview_data.get("strategies", {})
+    configured_strategy = preview_data.get("configured_strategy", "fixed+fixed_step")
+
+    strategy_purchases = {}
+    for strategy_key, strategy_data in strategies.items():
+        for purchase in strategy_data.get("purchases", []):
+            if purchase.get("sp_type") == sp_type:
+                strategy_purchases[strategy_key] = purchase
+                break
+
+    if not strategy_purchases:
+        return ""
+
+    strategy_order = preview_data.get("strategy_order", list(strategies.keys()))
+
+    html = """
+        <div style="margin-top: 30px; padding-top: 20px; border-top: 2px solid #e0e0e0;">
+            <h3 style="color: #232f3e; margin-bottom: 15px;">🔮 Scheduler Preview - Strategy Comparison 🧞‍♂️</h3>
+                <table style="width: 100%;">
+                    <thead>
+                        <tr>
+                            <th>Strategy</th>
+                            <th>Added Commitment</th>
+                            <th>Current Coverage</th>
+                            <th>Added Coverage</th>
+                            <th>Projected Coverage</th>
+                            <th>Target Coverage</th>
+                            <th>Discount Rate</th>
+                            <th>Term &amp; Payment</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+    """
+
+    for strategy_key in strategy_order:
+        strategy_data = strategies.get(strategy_key)
+        if not strategy_data:
+            continue
+        purchase = strategy_purchases.get(strategy_key)
+        strategy_display = strategy_data.get("label", strategy_key)
+        is_configured = strategy_key == configured_strategy
+        tooltip = build_strategy_tooltip(strategy_key, config)
+
+        if not purchase:
+            html += _render_no_purchase_row(strategy_display, is_configured, tooltip)
+        else:
+            html += _render_purchase_row(
+                strategy_key, strategy_display, is_configured, tooltip, purchase
+            )
+
+    html += """
+                </tbody>
+            </table>
+        </div>
+    """
+
+    return html
+
+
+def build_breakdown_table_html(
+    breakdown_by_type: dict[str, Any],
+    plans_count: int,
+    average_utilization: float,
+    total_commitment: float,
+    overall_savings_percentage: float,
+) -> str:
+    """Per-SP-type summary table (plans, utilization, commitment, savings)."""
+    if not breakdown_by_type:
+        return ""
+
+    html = """
+            <table>
+                <thead>
+                    <tr>
+                        <th>Plan Type</th>
+                        <th>Active Plans</th>
+                        <th>Utilization</th>
+                        <th>Commitment/hr</th>
+                        <th>On-Demand Covered/hr</th>
+                        <th>Savings/hr</th>
+                    </tr>
+                </thead>
+                <tbody>
+"""
+
+    na_tooltip = "This SP type is not enabled in your configuration, so metrics are not collected"
+
+    for plan_type, type_data in breakdown_by_type.items():
+        plans_count_type = type_data.get("plans_count", 0)
+        total_commitment_type = type_data.get("total_commitment", 0.0)
+        has_metrics = "average_utilization" in type_data
+
+        plan_type_display = plan_type
+        if "Compute" in plan_type:
+            plan_type_display = "Compute Savings Plans"
+        elif "SageMaker" in plan_type:
+            plan_type_display = "SageMaker Savings Plans"
+        elif "Database" in plan_type:
+            plan_type_display = "Database Savings Plans"
+        elif "EC2Instance" in plan_type:
+            plan_type_display = "EC2 Instance Savings Plans"
+
+        if has_metrics:
+            type_utilization = type_data["average_utilization"]
+            type_savings_pct = type_data.get("savings_percentage", 0.0)
+            on_demand_coverage_capacity = sp_calculations.coverage_from_commitment(
+                total_commitment_type, type_savings_pct
+            )
+            potential_savings = on_demand_coverage_capacity - total_commitment_type
+
+            html += f"""
+                    <tr>
+                        <td><strong>{plan_type_display}</strong></td>
+                        <td>{plans_count_type}</td>
+                        <td class="metric">{type_utilization:.1f}%</td>
+                        <td class="metric">${total_commitment_type:.2f}/hr</td>
+                        <td class="metric">${on_demand_coverage_capacity:.2f}/hr</td>
+                        <td class="metric" style="color: #28a745;">${potential_savings:.2f}/hr</td>
+                    </tr>
+"""
+        else:
+            na_html = f'<span title="{na_tooltip}" style="cursor: help; color: #6c757d;">N/A</span>'
+            html += f"""
+                    <tr>
+                        <td><strong>{plan_type_display}</strong></td>
+                        <td>{plans_count_type}</td>
+                        <td class="metric">{na_html}</td>
+                        <td class="metric">${total_commitment_type:.2f}/hr</td>
+                        <td class="metric">{na_html}</td>
+                        <td class="metric">{na_html}</td>
+                    </tr>
+"""
+
+    if len(breakdown_by_type) > 1:
+        total_coverage_capacity = sp_calculations.coverage_from_commitment(
+            total_commitment, overall_savings_percentage
+        )
+        total_potential_savings = total_coverage_capacity - total_commitment
+        html += f"""
+                    <tr style="border-top: 2px solid #232f3e; font-weight: bold; background-color: #f8f9fa;">
+                        <td><strong>Total</strong></td>
+                        <td>{plans_count}</td>
+                        <td class="metric">{average_utilization:.1f}%</td>
+                        <td class="metric">${total_commitment:.2f}/hr</td>
+                        <td class="metric">${total_coverage_capacity:.2f}/hr</td>
+                        <td class="metric" style="color: #28a745;">${total_potential_savings:.2f}/hr</td>
+                    </tr>
+"""
+
+    html += """
+                </tbody>
+            </table>
+"""
+    return html
+
+
+def build_raw_data_section_html(
+    raw_data: dict[str, Any] | None, report_timestamp: str, monthly_savings: float = 0.0
+) -> str:
+    """Collapsible raw AWS data panel + footer with optional coffee nudge."""
+    html = """
+        </div>
+"""
+
+    if raw_data:
+        html += """
+        <div class="section raw-data-section">
+            <details>
+                <summary>
+                    <span>View Raw AWS Data</span>
+                    <span style="font-size: 0.8em; color: #6c757d;">Click to expand • Toggle via <code>INCLUDE_DEBUG_DATA</code> env var</span>
+                </summary>
+                <div class="raw-data-controls">
+                    <button class="raw-data-button" onclick="copyRawData()">Copy to Clipboard</button>
+                    <button class="raw-data-button" onclick="expandAll()">Expand All</button>
+                    <button class="raw-data-button" onclick="collapseAll()">Collapse All</button>
+                </div>
+                <div id="jsonViewer" class="json-viewer"></div>
+            </details>
+        </div>
+"""
+
+    if monthly_savings > 0:
+        coffee_html = f"""
+            <div style="margin: 20px auto 0; padding: 10px 18px; background: linear-gradient(135deg, #fff8e1 0%, #fff3cd 100%); border-radius: 10px; max-width: 520px; border: 1px solid #ffe082; font-size: 0.85em;">
+                <p style="margin: 0 0 6px; color: #5d4037;">
+                    Savings Plans Autopilot helped you save <strong style="color: #2e7d32;">${monthly_savings:,.2f}</strong> this month.
+                </p>
+                <p style="margin: 0 0 6px; color: #6d4c41;">
+                    The human behind this tool is fueled by overpriced Berlin coffees — maybe you can help?
+                </p>
+                <a href="https://buymeacoffee.com/etiennechak" target="_blank"
+                   style="display: inline-block; margin-top: 6px; padding: 6px 16px; background-color: #ffdd00; color: #000; font-weight: bold; border-radius: 6px; text-decoration: none; font-size: 0.9em; transition: transform 0.2s;"
+                   onmouseover="this.style.transform='scale(1.05)'" onmouseout="this.style.transform='scale(1)'">
+                    ☕ Buy me a coffee
+                </a>
+            </div>
+"""
+    else:
+        coffee_html = """
+            <div style="margin: 20px auto 0; padding: 10px 18px; background: linear-gradient(135deg, #fff8e1 0%, #fff3cd 100%); border-radius: 10px; max-width: 420px; border: 1px solid #ffe082; font-size: 0.85em;">
+                <p style="margin: 0 0 4px; color: #6d4c41;">
+                    No savings yet — but once Savings Plans Autopilot kicks in, it'll earn its Berlin flat white.
+                </p>
+                <a href="https://buymeacoffee.com/etiennechak" target="_blank"
+                   style="display: inline-block; margin-top: 6px; padding: 6px 16px; background-color: #ffdd00; color: #000; font-weight: bold; border-radius: 6px; text-decoration: none; font-size: 0.9em; transition: transform 0.2s;"
+                   onmouseover="this.style.transform='scale(1.05)'" onmouseout="this.style.transform='scale(1)'">
+                    ☕ Buy me a coffee anyway
+                </a>
+            </div>
+"""
+
+    html += f"""
+        <div class="footer">
+{coffee_html}
+            <p style="margin-top: 20px;">
+                Generated: {report_timestamp} | <a href="https://github.com/etiennechabert/terraform-aws-sp-autopilot" target="_blank" style="color: #2196f3; text-decoration: none;">terraform-aws-sp-autopilot</a> <span style="opacity: 0.6;">| Open source | Apache 2.0</span>
+            </p>
+        </div>
+    </div>
+"""
+    return html
+
+
+def parse_plan_dates(
+    start_date: str, end_date: str, now: datetime, three_months_from_now: datetime
+) -> tuple[str, str, str, bool, str]:
+    """Return (start_display, end_display, days_remaining_display, expiring_soon, tooltip)."""
+    start_date_display = start_date
+    end_date_display = end_date
+    days_remaining_display = "N/A"
+    expiring_soon = False
+    tooltip_text = ""
+
+    try:
+        if "T" in start_date:
+            start_date_display = start_date.split("T", maxsplit=1)[0]
+
+        if "T" in end_date:
+            end_date_parsed = datetime.fromisoformat(end_date.replace("Z", "+00:00"))
+            end_date_display = end_date.split("T", maxsplit=1)[0]
+        else:
+            end_date_parsed = datetime.strptime(end_date, "%Y-%m-%d").replace(tzinfo=UTC)
+            end_date_display = end_date
+
+        days_remaining = (end_date_parsed - now).days
+        if days_remaining < 0:
+            days_remaining_display = "Expired"
+        elif days_remaining == 0:
+            days_remaining_display = "Today"
+        elif days_remaining == 1:
+            days_remaining_display = "1 day"
+        else:
+            days_remaining_display = f"{days_remaining} days"
+
+        tooltip_text = f"Start: {start_date_display} | End: {end_date_display}"
+        if end_date_parsed <= three_months_from_now:
+            expiring_soon = True
+    except (ValueError, TypeError):
+        pass
+
+    return start_date_display, end_date_display, days_remaining_display, expiring_soon, tooltip_text
+
+
+def build_active_plans_table_html(plans: list[dict[str, Any]]) -> str:
+    """Table of active Savings Plans sorted by end date."""
+    if not plans:
+        return """
+            <div class="no-data">No active Savings Plans found</div>
+"""
+
+    sorted_plans = sorted(plans, key=lambda p: p.get("end_date", "9999-12-31"))
+    now = datetime.now(UTC)
+    three_months_from_now = now + timedelta(days=90)
+
+    html = """
+            <table>
+                <thead>
+                    <tr>
+                        <th style="width: 30%;">Plan ID</th>
+                        <th style="width: 12%;">Type</th>
+                        <th style="width: 16%;">Hourly Commitment</th>
+                        <th style="width: 10%;">Term</th>
+                        <th style="width: 16%;">Payment Option</th>
+                        <th style="width: 16%; text-align: right;">Days Remaining</th>
+                    </tr>
+                </thead>
+                <tbody>
+"""
+
+    for plan in sorted_plans:
+        plan_id = plan.get("plan_id", "Unknown")
+        plan_type = plan.get("plan_type", "Unknown")
+        hourly_commitment = plan.get("hourly_commitment", 0.0)
+        term_years = plan.get("term_years", 0)
+        payment_option = plan.get("payment_option", "Unknown")
+        start_date = plan.get("start_date", "Unknown")
+        end_date = plan.get("end_date", "Unknown")
+
+        (
+            _start_display,
+            _end_display,
+            days_remaining_display,
+            expiring_soon,
+            tooltip_text,
+        ) = parse_plan_dates(start_date, end_date, now, three_months_from_now)
+
+        row_class = 'class="expiring-soon"' if expiring_soon else ""
+
+        html += f"""
+                    <tr {row_class}>
+                        <td style="font-family: monospace; font-size: 0.8em; word-break: break-all;">{plan_id}</td>
+                        <td>{plan_type}</td>
+                        <td class="metric">${hourly_commitment:.2f}/hr</td>
+                        <td>{term_years} year(s)</td>
+                        <td>{payment_option}</td>
+                        <td class="metric" title="{tooltip_text}" style="cursor: help; text-align: right;">{days_remaining_display}</td>
+                    </tr>
+"""
+
+    html += """
+                </tbody>
+            </table>
+"""
+    return html
+
+
+def render_spike_guard_warning_banner(
+    guard_results: dict[str, dict[str, Any]] | None,
+    config: dict[str, Any] | None,
+) -> str:
+    """Yellow banner shown when spike guard flagged any SP type (empty otherwise)."""
+    if not guard_results:
+        return ""
+
+    flagged = {t: r for t, r in guard_results.items() if r["flagged"]}
+    if not flagged:
+        return ""
+
+    config = config or {}
+    long_days = config["spike_guard_long_lookback_days"]
+    short_days = config["spike_guard_short_lookback_days"]
+
+    rows = ""
+    for sp_type in sorted(flagged):
+        r = flagged[sp_type]
+        rows += f"""                <tr>
+                    <td>{sp_type.upper()}</td>
+                    <td>${r["long_term_avg"]:.4f}/h</td>
+                    <td>${r["short_term_avg"]:.4f}/h</td>
+                    <td style="color: #856404; font-weight: bold;">+{r["change_percent"]:.1f}%</td>
+                </tr>
+"""
+
+    return f"""
+        <div style="background: #fff3cd; border: 1px solid #ffc107; border-radius: 6px; padding: 15px 20px; margin-bottom: 20px;">
+            <h3 style="color: #856404; margin: 0 0 10px 0; font-size: 1.1em;">&#9888; Usage Spike Detected</h3>
+            <p style="color: #856404; margin: 0 0 10px 0; font-size: 0.9em;">
+                Recent usage ({short_days}d avg) is abnormally high compared to long-term baseline ({long_days}d avg).
+                The scheduler will block purchases for the following SP types to avoid over-committing on a temporary spike.
+                To adjust sensitivity, configure <code>purchase_strategy.spike_guard</code> in your Terraform module.
+            </p>
+            <table style="width: auto; margin: 0; font-size: 0.9em;">
+                <thead>
+                    <tr>
+                        <th style="text-align: left; padding: 4px 12px 4px 0;">SP Type</th>
+                        <th style="text-align: left; padding: 4px 12px 4px 0;">{long_days}d Avg</th>
+                        <th style="text-align: left; padding: 4px 12px 4px 0;">{short_days}d Avg</th>
+                        <th style="text-align: left; padding: 4px 12px 4px 0;">Spike</th>
+                    </tr>
+                </thead>
+                <tbody>
+{rows}                </tbody>
+            </table>
+        </div>
+"""
+
+
+def render_sp_type_tab_button(
+    sp_type: str, label: str, config: dict[str, Any], show_global_tab: bool
+) -> str:
+    if not config[f"enable_{sp_type}_sp"]:
+        return ""
+    active_class = "" if show_global_tab else " active"
+    return f'<button class="tab{active_class}" onclick="switchTab(\'{sp_type}\')">{label}</button>'
+
+
+def render_sp_type_tab_content(
+    sp_type: str,
+    config: dict[str, Any],
+    single_type: str | None,
+    preview_data: dict[str, Any] | None,
+) -> str:
+    if not config[f"enable_{sp_type}_sp"]:
+        return ""
+    active_class = " active" if single_type == sp_type else ""
+    return f'''<div id="{sp_type}-tab" class="tab-content{active_class}">
+                <div id="{sp_type}-metrics"></div>
+                <div class="chart-container" id="{sp_type}-daily-container" style="display: none;">
+                    <canvas id="{sp_type}DailyChart"></canvas>
+                </div>
+                <div class="chart-container">
+                    <canvas id="{sp_type}Chart"></canvas>
+                </div>
+                {render_sp_type_scheduler_preview(sp_type, preview_data, config or {})}
+            </div>'''
