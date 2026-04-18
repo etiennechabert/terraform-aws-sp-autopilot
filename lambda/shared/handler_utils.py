@@ -93,50 +93,7 @@ def load_config_from_env(
     schema: dict[str, dict[str, Any]],
     validator: Callable[[dict[str, Any]], None] | None = None,
 ) -> dict[str, Any]:
-    """
-    Load and validate configuration from environment variables based on a schema.
-
-    This function provides a generic way to load configuration from environment
-    variables with type conversion, validation, and default values. It eliminates
-    duplicate configuration loading code across Lambda handlers.
-
-    Args:
-        schema: Configuration schema dictionary where each key is a config field name
-                and the value is a dict with the following properties:
-                - 'required' (bool): Whether the field is required (default: False)
-                - 'type' (str): Data type - 'str', 'bool', 'int', 'float', 'json'
-                - 'default' (Any): Default value if not required and not present
-                - 'env_var' (str): Environment variable name (defaults to uppercase field name)
-        validator: Optional validator function that takes config dict and raises on invalid config
-
-    Returns:
-        dict: Configuration dictionary with validated and type-converted values
-
-    Raises:
-        KeyError: If a required environment variable is missing
-        ValueError: If type conversion or validation fails
-        json.JSONDecodeError: If JSON parsing fails
-
-    Examples:
-        >>> # Simple schema with required and optional fields
-        >>> schema = {
-        ...     'queue_url': {'required': True, 'type': 'str', 'env_var': 'QUEUE_URL'},
-        ...     'max_purchase_percent': {'required': False, 'type': 'float', 'default': '10'},
-        ...     'tags': {'required': False, 'type': 'json', 'default': '{}'}
-        ... }
-        >>> config = load_config_from_env(schema)
-        >>> # Returns: {'queue_url': '...', 'max_purchase_percent': 10.0, 'tags': {}}
-
-        >>> # With validator
-        >>> config = load_config_from_env(schema, validator=validate_scheduler_config)
-
-    Type Conversion Rules:
-        - 'str': No conversion, returned as-is
-        - 'bool': Converts string to bool (case-insensitive 'true' -> True, else False)
-        - 'int': Converts string to integer
-        - 'float': Converts string to float
-        - 'json': Parses JSON string to dict/list
-    """
+    """Load config from env vars per schema, apply types, and run optional validator."""
     config = {}
 
     for field_name, field_spec in schema.items():
@@ -170,15 +127,7 @@ def load_config_from_env(
 
 
 def get_enabled_plan_types(config: dict[str, Any]) -> list[str]:
-    """
-    Extract enabled Savings Plan types from configuration.
-
-    Args:
-        config: Configuration dictionary with enable_*_sp flags
-
-    Returns:
-        list: Enabled plan types using AWS naming (e.g., ["Compute", "SageMaker", "Database"])
-    """
+    """Enabled SP types in AWS naming, e.g. ['Compute', 'SageMaker']."""
     enabled_types = []
     if config["enable_compute_sp"]:
         enabled_types.append(PLAN_TYPE_COMPUTE)
@@ -194,46 +143,9 @@ def initialize_clients(
     session_name: str,
     error_callback: Callable[[str], None] | None = None,
 ) -> dict[str, Any]:
-    """
-    Initialize AWS clients with assume role support and standardized error handling.
+    """Build AWS clients (assumes role when management_account_role_arn is set).
 
-    This is a wrapper around shared.aws_utils.get_clients() that provides
-    consistent error handling, logging, and error notification across all
-    Lambda handlers. It eliminates duplicate client initialization code.
-
-    Args:
-        config: Configuration dictionary (must contain 'management_account_role_arn'
-                if using cross-account assume role)
-        session_name: Session name for assume role (e.g., 'sp-autopilot-scheduler')
-        error_callback: Optional callback function to call on error (e.g., send_error_email).
-                        The callback receives the error message as a string parameter.
-
-    Returns:
-        dict: Dictionary of AWS client objects with the following keys:
-              - 'ce': Cost Explorer client
-              - 'savingsplans': Savings Plans client
-              - 's3': S3 client (if needed)
-              - 'sqs': SQS client (if needed)
-              - 'sns': SNS client (if needed)
-
-    Raises:
-        ClientError: If client initialization or role assumption fails
-
-    Examples:
-        >>> # Basic usage with error callback
-        >>> config = load_configuration()
-        >>> clients = initialize_clients(config, 'sp-autopilot-scheduler', send_error_email)
-        >>> ce_client = clients['ce']
-        >>> savingsplans_client = clients['savingsplans']
-
-        >>> # Usage without error callback
-        >>> clients = initialize_clients(config, 'sp-autopilot-purchaser')
-        >>> ce_client = clients['ce']
-
-    Notes:
-        - If management_account_role_arn is set in config, clients will use assumed role
-        - Error messages automatically include role ARN if role assumption fails
-        - All errors are logged with full traceback before re-raising
+    On ClientError, logs, invokes error_callback if provided, then re-raises.
     """
     try:
         clients = get_clients(config, session_name=session_name)
@@ -260,58 +172,7 @@ def initialize_clients(
 
 
 def lambda_handler_wrapper(lambda_name: str) -> Callable:
-    """
-    Decorator that provides standardized error handling and logging for Lambda handlers.
-
-    This decorator wraps Lambda handler functions to provide:
-    - Consistent logging of handler start and completion
-    - Centralized exception handling with full traceback logging
-    - Automatic re-raising of exceptions to ensure Lambda fails visibly
-
-    Note: Error notifications should be handled within the handler function itself
-    before exceptions are raised, as the decorator does not have access to SNS
-    client or configuration.
-
-    Args:
-        lambda_name: Name of the Lambda function (e.g., 'Scheduler', 'Purchaser', 'Reporter')
-
-    Returns:
-        Decorated handler function
-
-    Raises:
-        Exception: Re-raises any exception from the wrapped handler to ensure Lambda fails visibly
-
-    Examples:
-        >>> @lambda_handler_wrapper('Scheduler')
-        ... def handler(event, context):
-        ...     try:
-        ...         # Load configuration
-        ...         config = load_configuration()
-        ...         # Initialize clients
-        ...         clients = get_clients(config)
-        ...         # Do work...
-        ...         return {'statusCode': 200, 'body': 'Success'}
-        ...     except Exception as e:
-        ...         # Send error notification before raising
-        ...         send_error_email(str(e))
-        ...         raise
-
-        >>> # The decorator automatically logs start/completion and handles errors
-        >>> # Output when handler succeeds:
-        >>> # INFO: Starting Scheduler Lambda execution
-        >>> # INFO: Scheduler Lambda completed successfully
-
-        >>> # Output when handler fails:
-        >>> # INFO: Starting Scheduler Lambda execution
-        >>> # ERROR: Scheduler Lambda failed: [error message]
-        >>> # [Full exception traceback]
-
-    Notes:
-        - The decorator logs at INFO level for start and completion
-        - Exceptions are logged at ERROR level with full traceback (exc_info=True)
-        - All exceptions are re-raised to ensure Lambda execution fails visibly
-        - Handlers should implement their own error notification before raising
-    """
+    """Log start/completion, log traceback on exception, then re-raise."""
 
     def decorator(handler_func: Callable) -> Callable:
         def wrapper(event: dict[str, Any], context: Any) -> dict[str, Any]:
@@ -337,50 +198,7 @@ def send_error_notification(
     slack_webhook_url: str | None = None,
     teams_webhook_url: str | None = None,
 ) -> None:
-    """
-    Send error notification via SNS, Slack, and Teams.
-
-    This is a consolidated error notification utility that eliminates duplicate
-    error handling code across Lambda handlers. It sends notifications through
-    multiple channels (SNS, Slack, Teams) with proper error handling.
-
-    Args:
-        sns_client: Boto3 SNS client instance
-        sns_topic_arn: SNS topic ARN to publish error notification
-        error_message: Error message/details to include in notification
-        lambda_name: Name of the Lambda function (for message context, default: 'Lambda')
-        slack_webhook_url: Optional Slack webhook URL for Slack notifications
-        teams_webhook_url: Optional Teams webhook URL for Teams notifications
-
-    Returns:
-        None
-
-    Examples:
-        >>> # Basic usage (SNS only)
-        >>> send_error_notification(
-        ...     sns_client=sns_client,
-        ...     sns_topic_arn='arn:aws:sns:us-east-1:123456789012:my-topic',
-        ...     error_message='Failed to process purchase intent',
-        ...     lambda_name='Purchaser'
-        ... )
-
-        >>> # With Slack and Teams notifications
-        >>> send_error_notification(
-        ...     sns_client=sns_client,
-        ...     sns_topic_arn=config['sns_topic_arn'],
-        ...     error_message=str(e),
-        ...     lambda_name='Scheduler',
-        ...     slack_webhook_url=config.get('slack_webhook_url'),
-        ...     teams_webhook_url=config.get('teams_webhook_url')
-        ... )
-
-    Notes:
-        - Notification failures are logged but do not raise exceptions
-        - SNS notification is always attempted first
-        - Slack/Teams notifications are only sent if webhook URLs are provided
-        - Errors during notification are logged as warnings (graceful degradation)
-        - Timestamp is automatically included in all notifications
-    """
+    """Publish error to SNS and (if configured) Slack and Teams. Failures are logged, not raised."""
     logger.error(f"Sending error notification for {lambda_name}")
 
     # Get current timestamp
