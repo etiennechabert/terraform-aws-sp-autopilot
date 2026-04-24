@@ -1,0 +1,352 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Privacy Policy — AWS Savings Plan Simulator</title>
+  <meta name="description" content="How the AWS Savings Plan Simulator processes personal data.">
+  <meta name="robots" content="index, follow">
+  <style>
+    *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+
+    :root {
+      --bg: #0a0e27;
+      --bg-raised: #1a1f3a;
+      --border: rgba(77, 159, 255, 0.2);
+      --text: #e0e6ed;
+      --text-dim: #8b95a8;
+      --text-muted: #6b7689;
+      --accent: #00d4ff;
+      --font-body: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      --font-mono: 'SF Mono', 'Fira Code', 'Fira Mono', monospace;
+    }
+
+    html { scroll-behavior: smooth; overflow-x: hidden; }
+
+    body {
+      font-family: var(--font-body);
+      background: var(--bg);
+      color: var(--text);
+      line-height: 1.7;
+      overflow-x: hidden;
+      width: 100%;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    nav {
+      position: sticky;
+      top: 0;
+      z-index: 100;
+      padding: 16px 24px;
+      background: rgba(10, 14, 39, 0.9);
+      backdrop-filter: blur(20px);
+      border-bottom: 1px solid var(--border);
+    }
+
+    nav .inner {
+      max-width: 820px;
+      margin: 0 auto;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .nav-logo {
+      font-family: var(--font-mono);
+      font-size: 14px;
+      font-weight: 500;
+      color: var(--accent);
+      letter-spacing: 0.05em;
+      text-decoration: none;
+    }
+
+    .nav-back {
+      font-family: var(--font-mono);
+      font-size: 13px;
+      color: var(--text-dim);
+      text-decoration: none;
+      transition: color 0.2s;
+    }
+
+    .nav-back:hover { color: var(--accent); }
+
+    main {
+      max-width: 820px;
+      margin: 0 auto;
+      padding: 64px 24px 96px;
+    }
+
+    h1 {
+      font-size: clamp(32px, 5vw, 44px);
+      font-weight: 700;
+      letter-spacing: -0.02em;
+      margin-bottom: 48px;
+    }
+
+    h2 {
+      font-size: 22px;
+      font-weight: 600;
+      letter-spacing: -0.01em;
+      margin-top: 48px;
+      margin-bottom: 16px;
+      padding-top: 24px;
+      border-top: 1px solid var(--border);
+    }
+
+    h2:first-of-type {
+      border-top: none;
+      padding-top: 0;
+      margin-top: 0;
+    }
+
+    h3 {
+      font-size: 16px;
+      font-weight: 600;
+      margin-top: 24px;
+      margin-bottom: 8px;
+      color: var(--text);
+    }
+
+    p, li {
+      color: var(--text-dim);
+      margin-bottom: 12px;
+      font-size: 15px;
+    }
+
+    ul, ol { padding-left: 24px; margin-bottom: 16px; }
+
+    a { color: var(--accent); text-decoration: none; }
+    a:hover { text-decoration: underline; }
+
+    address {
+      font-style: normal;
+      font-family: var(--font-mono);
+      font-size: 14px;
+      color: var(--text);
+      background: var(--bg-raised);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 20px 24px;
+      margin-bottom: 16px;
+      line-height: 1.8;
+    }
+
+    footer {
+      padding: 32px 24px;
+      border-top: 1px solid var(--border);
+    }
+
+    footer .inner {
+      max-width: 820px;
+      margin: 0 auto;
+      display: flex;
+      justify-content: space-between;
+      flex-wrap: wrap;
+      gap: 16px;
+    }
+
+    footer .left {
+      font-family: var(--font-mono);
+      font-size: 12px;
+      color: var(--text-muted);
+    }
+
+    footer .right { display: flex; gap: 20px; }
+
+    footer .right a {
+      font-family: var(--font-mono);
+      font-size: 12px;
+      color: var(--text-dim);
+    }
+  </style>
+</head>
+<body>
+  <nav>
+    <div class="inner">
+      <a href="./" class="nav-logo">SP Simulator</a>
+      <a href="./" class="nav-back">&larr; Back to simulator</a>
+    </div>
+  </nav>
+
+  <main>
+    <h1>Privacy Policy</h1>
+
+    <h2>1. Controller</h2>
+    <p>The controller responsible for data processing on this site under the GDPR is:</p>
+    <address>
+      Etienne Chabert<br>
+      Friedrichstr. 155<br>
+      10117 Berlin<br>
+      Germany<br>
+      Email: <a href="mailto:etienne.chabert.de@gmail.com">etienne.chabert.de@gmail.com</a>
+    </address>
+
+    <h2>2. Overview</h2>
+    <p>This site is a static, client-side web application hosted on GitHub Pages. Data processing is limited to:</p>
+    <ul>
+      <li>Server-side access data (via GitHub Pages infrastructure)</li>
+      <li>Web analytics via Google Analytics</li>
+      <li>CDN requests to jsDelivr for third-party libraries</li>
+    </ul>
+    <p>There is <strong>no user registration, no form submissions, and no marketing cookies</strong>.</p>
+
+    <h2>3. Hosting (GitHub Pages)</h2>
+    <p>
+      The site is hosted on GitHub Pages, a service provided by GitHub,
+      Inc. (88 Colin P Kelly Jr St, San Francisco, CA 94107, USA), a
+      subsidiary of Microsoft Corporation. When you visit the site, GitHub
+      necessarily processes:
+    </p>
+    <ul>
+      <li>IP address of your device</li>
+      <li>Date and time of the request</li>
+      <li>URL requested and HTTP status</li>
+      <li>User agent (browser, operating system)</li>
+      <li>Referrer</li>
+    </ul>
+    <p>
+      <strong>Legal basis:</strong> Art. 6(1)(f) GDPR (legitimate interest
+      in operating the site securely and reliably).<br>
+      <strong>Transfers:</strong> GitHub, Inc. is certified under the
+      EU-U.S. Data Privacy Framework.
+    </p>
+    <p>For details see the <a href="https://docs.github.com/en/site-policy/privacy-policies/github-general-privacy-statement" target="_blank" rel="noopener">GitHub Privacy Statement</a>.</p>
+
+    <h2>4. Web analytics (Google Analytics)</h2>
+    <p>
+      This site uses <strong>Google Analytics 4</strong>, a web analytics
+      service provided by Google Ireland Limited (Gordon House, Barrow
+      Street, Dublin 4, Ireland). Google Analytics uses cookies and
+      similar technologies to collect and analyse information about
+      the use of this site, including:
+    </p>
+    <ul>
+      <li>Pages visited and time spent</li>
+      <li>Referral source</li>
+      <li>Approximate geographic location (derived from IP address)</li>
+      <li>Device and browser information</li>
+      <li>Interaction events (clicks, scrolls)</li>
+    </ul>
+    <h3>IP anonymisation</h3>
+    <p>
+      Google Analytics 4 does not log or store full IP addresses. Google
+      uses the IP address for geolocation and network metadata during
+      collection, then discards it.
+    </p>
+    <h3>Cookies</h3>
+    <p>
+      Google Analytics sets first-party cookies (notably <code>_ga</code>
+      and <code>_ga_*</code>) to distinguish unique visitors. These
+      cookies are stored for up to 2 years.
+    </p>
+    <h3>Legal basis</h3>
+    <p>
+      Art. 6(1)(f) GDPR (legitimate interest in understanding how the
+      site is used to improve it). We acknowledge that some data
+      protection authorities consider consent (Art. 6(1)(a) GDPR) the
+      appropriate basis for analytics; if you do not wish to be tracked,
+      you may use a browser extension such as
+      <a href="https://tools.google.com/dlpage/gaoptout" target="_blank" rel="noopener">Google Analytics Opt-out</a>
+      or enable your browser's "Do Not Track" setting.
+    </p>
+    <h3>Transfers</h3>
+    <p>
+      Data may be transferred to Google LLC in the USA. Google Ireland
+      Limited relies on the EU-U.S. Data Privacy Framework and EU
+      Standard Contractual Clauses (Art. 46(2)(c) GDPR) for such
+      transfers.
+    </p>
+    <p>For details see the <a href="https://policies.google.com/privacy" target="_blank" rel="noopener">Google Privacy Policy</a>.</p>
+
+    <h2>5. CDN (jsDelivr)</h2>
+    <p>
+      Third-party JavaScript libraries (Chart.js, Pako) are loaded from
+      <strong>jsDelivr</strong>, a free, open-source CDN operated by
+      Prospect One Sp. z o.o. (Poland, EU). When your browser fetches
+      these files, jsDelivr necessarily receives your IP address and
+      request metadata.
+    </p>
+    <ul>
+      <li><strong>Purpose:</strong> deliver JavaScript libraries efficiently.</li>
+      <li><strong>Legal basis:</strong> Art. 6(1)(f) GDPR (legitimate interest in a performant site).</li>
+    </ul>
+    <p>See the <a href="https://www.jsdelivr.com/terms/privacy-policy-jsdelivr-net" target="_blank" rel="noopener">jsDelivr Privacy Policy</a>.</p>
+
+    <h2>6. Cookies</h2>
+    <p>
+      This site itself sets <strong>no first-party cookies</strong>.
+      However, Google Analytics sets the following cookies:
+    </p>
+    <ul>
+      <li><code>_ga</code> &mdash; distinguishes unique visitors (expires after 2 years)</li>
+      <li><code>_ga_&lt;ID&gt;</code> &mdash; maintains session state (expires after 2 years)</li>
+    </ul>
+    <p>
+      GitHub Pages and jsDelivr may set strictly necessary, short-lived
+      cookies as part of their infrastructure. These are covered by
+      &sect; 25(2)(2) TDDDG (strictly necessary for the telemedia
+      service explicitly requested by the user).
+    </p>
+
+    <h2>7. Local data processing</h2>
+    <p>
+      The simulator processes all cost data entirely in your browser.
+      Usage data you paste or load via URL parameters stays on your device
+      and is <strong>never transmitted to any server</strong>.
+    </p>
+
+    <h2>8. External links</h2>
+    <p>
+      This site links to external services (GitHub, Buy Me a Coffee, AWS
+      documentation). Following a link transmits data (such as your IP
+      and referrer) to the respective provider. The operator has no
+      control over data processing by those providers; please consult
+      their privacy policies.
+    </p>
+
+    <h2>9. Your rights</h2>
+    <p>Under the GDPR you have the following rights:</p>
+    <ul>
+      <li>Access to the data held about you (Art. 15)</li>
+      <li>Rectification of inaccurate data (Art. 16)</li>
+      <li>Erasure (Art. 17)</li>
+      <li>Restriction of processing (Art. 18)</li>
+      <li>Objection to processing (Art. 21)</li>
+      <li>Data portability (Art. 20)</li>
+      <li>Withdrawal of consent at any time (Art. 7(3))</li>
+    </ul>
+    <p>An informal email to the controller above is sufficient to exercise any of these rights.</p>
+
+    <h2>10. Right to complain</h2>
+    <p>
+      You have the right to lodge a complaint with a data protection
+      supervisory authority if you believe that the processing of your
+      personal data infringes the GDPR (Art. 77). The competent authority
+      for the controller's place of residence is:
+    </p>
+    <p>Berliner Beauftragte f&uuml;r Datenschutz und Informationsfreiheit (BlnBDI), Friedrichstr. 219, 10969 Berlin, <a href="https://www.datenschutz-berlin.de" target="_blank" rel="noopener">www.datenschutz-berlin.de</a></p>
+
+    <h2>11. No automated decision-making</h2>
+    <p>No automated decision-making or profiling under Art. 22 GDPR takes place.</p>
+
+    <h2>12. Changes to this policy</h2>
+    <p>
+      This policy may be updated if the legal framework changes or if new
+      features are introduced on the site. The current version is always
+      available at this URL.
+    </p>
+    <p><strong>Last updated:</strong> April 2026</p>
+  </main>
+
+  <footer>
+    <div class="inner">
+      <div class="left">&copy; 2026 Etienne Chabert</div>
+      <div class="right">
+        <a href="imprint.html">Imprint</a>
+        <a href="privacy.html">Privacy</a>
+        <a href="https://github.com/etiennechabert/terraform-aws-sp-autopilot" target="_blank" rel="noopener">GitHub</a>
+      </div>
+    </div>
+  </footer>
+</body>
+</html>
