@@ -1629,6 +1629,23 @@ h1, h2, h3, h4, h5, h6 {
     font-size: 0.9rem;
 }
 
+.footer-legal {
+    display: flex;
+    gap: var(--spacing-md);
+    justify-content: center;
+}
+
+.footer-legal a {
+    color: var(--text-muted);
+    text-decoration: none;
+    font-size: 0.85rem;
+    transition: color 0.2s ease;
+}
+
+.footer-legal a:hover {
+    color: var(--accent-cyan);
+}
+
 /* ===== Toast Notification ===== */
 .toast {
     position: fixed;
