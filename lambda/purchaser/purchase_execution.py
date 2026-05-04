@@ -195,6 +195,39 @@ def _sp_type_display(sp_type: str) -> str:
     return sp_type.replace("SavingsPlans", " SP")
 
 
+def _format_successful_purchase(i: int, purchase: dict[str, Any]) -> list[str]:
+    intent = purchase["intent"]
+    sp_id = purchase["sp_id"]
+    offering = intent.get("offering", {})
+    offering_desc = offering.get("description", "") if isinstance(offering, dict) else ""
+
+    result = [
+        f"{i}. {_sp_type_display(intent['sp_type'])}",
+        f"   Savings Plan ID: {sp_id}",
+        f"   Commitment: ${intent['commitment']}/hour",
+        f"   Term: {_term_string(intent['term_seconds'])}",
+        f"   Payment Option: {intent['payment_option']}",
+    ]
+    if offering_desc:
+        result.append(f"   Offering: {offering_desc}")
+    if intent.get("upfront_amount") and float(intent["upfront_amount"]) > 0:
+        result.append(f"   Upfront Payment: ${float(intent['upfront_amount']):,.2f}")
+    if intent.get("strategy"):
+        result.append(f"   Strategy: {intent['strategy']}")
+    if intent.get("estimated_savings_percentage") is not None:
+        result.append(f"   Estimated Savings: {intent['estimated_savings_percentage']}%")
+
+    cov = intent.get("details", {}).get("coverage", {})
+    if cov.get("current") is not None and cov.get("added") is not None:
+        projected = cov["current"] + cov["added"]
+        result.append(
+            f"   Coverage: {cov['current']:.2f}% -> {projected:.2f}% (+{cov['added']:.2f}%)"
+        )
+
+    result.append("")
+    return result
+
+
 def _append_successful_section(lines: list[str], successful: list[dict[str, Any]]) -> None:
     if not successful:
         lines.append("No successful purchases.")
@@ -204,37 +237,7 @@ def _append_successful_section(lines: list[str], successful: list[dict[str, Any]
     lines.append("SUCCESSFUL PURCHASES:")
     lines.append("-" * 60)
     for i, purchase in enumerate(successful, 1):
-        intent = purchase["intent"]
-        sp_id = purchase["sp_id"]
-        offering = intent.get("offering", {})
-        offering_desc = offering.get("description", "") if isinstance(offering, dict) else ""
-
-        lines.extend(
-            [
-                f"{i}. {_sp_type_display(intent['sp_type'])}",
-                f"   Savings Plan ID: {sp_id}",
-                f"   Commitment: ${intent['commitment']}/hour",
-                f"   Term: {_term_string(intent['term_seconds'])}",
-                f"   Payment Option: {intent['payment_option']}",
-            ]
-        )
-        if offering_desc:
-            lines.append(f"   Offering: {offering_desc}")
-        if intent.get("upfront_amount") and float(intent["upfront_amount"]) > 0:
-            lines.append(f"   Upfront Payment: ${float(intent['upfront_amount']):,.2f}")
-        if intent.get("strategy"):
-            lines.append(f"   Strategy: {intent['strategy']}")
-        if intent.get("estimated_savings_percentage") is not None:
-            lines.append(f"   Estimated Savings: {intent['estimated_savings_percentage']}%")
-
-        cov = intent.get("details", {}).get("coverage", {})
-        if cov.get("current") is not None and cov.get("added") is not None:
-            projected = cov["current"] + cov["added"]
-            lines.append(
-                f"   Coverage: {cov['current']:.2f}% -> {projected:.2f}% (+{cov['added']:.2f}%)"
-            )
-
-        lines.append("")
+        lines.extend(_format_successful_purchase(i, purchase))
 
 
 def _append_skipped_section(lines: list[str], skipped: list[dict[str, Any]]) -> None:

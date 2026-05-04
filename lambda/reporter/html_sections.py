@@ -8,6 +8,12 @@ from typing import Any
 from shared import sp_calculations
 
 
+_TABLE_CLOSE = """
+                </tbody>
+            </table>
+"""
+
+
 def build_strategy_tooltip(strategy_key: str, config: dict[str, Any]) -> str:
     """Tooltip shown on each strategy row in the scheduler-preview table."""
     parts = strategy_key.split("+")
@@ -272,10 +278,7 @@ def build_breakdown_table_html(
                     </tr>
 """
 
-    html += """
-                </tbody>
-            </table>
-"""
+    html += _TABLE_CLOSE
     return html
 
 
@@ -452,11 +455,23 @@ def build_active_plans_table_html(plans: list[dict[str, Any]]) -> str:
                     </tr>
 """
 
-    html += """
-                </tbody>
-            </table>
-"""
+    html += _TABLE_CLOSE
     return html
+
+
+_PLAN_TYPE_DISPLAY = {
+    "Compute": "Compute Savings Plans",
+    "SageMaker": "SageMaker Savings Plans",
+    "Database": "Database Savings Plans",
+    "EC2Instance": "EC2 Instance Savings Plans",
+}
+
+
+def _plan_type_display_name(plan_type: str) -> str:
+    for key, display in _PLAN_TYPE_DISPLAY.items():
+        if key in plan_type:
+            return display
+    return plan_type
 
 
 def build_plans_breakdown_section_html(
@@ -510,19 +525,10 @@ def build_plans_breakdown_section_html(
         total_commitment_type = type_data.get("total_commitment", 0.0)
         has_metrics = "average_utilization" in type_data
 
-        if "Compute" in plan_type:
-            plan_type_display = "Compute Savings Plans"
-        elif "SageMaker" in plan_type:
-            plan_type_display = "SageMaker Savings Plans"
-        elif "Database" in plan_type:
-            plan_type_display = "Database Savings Plans"
-        elif "EC2Instance" in plan_type:
-            plan_type_display = "EC2 Instance Savings Plans"
-        else:
-            plan_type_display = plan_type
+        plan_type_display = _plan_type_display_name(plan_type)
 
         type_plans = plans_by_type.get(plan_type, [])
-        next_expiry_cell = _render_next_expiry_cell(type_plans, now, three_months_from_now)
+        next_expiry_cell = _render_next_expiry_cell(type_plans, now)
         next_expiry_days = _next_expiry_days(type_plans, now)
         if next_expiry_days is not None and (
             soonest_overall_days is None or next_expiry_days < soonest_overall_days
@@ -599,10 +605,7 @@ def build_plans_breakdown_section_html(
                     </tr>
 """
 
-    html += """
-                </tbody>
-            </table>
-"""
+    html += _TABLE_CLOSE
     return html
 
 
@@ -712,9 +715,7 @@ def _next_expiry_end(type_plans: list[dict[str, Any]]) -> str:
     return sorted_plans[0].get("end_date", "") or ""
 
 
-def _render_next_expiry_cell(
-    type_plans: list[dict[str, Any]], now: datetime, three_months_from_now: datetime
-) -> str:
+def _render_next_expiry_cell(type_plans: list[dict[str, Any]], now: datetime) -> str:
     """Render the Next Expiry cell for a type row: days + color when <90 days out."""
     days = _next_expiry_days(type_plans, now)
     if days is None:
@@ -736,6 +737,30 @@ def _format_days_cell(days: int, end_date: str) -> str:
         text, color = f"{days} days", "#232f3e"
     tooltip = f"Next plan ends: {end_date.split('T', 1)[0]}" if end_date else ""
     return f'<span title="{tooltip}" style="cursor: help; color: {color};">{text}</span>'
+
+
+def _render_product_chips(product_types: list[str]) -> str:
+    return "".join(
+        f'<span style="display: inline-block; background: #e8eef7; color: #232f3e; '
+        f'padding: 2px 10px; border-radius: 12px; margin: 2px 4px 2px 0; font-size: 0.85em;">'
+        f"{pt}</span>"
+        for pt in product_types
+    )
+
+
+def _render_tags_cell(tags: dict[str, str]) -> str:
+    if not tags:
+        return '<em style="color: #6c757d;">none</em>'
+    tag_rows = "".join(
+        f'<tr><td style="padding: 2px 8px; font-family: monospace; font-size: 0.85em; '
+        f'color: #555;">{k}</td>'
+        f'<td style="padding: 2px 8px; font-family: monospace; font-size: 0.85em;">{v}</td></tr>'
+        for k, v in tags.items()
+    )
+    return (
+        '<table style="width: auto; margin: 0; border-collapse: collapse;">'
+        f"<tbody>{tag_rows}</tbody></table>"
+    )
 
 
 def _render_plan_details(plan: dict[str, Any]) -> str:
@@ -773,44 +798,14 @@ def _render_plan_details(plan: dict[str, Any]) -> str:
     rows.append(_row("Upfront Payment", f"{currency} {upfront:,.2f}"))
     rows.append(_row("Recurring Payment", f"{currency} {recurring:,.5f}/hour"))
     if product_types:
-        chips = "".join(
-            f'<span style="display: inline-block; background: #e8eef7; color: #232f3e; '
-            f'padding: 2px 10px; border-radius: 12px; margin: 2px 4px 2px 0; font-size: 0.85em;">'
-            f"{pt}</span>"
-            for pt in product_types
-        )
-        rows.append(_row("Covered Products", chips))
+        rows.append(_row("Covered Products", _render_product_chips(product_types)))
     if returnable_until:
         rows.append(_row("Returnable Until", returnable_until))
     if savings_plan_arn:
-        rows.append(
-            _row(
-                "ARN",
-                f'<code style="font-size: 0.85em;">{savings_plan_arn}</code>',
-            )
-        )
+        rows.append(_row("ARN", f'<code style="font-size: 0.85em;">{savings_plan_arn}</code>'))
     if offering_id:
-        rows.append(
-            _row(
-                "Offering ID",
-                f'<code style="font-size: 0.85em;">{offering_id}</code>',
-            )
-        )
-
-    if tags:
-        tag_rows = "".join(
-            f'<tr><td style="padding: 2px 8px; font-family: monospace; font-size: 0.85em; '
-            f'color: #555;">{k}</td>'
-            f'<td style="padding: 2px 8px; font-family: monospace; font-size: 0.85em;">{v}</td></tr>'
-            for k, v in tags.items()
-        )
-        tag_table = (
-            '<table style="width: auto; margin: 0; border-collapse: collapse;">'
-            f"<tbody>{tag_rows}</tbody></table>"
-        )
-        rows.append(_row("Tags", tag_table))
-    else:
-        rows.append(_row("Tags", '<em style="color: #6c757d;">none</em>'))
+        rows.append(_row("Offering ID", f'<code style="font-size: 0.85em;">{offering_id}</code>'))
+    rows.append(_row("Tags", _render_tags_cell(tags)))
 
     return (
         '<div class="plan-details-panel">'
@@ -820,14 +815,22 @@ def _render_plan_details(plan: dict[str, Any]) -> str:
     )
 
 
+def _utilization_color(utilization_pct: float) -> str:
+    if utilization_pct >= 95:
+        return "#28a745"
+    if utilization_pct >= 80:
+        return "#ff9900"
+    return "#dc3545"
+
+
 def _expiration_phrase(days_remaining_display: str) -> str:
     """Natural phrasing for the expiration meta chunk on a plan card."""
-    if days_remaining_display in ("Expired", "Today", "N/A"):
-        return (
-            days_remaining_display.lower()
-            if days_remaining_display == "Expired"
-            else ("expires today" if days_remaining_display == "Today" else days_remaining_display)
-        )
+    if days_remaining_display == "Expired":
+        return "expired"
+    if days_remaining_display == "Today":
+        return "expires today"
+    if days_remaining_display == "N/A":
+        return days_remaining_display
     return f"{days_remaining_display} left"
 
 
@@ -843,9 +846,7 @@ def _render_plan_card_metrics(plan: dict[str, Any]) -> str:
     discount_pct = plan.get("discount_percentage", 0.0) or 0.0
     net_savings = plan.get("mtd_net_savings", 0.0) or 0.0
 
-    util_color = (
-        "#28a745" if utilization_pct >= 95 else "#ff9900" if utilization_pct >= 80 else "#dc3545"
-    )
+    util_color = _utilization_color(utilization_pct)
 
     return (
         f'<span class="plan-card-pill" style="color: #28a745;" '
@@ -871,9 +872,7 @@ def _render_mtd_card(plan: dict[str, Any], currency: str) -> str:
     net_savings = plan.get("mtd_net_savings", 0.0) or 0.0
     discount_pct = plan.get("discount_percentage", 0.0) or 0.0
 
-    util_color = (
-        "#28a745" if utilization_pct >= 95 else "#ff9900" if utilization_pct >= 80 else "#dc3545"
-    )
+    util_color = _utilization_color(utilization_pct)
 
     def _tile(label: str, value: str, color: str = "#232f3e") -> str:
         return (

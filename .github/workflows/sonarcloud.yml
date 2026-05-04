@@ -41,9 +41,9 @@ jobs:
       - name: Install all dependencies
         run: |
           python -m pip install --upgrade pip
-          pip install -r lambda/scheduler/requirements.txt
-          pip install -r lambda/purchaser/requirements.txt
-          pip install -r lambda/reporter/requirements.txt
+          pip install --only-binary :all: -r lambda/scheduler/requirements.txt
+          pip install --only-binary :all: -r lambda/purchaser/requirements.txt
+          pip install --only-binary :all: -r lambda/reporter/requirements.txt
 
       - name: Run all Lambda tests with coverage
         env:
