@@ -437,6 +437,38 @@ def get_savings_plans_metrics(
         raise
 
 
+def _parse_mtd_detail_item(item: Any) -> tuple[str, dict[str, float]] | None:
+    """Parse a single SavingsPlansUtilizationDetails item into (arn, metrics) or None."""
+    if not isinstance(item, dict):
+        return None
+    arn = item.get("SavingsPlanArn")
+    if not arn:
+        return None
+    utilization = item.get("Utilization") or {}
+    savings = item.get("Savings") or {}
+    if not isinstance(utilization, dict) or not isinstance(savings, dict):
+        return None
+    try:
+        total_commitment = float(utilization.get("TotalCommitment", "0") or 0)
+        used_commitment = float(utilization.get("UsedCommitment", "0") or 0)
+        utilization_pct = float(utilization.get("UtilizationPercentage", "0") or 0)
+        net_savings = float(savings.get("NetSavings", "0") or 0)
+        on_demand_equivalent = float(savings.get("OnDemandCostEquivalent", "0") or 0)
+    except (TypeError, ValueError):
+        return None
+    discount_percentage = sp_calculations.calculate_savings_percentage(
+        on_demand_equivalent, used_commitment
+    )
+    return arn, {
+        "mtd_total_commitment": total_commitment,
+        "mtd_used_commitment": used_commitment,
+        "mtd_utilization_percentage": utilization_pct,
+        "mtd_net_savings": net_savings,
+        "mtd_on_demand_equivalent": on_demand_equivalent,
+        "discount_percentage": discount_percentage,
+    }
+
+
 def get_per_plan_mtd_metrics(ce_client: CostExplorerClient) -> dict[str, dict[str, float]]:
     """Per-plan month-to-date utilization and savings, keyed by Savings Plan ARN.
 
@@ -475,36 +507,10 @@ def get_per_plan_mtd_metrics(ce_client: CostExplorerClient) -> dict[str, dict[st
             return {}
 
         for item in details:
-            if not isinstance(item, dict):
-                continue
-            arn = item.get("SavingsPlanArn")
-            if not arn:
-                continue
-            utilization = item.get("Utilization") or {}
-            savings = item.get("Savings") or {}
-            if not isinstance(utilization, dict) or not isinstance(savings, dict):
-                continue
-
-            try:
-                total_commitment = float(utilization.get("TotalCommitment", "0") or 0)
-                used_commitment = float(utilization.get("UsedCommitment", "0") or 0)
-                utilization_pct = float(utilization.get("UtilizationPercentage", "0") or 0)
-                net_savings = float(savings.get("NetSavings", "0") or 0)
-                on_demand_equivalent = float(savings.get("OnDemandCostEquivalent", "0") or 0)
-            except (TypeError, ValueError):
-                continue
-
-            discount_percentage = sp_calculations.calculate_savings_percentage(
-                on_demand_equivalent, used_commitment
-            )
-            by_arn[arn] = {
-                "mtd_total_commitment": total_commitment,
-                "mtd_used_commitment": used_commitment,
-                "mtd_utilization_percentage": utilization_pct,
-                "mtd_net_savings": net_savings,
-                "mtd_on_demand_equivalent": on_demand_equivalent,
-                "discount_percentage": discount_percentage,
-            }
+            parsed = _parse_mtd_detail_item(item)
+            if parsed:
+                arn, metrics = parsed
+                by_arn[arn] = metrics
     except ClientError as e:
         error_code = e.response.get("Error", {}).get("Code", "Unknown")
         if error_code == "DataUnavailableException":

@@ -144,11 +144,11 @@ class TestNextExpiryHelpers:
         assert _next_expiry_end([]) == ""
 
     def test_render_next_expiry_cell_none_for_empty(self):
-        assert "N/A" in _render_next_expiry_cell([], _NOW, _THREE_MONTHS)
+        assert "N/A" in _render_next_expiry_cell([], _NOW)
 
     def test_render_next_expiry_cell_renders_days(self):
         plans = [_plan(end_date="2026-06-01T00:00:00Z")]
-        html = _render_next_expiry_cell(plans, _NOW, _THREE_MONTHS)
+        html = _render_next_expiry_cell(plans, _NOW)
         assert "days" in html
         assert "2026-06-01" in html  # tooltip embeds the end date
 

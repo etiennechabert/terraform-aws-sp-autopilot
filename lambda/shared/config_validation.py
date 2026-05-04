@@ -121,10 +121,7 @@ def _ensure_dict(config: Any) -> None:
         raise ValueError(f"Configuration must be a dictionary, got {type(config).__name__}")
 
 
-def validate_scheduler_config(config: dict[str, Any]) -> None:
-    _ensure_dict(config)
-    _validate_sp_types_enabled(config)
-
+def _validate_scheduler_numeric_fields(config: dict[str, Any]) -> None:
     for name in ("max_purchase_percent", "min_purchase_percent"):
         if name in config and config[name] is not None:
             _validate_number(config[name], name, min_val=0.0, max_val=100.0)
@@ -147,10 +144,15 @@ def validate_scheduler_config(config: dict[str, Any]) -> None:
             config["purchase_cooldown_days"], "purchase_cooldown_days", min_val=0, integer=True
         )
 
-    _validate_lookback_hours(config)
-
     if "min_commitment_per_plan" in config:
         _validate_number(config["min_commitment_per_plan"], "min_commitment_per_plan", min_val=0)
+
+
+def validate_scheduler_config(config: dict[str, Any]) -> None:
+    _ensure_dict(config)
+    _validate_sp_types_enabled(config)
+    _validate_scheduler_numeric_fields(config)
+    _validate_lookback_hours(config)
 
     for name in ("compute_sp_term", "sagemaker_sp_term"):
         if name in config:
