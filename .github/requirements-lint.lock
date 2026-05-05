@@ -1,0 +1,7 @@
+#
+# Hash-pinned linting dependencies for CI
+# Update hashes when bumping versions (pip download + pip hash)
+#
+ruff==0.15.12 \
+    --hash=sha256:83b2f4f2f3b1026b5fb449b467d9264bf22067b600f7b6f41fc5958909f449d0 \
+    --hash=sha256:fe87510d000220aa1ed530d4448a7c696a0cae1213e5ec30e5874287b66557b5
