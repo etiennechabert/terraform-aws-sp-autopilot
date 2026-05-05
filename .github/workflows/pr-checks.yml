@@ -149,8 +149,8 @@ jobs:
 
       - name: Install ruff
         run: |
-          python -m pip install --upgrade pip
-          pip install --only-binary :all: ruff==0.15.12
+          python -m pip install pip==25.1.1
+          pip install --require-hashes --only-binary :all: -r .github/requirements-lint.lock
 
       - name: Run ruff check
         run: |
@@ -217,16 +217,16 @@ jobs:
           python-version: '3.13'
           cache: 'pip'
           cache-dependency-path: |
-            lambda/scheduler/requirements.txt
-            lambda/purchaser/requirements.txt
-            lambda/reporter/requirements.txt
+            lambda/scheduler/requirements-ci.lock
+            lambda/purchaser/requirements-ci.lock
+            lambda/reporter/requirements-ci.lock
 
       - name: Install all dependencies
         run: |
-          python -m pip install --upgrade pip
-          pip install --only-binary :all: -r lambda/scheduler/requirements.txt
-          pip install --only-binary :all: -r lambda/purchaser/requirements.txt
-          pip install --only-binary :all: -r lambda/reporter/requirements.txt
+          python -m pip install pip==25.1.1
+          pip install --require-hashes --only-binary :all: -r lambda/scheduler/requirements-ci.lock
+          pip install --require-hashes --only-binary :all: -r lambda/purchaser/requirements-ci.lock
+          pip install --require-hashes --only-binary :all: -r lambda/reporter/requirements-ci.lock
 
       - name: Run all Lambda tests
         env:
