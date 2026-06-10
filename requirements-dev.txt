@@ -5,5 +5,5 @@ pytest-cov~=7.0
 pytest-mock~=3.15
 black~=26.1
 flake8~=7.3
-mypy~=1.19
+mypy>=1.19,<3
 boto3-stubs[ce,savingsplans,s3,sqs,sns,sts]~=1.42
