@@ -1239,21 +1239,29 @@ def generate_html_report(
                                     return label + ' (' + dayName + ')';
                                 }},
                                 footer: function(tooltipItems) {{
-                                    let covered = 0;
+                                    let existing = 0;
+                                    let nextPurchase = 0;
                                     let ondemand = 0;
 
                                     tooltipItems.forEach(function(item) {{
-                                        if (item.dataset.label.includes('Commitment') || item.dataset.label.includes('next purchase')) {{
-                                            covered = item.parsed.y;
+                                        if (item.dataset.label.includes('next purchase')) {{
+                                            nextPurchase = item.parsed.y;
+                                        }} else if (item.dataset.label.includes('Commitment')) {{
+                                            existing = item.parsed.y;
                                         }} else {{
                                             ondemand = item.parsed.y;
                                         }}
                                     }});
 
-                                    const total = covered + ondemand;
-                                    const coveragePercent = total > 0 ? (covered / total * 100).toFixed(1) : 0;
+                                    const total = existing + nextPurchase + ondemand;
+                                    const currentPct = total > 0 ? (existing / total * 100).toFixed(1) : '0.0';
+                                    const nextPct = total > 0 ? (nextPurchase / total * 100).toFixed(1) : '0.0';
+                                    let coverage = 'Coverage: ' + currentPct + '%';
+                                    if (nextPurchase > 0) {{
+                                        coverage += ' + ' + nextPct + '%';
+                                    }}
 
-                                    return 'Total: $' + total.toFixed(2) + '\\nCoverage: ' + coveragePercent + '%';
+                                    return 'Total: $' + total.toFixed(2) + '\\n' + coverage;
                                 }}
                             }}
                         }},
@@ -1389,18 +1397,26 @@ def generate_html_report(
                                     return yy + '-' + mm + '-' + dd + ' (' + dayName + ')';
                                 }},
                                 footer: function(tooltipItems) {{
-                                    let covered = 0;
+                                    let existing = 0;
+                                    let nextPurchase = 0;
                                     let ondemand = 0;
                                     tooltipItems.forEach(function(item) {{
-                                        if (item.dataset.label.includes('Commitment') || item.dataset.label.includes('next purchase')) {{
-                                            covered = item.parsed.y;
+                                        if (item.dataset.label.includes('next purchase')) {{
+                                            nextPurchase = item.parsed.y;
+                                        }} else if (item.dataset.label.includes('Commitment')) {{
+                                            existing = item.parsed.y;
                                         }} else {{
                                             ondemand = item.parsed.y;
                                         }}
                                     }});
-                                    const total = covered + ondemand;
-                                    const coveragePercent = total > 0 ? (covered / total * 100).toFixed(1) : 0;
-                                    return 'Total: $' + total.toFixed(2) + '\\nCoverage: ' + coveragePercent + '%';
+                                    const total = existing + nextPurchase + ondemand;
+                                    const currentPct = total > 0 ? (existing / total * 100).toFixed(1) : '0.0';
+                                    const nextPct = total > 0 ? (nextPurchase / total * 100).toFixed(1) : '0.0';
+                                    let coverage = 'Coverage: ' + currentPct + '%';
+                                    if (nextPurchase > 0) {{
+                                        coverage += ' + ' + nextPct + '%';
+                                    }}
+                                    return 'Total: $' + total.toFixed(2) + '\\n' + coverage;
                                 }}
                             }}
                         }}
