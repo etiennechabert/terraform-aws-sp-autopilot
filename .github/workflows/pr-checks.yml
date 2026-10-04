@@ -25,7 +25,7 @@ jobs:
 
     steps:
       - name: Checkout code
-        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
       - name: Setup Terraform
         uses: hashicorp/setup-terraform@dfe3c3f87815947d99a8997f908cb6525fc44e9e # v4
@@ -79,7 +79,7 @@ jobs:
 
     steps:
       - name: Checkout code
-        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
       - name: Run tfsec
         uses: aquasecurity/tfsec-action@b466648d6e39e7c75324f25d83891162a721f2d6 # v1.0.3
@@ -99,7 +99,7 @@ jobs:
 
       - name: Upload SARIF file
         if: always() && hashFiles('tfsec-results.sarif') != ''
-        uses: github/codeql-action/upload-sarif@7211b7c8077ea37d8641b6271f6a365a22a5fbfa # v4
+        uses: github/codeql-action/upload-sarif@2892aa5e19bbd11bc0cff5427e3b750a04d9e3c2 # v4.38.2
         with:
           sarif_file: tfsec-results.sarif
           category: tfsec
@@ -140,16 +140,16 @@ jobs:
 
     steps:
       - name: Checkout code
-        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
       - name: Set up Python
-        uses: actions/setup-python@a309ff8b426b58ec0e2a45f0f869d46889d02405 # v6
+        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
         with:
           python-version: '3.13'
 
       - name: Install ruff
         run: |
-          python -m pip install pip==25.1.1
+          python -m pip install --only-binary :all: pip==26.2.1
           pip install --require-hashes --only-binary :all: -r .github/requirements-lint.lock
 
       - name: Run ruff check
@@ -189,7 +189,7 @@ jobs:
     permissions:
       contents: read
     steps:
-      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - name: Setup terraform-docs
         run: |
           curl -sSLo terraform-docs.tar.gz https://terraform-docs.io/dl/v0.19.0/terraform-docs-v0.19.0-$(uname)-amd64.tar.gz
@@ -209,10 +209,10 @@ jobs:
 
     steps:
       - name: Checkout code
-        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
       - name: Set up Python
-        uses: actions/setup-python@a309ff8b426b58ec0e2a45f0f869d46889d02405 # v6
+        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
         with:
           python-version: '3.13'
           cache: 'pip'
@@ -223,7 +223,7 @@ jobs:
 
       - name: Install all dependencies
         run: |
-          python -m pip install pip==25.1.1
+          python -m pip install --only-binary :all: pip==26.2.1
           pip install --require-hashes --only-binary :all: -r lambda/scheduler/requirements-ci.lock
           pip install --require-hashes --only-binary :all: -r lambda/purchaser/requirements-ci.lock
           pip install --require-hashes --only-binary :all: -r lambda/reporter/requirements-ci.lock
@@ -245,12 +245,52 @@ jobs:
           cd lambda/reporter && pytest && cd ../..
           echo "::endgroup::"
 
-      - name: Upload coverage reports to Codecov
-        uses: codecov/codecov-action@e79a6962e0d4c0c17b229090214935d2e33f8354 # v5
+      - name: Upload coverage reports for SonarCloud
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
         with:
-          token: ${{ secrets.CODECOV_TOKEN }}
-          files: ./lambda/scheduler/coverage.xml,./lambda/purchaser/coverage.xml,./lambda/reporter/coverage.xml
-          fail_ci_if_error: false
+          name: lambda-coverage
+          path: |
+            lambda/scheduler/coverage.xml
+            lambda/purchaser/coverage.xml
+            lambda/reporter/coverage.xml
+          if-no-files-found: error
+          retention-days: 1
+
+  # Stage 3: SonarCloud analysis (reuses the Lambda Tests coverage; nothing depends on it)
+  sonarcloud:
+    name: SonarCloud
+    runs-on: ubuntu-latest
+    needs: [lambda-tests]
+    # Dependabot PRs run without repository secrets, so SONAR_TOKEN is empty and
+    # the scan can only fail. Key on the PR author, not github.actor, so a
+    # maintainer re-running the job doesn't flip this back on.
+    if: github.event.pull_request.user.login != 'dependabot[bot]'
+    permissions:
+      contents: read
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0  # Full git history for SonarCloud blame
+          persist-credentials: false
+
+      - name: Download coverage reports
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          name: lambda-coverage
+          path: lambda
+
+      # On a PR, wait for the quality gate and fail the job when it fails;
+      # otherwise the scan only uploads and red gates merge unnoticed. Pushes to
+      # main only upload: main's gate covers its whole new-code period, which
+      # PRs already gate slice by slice.
+      - name: SonarCloud Scan
+        uses: SonarSource/sonarqube-scan-action@d209202bc7d53ff1cc128f7f907dac145c9d6ae9 # v8.3.0
+        env:
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+        with:
+          args: ${{ github.event_name == 'pull_request' && '-Dsonar.qualitygate.wait=true' || '' }}
 
   # Stage 3: Terraform unit tests (runs after Lambda tests complete successfully)
   terraform-unit-tests:
@@ -262,7 +302,7 @@ jobs:
 
     steps:
       - name: Checkout code
-        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
       - name: Setup Terraform
         uses: hashicorp/setup-terraform@dfe3c3f87815947d99a8997f908cb6525fc44e9e # v4
@@ -284,20 +324,10 @@ jobs:
       - name: Initialize Terraform
         run: terraform init
 
+      # `terraform test` takes no positional file arguments; without
+      # -test-directory it only looks in ./tests and silently runs 0 tests.
       - name: Run all Terraform Unit Tests
-        run: |
-          FAILED=0
-          for test_file in cloudwatch eventbridge iam s3 sns sqs sqs_policy variables; do
-            echo "::group::$test_file"
-            if terraform test terraform-tests/unit/${test_file}.tftest.hcl; then
-              echo "✓ ${test_file} passed"
-            else
-              echo "✗ ${test_file} failed"
-              FAILED=1
-            fi
-            echo "::endgroup::"
-          done
-          exit $FAILED
+        run: terraform test -test-directory=terraform-tests/unit
 
   # Stage 2b: Terraform integration tests (runs after fast checks, parallel with Lambda tests)
   terraform-integration-tests:
@@ -315,15 +345,15 @@ jobs:
 
     env:
       AWS_DEFAULT_REGION: us-east-1
-      GO_VERSION: '1.25'
+      GO_VERSION: '1.26'
       TERRAFORM_VERSION: '1.11.0'
 
     steps:
       - name: Checkout code
-        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
       - name: Set up Go
-        uses: actions/setup-go@4a3601121dd01d1626a1e23e37211e3254c1c06c # v6
+        uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
         with:
           go-version: ${{ env.GO_VERSION }}
           cache: true
@@ -336,7 +366,7 @@ jobs:
           terraform_wrapper: false
 
       - name: Configure AWS Credentials
-        uses: aws-actions/configure-aws-credentials@99214aa6889fcddfa57764031d71add364327e59 # v6
+        uses: aws-actions/configure-aws-credentials@e1253824e5c10ff9df46874f81ed3ec929e19cfd # v6.3.0
         with:
           aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
