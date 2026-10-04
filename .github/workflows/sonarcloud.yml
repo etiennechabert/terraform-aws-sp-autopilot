@@ -24,12 +24,12 @@ jobs:
 
     steps:
       - name: Checkout code
-        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           fetch-depth: 0  # Full git history for SonarCloud blame
 
       - name: Set up Python
-        uses: actions/setup-python@a309ff8b426b58ec0e2a45f0f869d46889d02405 # v6
+        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
         with:
           python-version: '3.13'
           cache: 'pip'
@@ -40,7 +40,7 @@ jobs:
 
       - name: Install all dependencies
         run: |
-          python -m pip install pip==25.1.1
+          python -m pip install pip==26.2.1
           pip install --require-hashes --only-binary :all: -r lambda/scheduler/requirements-ci.lock
           pip install --require-hashes --only-binary :all: -r lambda/purchaser/requirements-ci.lock
           pip install --require-hashes --only-binary :all: -r lambda/reporter/requirements-ci.lock
@@ -68,7 +68,7 @@ jobs:
           find lambda -name "coverage.xml" -exec echo "  {}" \;
 
       - name: SonarCloud Scan
-        uses: SonarSource/sonarcloud-github-action@ba3875ecf642b2129de2b589510c81a8b53dbf4e # master
+        uses: SonarSource/sonarqube-scan-action@d209202bc7d53ff1cc128f7f907dac145c9d6ae9 # v8.3.0
         env:
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
         with:
