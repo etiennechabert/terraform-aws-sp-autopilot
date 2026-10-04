@@ -284,20 +284,10 @@ jobs:
       - name: Initialize Terraform
         run: terraform init
 
+      # `terraform test` takes no positional file arguments; without
+      # -test-directory it only looks in ./tests and silently runs 0 tests.
       - name: Run all Terraform Unit Tests
-        run: |
-          FAILED=0
-          for test_file in cloudwatch eventbridge iam s3 sns sqs sqs_policy variables; do
-            echo "::group::$test_file"
-            if terraform test terraform-tests/unit/${test_file}.tftest.hcl; then
-              echo "✓ ${test_file} passed"
-            else
-              echo "✗ ${test_file} failed"
-              FAILED=1
-            fi
-            echo "::endgroup::"
-          done
-          exit $FAILED
+        run: terraform test -test-directory=terraform-tests/unit
 
   # Stage 2b: Terraform integration tests (runs after fast checks, parallel with Lambda tests)
   terraform-integration-tests:
