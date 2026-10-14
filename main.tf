@@ -1,12 +1,14 @@
 # Main configuration - data sources and local variables
 #
 # This module is organized into domain-specific files:
-#   sns.tf, sqs.tf, s3.tf, lambda.tf, iam.tf, cloudwatch.tf, eventbridge.tf, outputs.tf, variables.tf
+#   sns.tf, kms.tf, sqs.tf, s3.tf, lambda.tf, iam.tf, cloudwatch.tf, eventbridge.tf, outputs.tf, variables.tf
 
 
 data "aws_caller_identity" "current" {}
 
 data "aws_region" "current" {}
+
+data "aws_partition" "current" {}
 
 
 locals {
@@ -206,9 +208,12 @@ locals {
 
   # Encryption Settings
 
-  sns_kms_key = try(var.encryption.sns_kms_key, "alias/aws/sns")
-  sqs_kms_key = try(var.encryption.sqs_kms_key, "alias/aws/sqs")
-  s3_kms_key  = try(var.encryption.s3.kms_key, null) # null = AES256, otherwise SSE-KMS
+  # No key given: the module creates the topic's key (kms.tf), since CloudWatch alarms
+  # can't publish to a topic encrypted with an AWS managed key such as alias/aws/sns.
+  create_sns_kms_key = try(var.encryption.sns_kms_key, null) == null
+  sns_kms_key        = local.create_sns_kms_key ? aws_kms_key.notifications[0].arn : var.encryption.sns_kms_key
+  sqs_kms_key        = try(var.encryption.sqs_kms_key, "alias/aws/sqs")
+  s3_kms_key         = try(var.encryption.s3.kms_key, null) # null = AES256, otherwise SSE-KMS
 
   # Shared Lambda environment variables
   #

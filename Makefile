@@ -1,4 +1,4 @@
-.PHONY: help lint lint-check format test test-packaging coverage install-hooks docs docs-check
+.PHONY: help lint lint-check format test test-packaging coverage install-hooks docs docs-check cfn-package cfn-lint cfn-test
 
 help:
 	@echo "Available targets:"
@@ -7,24 +7,27 @@ help:
 	@echo "  docs         - Generate Terraform docs in README"
 	@echo "  docs-check   - Check if Terraform docs are up-to-date (CI mode)"
 	@echo "  format       - Format Python code with ruff"
-	@echo "  test         - Run all tests"
+	@echo "  test         - Run all Lambda tests (cfn-test runs the CloudFormation ones)"
 	@echo "  coverage     - Run all tests with aggregated coverage report (opens in browser)"
+	@echo "  cfn-package  - Package the CloudFormation template and Lambda zips into dist/cloudformation"
+	@echo "  cfn-lint     - Package, then cfn-lint both CloudFormation templates"
+	@echo "  cfn-test     - Run the CloudFormation template tests"
 	@echo "  install-hooks - Install git pre-commit hooks"
 
 # Lint Python code and auto-fix issues
 lint:
 	@echo "Running ruff linter..."
-	uvx ruff check --fix lambda/
+	uvx ruff check --fix lambda/ cloudformation/
 	@echo "Running ruff formatter..."
-	uvx ruff format lambda/
+	uvx ruff format lambda/ cloudformation/
 	@echo "✓ Linting complete"
 
 # Check linting without modifying files (for CI)
 lint-check:
 	@echo "Checking ruff linter..."
-	uvx ruff check lambda/
+	uvx ruff check lambda/ cloudformation/
 	@echo "Checking ruff formatter..."
-	uvx ruff format --check lambda/
+	uvx ruff format --check lambda/ cloudformation/
 	@echo "✓ Lint check complete"
 
 docs:
@@ -36,7 +39,7 @@ docs-check:
 # Format Python code
 format:
 	@echo "Formatting Python code..."
-	uvx ruff format lambda/
+	uvx ruff format lambda/ cloudformation/
 	@echo "✓ Formatting complete"
 
 # Run all tests
@@ -105,6 +108,20 @@ coverage:
 	@echo "📁 HTML report: htmlcov/index.html"
 	@echo "🌐 Opening in browser..."
 	@open htmlcov/index.html || xdg-open htmlcov/index.html || echo "Please open htmlcov/index.html manually"
+
+# CloudFormation edition (cloudformation/DESIGN.md). CFN_VERSION names the build;
+# CFN_CODE_SOURCE_URL points the stack at packages you host yourself.
+CFN_VERSION ?= v0.0.0-dev
+CFN_DIST := dist/cloudformation
+
+cfn-package:
+	python3 cloudformation/build.py --version $(CFN_VERSION) --output-dir $(CFN_DIST) $(if $(CFN_CODE_SOURCE_URL),--code-source-url $(CFN_CODE_SOURCE_URL))
+
+cfn-lint: cfn-package
+	uvx --from cfn-lint cfn-lint $(CFN_DIST)/sp-autopilot.yaml cloudformation/hosting/template-hosting.yaml
+
+cfn-test:
+	cd cloudformation && uvx --with-requirements requirements-ci.txt pytest
 
 # Install git pre-commit hooks
 install-hooks:

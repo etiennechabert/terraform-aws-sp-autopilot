@@ -5,13 +5,15 @@ on:
     tags:
       - 'v[0-9]+.[0-9]+.[0-9]+'
 
-permissions:
-  contents: write
+# Each job asks for what it needs.
+permissions: {}
 
 jobs:
   release:
     name: Create Release
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
 
     steps:
       - name: Checkout code
@@ -33,6 +35,14 @@ jobs:
       - name: Extract version from tag
         id: version
         run: echo "version=${GITHUB_REF#refs/tags/}" >> $GITHUB_OUTPUT
+
+      # The CloudFormation edition (cloudformation/DESIGN.md): the template and the
+      # Lambda packages it downloads, attached to the release below. Standard library
+      # Python only: nothing is installed.
+      - name: Package the CloudFormation template
+        env:
+          VERSION: ${{ steps.version.outputs.version }}
+        run: python3 cloudformation/build.py --version "${VERSION}" --output-dir dist/cloudformation
 
       - name: Generate changelog
         id: changelog
@@ -127,6 +137,9 @@ jobs:
             }
             ```
 
+            ### CloudFormation
+            Create a stack from `sp-autopilot.yaml` below (CloudFormation → Create stack → Upload a template file), or use the README's Launch Stack link. The stack downloads this release's Lambda packages, also below, and checks them against the SHA-256s in the template.
+
             ## What's Changed
 
             ${{ steps.changelog.outputs.changelog }}
@@ -138,4 +151,54 @@ jobs:
           prerelease: false
           generateReleaseNotes: false
           makeLatest: true
+          artifacts: dist/cloudformation/*
+          artifactErrorsFailBuild: true
           token: ${{ secrets.GITHUB_TOKEN }}
+
+  # The CloudFormation template, published to S3 for the README's Launch Stack link:
+  # quick-create only takes a template stored in S3. Off until the maintainer deploys
+  # cloudformation/hosting/template-hosting.yaml and sets its outputs as the
+  # TEMPLATE_BUCKET, TEMPLATE_ROLE_ARN and TEMPLATE_REGION repository variables.
+  #
+  # Least privilege, pinned by cloudformation/tests/test_release_workflow.py: an OIDC
+  # token and nothing else; the release environment, which is all the AWS role
+  # trusts; and no repository code. It copies the template the release job just
+  # attached, with the runner's own AWS CLI and credentials that last 15 minutes and
+  # can only write under templates/ in that one bucket.
+  publish-template:
+    name: Publish CloudFormation Template
+    needs: release
+    if: ${{ vars.TEMPLATE_BUCKET != '' && vars.TEMPLATE_ROLE_ARN != '' && vars.TEMPLATE_REGION != '' }}
+    environment: release
+    runs-on: ubuntu-latest
+    permissions:
+      id-token: write
+    steps:
+      - name: Upload the template
+        shell: bash
+        env:
+          TEMPLATE_BUCKET: ${{ vars.TEMPLATE_BUCKET }}
+          TEMPLATE_ROLE_ARN: ${{ vars.TEMPLATE_ROLE_ARN }}
+          TEMPLATE_REGION: ${{ vars.TEMPLATE_REGION }}
+          TAG: ${{ github.ref_name }}
+        run: |
+          set -euo pipefail
+          curl -sSfL --proto '=https' --proto-redir '=https' --retry 3 -o sp-autopilot.yaml \
+            "https://github.com/${GITHUB_REPOSITORY}/releases/download/${TAG}/sp-autopilot.yaml"
+          token=$(curl -sSf -H "Authorization: bearer ${ACTIONS_ID_TOKEN_REQUEST_TOKEN}" \
+            "${ACTIONS_ID_TOKEN_REQUEST_URL}&audience=sts.amazonaws.com" | jq -r .value)
+          echo "::add-mask::${token}"
+          creds=$(aws sts assume-role-with-web-identity --region "${TEMPLATE_REGION}" \
+            --role-arn "${TEMPLATE_ROLE_ARN}" --role-session-name "sp-autopilot-release-${GITHUB_RUN_ID}" \
+            --web-identity-token "${token}" --duration-seconds 900 --query Credentials --output json)
+          AWS_ACCESS_KEY_ID=$(jq -r .AccessKeyId <<<"${creds}")
+          AWS_SECRET_ACCESS_KEY=$(jq -r .SecretAccessKey <<<"${creds}")
+          AWS_SESSION_TOKEN=$(jq -r .SessionToken <<<"${creds}")
+          echo "::add-mask::${AWS_SECRET_ACCESS_KEY}"
+          echo "::add-mask::${AWS_SESSION_TOKEN}"
+          export AWS_ACCESS_KEY_ID AWS_SECRET_ACCESS_KEY AWS_SESSION_TOKEN AWS_REGION="${TEMPLATE_REGION}"
+          # The tag's own copy, and latest, which the README's Launch Stack link opens.
+          for folder in "${TAG}" latest; do
+            aws s3 cp sp-autopilot.yaml "s3://${TEMPLATE_BUCKET}/templates/${folder}/sp-autopilot.yaml" \
+              --content-type text/yaml --cache-control max-age=300
+          done

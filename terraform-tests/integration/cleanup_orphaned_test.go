@@ -10,6 +10,7 @@ import (
 	"github.com/aws/aws-sdk-go/service/cloudwatchevents"
 	"github.com/aws/aws-sdk-go/service/cloudwatchlogs"
 	"github.com/aws/aws-sdk-go/service/iam"
+	"github.com/aws/aws-sdk-go/service/kms"
 	"github.com/aws/aws-sdk-go/service/lambda"
 	"github.com/aws/aws-sdk-go/service/s3"
 	"github.com/aws/aws-sdk-go/service/sns"
@@ -58,6 +59,7 @@ func TestCleanupAllOrphanedResources(t *testing.T) {
 	cleanupOrphanedSNSSubscriptions(t, sess)
 	cleanupAllIAMRoles(t, sess)
 	cleanupAllS3Buckets(t, sess)
+	cleanupAllKMSKeys(t, sess)
 
 	t.Log(logSeparator)
 	t.Log("Cleanup Complete")
@@ -510,5 +512,63 @@ func cleanupAllS3Buckets(t *testing.T, sess *session.Session) {
 
 	if !deleted {
 		t.Log("  No orphaned S3 buckets found")
+	}
+}
+
+// deleteKMSAlias removes a test stack's key alias, and schedules its key for deletion
+// after KMS's 7-day minimum: keys can't be deleted at once.
+func deleteKMSAlias(t *testing.T, kmsClient *kms.KMS, alias *kms.AliasListEntry) bool {
+	_, err := kmsClient.DeleteAlias(&kms.DeleteAliasInput{AliasName: alias.AliasName})
+	if err != nil {
+		t.Logf("  Warning: Failed to delete KMS alias %s: %v", aws.StringValue(alias.AliasName), err)
+		return false
+	}
+	t.Logf("  Deleted KMS alias: %s", aws.StringValue(alias.AliasName))
+
+	if alias.TargetKeyId == nil {
+		return true
+	}
+	_, err = kmsClient.ScheduleKeyDeletion(&kms.ScheduleKeyDeletionInput{
+		KeyId:               alias.TargetKeyId,
+		PendingWindowInDays: aws.Int64(7),
+	})
+	if err != nil {
+		t.Logf("  Warning: Failed to schedule deletion of KMS key %s: %v", aws.StringValue(alias.TargetKeyId), err)
+	} else {
+		t.Logf("  Scheduled deletion of KMS key: %s", aws.StringValue(alias.TargetKeyId))
+	}
+	return true
+}
+
+// cleanupAllKMSKeys finds the notifications keys (kms.tf) of test stacks by alias.
+func cleanupAllKMSKeys(t *testing.T, sess *session.Session) {
+	t.Log("\n[KMS Keys]")
+	kmsClient := kms.New(sess)
+
+	aliasPrefixes := []string{"alias/" + testPrefixCurrent, "alias/" + testPrefixOld}
+
+	var orphaned []*kms.AliasListEntry
+	err := kmsClient.ListAliasesPages(&kms.ListAliasesInput{}, func(page *kms.ListAliasesOutput, _ bool) bool {
+		for _, alias := range page.Aliases {
+			if matchesTestPrefix(aws.StringValue(alias.AliasName), aliasPrefixes) {
+				orphaned = append(orphaned, alias)
+			}
+		}
+		return true
+	})
+	if err != nil {
+		t.Logf("  Warning: Failed to list KMS aliases: %v", err)
+		return
+	}
+
+	deletedCount := 0
+	for _, alias := range orphaned {
+		if deleteKMSAlias(t, kmsClient, alias) {
+			deletedCount++
+		}
+	}
+
+	if deletedCount == 0 {
+		t.Log("  No orphaned KMS keys found")
 	}
 }

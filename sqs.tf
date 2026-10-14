@@ -4,7 +4,7 @@
 resource "aws_sqs_queue" "purchase_intents_dlq" {
   name                              = "${local.module_name}-purchase-intents-dlq"
   message_retention_seconds         = 1209600           # 14 days (AWS maximum)
-  kms_master_key_id                 = local.sqs_kms_key # null = disabled, "alias/aws/sqs" = AWS managed, custom ARN = customer managed
+  kms_master_key_id                 = local.sqs_kms_key # "alias/aws/sqs" = AWS managed, custom ARN = customer managed
   kms_data_key_reuse_period_seconds = 300               # 5 minutes (default)
 
   tags = merge(
@@ -18,10 +18,10 @@ resource "aws_sqs_queue" "purchase_intents_dlq" {
 
 resource "aws_sqs_queue" "purchase_intents" {
   name                              = "${local.module_name}-purchase-intents"
-  message_retention_seconds         = 1209600           # 14 days (AWS maximum) — must exceed scheduler-to-purchaser gap
-  visibility_timeout_seconds        = 300               # 5 minutes (matching Lambda timeout)
-  kms_master_key_id                 = local.sqs_kms_key # null = disabled, "alias/aws/sqs" = AWS managed, custom ARN = customer managed
-  kms_data_key_reuse_period_seconds = 300               # 5 minutes (default)
+  message_retention_seconds         = 1209600                        # 14 days (AWS maximum) — must exceed scheduler-to-purchaser gap
+  visibility_timeout_seconds        = local.lambda_purchaser_timeout # The purchaser's timeout: intents it is still processing stay hidden
+  kms_master_key_id                 = local.sqs_kms_key              # "alias/aws/sqs" = AWS managed, custom ARN = customer managed
+  kms_data_key_reuse_period_seconds = 300                            # 5 minutes (default)
 
   redrive_policy = jsonencode({
     deadLetterTargetArn = aws_sqs_queue.purchase_intents_dlq.arn

@@ -417,8 +417,8 @@ variable "tags" {
 variable "encryption" {
   description = "Encryption configuration for SNS, SQS, and S3"
   type = object({
-    sns_kms_key = optional(string, "alias/aws/sns") # Default: AWS managed KMS key. Set to null to disable.
-    sqs_kms_key = optional(string, "alias/aws/sqs") # Default: AWS managed KMS key. Set to null to disable.
+    sns_kms_key = optional(string)                  # Default: a key the module creates for the topic. Your own key's policy must let cloudwatch.amazonaws.com and the Lambda roles use it (AWS managed keys such as alias/aws/sns can't, so alarms wouldn't notify).
+    sqs_kms_key = optional(string, "alias/aws/sqs") # Default: AWS managed KMS key.
     s3 = optional(object({
       kms_key = optional(string) # null = AES256 (SSE-S3, free), set to KMS key ARN for SSE-KMS
     }), {})

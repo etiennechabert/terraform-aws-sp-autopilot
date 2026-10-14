@@ -279,3 +279,55 @@ run "test_s3_lifecycle_custom_values" {
     error_message = "S3 lifecycle rule should exist with correct ID"
   }
 }
+
+# Test: no access logs bucket, nor its policy, unless access logging is on
+run "test_s3_access_logs_bucket_off_by_default" {
+  command = plan
+
+  assert {
+    condition     = length(aws_s3_bucket.reports_logs) == 0 && length(aws_s3_bucket_policy.reports_logs) == 0
+    error_message = "The access logs bucket and its policy should only exist with s3_access_logging.enabled"
+  }
+}
+
+# Test: the access logs bucket lets S3's logging service deliver the reports bucket's logs
+run "test_s3_access_logs_bucket_policy" {
+  command = plan
+
+  variables {
+    s3_access_logging = {
+      enabled = true
+    }
+  }
+
+  override_resource {
+    override_during = plan
+    target          = aws_s3_bucket.reports
+    values = {
+      arn = "arn:aws:s3:::sp-autopilot-reports-123456789012"
+    }
+  }
+
+  override_resource {
+    override_during = plan
+    target          = aws_s3_bucket.reports_logs[0]
+    values = {
+      arn = "arn:aws:s3:::sp-autopilot-reports-logs-123456789012"
+    }
+  }
+
+  assert {
+    condition = contains(jsondecode(aws_s3_bucket_policy.reports_logs[0].policy).Statement, {
+      Sid       = "AllowServerAccessLogs"
+      Effect    = "Allow"
+      Principal = { Service = "logging.s3.amazonaws.com" }
+      Action    = "s3:PutObject"
+      Resource  = "arn:aws:s3:::sp-autopilot-reports-logs-123456789012/*"
+      Condition = {
+        ArnLike      = { "aws:SourceArn" = "arn:aws:s3:::sp-autopilot-reports-123456789012" }
+        StringEquals = { "aws:SourceAccount" = "123456789012" }
+      }
+    })
+    error_message = "The access logs bucket policy should let logging.s3.amazonaws.com write the reports bucket's logs: ACLs are disabled on new buckets"
+  }
+}

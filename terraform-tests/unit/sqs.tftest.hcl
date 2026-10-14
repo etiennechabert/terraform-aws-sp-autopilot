@@ -72,6 +72,22 @@ run "test_sqs_visibility_timeout" {
   }
 }
 
+# Test: SQS main queue visibility timeout follows a longer purchaser timeout
+run "test_sqs_visibility_timeout_follows_purchaser_timeout" {
+  command = plan
+
+  variables {
+    lambda_config = {
+      purchaser = { timeout = 900 }
+    }
+  }
+
+  assert {
+    condition     = aws_sqs_queue.purchase_intents.visibility_timeout_seconds == 900
+    error_message = "SQS main queue visibility timeout should follow the purchaser timeout, so intents it is still processing stay hidden"
+  }
+}
+
 # Test: SQS main queue has redrive policy configured
 run "test_sqs_redrive_policy_configured" {
   command = plan
