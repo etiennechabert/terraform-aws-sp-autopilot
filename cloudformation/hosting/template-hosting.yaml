@@ -1,0 +1,129 @@
+# Hosting for SP Autopilot's CloudFormation template (cloudformation/DESIGN.md).
+# The maintainer deploys this once; cloudformation/hosting/README.md has the steps.
+#
+# A quick-create link only takes a template stored in S3, so each release uploads its
+# sp-autopilot.yaml here (release.yml, publish-template). Users' CloudFormation consoles
+# then read it, which is why templates/ is publicly readable. Any region works: a
+# console in any region reads a template from a bucket in another one. The Lambda
+# packages aren't here: the template downloads them from the GitHub release and checks
+# their SHA-256s.
+AWSTemplateFormatVersion: "2010-09-09"
+Description: Public bucket hosting SP Autopilot's CloudFormation template, and the role its release workflow uploads it with.
+
+Parameters:
+  BucketName:
+    Type: String
+    AllowedPattern: "^[a-z0-9][a-z0-9.-]{1,61}[a-z0-9]$"
+    Description: Globally unique name for the public templates bucket.
+  GitHubRepository:
+    Type: String
+    Default: etiennechabert/terraform-aws-sp-autopilot
+    Description: owner/name of the repository whose release workflow uploads the template.
+  CreateGitHubOidcProvider:
+    Type: String
+    AllowedValues: ["yes", "no"]
+    Default: "yes"
+    Description: Choose no if the account already has the token.actions.githubusercontent.com OIDC provider.
+
+Conditions:
+  CreatesOidcProvider: !Equals [!Ref CreateGitHubOidcProvider, "yes"]
+
+Resources:
+  GitHubOidcProvider:
+    Type: AWS::IAM::OIDCProvider
+    Condition: CreatesOidcProvider
+    Properties:
+      Url: https://token.actions.githubusercontent.com
+      ClientIdList:
+        - sts.amazonaws.com
+
+  TemplatesBucket:
+    Type: AWS::S3::Bucket
+    DeletionPolicy: Retain
+    UpdateReplacePolicy: Retain
+    Properties:
+      BucketName: !Ref BucketName
+      # Public reads go through the bucket policy alone: ACLs stay off.
+      OwnershipControls:
+        Rules:
+          - ObjectOwnership: BucketOwnerEnforced
+      PublicAccessBlockConfiguration:
+        BlockPublicAcls: true
+        IgnorePublicAcls: true
+        BlockPublicPolicy: false
+        RestrictPublicBuckets: false
+      BucketEncryption:
+        ServerSideEncryptionConfiguration:
+          - ServerSideEncryptionByDefault:
+              SSEAlgorithm: AES256
+
+  TemplatesBucketPolicy:
+    Type: AWS::S3::BucketPolicy
+    Properties:
+      Bucket: !Ref TemplatesBucket
+      PolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Sid: PublicReadTemplates
+            Effect: Allow
+            Principal: "*"
+            Action: s3:GetObject
+            Resource: !Sub "${TemplatesBucket.Arn}/templates/*"
+          - Sid: DenyInsecureTransport
+            Effect: Deny
+            Principal: "*"
+            Action: "s3:*"
+            Resource:
+              - !GetAtt TemplatesBucket.Arn
+              - !Sub "${TemplatesBucket.Arn}/*"
+            Condition:
+              Bool:
+                "aws:SecureTransport": "false"
+
+  ReleaseUploadRole:
+    Type: AWS::IAM::Role
+    # Created after the OIDC provider when the stack makes it. DependsOn can't
+    # name a conditional resource; a conditional Ref orders creation the same way.
+    Metadata:
+      OidcProvider: !If [CreatesOidcProvider, !Ref GitHubOidcProvider, !Ref "AWS::NoValue"]
+    Properties:
+      Description: Lets SP Autopilot's release workflow, in its release environment, upload the template.
+      MaxSessionDuration: 3600
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal:
+              Federated: !Sub "arn:${AWS::Partition}:iam::${AWS::AccountId}:oidc-provider/token.actions.githubusercontent.com"
+            Action: sts:AssumeRoleWithWebIdentity
+            Condition:
+              StringEquals:
+                "token.actions.githubusercontent.com:aud": sts.amazonaws.com
+                # Any job that runs in the release environment, which
+                # release.yml's publish-template does. Keep that environment's
+                # required reviewer and ref limits (README.md, step 2), or a
+                # workflow on any branch that declares it could replace the
+                # public template.
+                "token.actions.githubusercontent.com:sub": !Sub "repo:${GitHubRepository}:environment:release"
+      Policies:
+        - PolicyName: upload-templates
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Effect: Allow
+                Action: s3:PutObject
+                Resource: !Sub "${TemplatesBucket.Arn}/templates/*"
+
+Outputs:
+  TemplateBucket:
+    Description: Set as the repository variable TEMPLATE_BUCKET.
+    Value: !Ref TemplatesBucket
+  ReleaseRoleArn:
+    Description: Set as the repository variable TEMPLATE_ROLE_ARN.
+    Value: !GetAtt ReleaseUploadRole.Arn
+  TemplateRegion:
+    Description: Set as the repository variable TEMPLATE_REGION.
+    Value: !Ref "AWS::Region"
+  TemplateBaseUrl:
+    Description: Base of the README's Launch Stack link (templates/latest/sp-autopilot.yaml under it).
+    Value: !Sub "https://${TemplatesBucket.RegionalDomainName}/templates"

@@ -78,6 +78,25 @@ See the [`examples/`](examples/) directory for complete, working examples:
 - **[organizations](examples/organizations/)**: AWS Organizations multi-account setup
 - **[dynamic-strategy](examples/dynamic-strategy/)**: dynamic target with gap split
 
+## Deploy with CloudFormation
+
+Not using Terraform? Every release also ships the module as a CloudFormation stack, with the same functions, queue, topic, bucket, IAM and schedules.
+
+1. Turn on [hourly granularity](#hourly-granularity-required) in Cost Explorer, as for the module.
+2. [**Launch the stack**](https://console.aws.amazon.com/cloudformation/home#/stacks/create/review?templateURL=https%3A%2F%2Fsp-autopilot-templates.s3.eu-central-1.amazonaws.com%2Ftemplates%2Flatest%2Fsp-autopilot.yaml&stackName=sp-autopilot). It opens CloudFormation in your current region with the latest release's template. Any region works.
+
+   Or download `sp-autopilot.yaml` from the [latest release](https://github.com/etiennechabert/terraform-aws-sp-autopilot/releases/latest) and choose *Upload a template file* under *Create stack*. The repository's [`cloudformation/sp-autopilot.yaml`](cloudformation/sp-autopilot.yaml) is for reading: it refuses to deploy, because the release's copy is the one that pins its Lambda packages.
+3. Set a notification email (or a Slack or Teams webhook) and the Savings Plans types to manage. Every other parameter has the module's default, and [Configuration](#configuration) explains the module input it stands for.
+4. Acknowledge that the stack creates named IAM roles, create it, then confirm the subscription email AWS sends.
+
+**The purchaser starts off.** The stack's defaults are step 2 of the [Recommended Rollout](#recommended-rollout): the scheduler queues purchase intents and the reporter writes reports, but nothing is bought. Once the queued intents look right, *Update* the stack with its current template and set `EnablePurchaser` to `true`.
+
+**Upgrading**: *Update* the stack, *Replace existing template*, with the Amazon S3 URL `https://sp-autopilot-templates.s3.eu-central-1.amazonaws.com/templates/latest/sp-autopilot.yaml`. Your parameter values are kept.
+
+**How the stack gets its code**: Lambda only reads code from S3 in its own region, so the stack downloads the release's three Lambda packages from its GitHub release, checks them against the SHA-256s written into the template, and copies them into a bucket of its own. It needs outbound HTTPS to github.com while it's created or updated.
+
+**Differences from the module**: one notification email (add more subscriptions to the topic), one memory size, timeout and error-alarm switch for all three functions, and one management-account role for the scheduler and reporter plus one for the purchaser ([AWS Organizations Setup](#aws-organizations-setup)). Stack tags apply to every resource. Deleting the stack keeps the reports bucket; delete it yourself before creating another stack with the same `NamePrefix`.
+
 ## Configuration
 
 ### `purchase_strategy`

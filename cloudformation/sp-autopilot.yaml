@@ -1,0 +1,1392 @@
+# SP Autopilot as a CloudFormation stack: the same Lambdas, queue, topic, bucket,
+# IAM and schedules as the Terraform module in this repository (cloudformation/DESIGN.md).
+#
+# Releases build it from the repository's cloudformation/sp-autopilot.yaml with
+# cloudformation/build.py, which fills in the release, where its Lambda packages are
+# downloaded from, and their SHA-256s. Deploy the sp-autopilot.yaml attached to a
+# GitHub release, not the repository's file.
+AWSTemplateFormatVersion: "2010-09-09"
+Description: SP Autopilot @@VERSION@@ - automates AWS Savings Plans purchases with a scheduler, a purchaser and a reporter Lambda (github.com/etiennechabert/terraform-aws-sp-autopilot).
+
+Metadata:
+  AWS::CloudFormation::Interface:
+    ParameterGroups:
+      - Label:
+          default: Which functions run (see the README's Recommended Rollout)
+        Parameters:
+          - EnableScheduler
+          - EnablePurchaser
+          - EnableReporter
+      - Label:
+          default: Notifications (at least one)
+        Parameters:
+          - NotificationEmail
+          - SlackWebhookUrl
+          - TeamsWebhookUrl
+      - Label:
+          default: Savings Plans to manage
+        Parameters:
+          - ComputePlanType
+          - DatabasePlanType
+          - SageMakerPlanType
+      - Label:
+          default: "Purchase strategy: target"
+        Parameters:
+          - TargetStrategy
+          - DynamicRiskLevel
+          - PrudentPercentage
+          - StaticCommitment
+      - Label:
+          default: "Purchase strategy: split"
+        Parameters:
+          - SplitStrategy
+          - FixedStepPercent
+          - GapSplitDivider
+          - GapSplitMinPurchasePercent
+          - GapSplitMaxPurchasePercent
+      - Label:
+          default: Purchase guardrails
+        Parameters:
+          - RenewalWindowDays
+          - PurchaseCooldownDays
+          - MinCommitmentPerPlan
+          - SpikeGuardEnabled
+          - SpikeGuardLongLookbackDays
+          - SpikeGuardShortLookbackDays
+          - SpikeGuardThresholdPercent
+      - Label:
+          default: Schedules (EventBridge, UTC)
+        Parameters:
+          - SchedulerSchedule
+          - PurchaserSchedule
+          - ReporterSchedule
+      - Label:
+          default: Reports
+        Parameters:
+          - ReportFormat
+          - EmailReports
+          - IncludeDebugData
+          - ReportsTransitionIaDays
+          - ReportsTransitionGlacierDays
+          - ReportsExpirationDays
+          - ReportsNoncurrentExpirationDays
+          - S3AccessLogging
+          - S3AccessLogsPrefix
+          - S3AccessLogsExpirationDays
+      - Label:
+          default: Monitoring
+        Parameters:
+          - LambdaErrorAlarms
+          - LambdaErrorThreshold
+          - DlqAlarm
+          - LowUtilizationThreshold
+      - Label:
+          default: AWS Organizations (leave empty for a single account)
+        Parameters:
+          - ManagementReadOnlyRoleArn
+          - ManagementPurchaseRoleArn
+      - Label:
+          default: Advanced
+        Parameters:
+          - NamePrefix
+          - LambdaMemorySize
+          - LambdaTimeout
+          - SnsKmsKey
+          - SqsKmsKey
+          - ReportsKmsKeyArn
+
+Parameters:
+  # Which functions run
+  EnableScheduler:
+    Type: String
+    AllowedValues: ["true", "false"]
+    Default: "true"
+    Description: Analyzes coverage and queues purchase intents to SQS, where you can review and delete them before the purchaser runs.
+  EnablePurchaser:
+    Type: String
+    AllowedValues: ["true", "false"]
+    Default: "false"
+    Description: Buys the queued Savings Plans. Off by default, unlike the Terraform module, so you can review what the scheduler queues first. Savings Plans can't be cancelled once bought.
+  EnableReporter:
+    Type: String
+    AllowedValues: ["true", "false"]
+    Default: "true"
+    Description: Writes coverage and savings reports to the reports bucket.
+
+  # Notifications
+  NotificationEmail:
+    Type: String
+    Default: ""
+    AllowedPattern: ^$|^[^\s@]+@[^\s@]+\.[^\s@]+$
+    ConstraintDescription: must be an email address, or empty.
+    Description: Address subscribed to the notifications topic. AWS sends it a confirmation email first. Add more subscriptions to the topic afterwards if you need them.
+  SlackWebhookUrl:
+    Type: String
+    Default: ""
+    NoEcho: true
+    AllowedPattern: ^$|^https://\S+$
+    ConstraintDescription: must be an https:// URL, or empty.
+    Description: Slack incoming webhook URL, or empty.
+  TeamsWebhookUrl:
+    Type: String
+    Default: ""
+    NoEcho: true
+    AllowedPattern: ^$|^https://\S+$
+    ConstraintDescription: must be an https:// URL, or empty.
+    Description: Microsoft Teams incoming webhook URL, or empty.
+
+  # Savings Plans
+  ComputePlanType:
+    Type: String
+    AllowedValues:
+      - disabled
+      - no_upfront_one_year
+      - partial_upfront_one_year
+      - all_upfront_one_year
+      - no_upfront_three_year
+      - partial_upfront_three_year
+      - all_upfront_three_year
+    Default: no_upfront_one_year
+    Description: Compute Savings Plans (EC2, Fargate, Lambda). Start with no_upfront_one_year, as the README suggests.
+  DatabasePlanType:
+    Type: String
+    AllowedValues:
+      - disabled
+      - no_upfront_one_year
+    Default: disabled
+    Description: Database Savings Plans. AWS only sells them as no_upfront_one_year.
+  SageMakerPlanType:
+    Type: String
+    AllowedValues:
+      - disabled
+      - no_upfront_one_year
+      - partial_upfront_one_year
+      - all_upfront_one_year
+      - no_upfront_three_year
+      - partial_upfront_three_year
+      - all_upfront_three_year
+    Default: disabled
+    Description: SageMaker Savings Plans.
+
+  # Purchase strategy: target
+  TargetStrategy:
+    Type: String
+    AllowedValues: [dynamic, static, aws]
+    Default: dynamic
+    Description: "How much coverage to aim for. dynamic: computed from your usage at the risk level below. static: a fixed $/hour commitment. aws: AWS's own recommendation."
+  DynamicRiskLevel:
+    Type: String
+    AllowedValues: [prudent, min_hourly, optimal, maximum]
+    Default: prudent
+    Description: Used by the dynamic target only.
+  PrudentPercentage:
+    Type: Number
+    Default: 85
+    MinValue: 1
+    MaxValue: 100
+    Description: Used by the dynamic target at the prudent risk level.
+  StaticCommitment:
+    Type: Number
+    Default: 0
+    MinValue: 0
+    Description: Target hourly commitment in $/hour. Required, and above 0, with the static target.
+
+  # Purchase strategy: split
+  SplitStrategy:
+    Type: String
+    AllowedValues: [gap_split, fixed_step, one_shot]
+    Default: gap_split
+    Description: "How much of the gap to the target each run buys. gap_split: the gap divided by the divider below. fixed_step: a fixed percentage. one_shot: all of it."
+  FixedStepPercent:
+    Type: Number
+    Default: 10
+    MinValue: 0.01
+    MaxValue: 100
+    Description: Used by the fixed_step split only.
+  GapSplitDivider:
+    Type: Number
+    Default: 2
+    MinValue: 0.01
+    Description: Used by the gap_split split only.
+  GapSplitMinPurchasePercent:
+    Type: String
+    Default: ""
+    AllowedPattern: ^$|^[0-9]+(\.[0-9]+)?$
+    ConstraintDescription: must be a number, or empty.
+    Description: Used by the gap_split split only. Empty for no minimum.
+  GapSplitMaxPurchasePercent:
+    Type: String
+    Default: ""
+    AllowedPattern: ^$|^[0-9]+(\.[0-9]+)?$
+    ConstraintDescription: must be a number, or empty.
+    Description: Used by the gap_split split only. Empty for 100.
+
+  # Purchase guardrails
+  RenewalWindowDays:
+    Type: Number
+    Default: 14
+    MinValue: 1
+    Description: Plans expiring within this many days are replaced. Must exceed the days between the scheduler and purchaser runs.
+  PurchaseCooldownDays:
+    Type: Number
+    Default: 7
+    MinValue: 2
+    Description: Days to wait after a purchase before buying again (Cost Explorer lags 24 to 48 hours).
+  MinCommitmentPerPlan:
+    Type: Number
+    Default: 0.001
+    MinValue: 0.001
+    Description: Smallest hourly commitment worth buying, in $/hour (AWS minimum 0.001).
+  SpikeGuardEnabled:
+    Type: String
+    AllowedValues: ["true", "false"]
+    Default: "true"
+    Description: Blocks purchases while recent spend is abnormally above its baseline.
+  SpikeGuardLongLookbackDays:
+    Type: Number
+    Default: 90
+    MinValue: 2
+    MaxValue: 90
+    Description: Baseline period. Must be longer than the short lookback.
+  SpikeGuardShortLookbackDays:
+    Type: Number
+    Default: 14
+    MinValue: 1
+    MaxValue: 89
+    Description: Recent period compared against the baseline.
+  SpikeGuardThresholdPercent:
+    Type: Number
+    Default: 20
+    MinValue: 1
+    MaxValue: 100
+    Description: Blocks purchases when the recent average is this much above the baseline.
+
+  # Schedules
+  SchedulerSchedule:
+    Type: String
+    Default: cron(0 8 1 * ? *)
+    AllowedPattern: ^$|^(cron|rate)\(.+\)$
+    ConstraintDescription: must be an EventBridge cron(...) or rate(...) expression, or empty.
+    Description: When the scheduler runs. Empty to only run it by hand.
+  PurchaserSchedule:
+    Type: String
+    Default: cron(0 8 10 * ? *)
+    AllowedPattern: ^$|^(cron|rate)\(.+\)$
+    ConstraintDescription: must be an EventBridge cron(...) or rate(...) expression, or empty.
+    Description: When the purchaser runs. The days between the scheduler and the purchaser are your review window.
+  ReporterSchedule:
+    Type: String
+    Default: cron(0 9 24 * ? *)
+    AllowedPattern: ^$|^(cron|rate)\(.+\)$
+    ConstraintDescription: must be an EventBridge cron(...) or rate(...) expression, or empty.
+    Description: When the reporter runs. At least 2 days after the purchaser, so Cost Explorer shows the new plans.
+
+  # Reports
+  ReportFormat:
+    Type: String
+    AllowedValues: [html, pdf, json]
+    Default: html
+  EmailReports:
+    Type: String
+    AllowedValues: ["true", "false"]
+    Default: "false"
+    Description: Also send each report through the notifications topic.
+  IncludeDebugData:
+    Type: String
+    AllowedValues: ["true", "false"]
+    Default: "false"
+    Description: Add the raw AWS responses to reports.
+  ReportsTransitionIaDays:
+    Type: Number
+    Default: 90
+    MinValue: 30
+    Description: Days before reports move to S3 Standard-IA (S3 requires at least 30).
+  ReportsTransitionGlacierDays:
+    Type: Number
+    Default: 180
+    MinValue: 60
+    Description: Days before reports move to S3 Glacier. Must be later than the Standard-IA transition.
+  ReportsExpirationDays:
+    Type: Number
+    Default: 365
+    MinValue: 1
+    Description: Days before reports are deleted. At least the Glacier transition.
+  ReportsNoncurrentExpirationDays:
+    Type: Number
+    Default: 90
+    MinValue: 1
+    Description: Days before overwritten report versions are deleted.
+  S3AccessLogging:
+    Type: String
+    AllowedValues: ["true", "false"]
+    Default: "false"
+    Description: Log access to the reports bucket into a second bucket.
+  S3AccessLogsPrefix:
+    Type: String
+    Default: access-logs/
+    Description: Prefix of the access logs.
+  S3AccessLogsExpirationDays:
+    Type: Number
+    Default: 90
+    MinValue: 1
+    Description: Days before access logs are deleted.
+
+  # Monitoring
+  LambdaErrorAlarms:
+    Type: String
+    AllowedValues: ["true", "false"]
+    Default: "true"
+    Description: A CloudWatch alarm per function, notifying the topic when it errors.
+  LambdaErrorThreshold:
+    Type: Number
+    Default: 1
+    MinValue: 1
+    Description: Errors within a minute that trigger a function's alarm.
+  DlqAlarm:
+    Type: String
+    AllowedValues: ["true", "false"]
+    Default: "true"
+    Description: Alarm when a purchase intent lands in the dead-letter queue.
+  LowUtilizationThreshold:
+    Type: Number
+    Default: 70
+    MinValue: 1
+    MaxValue: 100
+    Description: Reports warn when Savings Plans utilization falls below this percentage.
+
+  # AWS Organizations
+  ManagementReadOnlyRoleArn:
+    Type: String
+    Default: ""
+    AllowedPattern: ^$|^arn:aws[a-z-]*:iam::[0-9]{12}:role/.+$
+    ConstraintDescription: must be an IAM role ARN, or empty.
+    Description: Role in the management account that the scheduler and reporter assume to read Cost Explorer and Savings Plans. Empty when this is the account that buys the plans.
+  ManagementPurchaseRoleArn:
+    Type: String
+    Default: ""
+    AllowedPattern: ^$|^arn:aws[a-z-]*:iam::[0-9]{12}:role/.+$
+    ConstraintDescription: must be an IAM role ARN, or empty.
+    Description: Role in the management account that the purchaser assumes to buy Savings Plans. Empty when this is the account that buys the plans.
+
+  # Advanced
+  NamePrefix:
+    Type: String
+    Default: sp-autopilot
+    AllowedPattern: ^[a-z0-9-]+$
+    MaxLength: 37
+    ConstraintDescription: lowercase letters, numbers and hyphens, at most 37 characters (it names the S3 buckets).
+    Description: Prefix of every resource name, so several stacks can share an account.
+  LambdaMemorySize:
+    Type: Number
+    Default: 128
+    MinValue: 128
+    MaxValue: 10240
+    Description: Memory of each function, in MB.
+  LambdaTimeout:
+    Type: Number
+    Default: 300
+    MinValue: 1
+    MaxValue: 900
+    Description: Timeout of each function, in seconds.
+  SnsKmsKey:
+    Type: String
+    Default: alias/aws/sns
+    Description: KMS key encrypting the notifications topic. Empty for no encryption.
+  SqsKmsKey:
+    Type: String
+    Default: alias/aws/sqs
+    Description: KMS key encrypting the queues. Empty for SQS-managed encryption.
+  ReportsKmsKeyArn:
+    Type: String
+    Default: ""
+    Description: KMS key ARN encrypting the reports bucket. Empty for SSE-S3 (AES256, free).
+
+Mappings:
+  # Filled in by cloudformation/build.py.
+  Release:
+    Package:
+      Version: "@@VERSION@@"
+      CodeSourceUrl: "@@CODE_SOURCE_URL@@"
+      SchedulerSha256: "@@SCHEDULER_SHA256@@"
+      PurchaserSha256: "@@PURCHASER_SHA256@@"
+      ReporterSha256: "@@REPORTER_SHA256@@"
+
+Rules:
+  PackagedTemplate:
+    Assertions:
+      - Assert: !Contains [["yes"], "@@PACKAGED@@"]
+        AssertDescription: This is the repository's source template. Deploy the sp-autopilot.yaml attached to a GitHub release instead.
+  AtLeastOneSavingsPlanType:
+    Assertions:
+      - Assert: !Not
+          - !And
+            - !Equals [!Ref ComputePlanType, disabled]
+            - !Equals [!Ref DatabasePlanType, disabled]
+            - !Equals [!Ref SageMakerPlanType, disabled]
+        AssertDescription: Enable at least one Savings Plans type (compute, database or SageMaker).
+  AtLeastOneNotification:
+    Assertions:
+      - Assert: !Not
+          - !And
+            - !Equals [!Ref NotificationEmail, ""]
+            - !Equals [!Ref SlackWebhookUrl, ""]
+            - !Equals [!Ref TeamsWebhookUrl, ""]
+        AssertDescription: Set at least one of NotificationEmail, SlackWebhookUrl or TeamsWebhookUrl.
+  StaticTargetNeedsCommitment:
+    RuleCondition: !Equals [!Ref TargetStrategy, static]
+    Assertions:
+      - Assert: !Not [!Equals [!Ref StaticCommitment, "0"]]
+        AssertDescription: The static target needs a StaticCommitment above 0.
+
+Conditions:
+  SchedulerEnabled: !Equals [!Ref EnableScheduler, "true"]
+  PurchaserEnabled: !Equals [!Ref EnablePurchaser, "true"]
+  ReporterEnabled: !Equals [!Ref EnableReporter, "true"]
+  SchedulerScheduled: !And [!Condition SchedulerEnabled, !Not [!Equals [!Ref SchedulerSchedule, ""]]]
+  PurchaserScheduled: !And [!Condition PurchaserEnabled, !Not [!Equals [!Ref PurchaserSchedule, ""]]]
+  ReporterScheduled: !And [!Condition ReporterEnabled, !Not [!Equals [!Ref ReporterSchedule, ""]]]
+  ErrorAlarmsEnabled: !Equals [!Ref LambdaErrorAlarms, "true"]
+  SchedulerErrorAlarm: !And [!Condition SchedulerEnabled, !Condition ErrorAlarmsEnabled]
+  PurchaserErrorAlarm: !And [!Condition PurchaserEnabled, !Condition ErrorAlarmsEnabled]
+  ReporterErrorAlarm: !And [!Condition ReporterEnabled, !Condition ErrorAlarmsEnabled]
+  DlqAlarmEnabled: !Equals [!Ref DlqAlarm, "true"]
+
+  ComputeEnabled: !Not [!Equals [!Ref ComputePlanType, disabled]]
+  DatabaseEnabled: !Not [!Equals [!Ref DatabasePlanType, disabled]]
+  SageMakerEnabled: !Not [!Equals [!Ref SageMakerPlanType, disabled]]
+  # A plan type is <payment>_<term>. A disabled type gets the module's fallbacks:
+  # THREE_YEAR and ALL_UPFRONT.
+  ComputeOneYear: !Or
+    - !Equals [!Ref ComputePlanType, no_upfront_one_year]
+    - !Equals [!Ref ComputePlanType, partial_upfront_one_year]
+    - !Equals [!Ref ComputePlanType, all_upfront_one_year]
+  ComputeNoUpfront: !Or
+    - !Equals [!Ref ComputePlanType, no_upfront_one_year]
+    - !Equals [!Ref ComputePlanType, no_upfront_three_year]
+  ComputePartialUpfront: !Or
+    - !Equals [!Ref ComputePlanType, partial_upfront_one_year]
+    - !Equals [!Ref ComputePlanType, partial_upfront_three_year]
+  SageMakerOneYear: !Or
+    - !Equals [!Ref SageMakerPlanType, no_upfront_one_year]
+    - !Equals [!Ref SageMakerPlanType, partial_upfront_one_year]
+    - !Equals [!Ref SageMakerPlanType, all_upfront_one_year]
+  SageMakerNoUpfront: !Or
+    - !Equals [!Ref SageMakerPlanType, no_upfront_one_year]
+    - !Equals [!Ref SageMakerPlanType, no_upfront_three_year]
+  SageMakerPartialUpfront: !Or
+    - !Equals [!Ref SageMakerPlanType, partial_upfront_one_year]
+    - !Equals [!Ref SageMakerPlanType, partial_upfront_three_year]
+
+  DynamicTarget: !Equals [!Ref TargetStrategy, dynamic]
+  StaticTarget: !Equals [!Ref TargetStrategy, static]
+  FixedStepSplit: !Equals [!Ref SplitStrategy, fixed_step]
+  GapSplit: !Equals [!Ref SplitStrategy, gap_split]
+  GapSplitHasMax: !And [!Condition GapSplit, !Not [!Equals [!Ref GapSplitMaxPurchasePercent, ""]]]
+  GapSplitHasMin: !And [!Condition GapSplit, !Not [!Equals [!Ref GapSplitMinPurchasePercent, ""]]]
+
+  HasNotificationEmail: !Not [!Equals [!Ref NotificationEmail, ""]]
+  HasReadOnlyRole: !Not [!Equals [!Ref ManagementReadOnlyRoleArn, ""]]
+  HasPurchaserRole: !Not [!Equals [!Ref ManagementPurchaseRoleArn, ""]]
+  SnsEncrypted: !Not [!Equals [!Ref SnsKmsKey, ""]]
+  SqsEncrypted: !Not [!Equals [!Ref SqsKmsKey, ""]]
+  ReportsKmsEncrypted: !Not [!Equals [!Ref ReportsKmsKeyArn, ""]]
+  AccessLoggingEnabled: !Equals [!Ref S3AccessLogging, "true"]
+
+Resources:
+  # Notifications
+
+  NotificationsTopic:
+    Type: AWS::SNS::Topic
+    Properties:
+      TopicName: !Sub ${NamePrefix}-notifications
+      DisplayName: AWS Savings Plans Automation Notifications
+      KmsMasterKeyId: !If [SnsEncrypted, !Ref SnsKmsKey, !Ref AWS::NoValue]
+
+  EmailSubscription:
+    Type: AWS::SNS::Subscription
+    Condition: HasNotificationEmail
+    Properties:
+      TopicArn: !Ref NotificationsTopic
+      Protocol: email
+      Endpoint: !Ref NotificationEmail
+
+  # Purchase intents queue
+
+  PurchaseIntentsDlq:
+    Type: AWS::SQS::Queue
+    Properties:
+      QueueName: !Sub ${NamePrefix}-purchase-intents-dlq
+      MessageRetentionPeriod: 1209600 # 14 days (AWS maximum)
+      KmsMasterKeyId: !If [SqsEncrypted, !Ref SqsKmsKey, !Ref AWS::NoValue]
+      KmsDataKeyReusePeriodSeconds: !If [SqsEncrypted, 300, !Ref AWS::NoValue]
+
+  PurchaseIntentsQueue:
+    Type: AWS::SQS::Queue
+    Properties:
+      QueueName: !Sub ${NamePrefix}-purchase-intents
+      MessageRetentionPeriod: 1209600 # 14 days (AWS maximum): must exceed the scheduler-to-purchaser gap
+      VisibilityTimeout: 300
+      KmsMasterKeyId: !If [SqsEncrypted, !Ref SqsKmsKey, !Ref AWS::NoValue]
+      KmsDataKeyReusePeriodSeconds: !If [SqsEncrypted, 300, !Ref AWS::NoValue]
+      RedrivePolicy:
+        deadLetterTargetArn: !GetAtt PurchaseIntentsDlq.Arn
+        maxReceiveCount: 3
+
+  PurchaseIntentsQueuePolicy:
+    Type: AWS::SQS::QueuePolicy
+    Condition: SchedulerEnabled
+    Properties:
+      Queues:
+        - !Ref PurchaseIntentsQueue
+      PolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal:
+              AWS: !GetAtt SchedulerRole.Arn
+            Action: sqs:SendMessage
+            Resource: !GetAtt PurchaseIntentsQueue.Arn
+
+  DlqDepthAlarm:
+    Type: AWS::CloudWatch::Alarm
+    Condition: DlqAlarmEnabled
+    Properties:
+      AlarmName: !Sub ${NamePrefix}-purchase-intents-dlq-depth
+      AlarmDescription: Triggers when messages land in the purchase intents DLQ, indicating repeated processing failures
+      ComparisonOperator: GreaterThanOrEqualToThreshold
+      EvaluationPeriods: 1
+      MetricName: ApproximateNumberOfMessagesVisible
+      Namespace: AWS/SQS
+      Period: 60
+      Statistic: Maximum
+      Threshold: 1
+      TreatMissingData: notBreaching
+      Dimensions:
+        - Name: QueueName
+          Value: !GetAtt PurchaseIntentsDlq.QueueName
+      AlarmActions:
+        - !Ref NotificationsTopic
+
+  # Reports bucket. Kept when the stack is deleted: it holds your reports.
+
+  ReportsBucket:
+    Type: AWS::S3::Bucket
+    DeletionPolicy: Retain
+    UpdateReplacePolicy: Retain
+    Properties:
+      BucketName: !Sub ${NamePrefix}-reports-${AWS::AccountId}
+      VersioningConfiguration:
+        Status: Enabled
+      BucketEncryption:
+        ServerSideEncryptionConfiguration:
+          - ServerSideEncryptionByDefault:
+              SSEAlgorithm: !If [ReportsKmsEncrypted, aws:kms, AES256]
+              KMSMasterKeyID: !If [ReportsKmsEncrypted, !Ref ReportsKmsKeyArn, !Ref AWS::NoValue]
+      PublicAccessBlockConfiguration:
+        BlockPublicAcls: true
+        BlockPublicPolicy: true
+        IgnorePublicAcls: true
+        RestrictPublicBuckets: true
+      LifecycleConfiguration:
+        Rules:
+          - Id: cleanup-old-reports
+            Status: Enabled
+            Transitions:
+              - StorageClass: STANDARD_IA
+                TransitionInDays: !Ref ReportsTransitionIaDays
+              - StorageClass: GLACIER
+                TransitionInDays: !Ref ReportsTransitionGlacierDays
+            ExpirationInDays: !Ref ReportsExpirationDays
+            NoncurrentVersionExpiration:
+              NoncurrentDays: !Ref ReportsNoncurrentExpirationDays
+      LoggingConfiguration: !If
+        - AccessLoggingEnabled
+        - DestinationBucketName: !Ref ReportsLogsBucket
+          LogFilePrefix: !Ref S3AccessLogsPrefix
+        - !Ref AWS::NoValue
+
+  ReportsBucketPolicy:
+    Type: AWS::S3::BucketPolicy
+    Properties:
+      Bucket: !Ref ReportsBucket
+      PolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Sid: DenyNonHTTPSRequests
+            Effect: Deny
+            Principal: "*"
+            Action: s3:*
+            Resource:
+              - !GetAtt ReportsBucket.Arn
+              - !Sub ${ReportsBucket.Arn}/*
+            Condition:
+              Bool:
+                aws:SecureTransport: "false"
+
+  ReportsLogsBucket:
+    Type: AWS::S3::Bucket
+    Condition: AccessLoggingEnabled
+    DeletionPolicy: Retain
+    UpdateReplacePolicy: Retain
+    Properties:
+      BucketName: !Sub ${NamePrefix}-reports-logs-${AWS::AccountId}
+      # Server access logs are delivered under the bucket policy below; ACLs stay off.
+      OwnershipControls:
+        Rules:
+          - ObjectOwnership: BucketOwnerEnforced
+      BucketEncryption:
+        ServerSideEncryptionConfiguration:
+          - ServerSideEncryptionByDefault:
+              SSEAlgorithm: AES256
+      PublicAccessBlockConfiguration:
+        BlockPublicAcls: true
+        BlockPublicPolicy: true
+        IgnorePublicAcls: true
+        RestrictPublicBuckets: true
+      LifecycleConfiguration:
+        Rules:
+          - Id: cleanup-old-logs
+            Status: Enabled
+            ExpirationInDays: !Ref S3AccessLogsExpirationDays
+
+  ReportsLogsBucketPolicy:
+    Type: AWS::S3::BucketPolicy
+    Condition: AccessLoggingEnabled
+    Properties:
+      Bucket: !Ref ReportsLogsBucket
+      PolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Sid: AllowServerAccessLogs
+            Effect: Allow
+            Principal:
+              Service: logging.s3.amazonaws.com
+            Action: s3:PutObject
+            Resource: !Sub ${ReportsLogsBucket.Arn}/*
+            Condition:
+              ArnLike:
+                # By name: referencing ReportsBucket would be a circular dependency.
+                aws:SourceArn: !Sub arn:${AWS::Partition}:s3:::${NamePrefix}-reports-${AWS::AccountId}
+              StringEquals:
+                aws:SourceAccount: !Ref AWS::AccountId
+          - Sid: DenyNonHTTPSRequests
+            Effect: Deny
+            Principal: "*"
+            Action: s3:*
+            Resource:
+              - !GetAtt ReportsLogsBucket.Arn
+              - !Sub ${ReportsLogsBucket.Arn}/*
+            Condition:
+              Bool:
+                aws:SecureTransport: "false"
+
+  # Lambda code. Lambda only reads code from a bucket in its own region, so the
+  # release's packages are copied into this bucket first (LambdaCode, below).
+
+  LambdaCodeBucket:
+    Type: AWS::S3::Bucket
+    Properties:
+      OwnershipControls:
+        Rules:
+          - ObjectOwnership: BucketOwnerEnforced
+      BucketEncryption:
+        ServerSideEncryptionConfiguration:
+          - ServerSideEncryptionByDefault:
+              SSEAlgorithm: AES256
+      PublicAccessBlockConfiguration:
+        BlockPublicAcls: true
+        BlockPublicPolicy: true
+        IgnorePublicAcls: true
+        RestrictPublicBuckets: true
+
+  LambdaCodeBucketPolicy:
+    Type: AWS::S3::BucketPolicy
+    Properties:
+      Bucket: !Ref LambdaCodeBucket
+      PolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Sid: DenyNonHTTPSRequests
+            Effect: Deny
+            Principal: "*"
+            Action: s3:*
+            Resource:
+              - !GetAtt LambdaCodeBucket.Arn
+              - !Sub ${LambdaCodeBucket.Arn}/*
+            Condition:
+              Bool:
+                aws:SecureTransport: "false"
+
+  CodeCopierLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: !Sub /aws/lambda/${NamePrefix}-code-copier
+      RetentionInDays: 30
+
+  CodeCopierRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: !Sub ${NamePrefix}-code-copier
+      Description: Copies the release's Lambda packages into the stack's code bucket
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: lambda.amazonaws.com
+            Action: sts:AssumeRole
+      Policies:
+        - PolicyName: cloudwatch-logs
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Effect: Allow
+                Action:
+                  - logs:CreateLogStream
+                  - logs:PutLogEvents
+                Resource: !GetAtt CodeCopierLogGroup.Arn
+        - PolicyName: code-bucket
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Effect: Allow
+                Action:
+                  - s3:PutObject
+                  - s3:DeleteObject
+                Resource: !Sub ${LambdaCodeBucket.Arn}/*
+
+  CodeCopierFunction:
+    Type: AWS::Lambda::Function
+    Properties:
+      FunctionName: !Sub ${NamePrefix}-code-copier
+      Description: Copies the release's Lambda packages into the stack's code bucket
+      Role: !GetAtt CodeCopierRole.Arn
+      Handler: index.handler
+      Runtime: python3.14
+      MemorySize: 128
+      Timeout: 300
+      Code:
+        ZipFile: |
+          """Copies SP Autopilot's Lambda packages into this stack's code bucket.
+
+          Each package is downloaded from the release and checked against the SHA-256
+          the template was built with before anything is written. Keys are named after
+          those checksums, so a new release writes new keys and CloudFormation's cleanup
+          of the previous version deletes only that version's keys.
+          """
+
+          import hashlib
+          import json
+          import urllib.request
+
+          import boto3
+
+          s3 = boto3.client("s3")
+
+
+          def handler(event, context):
+              status, reason, data = "SUCCESS", "", {}
+              physical_id = event.get("PhysicalResourceId", "not-created")
+              try:
+                  props = event["ResourceProperties"]
+                  bucket, packages = props["Bucket"], props["Packages"]
+                  checksums = {name: package["Sha256"] for name, package in packages.items()}
+                  release = hashlib.sha256(
+                      json.dumps([bucket, checksums], sort_keys=True).encode()
+                  ).hexdigest()[:16]
+                  keys = {name: f"{release}/{name.lower()}.zip" for name in packages}
+                  if event["RequestType"] == "Delete":
+                      for key in keys.values():
+                          s3.delete_object(Bucket=bucket, Key=key)
+                  else:
+                      bodies = {name: fetch(p["Url"], p["Sha256"]) for name, p in packages.items()}
+                      for name, body in bodies.items():
+                          s3.put_object(Bucket=bucket, Key=keys[name], Body=body)
+                      physical_id, data = release, keys
+              except Exception as error:
+                  print(f"{event.get('RequestType')} failed: {error!r}")
+                  reason = f"{type(error).__name__}: {error}"[:500]
+                  # Never block a stack deletion on cleanup.
+                  if event.get("RequestType") != "Delete":
+                      status = "FAILED"
+              respond(event, context, status, reason, physical_id, data)
+
+
+          def fetch(url, sha256):
+              if not url.startswith("https://"):
+                  raise ValueError(f"refusing a package URL that isn't https: {url}")
+              with urllib.request.urlopen(url, timeout=60) as response:
+                  body = response.read()
+              digest = hashlib.sha256(body).hexdigest()
+              if digest != sha256:
+                  raise ValueError(f"{url} has SHA-256 {digest}, expected {sha256}")
+              return body
+
+
+          def respond(event, context, status, reason, physical_id, data):
+              body = json.dumps({
+                  "Status": status,
+                  "Reason": reason or f"See CloudWatch log stream {context.log_stream_name}",
+                  "PhysicalResourceId": physical_id,
+                  "StackId": event["StackId"],
+                  "RequestId": event["RequestId"],
+                  "LogicalResourceId": event["LogicalResourceId"],
+                  "Data": data,
+              }).encode()
+              request = urllib.request.Request(
+                  event["ResponseURL"], data=body, method="PUT", headers={"Content-Type": ""}
+              )
+              with urllib.request.urlopen(request, timeout=30):
+                  pass
+
+  LambdaCode:
+    Type: Custom::LambdaCode
+    Properties:
+      ServiceToken: !GetAtt CodeCopierFunction.Arn
+      ServiceTimeout: 600
+      Bucket: !Ref LambdaCodeBucket
+      Packages:
+        Scheduler:
+          Url: !Sub
+            - ${Base}/sp-autopilot-scheduler.zip
+            - Base: !FindInMap [Release, Package, CodeSourceUrl]
+          Sha256: !FindInMap [Release, Package, SchedulerSha256]
+        Purchaser:
+          Url: !Sub
+            - ${Base}/sp-autopilot-purchaser.zip
+            - Base: !FindInMap [Release, Package, CodeSourceUrl]
+          Sha256: !FindInMap [Release, Package, PurchaserSha256]
+        Reporter:
+          Url: !Sub
+            - ${Base}/sp-autopilot-reporter.zip
+            - Base: !FindInMap [Release, Package, CodeSourceUrl]
+          Sha256: !FindInMap [Release, Package, ReporterSha256]
+
+  # Scheduler
+
+  SchedulerLogGroup:
+    Type: AWS::Logs::LogGroup
+    Condition: SchedulerEnabled
+    Properties:
+      LogGroupName: !Sub /aws/lambda/${NamePrefix}-scheduler
+      RetentionInDays: 30
+
+  SchedulerRole:
+    Type: AWS::IAM::Role
+    Condition: SchedulerEnabled
+    Properties:
+      RoleName: !Sub ${NamePrefix}-scheduler
+      Description: IAM role for Scheduler Lambda function - analyzes usage and queues purchase recommendations
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: lambda.amazonaws.com
+            Action: sts:AssumeRole
+      Policies:
+        - PolicyName: cloudwatch-logs
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Effect: Allow
+                Action:
+                  - logs:CreateLogStream
+                  - logs:PutLogEvents
+                Resource: !GetAtt SchedulerLogGroup.Arn
+        - PolicyName: cost-explorer
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Effect: Allow
+                Action:
+                  - ce:GetSavingsPlansPurchaseRecommendation
+                  - ce:GetSavingsPlansUtilization
+                  - ce:GetSavingsPlansCoverage
+                Resource: "*"
+        - PolicyName: sqs
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Effect: Allow
+                Action:
+                  - sqs:SendMessage
+                  - sqs:PurgeQueue
+                  - sqs:GetQueueAttributes
+                Resource: !GetAtt PurchaseIntentsQueue.Arn
+        - PolicyName: sns
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Effect: Allow
+                Action:
+                  - sns:Publish
+                Resource: !Ref NotificationsTopic
+        - PolicyName: savingsplans
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Effect: Allow
+                Action:
+                  - savingsplans:DescribeSavingsPlans
+                  - savingsplans:DescribeSavingsPlansOfferings
+                Resource: "*"
+        - !If
+          - HasReadOnlyRole
+          - PolicyName: assume-role
+            PolicyDocument:
+              Version: "2012-10-17"
+              Statement:
+                - Effect: Allow
+                  Action: sts:AssumeRole
+                  Resource: !Ref ManagementReadOnlyRoleArn
+          - !Ref AWS::NoValue
+
+  SchedulerFunction:
+    Type: AWS::Lambda::Function
+    Condition: SchedulerEnabled
+    Properties:
+      FunctionName: !Sub ${NamePrefix}-scheduler
+      Description: Analyzes usage and queues Savings Plans purchase recommendations
+      Role: !GetAtt SchedulerRole.Arn
+      Handler: handler.handler
+      Runtime: python3.14
+      MemorySize: !Ref LambdaMemorySize
+      Timeout: !Ref LambdaTimeout
+      Code:
+        S3Bucket: !Ref LambdaCodeBucket
+        S3Key: !GetAtt LambdaCode.Scheduler
+      Environment:
+        Variables:
+          SNS_TOPIC_ARN: !Ref NotificationsTopic
+          ENABLE_COMPUTE_SP: !If [ComputeEnabled, "true", "false"]
+          ENABLE_DATABASE_SP: !If [DatabaseEnabled, "true", "false"]
+          ENABLE_SAGEMAKER_SP: !If [SageMakerEnabled, "true", "false"]
+          TAGS: '{"ManagedBy":"terraform-aws-sp-autopilot","Module":"savings-plans-automation"}'
+          SPIKE_GUARD_ENABLED: !Ref SpikeGuardEnabled
+          SPIKE_GUARD_LONG_LOOKBACK_DAYS: !Ref SpikeGuardLongLookbackDays
+          SPIKE_GUARD_SHORT_LOOKBACK_DAYS: !Ref SpikeGuardShortLookbackDays
+          SPIKE_GUARD_THRESHOLD_PERCENT: !Ref SpikeGuardThresholdPercent
+          TARGET_STRATEGY_TYPE: !Ref TargetStrategy
+          SPLIT_STRATEGY_TYPE: !Ref SplitStrategy
+          DYNAMIC_RISK_LEVEL: !If [DynamicTarget, !Ref DynamicRiskLevel, ""]
+          PRUDENT_PERCENTAGE: !If [DynamicTarget, !Ref PrudentPercentage, "85"]
+          STATIC_COMMITMENT: !If [StaticTarget, !Ref StaticCommitment, "0"]
+          FIXED_STEP_PERCENT: !If [FixedStepSplit, !Ref FixedStepPercent, "10"]
+          MAX_PURCHASE_PERCENT: !If [FixedStepSplit, !Ref FixedStepPercent, !If [GapSplitHasMax, !Ref GapSplitMaxPurchasePercent, "100"]]
+          MIN_PURCHASE_PERCENT: !If [GapSplitHasMin, !Ref GapSplitMinPurchasePercent, ""]
+          GAP_SPLIT_DIVIDER: !If [GapSplit, !Ref GapSplitDivider, "2"]
+          COMPUTE_SP_TERM: !If [ComputeOneYear, ONE_YEAR, THREE_YEAR]
+          COMPUTE_SP_PAYMENT_OPTION: !If [ComputeNoUpfront, NO_UPFRONT, !If [ComputePartialUpfront, PARTIAL_UPFRONT, ALL_UPFRONT]]
+          DATABASE_SP_PAYMENT_OPTION: NO_UPFRONT
+          SAGEMAKER_SP_TERM: !If [SageMakerOneYear, ONE_YEAR, THREE_YEAR]
+          SAGEMAKER_SP_PAYMENT_OPTION: !If [SageMakerNoUpfront, NO_UPFRONT, !If [SageMakerPartialUpfront, PARTIAL_UPFRONT, ALL_UPFRONT]]
+          QUEUE_URL: !Ref PurchaseIntentsQueue
+          RENEWAL_WINDOW_DAYS: !Ref RenewalWindowDays
+          PURCHASE_COOLDOWN_DAYS: !Ref PurchaseCooldownDays
+          MIN_COMMITMENT_PER_PLAN: !Ref MinCommitmentPerPlan
+          MANAGEMENT_ACCOUNT_ROLE_ARN: !Ref ManagementReadOnlyRoleArn
+
+  SchedulerRule:
+    Type: AWS::Events::Rule
+    Condition: SchedulerScheduled
+    Properties:
+      Name: !Sub ${NamePrefix}-scheduler
+      Description: Triggers Scheduler Lambda to analyze usage and recommend Savings Plans purchases
+      ScheduleExpression: !Ref SchedulerSchedule
+      State: ENABLED
+      Targets:
+        - Id: SchedulerLambda
+          Arn: !GetAtt SchedulerFunction.Arn
+
+  SchedulerEventBridgePermission:
+    Type: AWS::Lambda::Permission
+    Condition: SchedulerScheduled
+    Properties:
+      Action: lambda:InvokeFunction
+      FunctionName: !Ref SchedulerFunction
+      Principal: events.amazonaws.com
+      SourceArn: !GetAtt SchedulerRule.Arn
+
+  SchedulerErrorsAlarm:
+    Type: AWS::CloudWatch::Alarm
+    Condition: SchedulerErrorAlarm
+    Properties:
+      AlarmName: !Sub ${NamePrefix}-scheduler-errors
+      AlarmDescription: Triggers when Scheduler Lambda function errors exceed threshold, indicating failures in usage analysis
+      ComparisonOperator: GreaterThanOrEqualToThreshold
+      EvaluationPeriods: 1
+      MetricName: Errors
+      Namespace: AWS/Lambda
+      Period: 60
+      Statistic: Sum
+      Threshold: !Ref LambdaErrorThreshold
+      TreatMissingData: notBreaching
+      Dimensions:
+        - Name: FunctionName
+          Value: !Ref SchedulerFunction
+      AlarmActions:
+        - !Ref NotificationsTopic
+
+  # Purchaser
+
+  PurchaserLogGroup:
+    Type: AWS::Logs::LogGroup
+    Condition: PurchaserEnabled
+    Properties:
+      LogGroupName: !Sub /aws/lambda/${NamePrefix}-purchaser
+      RetentionInDays: 30
+
+  PurchaserRole:
+    Type: AWS::IAM::Role
+    Condition: PurchaserEnabled
+    Properties:
+      RoleName: !Sub ${NamePrefix}-purchaser
+      Description: IAM role for Purchaser Lambda function - executes Savings Plans purchases from queue
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: lambda.amazonaws.com
+            Action: sts:AssumeRole
+      Policies:
+        - PolicyName: cloudwatch-logs
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Effect: Allow
+                Action:
+                  - logs:CreateLogStream
+                  - logs:PutLogEvents
+                Resource: !GetAtt PurchaserLogGroup.Arn
+        - PolicyName: cost-explorer
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Effect: Allow
+                Action:
+                  - ce:GetSavingsPlansPurchaseRecommendation
+                  - ce:GetSavingsPlansUtilization
+                  - ce:GetSavingsPlansCoverage
+                Resource: "*"
+        - PolicyName: sqs
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Effect: Allow
+                Action:
+                  - sqs:ReceiveMessage
+                  - sqs:DeleteMessage
+                  - sqs:GetQueueAttributes
+                Resource: !GetAtt PurchaseIntentsQueue.Arn
+        - PolicyName: sns
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Effect: Allow
+                Action:
+                  - sns:Publish
+                Resource: !Ref NotificationsTopic
+        - PolicyName: savingsplans
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Effect: Allow
+                Action:
+                  - savingsplans:DescribeSavingsPlans
+                  - savingsplans:DescribeSavingsPlansOfferings
+                  - savingsplans:CreateSavingsPlan
+                  - savingsplans:TagResource
+                Resource: "*"
+        - !If
+          - HasPurchaserRole
+          - PolicyName: assume-role
+            PolicyDocument:
+              Version: "2012-10-17"
+              Statement:
+                - Effect: Allow
+                  Action: sts:AssumeRole
+                  Resource: !Ref ManagementPurchaseRoleArn
+          - !Ref AWS::NoValue
+
+  PurchaserFunction:
+    Type: AWS::Lambda::Function
+    Condition: PurchaserEnabled
+    Properties:
+      FunctionName: !Sub ${NamePrefix}-purchaser
+      Description: Executes Savings Plans purchases from queue
+      Role: !GetAtt PurchaserRole.Arn
+      Handler: handler.handler
+      Runtime: python3.14
+      MemorySize: !Ref LambdaMemorySize
+      Timeout: !Ref LambdaTimeout
+      Code:
+        S3Bucket: !Ref LambdaCodeBucket
+        S3Key: !GetAtt LambdaCode.Purchaser
+      Environment:
+        Variables:
+          SNS_TOPIC_ARN: !Ref NotificationsTopic
+          ENABLE_COMPUTE_SP: !If [ComputeEnabled, "true", "false"]
+          ENABLE_DATABASE_SP: !If [DatabaseEnabled, "true", "false"]
+          ENABLE_SAGEMAKER_SP: !If [SageMakerEnabled, "true", "false"]
+          TAGS: '{"ManagedBy":"terraform-aws-sp-autopilot","Module":"savings-plans-automation"}'
+          SPIKE_GUARD_ENABLED: !Ref SpikeGuardEnabled
+          SPIKE_GUARD_LONG_LOOKBACK_DAYS: !Ref SpikeGuardLongLookbackDays
+          SPIKE_GUARD_SHORT_LOOKBACK_DAYS: !Ref SpikeGuardShortLookbackDays
+          SPIKE_GUARD_THRESHOLD_PERCENT: !Ref SpikeGuardThresholdPercent
+          QUEUE_URL: !Ref PurchaseIntentsQueue
+          RENEWAL_WINDOW_DAYS: !Ref RenewalWindowDays
+          SLACK_WEBHOOK_URL: !Ref SlackWebhookUrl
+          TEAMS_WEBHOOK_URL: !Ref TeamsWebhookUrl
+          MANAGEMENT_ACCOUNT_ROLE_ARN: !Ref ManagementPurchaseRoleArn
+
+  PurchaserRule:
+    Type: AWS::Events::Rule
+    Condition: PurchaserScheduled
+    Properties:
+      Name: !Sub ${NamePrefix}-purchaser
+      Description: Triggers Purchaser Lambda to process and execute Savings Plans purchases from SQS queue
+      ScheduleExpression: !Ref PurchaserSchedule
+      State: ENABLED
+      Targets:
+        - Id: PurchaserLambda
+          Arn: !GetAtt PurchaserFunction.Arn
+
+  PurchaserEventBridgePermission:
+    Type: AWS::Lambda::Permission
+    Condition: PurchaserScheduled
+    Properties:
+      Action: lambda:InvokeFunction
+      FunctionName: !Ref PurchaserFunction
+      Principal: events.amazonaws.com
+      SourceArn: !GetAtt PurchaserRule.Arn
+
+  PurchaserErrorsAlarm:
+    Type: AWS::CloudWatch::Alarm
+    Condition: PurchaserErrorAlarm
+    Properties:
+      AlarmName: !Sub ${NamePrefix}-purchaser-errors
+      AlarmDescription: Triggers when Purchaser Lambda function errors exceed threshold, indicating failures in Savings Plans purchases
+      ComparisonOperator: GreaterThanOrEqualToThreshold
+      EvaluationPeriods: 1
+      MetricName: Errors
+      Namespace: AWS/Lambda
+      Period: 60
+      Statistic: Sum
+      Threshold: !Ref LambdaErrorThreshold
+      TreatMissingData: notBreaching
+      Dimensions:
+        - Name: FunctionName
+          Value: !Ref PurchaserFunction
+      AlarmActions:
+        - !Ref NotificationsTopic
+
+  # Reporter
+
+  ReporterLogGroup:
+    Type: AWS::Logs::LogGroup
+    Condition: ReporterEnabled
+    Properties:
+      LogGroupName: !Sub /aws/lambda/${NamePrefix}-reporter
+      RetentionInDays: 30
+
+  ReporterRole:
+    Type: AWS::IAM::Role
+    Condition: ReporterEnabled
+    Properties:
+      RoleName: !Sub ${NamePrefix}-reporter
+      Description: IAM role for Reporter Lambda function - generates periodic coverage and savings reports
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: lambda.amazonaws.com
+            Action: sts:AssumeRole
+      Policies:
+        - PolicyName: cloudwatch-logs
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Effect: Allow
+                Action:
+                  - logs:CreateLogStream
+                  - logs:PutLogEvents
+                Resource: !GetAtt ReporterLogGroup.Arn
+        - PolicyName: cost-explorer
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Effect: Allow
+                Action:
+                  - ce:GetSavingsPlansPurchaseRecommendation
+                  - ce:GetSavingsPlansUtilization
+                  - ce:GetSavingsPlansUtilizationDetails
+                  - ce:GetSavingsPlansCoverage
+                Resource: "*"
+        - PolicyName: s3
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Effect: Allow
+                Action:
+                  - s3:PutObject
+                  - s3:PutObjectAcl
+                  - s3:GetObject
+                Resource: !Sub ${ReportsBucket.Arn}/*
+        - PolicyName: sns
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Effect: Allow
+                Action:
+                  - sns:Publish
+                Resource: !Ref NotificationsTopic
+        - PolicyName: savingsplans
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Effect: Allow
+                Action:
+                  - savingsplans:DescribeSavingsPlans
+                  - savingsplans:DescribeSavingsPlansOfferings
+                Resource: "*"
+        - !If
+          - HasReadOnlyRole
+          - PolicyName: assume-role
+            PolicyDocument:
+              Version: "2012-10-17"
+              Statement:
+                - Effect: Allow
+                  Action: sts:AssumeRole
+                  Resource: !Ref ManagementReadOnlyRoleArn
+          - !Ref AWS::NoValue
+
+  ReporterFunction:
+    Type: AWS::Lambda::Function
+    Condition: ReporterEnabled
+    Properties:
+      FunctionName: !Sub ${NamePrefix}-reporter
+      Description: Generates periodic coverage and savings reports
+      Role: !GetAtt ReporterRole.Arn
+      Handler: handler.handler
+      Runtime: python3.14
+      MemorySize: !Ref LambdaMemorySize
+      Timeout: !Ref LambdaTimeout
+      Code:
+        S3Bucket: !Ref LambdaCodeBucket
+        S3Key: !GetAtt LambdaCode.Reporter
+      Environment:
+        Variables:
+          SNS_TOPIC_ARN: !Ref NotificationsTopic
+          ENABLE_COMPUTE_SP: !If [ComputeEnabled, "true", "false"]
+          ENABLE_DATABASE_SP: !If [DatabaseEnabled, "true", "false"]
+          ENABLE_SAGEMAKER_SP: !If [SageMakerEnabled, "true", "false"]
+          TAGS: '{"ManagedBy":"terraform-aws-sp-autopilot","Module":"savings-plans-automation"}'
+          SPIKE_GUARD_ENABLED: !Ref SpikeGuardEnabled
+          SPIKE_GUARD_LONG_LOOKBACK_DAYS: !Ref SpikeGuardLongLookbackDays
+          SPIKE_GUARD_SHORT_LOOKBACK_DAYS: !Ref SpikeGuardShortLookbackDays
+          SPIKE_GUARD_THRESHOLD_PERCENT: !Ref SpikeGuardThresholdPercent
+          TARGET_STRATEGY_TYPE: !Ref TargetStrategy
+          SPLIT_STRATEGY_TYPE: !Ref SplitStrategy
+          DYNAMIC_RISK_LEVEL: !If [DynamicTarget, !Ref DynamicRiskLevel, ""]
+          PRUDENT_PERCENTAGE: !If [DynamicTarget, !Ref PrudentPercentage, "85"]
+          STATIC_COMMITMENT: !If [StaticTarget, !Ref StaticCommitment, "0"]
+          FIXED_STEP_PERCENT: !If [FixedStepSplit, !Ref FixedStepPercent, "10"]
+          MAX_PURCHASE_PERCENT: !If [FixedStepSplit, !Ref FixedStepPercent, !If [GapSplitHasMax, !Ref GapSplitMaxPurchasePercent, "100"]]
+          MIN_PURCHASE_PERCENT: !If [GapSplitHasMin, !Ref GapSplitMinPurchasePercent, ""]
+          GAP_SPLIT_DIVIDER: !If [GapSplit, !Ref GapSplitDivider, "2"]
+          COMPUTE_SP_TERM: !If [ComputeOneYear, ONE_YEAR, THREE_YEAR]
+          COMPUTE_SP_PAYMENT_OPTION: !If [ComputeNoUpfront, NO_UPFRONT, !If [ComputePartialUpfront, PARTIAL_UPFRONT, ALL_UPFRONT]]
+          DATABASE_SP_PAYMENT_OPTION: NO_UPFRONT
+          SAGEMAKER_SP_TERM: !If [SageMakerOneYear, ONE_YEAR, THREE_YEAR]
+          SAGEMAKER_SP_PAYMENT_OPTION: !If [SageMakerNoUpfront, NO_UPFRONT, !If [SageMakerPartialUpfront, PARTIAL_UPFRONT, ALL_UPFRONT]]
+          REPORTS_BUCKET: !Ref ReportsBucket
+          REPORT_FORMAT: !Ref ReportFormat
+          EMAIL_REPORTS: !Ref EmailReports
+          INCLUDE_DEBUG_DATA: !Ref IncludeDebugData
+          SLACK_WEBHOOK_URL: !Ref SlackWebhookUrl
+          TEAMS_WEBHOOK_URL: !Ref TeamsWebhookUrl
+          LOW_UTILIZATION_THRESHOLD: !Ref LowUtilizationThreshold
+          MANAGEMENT_ACCOUNT_ROLE_ARN: !Ref ManagementReadOnlyRoleArn
+
+  ReporterRule:
+    Type: AWS::Events::Rule
+    Condition: ReporterScheduled
+    Properties:
+      Name: !Sub ${NamePrefix}-reporter
+      Description: Triggers Reporter Lambda to generate periodic coverage and savings reports
+      ScheduleExpression: !Ref ReporterSchedule
+      State: ENABLED
+      Targets:
+        - Id: ReporterLambda
+          Arn: !GetAtt ReporterFunction.Arn
+
+  ReporterEventBridgePermission:
+    Type: AWS::Lambda::Permission
+    Condition: ReporterScheduled
+    Properties:
+      Action: lambda:InvokeFunction
+      FunctionName: !Ref ReporterFunction
+      Principal: events.amazonaws.com
+      SourceArn: !GetAtt ReporterRule.Arn
+
+  ReporterErrorsAlarm:
+    Type: AWS::CloudWatch::Alarm
+    Condition: ReporterErrorAlarm
+    Properties:
+      AlarmName: !Sub ${NamePrefix}-reporter-errors
+      AlarmDescription: Triggers when Reporter Lambda function errors exceed threshold, indicating failures in report generation
+      ComparisonOperator: GreaterThanOrEqualToThreshold
+      EvaluationPeriods: 1
+      MetricName: Errors
+      Namespace: AWS/Lambda
+      Period: 60
+      Statistic: Sum
+      Threshold: !Ref LambdaErrorThreshold
+      TreatMissingData: notBreaching
+      Dimensions:
+        - Name: FunctionName
+          Value: !Ref ReporterFunction
+      AlarmActions:
+        - !Ref NotificationsTopic
+
+Outputs:
+  Version:
+    Description: SP Autopilot release this stack runs.
+    Value: !FindInMap [Release, Package, Version]
+  NotificationsTopicArn:
+    Description: SNS topic for notifications. Subscribe more addresses or endpoints here.
+    Value: !Ref NotificationsTopic
+  PurchaseIntentsQueueUrl:
+    Description: Queue of purchase intents. Delete a message to cancel that purchase before the purchaser runs.
+    Value: !Ref PurchaseIntentsQueue
+  PurchaseIntentsQueueArn:
+    Value: !GetAtt PurchaseIntentsQueue.Arn
+  DeadLetterQueueUrl:
+    Value: !Ref PurchaseIntentsDlq
+  ReportsBucketName:
+    Description: Bucket the reporter writes to. Kept when the stack is deleted.
+    Value: !Ref ReportsBucket
+  SchedulerFunctionName:
+    Condition: SchedulerEnabled
+    Value: !Ref SchedulerFunction
+  SchedulerRoleArn:
+    Condition: SchedulerEnabled
+    Description: Trust this role from ManagementReadOnlyRoleArn's role in the management account.
+    Value: !GetAtt SchedulerRole.Arn
+  PurchaserFunctionName:
+    Condition: PurchaserEnabled
+    Value: !Ref PurchaserFunction
+  PurchaserRoleArn:
+    Condition: PurchaserEnabled
+    Description: Trust this role from ManagementPurchaseRoleArn's role in the management account.
+    Value: !GetAtt PurchaserRole.Arn
+  ReporterFunctionName:
+    Condition: ReporterEnabled
+    Value: !Ref ReporterFunction
+  ReporterRoleArn:
+    Condition: ReporterEnabled
+    Description: Trust this role from ManagementReadOnlyRoleArn's role in the management account.
+    Value: !GetAtt ReporterRole.Arn

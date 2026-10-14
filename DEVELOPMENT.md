@@ -69,6 +69,16 @@ cd lambda/purchaser && python3 -m pytest tests/ -v
 cd lambda/reporter && python3 -m pytest tests/ -v
 ```
 
+## CloudFormation Template
+
+`cloudformation/` holds the CloudFormation edition of the module ([design](cloudformation/DESIGN.md)). A change to the module's resources, IAM, Lambda environment or defaults needs the same change in `cloudformation/sp-autopilot.yaml`: `make cfn-test` compares them.
+
+```bash
+make cfn-package       # Template and Lambda zips, as a release builds them, in dist/cloudformation
+make cfn-lint          # Package, then cfn-lint both templates
+make cfn-test          # Template tests, including parity with the Terraform module
+```
+
 ## Code Quality
 
 ```bash
