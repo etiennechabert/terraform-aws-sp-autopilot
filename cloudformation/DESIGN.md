@@ -12,7 +12,7 @@ The module's resources, one for one:
 
 | Module file | Stack resources |
 |---|---|
-| `sns.tf` | `NotificationsTopic`, `EmailSubscription` |
+| `sns.tf`, `kms.tf` | `NotificationsTopic`, `EmailSubscription`, and the topic's key: `NotificationsKey`, `NotificationsKeyAlias` |
 | `sqs.tf` | `PurchaseIntentsQueue`, `PurchaseIntentsDlq`, `PurchaseIntentsQueuePolicy`, `DlqDepthAlarm` |
 | `s3.tf` | `ReportsBucket` and its policy; `ReportsLogsBucket` and its policy when access logging is on |
 | `lambda.tf`, `iam.tf`, `cloudwatch.tf`, `eventbridge.tf` | per function: log group, role with the same inline policies, function, EventBridge rule and permission, error alarm |
@@ -78,8 +78,12 @@ Quick-create links only take a template [stored in S3](https://docs.aws.amazon.c
 - `test_build.py`: the zips match `lambda.tf`'s archives and their handlers import on their own; builds are reproducible; placeholders are all filled.
 - `test_code_copier.py` runs the template's inline code with S3 and HTTP faked: copying, checksum refusal, key naming across releases, deletes, malformed requests.
 
-## 7. Open
+## 7. Found along the way, fixed in both editions
+
+- **Alarms couldn't notify.** The topic was encrypted with the AWS managed `alias/aws/sns` key, whose policy can't let CloudWatch publish. In the sandbox deployment the scheduler's error alarm fired and its action failed with "CloudWatch Alarms does not have authorization to access the SNS topic encryption key". The module (`kms.tf`) and the stack (`NotificationsKey`) now create a key whose policy allows CloudWatch in the account, and give the Lambda roles its use; a key of your own replaces it.
+- **Queue visibility.** It was fixed at 300 seconds while the purchaser's timeout can be up to 900, so a long run saw its in-flight intents again. It now follows the purchaser's timeout.
+- **Access logs.** The module's access-logs bucket had no policy for S3's logging service, which new buckets (ACLs disabled) require, so logs weren't delivered. It now has the stack's policy.
+
+## 8. Open
 
 - **No deployment test in CI.** The stack was deployed by hand for this change, in a sandbox account in eu-west-1 with the packages served from eu-central-1: the source template is refused before anything is created; a tampered checksum fails the create and the rollback leaves nothing; a create runs the release's exact code, and the scheduler and reporter reach Cost Explorer; an update to a new release swaps the code and deletes the old keys; changing `NamePrefix` succeeds; a delete leaves only the reports buckets. CI only lints and evaluates it. The Terratest suite could create it from the CI build in the test account.
-- **Alarm notifications and the `aws/sns` key.** The topic defaults to the AWS managed `alias/aws/sns` key, as in the module, and CloudWatch alarms can't publish to a topic encrypted with an AWS managed key. Seen in the sandbox deployment: the scheduler's error alarm fired and its action failed with "CloudWatch Alarms does not have authorization to access the SNS topic encryption key". So the error and DLQ alarms don't notify until the topic uses a customer managed key, or no key. This affects the module the same way and should be settled for both.
-- **Queue visibility and function timeout.** The queue's visibility timeout is fixed at 300 seconds, as in the module, while `LambdaTimeout` allows up to 900. A purchaser run longer than 300 seconds sees its in-flight intents again. Client tokens keep the purchases themselves idempotent.

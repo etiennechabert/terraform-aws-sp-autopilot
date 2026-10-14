@@ -351,7 +351,7 @@ def test_webhooks_reach_the_purchaser_and_reporter_only(template):
 
 def test_default_encryption(template):
     stack = Stack(template, **EMAIL)
-    assert stack.properties("NotificationsTopic")["KmsMasterKeyId"] == "alias/aws/sns"
+    assert stack.properties("NotificationsTopic")["KmsMasterKeyId"] == "<NotificationsKey.Arn>"
     for queue in ("PurchaseIntentsQueue", "PurchaseIntentsDlq"):
         assert stack.properties(queue)["KmsMasterKeyId"] == "alias/aws/sqs"
     rule = stack.properties("ReportsBucket")["BucketEncryption"][
@@ -360,10 +360,43 @@ def test_default_encryption(template):
     assert rule["ServerSideEncryptionByDefault"] == {"SSEAlgorithm": "AES256"}
 
 
-def test_encryption_can_be_turned_off_or_moved_to_kms(template):
+def test_the_topic_s_key_lets_cloudwatch_alarms_publish(template):
+    # An AWS managed key such as alias/aws/sns can't: alarm notifications then fail
+    # with "CloudWatch Alarms does not have authorization to access the SNS topic
+    # encryption key" (seen in a real deployment).
+    stack = Stack(template, **EMAIL, EnablePurchaser="true")
+    key = stack.properties("NotificationsKey")
+    assert key["EnableKeyRotation"] is True
+    assert {
+        "Sid": "CloudWatchAlarms",
+        "Effect": "Allow",
+        "Principal": {"Service": "cloudwatch.amazonaws.com"},
+        "Action": ["kms:Decrypt", "kms:GenerateDataKey*"],
+        "Resource": "*",
+        "Condition": {"StringEquals": {"aws:SourceAccount": "123456789012"}},
+    } in key["KeyPolicy"]["Statement"]
+    assert (
+        stack.properties("NotificationsKeyAlias")["AliasName"] == "alias/sp-autopilot-notifications"
+    )
+    for function in FUNCTIONS:
+        sns = next(
+            p for p in stack.properties(f"{function}Role")["Policies"] if p["PolicyName"] == "sns"
+        )
+        assert {
+            "Effect": "Allow",
+            "Action": ["kms:GenerateDataKey*", "kms:Decrypt"],
+            "Resource": "<NotificationsKey.Arn>",
+        } in sns["PolicyDocument"]["Statement"]
+
+
+def test_a_key_of_your_own_replaces_the_stack_s(template):
     key = "arn:aws:kms:eu-west-1:123456789012:key/abcd"
-    stack = Stack(template, **EMAIL, SnsKmsKey="", SqsKmsKey="", ReportsKmsKeyArn=key)
-    assert "KmsMasterKeyId" not in stack.properties("NotificationsTopic")
+    stack = Stack(template, **EMAIL, SnsKmsKey=key, SqsKmsKey="", ReportsKmsKeyArn=key)
+    assert stack.properties("NotificationsTopic")["KmsMasterKeyId"] == key
+    assert "NotificationsKey" not in stack.resources()
+    assert "NotificationsKeyAlias" not in stack.resources()
+    sns = next(p for p in stack.properties("SchedulerRole")["Policies"] if p["PolicyName"] == "sns")
+    assert [s["Action"] for s in sns["PolicyDocument"]["Statement"]] == [["sns:Publish"]]
     assert "KmsMasterKeyId" not in stack.properties("PurchaseIntentsQueue")
     assert "KmsDataKeyReusePeriodSeconds" not in stack.properties("PurchaseIntentsQueue")
     rule = stack.properties("ReportsBucket")["BucketEncryption"][
@@ -373,6 +406,13 @@ def test_encryption_can_be_turned_off_or_moved_to_kms(template):
         "SSEAlgorithm": "aws:kms",
         "KMSMasterKeyID": key,
     }
+
+
+@pytest.mark.parametrize("timeout", [300, 900])
+def test_queue_visibility_follows_the_function_timeout(template, timeout):
+    # Shorter, and intents the purchaser is still processing would be received again.
+    stack = Stack(template, **EMAIL, LambdaTimeout=timeout)
+    assert stack.properties("PurchaseIntentsQueue")["VisibilityTimeout"] == str(timeout)
 
 
 def test_access_logging(template):
@@ -468,6 +508,12 @@ def test_buckets_are_private_encrypted_and_https_only(template):
         assert {"Bool": {"aws:SecureTransport": "false"}} in [
             s.get("Condition") for s in statements if s["Effect"] == "Deny"
         ]
+
+
+def test_the_reports_bucket_keeps_versions(template):
+    # sonar-project.properties waives versioning for the stack's other buckets only.
+    versioning = Stack(template, **EMAIL).properties("ReportsBucket")["VersioningConfiguration"]
+    assert versioning == {"Status": "Enabled"}
 
 
 def test_iam_never_grants_wildcard_actions_and_scopes_what_it_can(template):

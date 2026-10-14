@@ -93,13 +93,24 @@ resource "aws_iam_role_policy" "scheduler_sns" {
 
   policy = jsonencode({
     Version = "2012-10-17"
-    Statement = [{
-      Effect = "Allow"
-      Action = [
-        "sns:Publish"
-      ]
-      Resource = aws_sns_topic.notifications.arn
-    }]
+    Statement = concat(
+      [{
+        Effect = "Allow"
+        Action = [
+          "sns:Publish"
+        ]
+        Resource = aws_sns_topic.notifications.arn
+      }],
+      # Publishing encrypts with the topic's key, when the module creates it (kms.tf)
+      local.create_sns_kms_key ? [{
+        Effect = "Allow"
+        Action = [
+          "kms:GenerateDataKey*",
+          "kms:Decrypt"
+        ]
+        Resource = aws_kms_key.notifications[0].arn
+      }] : []
+    )
   })
 }
 
@@ -231,13 +242,24 @@ resource "aws_iam_role_policy" "purchaser_sns" {
 
   policy = jsonencode({
     Version = "2012-10-17"
-    Statement = [{
-      Effect = "Allow"
-      Action = [
-        "sns:Publish"
-      ]
-      Resource = aws_sns_topic.notifications.arn
-    }]
+    Statement = concat(
+      [{
+        Effect = "Allow"
+        Action = [
+          "sns:Publish"
+        ]
+        Resource = aws_sns_topic.notifications.arn
+      }],
+      # Publishing encrypts with the topic's key, when the module creates it (kms.tf)
+      local.create_sns_kms_key ? [{
+        Effect = "Allow"
+        Action = [
+          "kms:GenerateDataKey*",
+          "kms:Decrypt"
+        ]
+        Resource = aws_kms_key.notifications[0].arn
+      }] : []
+    )
   })
 }
 
@@ -372,13 +394,24 @@ resource "aws_iam_role_policy" "reporter_sns" {
 
   policy = jsonencode({
     Version = "2012-10-17"
-    Statement = [{
-      Effect = "Allow"
-      Action = [
-        "sns:Publish"
-      ]
-      Resource = aws_sns_topic.notifications.arn
-    }]
+    Statement = concat(
+      [{
+        Effect = "Allow"
+        Action = [
+          "sns:Publish"
+        ]
+        Resource = aws_sns_topic.notifications.arn
+      }],
+      # Publishing encrypts with the topic's key, when the module creates it (kms.tf)
+      local.create_sns_kms_key ? [{
+        Effect = "Allow"
+        Action = [
+          "kms:GenerateDataKey*",
+          "kms:Decrypt"
+        ]
+        Resource = aws_kms_key.notifications[0].arn
+      }] : []
+    )
   })
 }
 

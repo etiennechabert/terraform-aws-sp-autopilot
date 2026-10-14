@@ -3,7 +3,7 @@
 resource "aws_sns_topic" "notifications" {
   name              = "${local.module_name}-notifications"
   display_name      = "AWS Savings Plans Automation Notifications"
-  kms_master_key_id = local.sns_kms_key # null = disabled, "alias/aws/sns" = AWS managed, custom ARN = customer managed
+  kms_master_key_id = local.sns_kms_key # The module's key (kms.tf), or encryption.sns_kms_key
 
   tags = merge(
     local.common_tags,

@@ -88,6 +88,45 @@ resource "aws_s3_bucket_public_access_block" "reports_logs" {
   restrict_public_buckets = true
 }
 
+# S3 delivers server access logs under this policy: new buckets have ACLs disabled
+# (BucketOwnerEnforced), so the log delivery group can't write through an ACL grant.
+resource "aws_s3_bucket_policy" "reports_logs" {
+  count  = var.s3_access_logging.enabled ? 1 : 0
+  bucket = aws_s3_bucket.reports_logs[0].id
+
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Sid       = "AllowServerAccessLogs"
+        Effect    = "Allow"
+        Principal = { Service = "logging.s3.amazonaws.com" }
+        Action    = "s3:PutObject"
+        Resource  = "${aws_s3_bucket.reports_logs[0].arn}/*"
+        Condition = {
+          ArnLike      = { "aws:SourceArn" = aws_s3_bucket.reports.arn }
+          StringEquals = { "aws:SourceAccount" = data.aws_caller_identity.current.account_id }
+        }
+      },
+      {
+        Sid       = "DenyNonHTTPSRequests"
+        Effect    = "Deny"
+        Principal = "*"
+        Action    = "s3:*"
+        Resource = [
+          aws_s3_bucket.reports_logs[0].arn,
+          "${aws_s3_bucket.reports_logs[0].arn}/*"
+        ]
+        Condition = {
+          Bool = {
+            "aws:SecureTransport" = "false"
+          }
+        }
+      }
+    ]
+  })
+}
+
 resource "aws_s3_bucket_lifecycle_configuration" "reports_logs" {
   count  = var.s3_access_logging.enabled ? 1 : 0
   bucket = aws_s3_bucket.reports_logs[0].id

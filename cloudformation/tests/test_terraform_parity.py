@@ -212,12 +212,17 @@ def terraform_defaults(variable: str, attribute: str | None) -> set[str]:
     body = blocks(read("variables.tf"), "variable")[variable]
     if attribute is None:
         return set(re.findall(r'^  default\s+=\s+"?([^"\n]+?)"?$', body, re.MULTILINE))
-    optional = re.findall(rf"\b{attribute}\s+=\s+optional\(\w+, \"?([^\")]+)\"?\)", body)
-    # cron_schedules sets its defaults in the variable's default block instead.
-    literal = re.findall(
-        rf'^\s+{attribute}\s+=\s+"([^"]+)"', body.split("default = {", 1)[-1], re.MULTILINE
-    )
-    return set(optional) | (set(literal) if "default = {" in body else set())
+    defaults = set(re.findall(rf"\b{attribute}\s+=\s+optional\(\w+, \"?([^\")]+)\"?\)", body))
+    # cron_schedules sets its defaults in the variable's (non-empty) default block instead.
+    block = re.search(r"^  default = \{\n(.*?)^  \}", body, re.MULTILINE | re.DOTALL)
+    if block:
+        return defaults | set(
+            re.findall(rf'^\s+{attribute}\s+=\s+"([^"]+)"', block.group(1), re.MULTILINE)
+        )
+    # An optional attribute without a default is the stack's empty parameter.
+    if re.search(rf"\b{attribute}\s+=\s+optional\(\w+\)", body):
+        defaults.add("")
+    return defaults
 
 
 @pytest.mark.parametrize(("parameter", "variable", "attribute"), DEFAULTS)
@@ -239,6 +244,7 @@ def test_defaults_match_terraform(template, parameter, variable, attribute):
 
 
 NAMED_PROPERTIES = (
+    "AliasName",
     "TopicName",
     "QueueName",
     "BucketName",
@@ -252,15 +258,7 @@ NAMED_PROPERTIES = (
 
 def test_resources_have_terraform_s_names(template):
     terraform = set()
-    for name in (
-        "sns.tf",
-        "sqs.tf",
-        "s3.tf",
-        "lambda.tf",
-        "iam.tf",
-        "cloudwatch.tf",
-        "eventbridge.tf",
-    ):
+    for name in sorted(path.name for path in REPO_ROOT.glob("*.tf")):
         for prefix, suffix in re.findall(
             r'^\s+(?:name|function_name|bucket|alarm_name)\s+=\s+"([^"$]*)\$\{local\.module_name\}([^"]*)"',
             read(name),

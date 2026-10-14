@@ -390,8 +390,8 @@ Parameters:
     Description: Timeout of each function, in seconds.
   SnsKmsKey:
     Type: String
-    Default: alias/aws/sns
-    Description: KMS key encrypting the notifications topic. Empty for no encryption.
+    Default: ""
+    Description: KMS key encrypting the notifications topic. Empty for a key the stack creates. Your own key's policy must let cloudwatch.amazonaws.com and the functions' roles use it; AWS managed keys such as alias/aws/sns can't, so alarms wouldn't notify.
   SqsKmsKey:
     Type: String
     Default: alias/aws/sqs
@@ -487,7 +487,7 @@ Conditions:
   HasNotificationEmail: !Not [!Equals [!Ref NotificationEmail, ""]]
   HasReadOnlyRole: !Not [!Equals [!Ref ManagementReadOnlyRoleArn, ""]]
   HasPurchaserRole: !Not [!Equals [!Ref ManagementPurchaseRoleArn, ""]]
-  SnsEncrypted: !Not [!Equals [!Ref SnsKmsKey, ""]]
+  CreatesSnsKey: !Equals [!Ref SnsKmsKey, ""]
   SqsEncrypted: !Not [!Equals [!Ref SqsKmsKey, ""]]
   ReportsKmsEncrypted: !Not [!Equals [!Ref ReportsKmsKeyArn, ""]]
   AccessLoggingEnabled: !Equals [!Ref S3AccessLogging, "true"]
@@ -500,7 +500,49 @@ Resources:
     Properties:
       TopicName: !Sub ${NamePrefix}-notifications
       DisplayName: AWS Savings Plans Automation Notifications
-      KmsMasterKeyId: !If [SnsEncrypted, !Ref SnsKmsKey, !Ref AWS::NoValue]
+      KmsMasterKeyId: !If [CreatesSnsKey, !GetAtt NotificationsKey.Arn, !Ref SnsKmsKey]
+
+  # The alarms publish to the topic, and an AWS managed key such as alias/aws/sns
+  # can't let them: its policy can't be changed, so their notifications fail with
+  # "CloudWatch Alarms does not have authorization to access the SNS topic encryption
+  # key". This key's policy lets CloudWatch use it; the functions' roles get their
+  # access through IAM.
+  NotificationsKey:
+    Type: AWS::KMS::Key
+    Condition: CreatesSnsKey
+    DeletionPolicy: Delete
+    UpdateReplacePolicy: Delete
+    Properties:
+      Description: !Sub Encrypts the ${NamePrefix}-notifications SNS topic
+      EnableKeyRotation: true
+      PendingWindowInDays: 7
+      KeyPolicy:
+        Version: "2012-10-17"
+        Statement:
+          - Sid: AccountAdministration
+            Effect: Allow
+            Principal:
+              AWS: !Sub arn:${AWS::Partition}:iam::${AWS::AccountId}:root
+            Action: kms:*
+            Resource: "*"
+          - Sid: CloudWatchAlarms
+            Effect: Allow
+            Principal:
+              Service: cloudwatch.amazonaws.com
+            Action:
+              - kms:Decrypt
+              - kms:GenerateDataKey*
+            Resource: "*"
+            Condition:
+              StringEquals:
+                aws:SourceAccount: !Ref AWS::AccountId
+
+  NotificationsKeyAlias:
+    Type: AWS::KMS::Alias
+    Condition: CreatesSnsKey
+    Properties:
+      AliasName: !Sub alias/${NamePrefix}-notifications
+      TargetKeyId: !Ref NotificationsKey
 
   EmailSubscription:
     Type: AWS::SNS::Subscription
@@ -525,7 +567,7 @@ Resources:
     Properties:
       QueueName: !Sub ${NamePrefix}-purchase-intents
       MessageRetentionPeriod: 1209600 # 14 days (AWS maximum): must exceed the scheduler-to-purchaser gap
-      VisibilityTimeout: 300
+      VisibilityTimeout: !Ref LambdaTimeout # The purchaser's timeout: intents it is still processing stay hidden
       KmsMasterKeyId: !If [SqsEncrypted, !Ref SqsKmsKey, !Ref AWS::NoValue]
       KmsDataKeyReusePeriodSeconds: !If [SqsEncrypted, 300, !Ref AWS::NoValue]
       RedrivePolicy:
@@ -947,6 +989,15 @@ Resources:
                 Action:
                   - sns:Publish
                 Resource: !Ref NotificationsTopic
+              # Publishing encrypts with the topic's key, when the stack creates it.
+              - !If
+                - CreatesSnsKey
+                - Effect: Allow
+                  Action:
+                    - kms:GenerateDataKey*
+                    - kms:Decrypt
+                  Resource: !GetAtt NotificationsKey.Arn
+                - !Ref AWS::NoValue
         - PolicyName: savingsplans
           PolicyDocument:
             Version: "2012-10-17"
@@ -1113,6 +1164,15 @@ Resources:
                 Action:
                   - sns:Publish
                 Resource: !Ref NotificationsTopic
+              # Publishing encrypts with the topic's key, when the stack creates it.
+              - !If
+                - CreatesSnsKey
+                - Effect: Allow
+                  Action:
+                    - kms:GenerateDataKey*
+                    - kms:Decrypt
+                  Resource: !GetAtt NotificationsKey.Arn
+                - !Ref AWS::NoValue
         - PolicyName: savingsplans
           PolicyDocument:
             Version: "2012-10-17"
@@ -1268,6 +1328,15 @@ Resources:
                 Action:
                   - sns:Publish
                 Resource: !Ref NotificationsTopic
+              # Publishing encrypts with the topic's key, when the stack creates it.
+              - !If
+                - CreatesSnsKey
+                - Effect: Allow
+                  Action:
+                    - kms:GenerateDataKey*
+                    - kms:Decrypt
+                  Resource: !GetAtt NotificationsKey.Arn
+                - !Ref AWS::NoValue
         - PolicyName: savingsplans
           PolicyDocument:
             Version: "2012-10-17"
