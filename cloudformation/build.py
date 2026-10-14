@@ -128,8 +128,15 @@ def main(argv: list[str] | None = None) -> int:
     args = parser.parse_args(argv)
 
     url = args.code_source_url or default_code_source_url(args.version, args.repository)
+    # Writes stay under the directory it runs from (the repository, in CI and the Makefile).
+    output_dir = args.output_dir.resolve()
+    if not output_dir.is_relative_to(Path.cwd().resolve()):
+        print(
+            f"error: --output-dir must be inside {Path.cwd()}: {args.output_dir}", file=sys.stderr
+        )
+        return 1
     try:
-        checksums = build(args.version, url, args.output_dir)
+        checksums = build(args.version, url, output_dir)
     except ValueError as error:
         print(f"error: {error}", file=sys.stderr)
         return 1

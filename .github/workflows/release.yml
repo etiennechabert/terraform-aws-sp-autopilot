@@ -5,13 +5,15 @@ on:
     tags:
       - 'v[0-9]+.[0-9]+.[0-9]+'
 
-permissions:
-  contents: write
+# Each job asks for what it needs.
+permissions: {}
 
 jobs:
   release:
     name: Create Release
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
 
     steps:
       - name: Checkout code
@@ -181,7 +183,7 @@ jobs:
           TAG: ${{ github.ref_name }}
         run: |
           set -euo pipefail
-          curl -sSfL --retry 3 -o sp-autopilot.yaml \
+          curl -sSfL --proto '=https' --proto-redir '=https' --retry 3 -o sp-autopilot.yaml \
             "https://github.com/${GITHUB_REPOSITORY}/releases/download/${TAG}/sp-autopilot.yaml"
           token=$(curl -sSf -H "Authorization: bearer ${ACTIONS_ID_TOKEN_REQUEST_TOKEN}" \
             "${ACTIONS_ID_TOKEN_REQUEST_URL}&audience=sts.amazonaws.com" | jq -r .value)

@@ -43,6 +43,10 @@ Resources:
     UpdateReplacePolicy: Retain
     Properties:
       BucketName: !Ref BucketName
+      # A template a release overwrites by mistake can be restored. Old versions
+      # aren't public: reading one takes s3:GetObjectVersion.
+      VersioningConfiguration:
+        Status: Enabled
       # Public reads go through the bucket policy alone: ACLs stay off.
       OwnershipControls:
         Rules:

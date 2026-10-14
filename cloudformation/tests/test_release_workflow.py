@@ -23,6 +23,11 @@ def run_scripts(job: dict) -> str:
     return "\n".join(step.get("run", "") for step in job["steps"])
 
 
+def test_write_access_is_granted_per_job(workflow):
+    assert workflow["permissions"] == {}
+    assert workflow["jobs"]["release"]["permissions"] == {"contents": "write"}
+
+
 def test_release_job_packages_and_attaches_the_template(workflow):
     job = workflow["jobs"]["release"]
     assert "python3 cloudformation/build.py" in run_scripts(job)
@@ -51,6 +56,7 @@ def test_publish_template_runs_no_repository_code(workflow):
 def test_publish_template_uploads_the_released_template_only(workflow):
     script = run_scripts(workflow["jobs"]["publish-template"])
     assert "releases/download/${TAG}/sp-autopilot.yaml" in script
+    assert "--proto '=https' --proto-redir '=https'" in script
     assert "--duration-seconds 900" in script
     uploads = [line.strip() for line in script.splitlines() if "aws s3" in line]
     assert uploads == [

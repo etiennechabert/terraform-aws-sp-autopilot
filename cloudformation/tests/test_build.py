@@ -101,8 +101,9 @@ def test_build_refuses_a_code_source_url_that_isnt_plain_https(url, tmp_path):
 
 def test_main_defaults_to_the_github_release_assets(tmp_path, monkeypatch, capsys):
     monkeypatch.delenv("GITHUB_REPOSITORY", raising=False)
-    assert build.main(["--version", "v1.3.0", "--output-dir", str(tmp_path)]) == 0
-    text = (tmp_path / build.TEMPLATE_NAME).read_text(encoding="utf-8")
+    monkeypatch.chdir(tmp_path)
+    assert build.main(["--version", "v1.3.0", "--output-dir", "dist"]) == 0
+    text = (tmp_path / "dist" / build.TEMPLATE_NAME).read_text(encoding="utf-8")
     assert (
         "https://github.com/etiennechabert/terraform-aws-sp-autopilot/releases/download/v1.3.0"
         in text
@@ -110,6 +111,17 @@ def test_main_defaults_to_the_github_release_assets(tmp_path, monkeypatch, capsy
     assert build.TEMPLATE_NAME in capsys.readouterr().out
 
 
-def test_main_reports_errors_without_a_traceback(tmp_path, capsys):
-    assert build.main(["--version", "nope", "--output-dir", str(tmp_path)]) == 1
+def test_main_reports_errors_without_a_traceback(tmp_path, monkeypatch, capsys):
+    monkeypatch.chdir(tmp_path)
+    assert build.main(["--version", "nope", "--output-dir", "dist"]) == 1
     assert "not a release version" in capsys.readouterr().err
+
+
+@pytest.mark.parametrize("output_dir", ["..", "../elsewhere", "/tmp"])
+def test_main_writes_only_under_the_working_directory(tmp_path, monkeypatch, capsys, output_dir):
+    work = tmp_path / "work"
+    work.mkdir()
+    monkeypatch.chdir(work)
+    assert build.main(["--version", "v1.3.0", "--output-dir", output_dir]) == 1
+    assert "--output-dir must be inside" in capsys.readouterr().err
+    assert list(tmp_path.iterdir()) == [work]
