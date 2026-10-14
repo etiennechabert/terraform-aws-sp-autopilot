@@ -78,13 +78,22 @@ def test_stamp_refuses_missing_and_leftover_placeholders():
         build.stamp("@@A@@ @@B@@", {"A": "1"})
 
 
-@pytest.mark.parametrize("version", ["1.3", "latest", "v1.3.0;rm"])
+@pytest.mark.parametrize("version", ["1.3", "latest", "v1.3.0;rm", "v1.3.0\n", "v1.3.0 extra"])
 def test_build_refuses_a_version_that_isnt_a_release(version, tmp_path):
     with pytest.raises(ValueError, match="not a release version"):
         build.build(version, "https://example.com", tmp_path)
 
 
-@pytest.mark.parametrize("url", ["http://example.com", "https://example.com/"])
+@pytest.mark.parametrize(
+    "url",
+    [
+        "http://example.com",
+        "https://example.com/",
+        'https://example.com/a"b',
+        "https://example.com/a b",
+        "https://example.com/a\n",
+    ],
+)
 def test_build_refuses_a_code_source_url_that_isnt_plain_https(url, tmp_path):
     with pytest.raises(ValueError, match="https"):
         build.build(TEST_VERSION, url, tmp_path)

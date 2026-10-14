@@ -415,6 +415,28 @@ def test_the_stack_copies_this_release_packages(template, packaged_dir: Path):
     assert TEST_VERSION in template["Description"]
 
 
+def test_the_code_copier_keeps_its_arn_when_the_prefix_changes(template):
+    # Its ARN is LambdaCode's ServiceToken, which CloudFormation refuses to update.
+    stack = Stack(template, **EMAIL)
+    copier = stack.properties("CodeCopierFunction")
+    assert "FunctionName" not in copier
+    assert copier["LoggingConfig"] == {"LogGroup": "<CodeCopierLogGroup>"}
+    assert stack.properties("LambdaCode")["ServiceToken"] == "<CodeCopierFunction.Arn>"
+    # CloudFormation must still be waiting when the copier gives up.
+    assert stack.properties("LambdaCode")["ServiceTimeout"] > copier["Timeout"]
+
+
+def test_report_buckets_outlive_the_stack_but_not_a_failed_create(template):
+    for bucket in ("ReportsBucket", "ReportsLogsBucket"):
+        resource = template["Resources"][bucket]
+        assert (resource["DeletionPolicy"], resource["UpdateReplacePolicy"]) == (
+            "RetainExceptOnCreate",
+            "Retain",
+        )
+    # Emptied by the copier when the stack goes.
+    assert "DeletionPolicy" not in template["Resources"]["LambdaCodeBucket"]
+
+
 def test_every_lambda_runs_on_the_same_runtime(template):
     runtimes = {
         r["Properties"]["Runtime"]
@@ -523,6 +545,33 @@ def test_every_parameter_is_in_exactly_one_console_group(template):
     groups = template["Metadata"]["AWS::CloudFormation::Interface"]["ParameterGroups"]
     grouped = [name for group in groups for name in group["Parameters"]]
     assert sorted(grouped) == sorted(template["Parameters"])
+
+
+@pytest.mark.parametrize("parameter", ["GapSplitMinPurchasePercent", "GapSplitMaxPurchasePercent"])
+@pytest.mark.parametrize(
+    ("value", "accepted"),
+    [
+        ("", True),
+        ("5", True),
+        ("0.5", True),
+        ("37.25", True),
+        ("100", True),
+        ("100.0", True),
+        ("0", False),
+        ("0.0", False),
+        ("100.5", False),
+        ("250", False),
+        ("-5", False),
+        ("5%", False),
+    ],
+)
+def test_gap_split_percentages_must_be_above_0_and_at_most_100(
+    template, parameter, value, accepted
+):
+    # The module rejects min <= 0 at plan time; the scheduler rejects anything outside (0, 100].
+    assert (
+        bool(re.fullmatch(template["Parameters"][parameter]["AllowedPattern"], value)) is accepted
+    )
 
 
 def test_parameter_defaults_satisfy_their_own_constraints(template):

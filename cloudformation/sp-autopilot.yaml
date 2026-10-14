@@ -211,14 +211,14 @@ Parameters:
   GapSplitMinPurchasePercent:
     Type: String
     Default: ""
-    AllowedPattern: ^$|^[0-9]+(\.[0-9]+)?$
-    ConstraintDescription: must be a number, or empty.
+    AllowedPattern: ^$|^(?!0+(\.0+)?$)(100(\.0+)?|[0-9]{1,2}(\.[0-9]+)?)$
+    ConstraintDescription: must be a number above 0 and at most 100, or empty.
     Description: Used by the gap_split split only. Empty for no minimum.
   GapSplitMaxPurchasePercent:
     Type: String
     Default: ""
-    AllowedPattern: ^$|^[0-9]+(\.[0-9]+)?$
-    ConstraintDescription: must be a number, or empty.
+    AllowedPattern: ^$|^(?!0+(\.0+)?$)(100(\.0+)?|[0-9]{1,2}(\.[0-9]+)?)$
+    ConstraintDescription: must be a number above 0 and at most 100, or empty.
     Description: Used by the gap_split split only. Empty for 100.
 
   # Purchase guardrails
@@ -567,11 +567,13 @@ Resources:
       AlarmActions:
         - !Ref NotificationsTopic
 
-  # Reports bucket. Kept when the stack is deleted: it holds your reports.
+  # Reports bucket. Kept when the stack is deleted, since it holds your reports, but
+  # not when a first create rolls back: it is empty then, and its fixed name would
+  # make the retry fail.
 
   ReportsBucket:
     Type: AWS::S3::Bucket
-    DeletionPolicy: Retain
+    DeletionPolicy: RetainExceptOnCreate
     UpdateReplacePolicy: Retain
     Properties:
       BucketName: !Sub ${NamePrefix}-reports-${AWS::AccountId}
@@ -626,7 +628,7 @@ Resources:
   ReportsLogsBucket:
     Type: AWS::S3::Bucket
     Condition: AccessLoggingEnabled
-    DeletionPolicy: Retain
+    DeletionPolicy: RetainExceptOnCreate
     UpdateReplacePolicy: Retain
     Properties:
       BucketName: !Sub ${NamePrefix}-reports-logs-${AWS::AccountId}
@@ -757,14 +759,18 @@ Resources:
 
   CodeCopierFunction:
     Type: AWS::Lambda::Function
+    # No FunctionName: this function's ARN is LambdaCode's ServiceToken, which
+    # CloudFormation can't update, so a name that follows NamePrefix would make
+    # changing NamePrefix fail.
     Properties:
-      FunctionName: !Sub ${NamePrefix}-code-copier
       Description: Copies the release's Lambda packages into the stack's code bucket
       Role: !GetAtt CodeCopierRole.Arn
       Handler: index.handler
       Runtime: python3.14
       MemorySize: 128
-      Timeout: 300
+      Timeout: 600
+      LoggingConfig:
+        LogGroup: !Ref CodeCopierLogGroup
       Code:
         ZipFile: |
           """Copies SP Autopilot's Lambda packages into this stack's code bucket.
@@ -777,6 +783,7 @@ Resources:
 
           import hashlib
           import json
+          import time
           import urllib.request
 
           import boto3
@@ -799,9 +806,12 @@ Resources:
                       for key in keys.values():
                           s3.delete_object(Bucket=bucket, Key=key)
                   else:
-                      bodies = {name: fetch(p["Url"], p["Sha256"]) for name, p in packages.items()}
+                      bodies = {
+                          name: retry(f"download {p['Url']}", fetch, p["Url"], p["Sha256"])
+                          for name, p in packages.items()
+                      }
                       for name, body in bodies.items():
-                          s3.put_object(Bucket=bucket, Key=keys[name], Body=body)
+                          retry(f"write {keys[name]}", s3.put_object, Bucket=bucket, Key=keys[name], Body=body)
                       physical_id, data = release, keys
               except Exception as error:
                   print(f"{event.get('RequestType')} failed: {error!r}")
@@ -812,10 +822,25 @@ Resources:
               respond(event, context, status, reason, physical_id, data)
 
 
+          def retry(what, action, *args, **kwargs):
+              """Retries what IAM propagation (this runs seconds after its role is created)
+              or a network blip can fail. A ValueError, such as a bad checksum, is final."""
+              for delay in (5, 15, None):
+                  try:
+                      return action(*args, **kwargs)
+                  except ValueError:
+                      raise
+                  except Exception as error:
+                      if delay is None:
+                          raise
+                      print(f"{what} failed, retrying in {delay}s: {error!r}")
+                      time.sleep(delay)
+
+
           def fetch(url, sha256):
               if not url.startswith("https://"):
                   raise ValueError(f"refusing a package URL that isn't https: {url}")
-              with urllib.request.urlopen(url, timeout=60) as response:
+              with urllib.request.urlopen(url, timeout=30) as response:
                   body = response.read()
               digest = hashlib.sha256(body).hexdigest()
               if digest != sha256:
@@ -843,7 +868,7 @@ Resources:
     Type: Custom::LambdaCode
     Properties:
       ServiceToken: !GetAtt CodeCopierFunction.Arn
-      ServiceTimeout: 600
+      ServiceTimeout: 900
       Bucket: !Ref LambdaCodeBucket
       Packages:
         Scheduler:

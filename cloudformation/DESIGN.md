@@ -31,6 +31,7 @@ CloudFormation parameters are flat strings, so the module's nested inputs become
 - **One memory size, timeout and error-alarm switch** for all three functions, instead of one per function.
 - **Two management-account roles**, read-only for the scheduler and reporter and one for the purchaser, as the README's *AWS Organizations Setup* describes, instead of one per function.
 - **No `tags` input.** Stack tags propagate to the resources. Purchased plans get the module's `ManagedBy` and `Module` tags.
+- **The reports buckets outlive the stack** (`RetainExceptOnCreate`): they hold your reports. A first create that rolls back deletes them, as they are still empty, so retrying with the same `NamePrefix` works.
 - **Constraints the module doesn't check:** S3 refuses a Standard-IA transition under 30 days, and `NamePrefix` is capped at 37 characters so the bucket names fit. Rules the console can't express (one lookback longer than the other, for instance) are still checked by the Lambdas at run time, as they are for the module.
 
 Plan types keep the module's values (`no_upfront_one_year`...). Mapping keys can't contain underscores, so Conditions turn them into term and payment option.
@@ -52,6 +53,8 @@ How it works:
 - `build.py` writes the download URL (the release's assets) and each zip's SHA-256 into the template's `Release` mapping. The stack's `CodeCopierFunction` downloads each zip over HTTPS, refuses one whose SHA-256 differs, then writes them to `LambdaCodeBucket`. A replaced release asset can't reach a function, and nothing is written unless all three check out.
 - Keys are named after a hash of all three checksums. A new release copies to new keys, and the functions' `S3Key` changes, which is what makes CloudFormation update their code. CloudFormation's cleanup of the previous `LambdaCode` then deletes only the old keys. With per-package keys, an unchanged package would share its key with the old release and be deleted.
 - The download URL lives in the mapping, not a parameter. On a stack update the console keeps previous parameter values, so a parameter would keep pointing at the old release while the checksums move on.
+- Downloads and writes are retried twice, 5 and 15 seconds apart: the copier runs seconds after its role is created, before IAM may have propagated it. A bad checksum isn't retried.
+- The copier has no fixed name. Its ARN is `LambdaCode`'s `ServiceToken`, which CloudFormation can't update, so a name following `NamePrefix` would make changing `NamePrefix` fail. It logs to `CodeCopierLogGroup` through `LoggingConfig`.
 - Deleting the stack deletes the copied keys, then the bucket. A failing delete still answers `SUCCESS`, so cleanup never blocks a stack deletion.
 - The copier needs outbound HTTPS to github.com during creates and updates; it runs outside any VPC.
 
@@ -79,3 +82,4 @@ Quick-create links only take a template [stored in S3](https://docs.aws.amazon.c
 
 - **No deployment test.** The stack has been linted and evaluated, not created in an AWS account by CI. The Terratest suite could create it from the CI build in the test account.
 - **Alarm notifications and the `aws/sns` key.** The topic defaults to the AWS managed `alias/aws/sns` key, as in the module. CloudWatch alarms can't publish to a topic encrypted with an AWS managed key, so the error and DLQ alarms may not notify until the topic uses a customer managed key. This affects the module the same way and should be settled for both.
+- **Queue visibility and function timeout.** The queue's visibility timeout is fixed at 300 seconds, as in the module, while `LambdaTimeout` allows up to 900. A purchaser run longer than 300 seconds sees its in-flight intents again. Client tokens keep the purchases themselves idempotent.

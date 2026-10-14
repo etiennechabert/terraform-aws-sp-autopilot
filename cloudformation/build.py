@@ -26,7 +26,9 @@ TEMPLATE_NAME = "sp-autopilot.yaml"
 FUNCTIONS = ("scheduler", "purchaser", "reporter")
 SHARED_DIRS = ("shared", "shared/target_strategies", "shared/split_strategies")
 DEFAULT_REPOSITORY = "etiennechabert/terraform-aws-sp-autopilot"
-VERSION_PATTERN = re.compile(r"^v?\d+\.\d+\.\d+(-[0-9A-Za-z.-]+)?$")
+# Both are written verbatim into the YAML, so they are held to characters that keep it valid.
+VERSION_PATTERN = re.compile(r"v?\d+\.\d+\.\d+(-[0-9A-Za-z.-]+)?")
+CODE_SOURCE_URL_PATTERN = re.compile(r"https://[A-Za-z0-9._~:/?#\[\]@!$&()*+,;=%-]+(?<!/)")
 # Fixed timestamps and modes, so the same sources always give the same packages.
 ZIP_DATE_TIME = (1980, 1, 1, 0, 0, 0)
 ZIP_FILE_MODE = 0o644
@@ -75,11 +77,11 @@ def default_code_source_url(version: str, repository: str) -> str:
 
 def build(version: str, code_source_url: str, output_dir: Path) -> dict[str, str]:
     """Write the packages, the template and SHA256SUMS; return {file name: sha256}."""
-    if not VERSION_PATTERN.match(version):
+    if not VERSION_PATTERN.fullmatch(version):
         raise ValueError(f"not a release version: {version!r}")
-    if not code_source_url.startswith("https://") or code_source_url.endswith("/"):
+    if not CODE_SOURCE_URL_PATTERN.fullmatch(code_source_url):
         raise ValueError(
-            f"the code source URL must be https:// without a trailing /: {code_source_url!r}"
+            f"the code source URL must be https://, without spaces, quotes or a trailing /: {code_source_url!r}"
         )
 
     output_dir.mkdir(parents=True, exist_ok=True)
@@ -100,11 +102,13 @@ def build(version: str, code_source_url: str, output_dir: Path) -> dict[str, str
             "PACKAGED": "yes",
         },
     )
-    (output_dir / TEMPLATE_NAME).write_text(template, encoding="utf-8")
-    checksums[TEMPLATE_NAME] = hashlib.sha256(template.encode("utf-8")).hexdigest()
+    # Bytes, not text: text mode would translate newlines on Windows after hashing.
+    template_bytes = template.encode("utf-8")
+    (output_dir / TEMPLATE_NAME).write_bytes(template_bytes)
+    checksums[TEMPLATE_NAME] = hashlib.sha256(template_bytes).hexdigest()
 
     sums = "".join(f"{digest}  {name}\n" for name, digest in sorted(checksums.items()))
-    (output_dir / "SHA256SUMS").write_text(sums, encoding="utf-8")
+    (output_dir / "SHA256SUMS").write_bytes(sums.encode("utf-8"))
     return checksums
 
 

@@ -7,7 +7,7 @@ help:
 	@echo "  docs         - Generate Terraform docs in README"
 	@echo "  docs-check   - Check if Terraform docs are up-to-date (CI mode)"
 	@echo "  format       - Format Python code with ruff"
-	@echo "  test         - Run all tests"
+	@echo "  test         - Run all Lambda tests (cfn-test runs the CloudFormation ones)"
 	@echo "  coverage     - Run all tests with aggregated coverage report (opens in browser)"
 	@echo "  cfn-package  - Package the CloudFormation template and Lambda zips into dist/cloudformation"
 	@echo "  cfn-lint     - Package, then cfn-lint both CloudFormation templates"

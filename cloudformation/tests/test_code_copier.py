@@ -6,7 +6,9 @@ Runs the code exactly as the template carries it, with S3 and HTTP faked.
 import hashlib
 import json
 import sys
+import time
 import types
+import urllib.error
 import urllib.request
 from pathlib import Path
 
@@ -28,8 +30,12 @@ class FakeS3:
         self.objects: dict[tuple[str, str], bytes] = {}
         self.deleted: list[tuple[str, str]] = []
         self.fail_deletes = False
+        self.failing_puts = 0
 
     def put_object(self, Bucket, Key, Body):  # noqa: N803 - boto3's names
+        if self.failing_puts:
+            self.failing_puts -= 1
+            raise RuntimeError("AccessDenied")
         self.objects[(Bucket, Key)] = Body
 
     def delete_object(self, Bucket, Key):  # noqa: N803 - boto3's names
@@ -60,6 +66,7 @@ class Web:
         self.files = files
         self.fetched: list[str] = []
         self.responses: list[dict] = []
+        self.failing: dict[str, int] = {}
 
     def urlopen(self, target, timeout=None):
         if isinstance(target, urllib.request.Request):
@@ -69,6 +76,9 @@ class Web:
             self.responses.append(json.loads(target.data))
             return FakeResponse()
         self.fetched.append(target)
+        if self.failing.get(target):
+            self.failing[target] -= 1
+            raise urllib.error.URLError("connection reset")
         return FakeResponse(self.files[target])
 
     @property
@@ -80,6 +90,14 @@ class Web:
 @pytest.fixture
 def s3() -> FakeS3:
     return FakeS3()
+
+
+@pytest.fixture(autouse=True)
+def sleeps(monkeypatch) -> list[float]:
+    """The copier's retry delays, recorded instead of slept."""
+    delays: list[float] = []
+    monkeypatch.setattr(time, "sleep", delays.append)
+    return delays
 
 
 @pytest.fixture
@@ -163,6 +181,54 @@ def test_a_tampered_package_fails_the_create_and_writes_nothing(copier, s3, monk
     assert web.response["Status"] == "FAILED"
     assert "reporter.zip has SHA-256" in web.response["Reason"]
     assert s3.objects == {}
+
+
+def test_a_tampered_package_is_not_downloaded_again(copier, s3, monkeypatch, sleeps):
+    props = {"Bucket": "code-bucket", "Packages": packages()}
+    files = files_for(props)
+    files[props["Packages"]["Scheduler"]["Url"]] = b"something else"
+    web = serve(monkeypatch, files)
+
+    copier.handler(event("Create", props), CONTEXT)
+
+    assert web.response["Status"] == "FAILED"
+    assert web.fetched == [props["Packages"]["Scheduler"]["Url"]]
+    assert sleeps == []
+
+
+def test_writes_are_retried_while_the_new_role_propagates(copier, s3, monkeypatch, sleeps):
+    props = {"Bucket": "code-bucket", "Packages": packages()}
+    web = serve(monkeypatch, files_for(props))
+    s3.failing_puts = 2
+
+    copier.handler(event("Create", props), CONTEXT)
+
+    assert web.response["Status"] == "SUCCESS"
+    assert len(s3.objects) == len(PACKAGES)
+    assert sleeps == [5, 15]
+
+
+def test_downloads_are_retried_after_a_network_error(copier, s3, monkeypatch, sleeps):
+    props = {"Bucket": "code-bucket", "Packages": packages()}
+    web = serve(monkeypatch, files_for(props))
+    web.failing[props["Packages"]["Purchaser"]["Url"]] = 1
+
+    copier.handler(event("Create", props), CONTEXT)
+
+    assert web.response["Status"] == "SUCCESS"
+    assert sleeps == [5]
+
+
+def test_retries_give_up_after_three_attempts(copier, s3, monkeypatch, sleeps):
+    props = {"Bucket": "code-bucket", "Packages": packages()}
+    web = serve(monkeypatch, files_for(props))
+    s3.failing_puts = 3
+
+    copier.handler(event("Create", props), CONTEXT)
+
+    assert web.response["Status"] == "FAILED"
+    assert "AccessDenied" in web.response["Reason"]
+    assert sleeps == [5, 15]
 
 
 def test_only_https_sources_are_fetched(copier, s3, monkeypatch):
