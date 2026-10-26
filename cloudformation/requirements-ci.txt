@@ -1,6 +1,7 @@
 # CloudFormation template checks (cloudformation/tests, cfn-lint). Compiled into
-# requirements-ci.lock with hashes:
+# requirements-ci.lock with hashes, from releases at least 7 days old:
 #   uvx --python 3.13 --from pip-tools pip-compile --upgrade --generate-hashes \
+#     --no-strip-extras --pip-args='--uploaded-prior-to=P7D' \
 #     --output-file=cloudformation/requirements-ci.lock cloudformation/requirements-ci.txt
 cfn-lint~=1.57
 boto3~=1.42
