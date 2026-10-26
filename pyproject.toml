@@ -64,6 +64,7 @@ ignore = [
     "F841",     # Local variable assigned but never used (test setup)
     "B007",     # Loop control variable not used (intentional iteration)
     "PLR0913",  # Too many arguments to function call
+    "PLR0917",  # Too many positional arguments (same policy as PLR0913)
     "PLR2004",  # Magic value used in comparison
     "PLR0912",  # Too many branches (complexity metric)
     "PLR0915",  # Too many statements (complexity metric)

@@ -41,7 +41,7 @@ def test_coverage_calculation(aws_mock_builder, mock_ce_client):
 
     # Test your code...
     result = calculate_coverage(mock_ce_client)
-    assert result['compute'] == 85.5
+    assert result["compute"] == 85.5
 ```
 
 #### Available Builder Methods
@@ -79,13 +79,13 @@ response = aws_mock_builder.coverage_history(coverage_percentage=90.0, days=14)
 **recommendation(sp_type='database', hourly_commitment=None, empty=False)**
 ```python
 # Database SP recommendation with custom commitment
-response = aws_mock_builder.recommendation('database', hourly_commitment=20.0)
+response = aws_mock_builder.recommendation("database", hourly_commitment=20.0)
 
 # Empty recommendation (AWS has no recommendations)
-response = aws_mock_builder.recommendation('compute', empty=True)
+response = aws_mock_builder.recommendation("compute", empty=True)
 
 # SageMaker SP recommendation
-response = aws_mock_builder.recommendation('sagemaker', hourly_commitment=8.95)
+response = aws_mock_builder.recommendation("sagemaker", hourly_commitment=8.95)
 ```
 
 **utilization(utilization_percentage=None, days=None)**
@@ -109,7 +109,7 @@ response = aws_mock_builder.cost_and_usage(days=7)
 response = aws_mock_builder.create_savings_plan()
 
 # Custom Savings Plan ID
-response = aws_mock_builder.create_savings_plan(savings_plan_id='sp-custom-12345')
+response = aws_mock_builder.create_savings_plan(savings_plan_id="sp-custom-12345")
 ```
 
 #### Advanced Customization
@@ -121,8 +121,8 @@ def test_expiring_plans(aws_mock_builder):
     plans = aws_mock_builder.describe_savings_plans(plans_count=2)
 
     # Customize specific fields
-    plans['savingsPlans'][0]['end'] = '2026-02-01T00:00:00Z'
-    plans['savingsPlans'][1]['end'] = '2026-03-01T00:00:00Z'
+    plans["savingsPlans"][0]["end"] = "2026-02-01T00:00:00Z"
+    plans["savingsPlans"][1]["end"] = "2026-03-01T00:00:00Z"
 
     mock_client.describe_savings_plans.return_value = plans
 ```
@@ -134,7 +134,7 @@ Load raw fixture files for read-only use:
 ```python
 def test_something(aws_response):
     # Load any fixture by filename
-    response = aws_response('describe_savings_plans.json')
+    response = aws_response("describe_savings_plans.json")
     mock_client.describe_savings_plans.return_value = response
 ```
 
@@ -145,9 +145,7 @@ Use named fixtures for common responses:
 ```python
 def test_coverage(aws_get_savings_plans_coverage_grouped, mock_ce_client):
     # Fixture is already loaded
-    mock_ce_client.get_savings_plans_coverage.return_value = (
-        aws_get_savings_plans_coverage_grouped
-    )
+    mock_ce_client.get_savings_plans_coverage.return_value = aws_get_savings_plans_coverage_grouped
 ```
 
 Available pre-loaded fixtures:
@@ -175,10 +173,12 @@ Available pre-loaded fixtures:
 ```python
 def test_coverage(mock_ce_client):
     mock_ce_client.get_savings_plans_coverage.return_value = {
-        "SavingsPlansCoverages": [{
-            "TimePeriod": {"Start": "2026-01-14", "End": "2026-01-15"},
-            "Coverage": {"CoveragePercentage": "75.5"},  # Missing 90% of fields!
-        }]
+        "SavingsPlansCoverages": [
+            {
+                "TimePeriod": {"Start": "2026-01-14", "End": "2026-01-15"},
+                "Coverage": {"CoveragePercentage": "75.5"},  # Missing 90% of fields!
+            }
+        ]
     }
 ```
 
@@ -186,8 +186,8 @@ def test_coverage(mock_ce_client):
 ```python
 def test_coverage(aws_mock_builder, mock_ce_client):
     # Real AWS structure with all fields, easy customization
-    mock_ce_client.get_savings_plans_coverage.return_value = (
-        aws_mock_builder.coverage(coverage_percentage=75.5)
+    mock_ce_client.get_savings_plans_coverage.return_value = aws_mock_builder.coverage(
+        coverage_percentage=75.5
     )
 ```
 
