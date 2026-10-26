@@ -4,6 +4,11 @@ updates:
     directory: "/"
     schedule:
       interval: "weekly"
+    # Wait 7 days after a version is published before proposing it. Most
+    # compromised releases (account takeovers) are caught and yanked within
+    # 24-72h. Security updates ignore the cooldown and still open immediately.
+    cooldown:
+      default-days: 7
     commit-message:
       prefix: "chore(deps)"
       include: "scope"
@@ -14,6 +19,9 @@ updates:
     directory: "/"
     schedule:
       interval: "weekly"
+    # Same 7-day soak as the Actions updates above.
+    cooldown:
+      default-days: 7
     commit-message:
       prefix: "chore(deps)"
       include: "scope"
